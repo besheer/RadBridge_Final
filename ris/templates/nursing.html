@@ -9,7 +9,7 @@ Clinical preparation, history, attachments and consumables · No report access
 <style>
 .nurse-summary,.nurse-grid {
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:14px;
 }
 .nurse-summary { margin-bottom:16px; }
@@ -29,7 +29,14 @@ Clinical preparation, history, attachments and consumables · No report access
   background:#071018;color:#8fa4b7;
 }
 .nurse-body { padding:14px; }
-.nurse-head { display:flex;justify-content:space-between;gap:10px; }
+.nurse-head {
+  display:flex;justify-content:space-between;gap:10px;
+  align-items:flex-start;
+}
+.nurse-head .status-chip {
+  flex:0 0 auto;align-self:flex-start;white-space:nowrap;
+  width:auto;height:auto;min-width:0;
+}
 .nurse-meta {
   display:grid;grid-template-columns:1fr 1fr;gap:8px;
   margin:12px 0;font-size:13px;
@@ -78,7 +85,7 @@ Clinical preparation, history, attachments and consumables · No report access
     {% if (o.pacs_image_count or 0)>0 and o.pacs_study_id %}
       <img class="nurse-thumb"
            src="{{url_for('order_study_thumbnail',order_id=o.id)}}"
-           alt="Study thumbnail for {{o.accession}}"
+           alt=""
            loading="lazy">
     {% else %}
       <div class="nurse-thumb-empty">No PACS image received</div>

@@ -6021,7 +6021,17 @@ def order_study_thumbnail(order_id):
         abort(404)
 
     detail = _orthanc_study_detail(order.pacs_study_id)
-    instances = detail.get('Instances') or []
+    instances = list(detail.get('Instances') or [])
+
+    # Orthanc study resources normally expose Series IDs.
+    # Resolve the first available instance from the first non-empty series.
+    if not instances:
+        for series_id in detail.get('Series') or []:
+            series = _orthanc_series_detail(series_id)
+            instances = list(series.get('Instances') or [])
+
+            if instances:
+                break
 
     if not instances:
         abort(404)

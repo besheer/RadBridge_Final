@@ -1395,3 +1395,52 @@ body.rtl input[type="radio"]{
   overflow-x:hidden!important;
 }
 
+
+
+/* RB_PHASE15_SYSTEM_THEME_FIX_V1 */
+body.theme-dark .user-trigger,
+body.theme-dark .user-dropdown {
+  background:#101d2d;
+  color:#eef5fb;
+  border-color:#294052;
+}
+body.theme-dark .user-dropdown strong,
+body.theme-dark .user-dropdown small,
+body.theme-dark .user-dropdown > a {
+  color:#eef5fb;
+}
+body.theme-dark .user-dropdown > a:hover {
+  background:#193149;
+  color:#ffffff;
+}
+body.theme-dark .user-dropdown > a.danger {
+  color:#ff9b9b;
+}
+body.theme-dark .dropdown-divider {
+  background:#294052;
+}
+body.theme-dark .user-meta small,
+body.theme-dark .dropdown-user small {
+  color:#9db1c4;
+}
+body.theme-dark .topbar {
+  background:#101d2d;
+  color:#eef5fb;
+  border-color:#294052;
+}
+body.theme-dark .topbar .muted,
+body.theme-dark .breadcrumbs,
+body.theme-dark .breadcrumbs a {
+  color:#9db1c4;
+}
+body.theme-light .user-trigger,
+body.theme-light .user-dropdown {
+  background:#ffffff;
+  color:#0f172a;
+}
+body.theme-light .user-dropdown > a {
+  color:#0f172a;
+}
+body.theme-light .user-dropdown > a:hover {
+  background:#f1f5f9;
+}

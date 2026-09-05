@@ -25,7 +25,7 @@ Patient preparation, clinical history, attachments and actual consumables
       {% if (order.pacs_image_count or 0)>0 and order.pacs_study_id %}
         <img class="nursing-preview"
              src="{{url_for('order_study_thumbnail',order_id=order.id)}}"
-             alt="Study thumbnail"
+             alt=""
              loading="lazy">
       {% else %}
         <div class="empty">No PACS image received</div>
