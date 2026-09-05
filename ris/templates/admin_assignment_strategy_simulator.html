@@ -1,0 +1,668 @@
+{% extends "base.html" %}
+
+{% block page_title %}Assignment Strategy Simulator{% endblock %}
+{% block subtitle %}Safe dry-run — no offer or assignment is created{% endblock %}
+
+{% block content %}
+
+<style>
+.rb-sim-wrap{
+  max-width:1500px;
+  margin:auto;
+}
+
+.rb-alert{
+  padding:14px 18px;
+  border-radius:12px;
+  margin-bottom:18px;
+  border:1px solid #d7dee8;
+  background:#f8fafc;
+}
+
+.rb-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  margin-bottom:16px;
+}
+
+.rb-card{
+  border:1px solid #dfe5ec;
+  border-radius:14px;
+  padding:18px;
+  background:var(--card-bg, #fff);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+
+.rb-card h3{
+  margin-top:0;
+}
+
+.rb-info{
+  width:100%;
+  border-collapse:collapse;
+}
+
+.rb-info td{
+  padding:8px 6px;
+  border-bottom:1px solid #edf0f3;
+}
+
+.rb-info td:first-child{
+  width:42%;
+  opacity:.72;
+}
+
+.rb-decision{
+  padding:22px;
+  border-radius:14px;
+  margin:12px 0 18px;
+  font-size:26px;
+  font-weight:800;
+}
+
+.rb-allow{
+  background:#e9f8ef;
+  border:1px solid #8bd3a5;
+}
+
+.rb-warn{
+  background:#fff7df;
+  border:1px solid #efca67;
+}
+
+.rb-block{
+  background:#fdecec;
+  border:1px solid #ec9a9a;
+}
+
+.rb-coordinator{
+  background:#edf3ff;
+  border:1px solid #9cb8ed;
+}
+
+.rb-badge{
+  display:inline-block;
+  padding:5px 9px;
+  border-radius:999px;
+  margin:2px;
+  font-size:12px;
+  font-weight:700;
+  background:#eef1f5;
+}
+
+.rb-good{
+  background:#e7f7ed;
+}
+
+.rb-bad{
+  background:#fdeaea;
+}
+
+.rb-warning{
+  background:#fff1ca;
+}
+
+.rb-table-wrap{
+  overflow:auto;
+}
+
+.rb-doctors{
+  width:100%;
+  border-collapse:collapse;
+  min-width:1050px;
+}
+
+.rb-doctors th,
+.rb-doctors td{
+  padding:10px 8px;
+  border-bottom:1px solid #e9edf2;
+  text-align:left;
+  vertical-align:top;
+}
+
+.rb-doctors th{
+  position:sticky;
+  top:0;
+  background:#f6f8fa;
+  z-index:1;
+}
+
+.rb-doctors tr:hover{
+  background:#fafbfd;
+}
+
+.rb-status-ok{
+  font-weight:800;
+}
+
+.rb-status-no{
+  font-weight:800;
+}
+
+.rb-reason{
+  display:block;
+  margin:2px 0;
+  padding:3px 7px;
+  border-radius:6px;
+  background:#fdeaea;
+  font-size:12px;
+}
+
+.rb-summary{
+  font-size:16px;
+  line-height:1.7;
+}
+
+.rb-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:16px;
+}
+
+@media(max-width:900px){
+  .rb-grid{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+
+
+<div class="rb-sim-wrap">
+
+<div class="rb-alert">
+  🧪 <strong>Simulation Mode</strong> —
+  this page does not create an AssignmentOffer,
+  CaseAssignment, or modify the assigned doctor.
+</div>
+
+
+<div class="rb-actions">
+
+  <a class="btn"
+     href="{{url_for('admin_assignment_strategies')}}">
+    ← Back to Strategies
+  </a>
+
+  <a class="btn"
+     href="{{url_for('order_detail',order_id=order.id)}}"
+     target="_blank">
+    Open Case
+  </a>
+
+</div>
+
+
+<div class="rb-grid">
+
+  <div class="rb-card">
+
+    <h3>📋 Case</h3>
+
+    <table class="rb-info">
+
+      <tr>
+        <td>Order</td>
+        <td><strong>#{{order.id}}</strong></td>
+      </tr>
+
+      <tr>
+        <td>Accession</td>
+        <td><strong>{{order.accession}}</strong></td>
+      </tr>
+
+      <tr>
+        <td>Patient</td>
+        <td>
+          {% if order.patient %}
+            {{order.patient.name or order.patient.full_name or '-'}}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Modality</td>
+        <td><strong>{{order.modality or '-'}}</strong></td>
+      </tr>
+
+      <tr>
+        <td>Procedure</td>
+        <td>{{order.procedure or '-'}}</td>
+      </tr>
+
+      <tr>
+        <td>Priority</td>
+        <td>{{order.priority or '-'}}</td>
+      </tr>
+
+      <tr>
+        <td>Branch</td>
+        <td>{{order.branch_id or '-'}}</td>
+      </tr>
+
+      <tr>
+        <td>PACS Status</td>
+        <td>{{order.pacs_status or '-'}}</td>
+      </tr>
+
+      <tr>
+        <td>Images</td>
+        <td>{{order.pacs_image_count or 0}}</td>
+      </tr>
+
+    </table>
+
+  </div>
+
+
+  <div class="rb-card">
+
+    <h3>⚙️ Selected Strategy</h3>
+
+    {% if strategy %}
+
+    <table class="rb-info">
+
+      <tr>
+        <td>Name</td>
+        <td><strong>{{strategy.name}}</strong></td>
+      </tr>
+
+      <tr>
+        <td>Version</td>
+        <td>v{{strategy.version_no}}</td>
+      </tr>
+
+      <tr>
+        <td>Priority</td>
+        <td>{{strategy.priority}}</td>
+      </tr>
+
+      <tr>
+        <td>Mode</td>
+        <td><strong>{{strategy.assignment_mode}}</strong></td>
+      </tr>
+
+      <tr>
+        <td>Fallback</td>
+        <td>{{strategy.fallback_mode}}</td>
+      </tr>
+
+      <tr>
+        <td>Require Modality</td>
+        <td>{{'Yes' if strategy.require_modality_match else 'No'}}</td>
+      </tr>
+
+      <tr>
+        <td>Require Branch</td>
+        <td>{{'Yes' if strategy.require_branch_match else 'No'}}</td>
+      </tr>
+
+      <tr>
+        <td>Require Online</td>
+        <td>{{'Yes' if strategy.require_online else 'No'}}</td>
+      </tr>
+
+      <tr>
+        <td>Prefer Online</td>
+        <td>{{'Yes' if strategy.prefer_online else 'No'}}</td>
+      </tr>
+
+    </table>
+
+    {% else %}
+
+      <div class="rb-alert">
+        No matching AssignmentStrategy.
+        Legacy assignment policy would be used.
+      </div>
+
+    {% endif %}
+
+  </div>
+
+</div>
+
+
+{% set action=decision.get('action','BLOCK') %}
+
+<div class="rb-card">
+
+  <h3>🎯 Final Decision</h3>
+
+  {% if action == 'ALLOW' %}
+
+    <div class="rb-decision rb-allow">
+      ✅ ALLOW
+    </div>
+
+  {% elif action == 'WARN' %}
+
+    <div class="rb-decision rb-warn">
+      ⚠️ WARN — Assignment Allowed
+    </div>
+
+  {% elif action == 'COORDINATOR' %}
+
+    <div class="rb-decision rb-coordinator">
+      👤 COORDINATOR REVIEW
+    </div>
+
+  {% else %}
+
+    <div class="rb-decision rb-block">
+      ⛔ BLOCK
+    </div>
+
+  {% endif %}
+
+
+  <div class="rb-grid">
+
+    <div>
+
+      <h4>⛔ Blockers</h4>
+
+      {% if decision.get('blockers') %}
+
+        {% for x in decision.get('blockers') %}
+          <span class="rb-badge rb-bad">{{x}}</span>
+        {% endfor %}
+
+      {% else %}
+
+        <span class="rb-badge rb-good">None</span>
+
+      {% endif %}
+
+    </div>
+
+
+    <div>
+
+      <h4>⚠️ Warnings</h4>
+
+      {% if decision.get('warnings') %}
+
+        {% for x in decision.get('warnings') %}
+          <span class="rb-badge rb-warning">{{x}}</span>
+        {% endfor %}
+
+      {% else %}
+
+        <span class="rb-badge rb-good">None</span>
+
+      {% endif %}
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<div class="rb-card" style="margin-top:16px">
+
+  <h3>👨‍⚕️ Doctor Eligibility</h3>
+
+  <p>
+    <span class="rb-badge rb-good">
+      Eligible: {{eligible_count}}
+    </span>
+
+    <span class="rb-badge rb-bad">
+      Excluded: {{excluded_count}}
+    </span>
+
+    <span class="rb-badge">
+      Total: {{diagnostics|length}}
+    </span>
+  </p>
+
+
+  <div class="rb-table-wrap">
+
+    <table class="rb-doctors">
+
+      <thead>
+
+        <tr>
+          <th>Doctor</th>
+          <th>Decision</th>
+          <th>Availability</th>
+          <th>Online</th>
+          <th>Load</th>
+          <th>Modality</th>
+          <th>Branch</th>
+          <th>Auto Assign</th>
+          <th>Reasons</th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+      {% for d in diagnostics %}
+
+        <tr>
+
+          <td>
+
+            <strong>{{d.name}}</strong>
+
+            <br>
+
+            <small>
+              {{d.username}} · ID {{d.id}}
+            </small>
+
+          </td>
+
+
+          <td>
+
+            {% if d.eligible %}
+
+              <span class="rb-badge rb-good">
+                ✅ ELIGIBLE
+              </span>
+
+            {% else %}
+
+              <span class="rb-badge rb-bad">
+                ❌ EXCLUDED
+              </span>
+
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {% if d.availability_state == 'AVAILABLE' %}
+
+              <span class="rb-badge rb-good">
+                AVAILABLE
+              </span>
+
+            {% elif d.availability_state == 'BUSY' %}
+
+              <span class="rb-badge rb-warning">
+                BUSY
+              </span>
+
+            {% else %}
+
+              <span class="rb-badge">
+                {{d.availability_state}}
+              </span>
+
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {% if d.online %}
+              ✅ Online
+            {% else %}
+              ○ Offline
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {{d.active_cases}}
+            /
+            {{d.max_active_cases}}
+
+          </td>
+
+
+          <td>
+
+            {% if d.modality_match %}
+              ✅ Match
+            {% else %}
+              ❌ Mismatch
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {% if d.branch_match %}
+              ✅ Match
+            {% else %}
+              ❌ Mismatch
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {% if d.auto_assign %}
+              ✅ Enabled
+            {% else %}
+              ❌ Disabled
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {% if d.reasons %}
+
+              {% for reason in d.reasons %}
+                <span class="rb-reason">
+                  {{reason}}
+                </span>
+              {% endfor %}
+
+            {% else %}
+
+              <span class="rb-badge rb-good">
+                No exclusion reason
+              </span>
+
+            {% endif %}
+
+          </td>
+
+        </tr>
+
+      {% else %}
+
+        <tr>
+
+          <td colspan="9">
+            No doctors found.
+          </td>
+
+        </tr>
+
+      {% endfor %}
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+</div>
+
+
+<div class="rb-card rb-summary" style="margin-top:16px">
+
+  <h3>🧠 Simulation Summary</h3>
+
+  <p>
+
+    Case <strong>#{{order.id}}</strong>
+    / <strong>{{order.accession}}</strong>
+
+    would currently receive decision
+
+    <strong>{{action}}</strong>
+
+    using
+
+    <strong>
+      {{strategy.name if strategy else 'Legacy Assignment Policy'}}
+    </strong>.
+
+  </p>
+
+
+  {% if action in ('ALLOW','WARN') and eligible_count > 0 %}
+
+    <p>
+      ✅ There are currently
+      <strong>{{eligible_count}}</strong>
+      eligible doctor(s) available to the assignment engine.
+    </p>
+
+  {% elif action in ('ALLOW','WARN') and eligible_count == 0 %}
+
+    <p>
+      ⚠️ Readiness permits assignment,
+      but there is currently no eligible doctor.
+    </p>
+
+  {% elif action == 'COORDINATOR' %}
+
+    <p>
+      👤 This case requires coordinator review.
+    </p>
+
+  {% else %}
+
+    <p>
+      ⛔ Assignment is blocked until the blocking requirements
+      are resolved or an authorized override is applied.
+    </p>
+
+  {% endif %}
+
+
+  <hr>
+
+  <small>
+    Dry-run only — database assignment state was not modified.
+  </small>
+
+</div>
+
+</div>
+
+{% endblock %}

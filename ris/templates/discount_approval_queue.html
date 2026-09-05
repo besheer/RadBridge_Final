@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block page_title %}Discount Approval Queue{% endblock %}
+{% block content %}
+<div class="panel"><h2>Management Discount Approvals</h2><p>Requests from Reception/Cashier that exceed direct allowance but are within request policy.</p></div>
+{% for r in rows %}
+<div class="panel approval-card status-{{r.status|lower}}">
+<div class="approval-head"><div><b>{{r.order.accession}} · {{r.order.patient.name}}</b><small>{{r.requester.full_name}} · {{r.requested_at}}</small></div><span>{{r.status}}</span></div>
+<div class="grid4"><div><small>Requested</small><b>{{r.requested_percent|round(2)}}%</b></div><div><small>Amount</small><b>{{r.requested_amount|round(2)}} EGP</b></div><div><small>Current Due</small><b>{{effective_patient_due(r.order)|round(2)}} EGP</b></div><div><small>Reason</small><b>{{r.reason}}</b></div></div>
+{% if r.status=='PENDING' %}<form method="post" action="{{url_for('discount_approval_decision',req_id=r.id)}}" class="actions"><input name="decision_notes" placeholder="Management notes"><button class="btn primary" name="action" value="APPROVE">Approve</button><button class="btn danger" name="action" value="REJECT">Reject</button></form>{% endif %}
+</div>{% else %}<div class="panel">No approval requests.</div>{% endfor %}
+{% endblock %}

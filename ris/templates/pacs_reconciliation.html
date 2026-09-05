@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% from "_action_guidance.html" import action_info %}
+
+{% block page_title %}PACS Exception Review{% endblock %}
+
+{% block content %}
+<div class="panel">
+
+<h2>PACS Demographic Exception Review</h2>
+
+<p>
+Studies listed here were blocked because PACS demographics did not satisfy
+the automatic safety match.
+</p>
+
+<div style="margin-bottom:18px">
+<form method="post" action="{{ url_for('pacs_reconciliation_auto_safe') }}">
+<button class="btn primary">Re-run Safe Auto Match</button>
+{{ action_info(
+  'Safe Auto Match',
+  'Rechecks waiting PACS studies using strict demographic matching.',
+  'Use after correcting RIS or PACS demographics.',
+  'Requires PACS reconciliation permission.',
+  'Only exact safe matches are linked; unresolved studies remain in review.',
+  'It never overrides a different study on a verified or final case.',
+  ui_lang
+) }}
+</form>
+</div>
+
+<div class="panel" style="margin:20px 0;border-left:4px solid #2563eb">
+<h3>Exam Linking</h3>
+{{ action_info(
+  'Exam Linking',
+  'Links one acquired PACS study to an additional RIS Order for the same patient.',
+  'Use for combined acquisitions such as one CT study covering more than one ordered exam.',
+  'Both Orders must belong to the same patient; the secondary Order must remain editable; a documented reason is mandatory.',
+  'Creates a secondary clinical link only. Reports and notes remain separate for each Order.',
+  'This is not Patient Merge and does not change, copy, move, or delete DICOM files.',
+  ui_lang
+) }}
+
+{% if not can_exam_link %}
+<div class="warn">
+View only. Exam Linking requires the <strong>pacs.exam_link</strong> permission.
+</div>
+{% elif not eligible_exam_pairs %}
+<div class="success">
+No safe same-patient editable Order pairs are currently eligible for Exam Linking.
+</div>
+{% else %}
+<form method="post" action="{{ url_for('pacs_exam_link_create') }}">
+<label>Safe primary / secondary Order pair</label>
+<select name="exam_pair" id="exam-link-pair" required
+        onchange="var p=this.value.split(':');document.getElementById('exam-primary').value=p[0]||'';document.getElementById('exam-secondary').value=p[1]||''">
+  <option value="">Select confirmed same-patient Orders</option>
+  {% for pair in eligible_exam_pairs %}
+  <option value="{{ pair.primary.id }}:{{ pair.secondary.id }}">
+    {{ pair.patient.name if pair.patient else 'Patient' }} —
+    Primary #{{ pair.primary.id }} {{ pair.primary.accession }} →
+    Secondary #{{ pair.secondary.id }} {{ pair.secondary.accession }}
+  </option>
+  {% endfor %}
+</select>
+<input type="hidden" id="exam-primary" name="primary_order_id">
+<input type="hidden" id="exam-secondary" name="secondary_order_id">
+
+<label>Documented clinical/operational reason</label>
+<textarea name="reason" required minlength="5"
+placeholder="Explain why the same PACS acquisition belongs to both RIS Orders"></textarea>
+
+<label style="display:block;margin:8px 0">
+  <input type="checkbox" required>
+  I confirmed both Orders belong to the same patient and this is not Patient Merge.
+</label>
+
+<button class="btn primary">Create Exam Link</button>
+</form>
+{% endif %}
+
+{% if active_exam_links %}
+<h4 style="margin-top:20px">Active Exam Links</h4>
+<table>
+<tr><th>Study</th><th>Primary Order</th><th>Secondary Order</th><th>Reason</th><th>Action</th></tr>
+{% for item in active_exam_links %}
+<tr>
+<td>{{ item.link.orthanc_study_id }}</td>
+<td>{% if item.primary %}#{{ item.primary.id }} — {{ item.primary.accession }}{% else %}-{% endif %}</td>
+<td>{% if item.secondary %}#{{ item.secondary.id }} — {{ item.secondary.accession }}{% else %}-{% endif %}</td>
+<td>{{ item.link.reason }}</td>
+<td>
+{% if can_exam_link %}
+<form method="post" action="{{ url_for('pacs_exam_link_remove',link_id=item.link.id) }}">
+  <input name="reason" required minlength="5" placeholder="Removal reason">
+  <button class="btn">Remove Link</button>
+  {{ action_info(
+    'Remove Exam Link',
+    'Deactivates only the secondary link and preserves its audit history.',
+    'Use when the additional RIS Order was linked in error.',
+    'The secondary Order must still be editable and a reason is required.',
+    'The PACS study and primary link remain unchanged.',
+    'Removal is blocked after the secondary report is verified or final.',
+    ui_lang
+  ) }}
+</form>
+{% endif %}
+</td>
+</tr>
+{% endfor %}
+</table>
+{% endif %}
+</div>
+
+{% if not exceptions %}
+<div class="success">
+No PACS demographic exceptions are waiting for review.
+</div>
+{% endif %}
+
+{% for row in exceptions %}
+{% set x=row.inbox %}
+{% set o=row.candidate %}
+{% set p=row.ris_patient %}
+
+<div class="panel" style="margin-top:20px">
+
+<h3>
+Study Exception #{{ x.id }}
+—
+<span class="warn">{{ x.match_method }}</span>
+</h3>
+
+<table>
+<tr>
+<th>Field</th>
+<th>RIS</th>
+<th>PACS DICOM</th>
+</tr>
+
+<tr>
+<td>Order</td>
+<td>
+{% if o %}
+#{{ o.id }} — {{ o.accession }}
+{% else %}
+No automatic RIS candidate
+{% endif %}
+</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td>Patient ID</td>
+<td>{{ p.patient_id if p else '-' }}</td>
+<td>{{ x.pacs_patient_id or '-' }}</td>
+</tr>
+
+<tr>
+<td>Patient Name</td>
+<td>{{ p.name if p else '-' }}</td>
+<td>{{ x.pacs_patient_name or '-' }}</td>
+</tr>
+
+<tr>
+<td>Accession</td>
+<td>{{ o.accession if o else '-' }}</td>
+<td>{{ x.accession or '-' }}</td>
+</tr>
+
+<tr>
+<td>Images</td>
+<td>-</td>
+<td>{{ x.image_count }}</td>
+</tr>
+
+<tr>
+<td>Safety State</td>
+<td colspan="2">
+<strong style="color:#b91c1c">
+REVIEW REQUIRED — AI BLOCKED — FINALIZE BLOCKED
+</strong>
+</td>
+</tr>
+</table>
+
+<hr>
+
+{% if can_reconcile %}
+<h4>Authorized Manual Match</h4>
+{{ action_info(
+  'Manual PACS Match',
+  'Confirms that a demographic exception belongs to a selected RIS Order.',
+  'Use only after reviewing patient identity, accession and study details.',
+  'Requires pacs.reconcile permission and a documented reason.',
+  'Changes the authoritative primary PACS link and records an audit event.',
+  'A wrong match can expose another patient study; never use it as Exam Linking.',
+  ui_lang
+) }}
+
+<form method="post"
+action="{{ url_for('pacs_reconciliation_match',study_id=x.orthanc_study_id) }}">
+
+<label>RIS Order ID</label>
+<input
+type="number"
+name="order_id"
+required
+value="{{ o.id if o else '' }}"
+placeholder="Enter confirmed RIS Order ID">
+
+<label>Documented reason</label>
+<textarea
+name="reason"
+required
+minlength="5"
+placeholder="Explain why this PACS study belongs to the selected RIS order"></textarea>
+
+<button class="btn primary">
+Confirm Manual Match
+</button>
+</form>
+
+<hr>
+
+<h4>Reject / Quarantine</h4>
+{{ action_info(
+  'Quarantine Study',
+  'Separates an unresolved PACS study from RIS workflow for administrator review.',
+  'Use when identity or ownership cannot be confirmed safely.',
+  'Requires pacs.reconcile permission and a reason.',
+  'No DICOM files are deleted; the study is prevented from automatic use.',
+  'Do not quarantine a clinically confirmed study merely because images are incomplete.',
+  ui_lang
+) }}
+
+<form method="post"
+action="{{ url_for('pacs_reconciliation_quarantine',study_id=x.orthanc_study_id) }}">
+
+<textarea
+name="reason"
+required
+minlength="5"
+placeholder="Reason for quarantine"></textarea>
+
+<button class="btn">
+Quarantine Study
+</button>
+</form>
+{% else %}
+<div class="warn">
+View only. Manual PACS matching and quarantine require the
+<strong>pacs.reconcile</strong> permission.
+</div>
+{% endif %}
+
+</div>
+{% endfor %}
+
+</div>
+{% endblock %}

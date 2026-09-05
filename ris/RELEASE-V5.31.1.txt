@@ -1,0 +1,22 @@
+RadBridge RIS/PACS v5.31.1 — Developer-Ready
+
+Functional baseline: v5.31.0 DICOM Resend & Routing.
+This release is a maintainability/documentation patch and is intended not to change clinical behavior.
+
+Start here:
+  1) README.md
+  2) AI_DEVELOPER_GUIDE.md
+  3) docs/ARCHITECTURE.md
+  4) docs/DICOM_PACS.md
+  5) docs/DATABASE.md
+  6) docs/DEPLOYMENT.md
+  7) docs/CODE_MAP.md
+
+Validation performed before packaging:
+  - Python compilation: PASS
+  - Jinja template parsing: 151 templates, PASS
+  - Documentation required-file check: PASS
+  - Code map generation: PASS (120 ORM models, 285 route functions, 553 top-level app.py functions)
+
+Important production note:
+  Replace all ChangeMe_* example secrets and protect environment configuration before production deployment.

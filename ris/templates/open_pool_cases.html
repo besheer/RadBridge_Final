@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% from "_action_guidance.html" import action_info %}
+
+{% block page_title %}
+Open Pool
+{% endblock %}
+
+{% block subtitle %}
+Eligible unassigned cases available to take
+{% endblock %}
+
+{% block content %}
+
+<div class="panel table-wrap">
+
+<table>
+
+<tr>
+<th>Accession</th>
+<th>Patient</th>
+<th>Modality</th>
+<th>Procedure</th>
+<th>Priority</th>
+<th>Images</th>
+<th>Readiness</th>
+<th>Viewer</th>
+<th></th>
+</tr>
+
+{% for o,decision in rows %}
+
+<tr>
+
+<td>
+<b>{{o.accession}}</b>
+</td>
+
+<td>
+{{o.patient.name if o.patient else '-'}}
+</td>
+
+<td>
+{{o.modality}}
+</td>
+
+<td>
+{{o.procedure}}
+</td>
+
+<td>
+{{o.priority}}
+</td>
+
+<td>
+{{o.pacs_image_count or 0}}
+</td>
+
+<td>
+<span class="badge">
+{{decision.action}}
+</span>
+
+{% if decision.warnings %}
+<br>
+<small>
+{{decision.warnings|join(', ')}}
+</small>
+{% endif %}
+</td>
+
+<td>
+<a class="btn btn-sm"
+href="{{case_pacs_url(o)}}"
+target="_blank">
+Open Images
+</a>
+</td>
+
+<td>
+
+<form method="post"
+action="{{url_for('assign_case_to_me',order_id=o.id)}}">
+
+<button class="btn primary">
+Assign to Me
+</button>
+
+{{ action_info(
+  'Assign to Me' if ui_lang != 'ar' else 'تعيين الحالة لي',
+  'Claims this eligible case for your reporting queue.' if ui_lang != 'ar' else 'تضيف الحالة المؤهلة إلى قائمة عملك لإعداد التقرير.',
+  'Use only when you intend to start and complete this case.' if ui_lang != 'ar' else 'استخدمه فقط عندما تنوي بدء الحالة واستكمالها.',
+  'The case must remain eligible and not be actively assigned to another doctor.' if ui_lang != 'ar' else 'يجب أن تظل الحالة مؤهلة وألا تكون معيّنة حاليًا لطبيب آخر.',
+  'Creates one active assignment through the protected assignment workflow.' if ui_lang != 'ar' else 'ينشئ تعيينًا نشطًا واحدًا من خلال مسار التعيين المحمي.',
+  'Review readiness warnings and images before accepting responsibility.' if ui_lang != 'ar' else 'راجع تنبيهات الجاهزية والصور قبل قبول المسؤولية.',
+  ui_lang
+) }}
+
+</form>
+
+</td>
+
+</tr>
+
+{% else %}
+
+<tr>
+<td colspan="9">
+No eligible cases are currently available.
+</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+{% endblock %}

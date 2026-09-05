@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block page_title %}Stock Transfers{% endblock %}
+{% block content %}
+{% if has_perm('inventory.transfer.request') %}
+<form method="post" class="panel">
+<h3>New Transfer Request</h3>
+<div class="grid2"><select name="source_warehouse_id" required><option value="">Source Warehouse</option>{% for w in warehouses %}<option value="{{w.id}}">{{w.name}}</option>{% endfor %}</select><select name="target_warehouse_id" required><option value="">Target Warehouse</option>{% for w in warehouses %}<option value="{{w.id}}">{{w.name}}</option>{% endfor %}</select></div>
+<div id="transferLines"><div class="transfer-line"><select name="item_id"><option value="">Item</option>{% for i in items %}<option value="{{i.id}}">{{i.name}}</option>{% endfor %}</select><input name="qty" type="number" min="0.0001" step="0.0001" placeholder="Qty"></div></div>
+<button type="button" class="btn small" id="addTransferLine">＋ Add Item</button>
+<textarea name="notes" placeholder="Notes"></textarea><button class="btn primary">Request Transfer</button>
+</form>
+<script>document.getElementById('addTransferLine')?.addEventListener('click',()=>{const c=document.querySelector('.transfer-line').cloneNode(true);c.querySelectorAll('input').forEach(x=>x.value='');c.querySelectorAll('select').forEach(x=>x.selectedIndex=0);document.getElementById('transferLines').appendChild(c);});</script>
+{% endif %}
+<div class="table-wrap"><table><tr><th>No.</th><th>Source</th><th>Target</th><th>Status</th><th>Requested</th></tr>{% for x in rows %}<tr><td><a href="{{url_for('inventory_transfer_detail',transfer_id=x.id)}}">{{x.transfer_no}}</a></td><td>{{x.source_warehouse.name}}</td><td>{{x.target_warehouse.name}}</td><td>{{x.status}}</td><td>{{x.requested_at}}</td></tr>{% endfor %}</table></div>
+{% endblock %}

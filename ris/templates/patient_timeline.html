@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block page_title %}Patient History Timeline / التاريخ السابق{% endblock %}{% block content %}<div class="actions"><a class="btn" href="{{url_for('patient_communications',patient_id=patient.id)}}">📨 {{'التواصل' if ui_lang=='ar' else 'Communications'}}</a></div>
+<div class="panel"><h3>{{patient.name}} · {{patient.patient_id}}</h3><a class="btn" href="{{url_for('patient_documents',patient_id=patient.id)}}">📎 Documents</a></div>
+<div class="history-timeline">{% for e in events %}<div class="timeline-event"><div class="timeline-dot">{{'🩻' if e.kind=='EXAM' else '📄'}}</div><div><b>{{e.title}}</b><small>{{e.date}}</small>{% if e.kind=='EXAM' %}<span>{{e.order.accession}}</span>{% else %}<a href="{{url_for('document_review',document_id=e.document.id)}}">{{e.document.review_status}}</a>{% endif %}</div></div>{% else %}<p>—</p>{% endfor %}</div>
+{% endblock %}

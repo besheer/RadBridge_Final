@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block page_title %}Scheduler & Registration{% endblock %}
+{% block subtitle %}One-screen booking, registration, OCR, insurance, documents and payment{% endblock %}
+{% block content %}
+<style>
+.rb-scheduler{display:flex;flex-direction:column;gap:8px}
+.rb-toolbar{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px}
+.rb-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.rb-board-wrap{height:calc(100vh - 205px);overflow:auto;border:1px solid #dbe2ea;border-radius:10px;background:#fff}
+.rb-board{display:grid;grid-template-columns:70px repeat(var(--n),minmax(165px,1fr));min-width:max-content}
+.rb-head,.rb-time{position:sticky;background:#f8fafc;z-index:5}
+.rb-head{top:0;padding:8px;text-align:center;border-bottom:1px solid #dbe2ea}
+.rb-time{left:0;padding:8px 3px;text-align:center;font-size:12px;font-weight:700;border-right:1px solid #dbe2ea;border-bottom:1px solid #edf0f4}
+.rb-corner{left:0;z-index:8}
+.rb-cell{min-height:38px;border-right:1px solid #edf0f4;border-bottom:1px solid #edf0f4;padding:2px}
+.rb-cell:hover{background:#f5f9ff}
+.rb-add{width:100%;min-height:33px;border:0;background:transparent;font-size:18px;opacity:.15;cursor:pointer}
+.rb-cell:hover .rb-add{opacity:1}
+.rb-appt{font-size:12px;padding:4px;border:1px solid #c5d9ee;border-radius:6px;background:#edf6ff}
+.rb-overlay[hidden]{display:none!important}
+.rb-overlay{position:fixed;inset:0;z-index:20000;background:rgba(15,23,42,.52);padding:10px;display:flex;align-items:center;justify-content:center}
+.rb-ws{width:min(1560px,98vw);height:min(940px,97vh);background:#fff;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.3)}
+.rb-ws-head,.rb-ws-foot{padding:9px 13px;border-bottom:1px solid #e3e8ef;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rb-ws-foot{border-top:1px solid #e3e8ef;border-bottom:0}
+.rb-main{display:grid;grid-template-columns:1fr 1.15fr .68fr;gap:9px;padding:9px;min-height:0;flex:1;overflow:hidden}
+.rb-pane{border:1px solid #e0e6ed;border-radius:10px;padding:9px;overflow:auto;min-height:0}
+.rb-pane h3{margin:0 0 7px;font-size:15px}
+.rb-grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.rb-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.rb-span{grid-column:1/-1}
+.rb-mode{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:7px}
+.rb-hidden{display:none!important}
+.rb-results{max-height:190px;overflow:auto;border:1px solid #e3e7ec;border-radius:7px;margin-top:5px}
+.rb-result{width:100%;border:0;border-bottom:1px solid #edf0f4;background:#fff;text-align:left;padding:6px;cursor:pointer}
+.rb-exam{display:grid;grid-template-columns:1fr 70px 35px;gap:5px;align-items:center;margin-bottom:5px}
+.rb-tabs{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0}
+.rb-tab{border:1px solid #d9e0e8;background:#f8fafc;padding:6px 8px;border-radius:7px;cursor:pointer}
+.rb-tab.active{background:#eaf4ff;border-color:#9fc4ee}
+.rb-panel{display:none}.rb-panel.active{display:block}
+.rb-doc{display:grid;grid-template-columns:1fr 145px 1fr 35px;gap:5px;margin-bottom:5px}
+.rb-summary{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e0e5eb}
+.rb-ocr{border:1px dashed #9eb2c8;border-radius:8px;padding:7px;background:#fbfdff}
+.rb-ocr-item{border:1px solid #dce4ed;border-radius:7px;padding:7px;margin-top:6px}
+.rb-actions{display:flex;gap:6px}
+.rb-small{font-size:12px;opacity:.75}
+@media(max-width:1100px){.rb-main{grid-template-columns:1fr 1fr;overflow:auto}.rb-summary-pane{grid-column:1/-1}}
+@media(max-width:760px){.rb-main,.rb-grid2,.rb-grid3{grid-template-columns:1fr}.rb-span{grid-column:auto}.rb-doc{grid-template-columns:1fr}}
+</style>
+
+<div class="rb-scheduler">
+<div class="panel rb-toolbar">
+ <div class="rb-tools">
+  <a class="btn" href="{{url_for('schedule_calendar',date=prev_day.isoformat(),branch_id=branch_id or '')}}">‹</a>
+  <a class="btn" href="{{url_for('schedule_calendar',branch_id=branch_id or '')}}">Today</a>
+  <strong>{{selected.strftime('%d %b %Y')}}</strong>
+  <a class="btn" href="{{url_for('schedule_calendar',date=next_day.isoformat(),branch_id=branch_id or '')}}">›</a>
+  <input type="date" id="calDate" value="{{selected.isoformat()}}">
+ </div>
+ <form method="get" class="rb-tools">
+  <input type="hidden" name="date" value="{{selected.isoformat()}}">
+  <select name="branch_id"><option value="">All Branches</option>{% for b in branches %}<option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select>
+  <select name="device_id"><option value="">All Devices</option>{% for d in all_devices %}<option value="{{d.id}}" {% if selected_device_id==d.id %}selected{% endif %}>{{d.modality}} — {{d.name}}</option>{% endfor %}</select>
+  <button class="btn">Apply</button>
+ </form>
+</div>
+
+<div class="rb-board-wrap"><div class="rb-board" style="--n:{{devices|length if devices else 1}}">
+ <div class="rb-head rb-corner">Time</div>
+ {% for d in devices %}<div class="rb-head"><b>{{d.name}}</b><div class="rb-small">{{d.modality}} · AE {{d.ae_title}}</div></div>{% endfor %}
+ {% for slot in slots %}
+  <div class="rb-time">{{slot.strftime('%H:%M')}}</div>
+  {% for d in devices %}
+   {% set ns=namespace(rows=[]) %}{% for a in appointments %}{% if a.device_id==d.id and a.scheduled.strftime('%H:%M')==slot.strftime('%H:%M') %}{% set ns.rows=ns.rows+[a] %}{% endif %}{% endfor %}
+   <div class="rb-cell" data-device="{{d.id}}" data-branch="{{d.branch_id}}" data-name="{{d.name}}" data-modality="{{d.modality}}" data-dt="{{slot.strftime('%Y-%m-%dT%H:%M')}}">
+    {% for a in ns.rows %}<div class="rb-appt"><b>{{a.patient.name}}</b><div>{{a.procedure.name}} · {{a.duration_min or 20}}m · {{a.status}}</div></div>{% else %}<button class="rb-add" type="button">+</button>{% endfor %}
+   </div>
+  {% endfor %}
+ {% endfor %}
+</div></div>
+</div>
+
+<div id="rbOverlay" class="rb-overlay" hidden>
+<form id="rbForm" class="rb-ws" method="post" enctype="multipart/form-data" action="{{url_for('schedule_unified_submit')}}">
+<input type="hidden" name="scheduled" id="fScheduled"><input type="hidden" name="device_id" id="fDevice"><input type="hidden" name="branch_id" id="fBranch"><input type="hidden" name="patient_mode" id="fMode" value="new"><input type="hidden" name="registration_action" id="fAction" value="REGISTER"><input type="hidden" name="ocr_intake_id" id="ocrIntake"><input type="hidden" name="ocr_document_ids" id="ocrIds">
+<div class="rb-ws-head"><div><b>Full Registration / تسجيل الزيارة</b><div class="rb-small"><span id="metaDevice"></span> · <span id="metaDt"></span></div></div><button type="button" class="btn" id="closeWs">×</button></div>
+
+<div class="rb-main">
+<section class="rb-pane">
+<h3>Patient / المريض</h3>
+<div class="rb-mode"><button type="button" class="btn primary" data-mode="new">New Patient</button><button type="button" class="btn" data-mode="existing">Existing</button><button type="button" class="btn" data-mode="ocr">Start from OCR</button></div>
+
+<div id="newPane"><div class="rb-grid2">
+ <div><label>First Name *</label><input name="new_first_name" id="firstName"></div>
+ <div><label>Father / Middle</label><input name="new_middle_name"></div>
+ <div><label>Third Name</label><input name="new_third_name"></div>
+ <div><label>Fourth Name</label><input name="new_fourth_name"></div>
+ <div><label>Date of Birth</label><input type="date" name="new_dob" id="dob"></div>
+ <div><label>Age</label><input id="age" readonly></div>
+ <div><label>Sex</label><select name="new_sex"><option value=""></option><option value="M">Male</option><option value="F">Female</option></select></div>
+ <div><label>Mobile</label><input name="new_phone"></div>
+ <div><label>National ID</label><input name="new_national_id"></div>
+ <div><label>Address (optional)</label><input name="new_address"></div>
+</div><div class="notice info" style="margin-top:6px"><span id="nameView">—</span> <span class="rb-small">DICOM: <span id="dicomView">—</span></span></div></div>
+
+<div id="existingPane" class="rb-hidden"><label>Search Patient</label><input id="patientSearch"><input type="hidden" name="patient_id" id="patientId"><div class="rb-results" id="patientResults">{% for p in patients %}<button class="rb-result" type="button" data-id="{{p.id}}" data-q="{{(p.patient_id or '')|lower}} {{(p.name or '')|lower}} {{(p.phone or '')|lower}} {{(p.national_id or '')|lower}}"><b>{{p.patient_id}} — {{p.name}}</b><div class="rb-small">{{p.phone or ''}} {{p.national_id or ''}}</div></button>{% endfor %}</div><div id="selectedPatient" class="notice info rb-hidden"></div></div>
+
+<div id="ocrPane" class="rb-ocr rb-hidden"><b>Smart OCR</b><p class="rb-small">OCR suggests only. Accept, edit or ignore. Failure never blocks registration.</p><div class="rb-grid2"><select id="ocrType"><option value="OTHER">Auto / Other</option>{% for value,en,ar in document_types %}<option value="{{value}}">{{en}} / {{ar}}</option>{% endfor %}</select><input id="ocrFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp,.dcm"></div><button class="btn" type="button" id="readOcr" style="margin-top:6px">Read Document</button><div id="ocrStatus" class="rb-small"></div><div id="ocrResults"></div></div>
+</section>
+
+<section class="rb-pane">
+<h3>Visit & Examinations</h3>
+<div class="rb-grid3"><div><label>Priority</label><select name="priority"><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select></div><div><label>Referring Doctor</label><select name="referring_doctor_id"><option value="">—</option>{% for r in referrers %}<option value="{{r.id}}">{{r.name}}</option>{% endfor %}</select></div><div><label>Booking Type</label><select name="waiting_list"><option value="0">Scheduled</option><option value="1">Waiting List</option></select></div></div>
+<div id="examRows" style="margin-top:7px"></div><button class="btn" type="button" id="addExam">+ Add Examination</button>
+
+<div class="rb-tabs"><button class="rb-tab active" type="button" data-tab="insurance">Insurance</button><button class="rb-tab" type="button" data-tab="clinical">Clinical</button><button class="rb-tab" type="button" data-tab="docs">Documents</button><button class="rb-tab" type="button" data-tab="payment">Payment</button></div>
+<div class="rb-panel active" data-panel="insurance"><div class="rb-grid2"><div><label>Payer / Contract</label><select name="contract_id" id="contract"><option value="">Cash / Private</option>{% for c in contracts %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}</select></div><div><label>Member / Card No.</label><input name="member_no" id="memberNo"></div><div><label>Approval Method</label><select name="approval_method"><option value="AUTO">Auto / Follow-up</option><option value="MANUAL">Manual</option><option value="ALREADY_APPROVED">Already Approved</option></select></div><div><label>Approval No.</label><input name="approval_no" id="approvalNo"></div></div></div>
+<div class="rb-panel" data-panel="clinical"><div class="rb-grid2"><div class="rb-span"><label>Clinical History</label><textarea name="clinical_history" id="history" rows="3"></textarea></div><div class="rb-span"><label>Clinical Notes / Indication</label><textarea name="clinical_note" id="clinical" rows="3"></textarea></div><div class="rb-span"><label>Questionnaire Notes</label><textarea name="questionnaire_note" id="questionnaire" rows="3"></textarea></div></div></div>
+<div class="rb-panel" data-panel="docs"><div id="docRows"></div><button class="btn" type="button" id="addDoc">+ Add Document</button><div class="rb-small">OCR documents selected with Accept are attached automatically.</div></div>
+<div class="rb-panel" data-panel="payment">{% if can_take_payment %}<div class="rb-grid3"><div><label>Amount</label><input name="payment_amount" type="number" min="0" step="0.01" value="0"></div><div><label>Method</label><select name="payment_method"><option value="">—</option><option value="CASH">Cash</option><option value="CARD">Card</option><option value="TRANSFER">Transfer</option><option value="OTHER">Other</option></select></div><div><label>Reference</label><input name="payment_reference"></div></div>{% else %}<div class="notice">No payment permission. Registration can continue.</div>{% endif %}</div>
+<div style="margin-top:7px"><label>General Notes</label><textarea name="notes" rows="2"></textarea></div>
+</section>
+
+<aside class="rb-pane rb-summary-pane"><h3>Summary</h3><div class="rb-summary"><span>Patient</span><b id="sPatient">New Patient</b></div><div class="rb-summary"><span>Device</span><b id="sDevice">—</b></div><div class="rb-summary"><span>Start</span><b id="sStart">—</b></div><div class="rb-summary"><span>Exams</span><b id="sCount">0</b></div><div class="rb-summary"><span>Duration</span><b><span id="sDuration">0</span>m</b></div><div class="rb-summary"><span>OCR Docs</span><b id="sOcr">0</b></div><p class="rb-small">Book Only = appointment. Register & Save = orders + accessions + MWL + insurance + documents + clinical notes + first payment.</p></aside>
+</div>
+
+<div class="rb-ws-foot"><span class="rb-small">Optional missing data does not block. Duplicate/safety checks remain active.</span><div class="rb-actions"><button type="button" class="btn" id="cancelWs">Cancel</button><button type="submit" class="btn" data-action="BOOK">Book Only</button><button type="submit" class="btn primary" data-action="REGISTER">Register & Save</button></div></div>
+</form></div>
+
+<script>
+(function(){
+const overlay=document.getElementById('rbOverlay'),form=document.getElementById('rbForm'),modeInput=document.getElementById('fMode'),newPane=document.getElementById('newPane'),existingPane=document.getElementById('existingPane'),ocrPane=document.getElementById('ocrPane'),examRows=document.getElementById('examRows'),docRows=document.getElementById('docRows');let modality='',dirty=false,ocrIds=[];
+const procedures=[{% for p in procedures %}{id:{{p.id}},name:{{p.name|tojson}},modality:{{p.modality|tojson}},duration:{{(p.duration_min or 20)|int}}},{% endfor %}];
+function setMode(mode){
+modeInput.value=mode==='existing'?'existing':'new';
+document.querySelectorAll('[data-mode]').forEach(
+    b=>b.classList.toggle('primary',b.dataset.mode===mode)
+);
+
+newPane.classList.toggle(
+    'rb-hidden',
+    mode==='existing' || mode==='ocr'
+);
+
+existingPane.classList.toggle(
+    'rb-hidden',
+    mode!=='existing'
+);
+
+ocrPane.classList.toggle(
+    'rb-hidden',
+    mode!=='ocr'
+);
+
+if(mode==='new'){
+    document.getElementById('firstName').focus();
+}
+
+if(mode==='existing'){
+    document.getElementById('patientSearch').focus();
+}
+
+if(mode==='ocr'){
+    document.getElementById('ocrFile').focus();
+}
+}
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{setMode(b.dataset.mode);dirty=true});
+function recalc(){let n=0,m=0;examRows.querySelectorAll('select').forEach(s=>{if(s.value){n++;m+=Number(s.selectedOptions[0]?.dataset.duration||0)}});document.getElementById('sCount').textContent=n;document.getElementById('sDuration').textContent=m}
+function addExam(id){const row=document.createElement('div');row.className='rb-exam';const s=document.createElement('select');s.name='procedure_ids';s.required=true;const list=procedures.filter(p=>(p.modality||'').toUpperCase()===modality);s.innerHTML='<option value="">Choose examination...</option>'+list.map(p=>`<option value="${p.id}" data-duration="${p.duration}">${p.name} (${p.duration}m)</option>`).join('');if(id)s.value=String(id);const dur=document.createElement('span'),x=document.createElement('button');x.type='button';x.className='btn';x.textContent='×';function sync(){dur.textContent=(s.selectedOptions[0]?.dataset.duration||'—')+'m';recalc()}s.onchange=()=>{sync();dirty=true};x.onclick=()=>{if(examRows.children.length>1){row.remove();recalc()}};row.append(s,dur,x);examRows.append(row);sync()}
+function addDoc(){const row=document.createElement('div');row.className='rb-doc';row.innerHTML='<input type="file" name="attachment_files"><select name="attachment_categories"><option value="PRESCRIPTION">Prescription</option><option value="APPROVAL">Approval</option><option value="INSURANCE_CARD">Insurance Card</option><option value="IDENTITY">ID</option><option value="PREVIOUS_REPORT">Previous Report</option><option value="QUESTIONNAIRE">Questionnaire</option><option value="OTHER">Other</option></select><input name="attachment_notes" placeholder="Notes"><button type="button" class="btn">×</button>';row.querySelector('button').onclick=()=>row.remove();docRows.append(row)}
+function openWs(cell){const dt=cell.dataset.dt;modality=(cell.dataset.modality||'').toUpperCase();document.getElementById('fScheduled').value=dt;document.getElementById('fDevice').value=cell.dataset.device;document.getElementById('fBranch').value=cell.dataset.branch;document.getElementById('metaDevice').textContent=cell.dataset.name+' · '+modality;document.getElementById('metaDt').textContent=dt.replace('T',' ');document.getElementById('sDevice').textContent=cell.dataset.name;document.getElementById('sStart').textContent=dt.replace('T',' ');examRows.innerHTML='';docRows.innerHTML='';addExam();addDoc();setMode('new');dirty=false;overlay.hidden=false}
+document.querySelectorAll('.rb-add').forEach(b=>b.onclick=()=>openWs(b.closest('.rb-cell')));
+function closeWs(){if(dirty&&!confirm('Discard unsaved changes?'))return;overlay.hidden=true;dirty=false}
+document.getElementById('closeWs').onclick=closeWs;document.getElementById('cancelWs').onclick=closeWs;document.getElementById('addExam').onclick=()=>{addExam();dirty=true};document.getElementById('addDoc').onclick=()=>{addDoc();dirty=true};
+document.querySelectorAll('.rb-tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.rb-tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.rb-panel').forEach(x=>x.classList.toggle('active',x.dataset.panel===b.dataset.tab))});
+const psearch=document.getElementById('patientSearch'),pitems=[...document.querySelectorAll('.rb-result')];psearch.oninput=()=>{const q=psearch.value.toLowerCase().trim();pitems.forEach(x=>x.hidden=q&&!x.dataset.q.includes(q))};pitems.forEach(x=>x.onclick=()=>{document.getElementById('patientId').value=x.dataset.id;const t=x.querySelector('b').textContent;document.getElementById('selectedPatient').textContent=t;document.getElementById('selectedPatient').classList.remove('rb-hidden');document.getElementById('sPatient').textContent=t;dirty=true});
+const dob=document.getElementById('dob');dob.max=new Date().toISOString().slice(0,10);dob.onchange=()=>{if(!dob.value){document.getElementById('age').value='';return}const d=new Date(dob.value),n=new Date();let a=n.getFullYear()-d.getFullYear(),m=n.getMonth()-d.getMonth();if(m<0||(m===0&&n.getDate()<d.getDate()))a--;document.getElementById('age').value=Math.max(0,a)};
+function namePreview(){const vals=['new_first_name','new_middle_name','new_third_name','new_fourth_name'].map(k=>(form.elements[k]?.value||'').trim()).filter(Boolean);document.getElementById('nameView').textContent=vals.join(' ')||'—';document.getElementById('dicomView').textContent=vals.join('^')||'—';if(modeInput.value==='new')document.getElementById('sPatient').textContent=vals.join(' ')||'New Patient'}
+['new_first_name','new_middle_name','new_third_name','new_fourth_name'].forEach(k=>form.elements[k].oninput=()=>{namePreview();dirty=true});
+function setField(k,v){const e=form.elements[k];if(!e||v===undefined||v===null||v==='')return;e.value=String(v);e.dispatchEvent(new Event('input'));e.dispatchEvent(new Event('change'))}
+function pick(o,keys){for(const k of keys){if(o[k]!==undefined&&o[k]!==null&&o[k]!=='')return o[k]}return ''}
+document.getElementById('readOcr').onclick=async()=>{const file=document.getElementById('ocrFile').files[0];if(!file){alert('Choose a document first.');return}const st=document.getElementById('ocrStatus');st.textContent='Reading...';const fd=new FormData();fd.append('file',file);fd.append('document_type',document.getElementById('ocrType').value);if(document.getElementById('ocrIntake').value)fd.append('intake_id',document.getElementById('ocrIntake').value);try{const r=await fetch('{{url_for("schedule_ocr_preview")}}',{method:'POST',body:fd}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'OCR failed');document.getElementById('ocrIntake').value=d.intake_id;if(!ocrIds.includes(d.document_id))ocrIds.push(d.document_id);document.getElementById('ocrIds').value=ocrIds.join(',');document.getElementById('sOcr').textContent=ocrIds.length;st.textContent=d.warning||`Detected ${d.suggested_type} · ${Math.round((d.confidence||0)*100)}%`;const item=document.createElement('div');item.className='rb-ocr-item';item.innerHTML=`<b>${d.filename}</b><div class="rb-small">${d.suggested_type}</div><div class="rb-actions"><button class="btn accept" type="button">Accept suggestions</button><button class="btn ignore" type="button">Ignore</button></div>`;item.querySelector('.ignore').onclick=()=>{ocrIds=ocrIds.filter(x=>x!==d.document_id);document.getElementById('ocrIds').value=ocrIds.join(',');document.getElementById('sOcr').textContent=ocrIds.length;item.remove()};item.querySelector('.accept').onclick=()=>{const f=d.fields||{},type=(d.suggested_type||'').toUpperCase(),full=pick(f,['name','patient_name','full_name']);if(full){const parts=String(full).replace(/\^/g,' ').trim().split(/\s+/);setField('new_first_name',parts[0]||'');setField('new_middle_name',parts[1]||'');setField('new_third_name',parts[2]||'');setField('new_fourth_name',parts.slice(3).join(' '))}setField('new_dob',pick(f,['dob','date_of_birth','birth_date']));setField('new_phone',pick(f,['phone','mobile','mobile_number']));setField('new_national_id',pick(f,['national_id','national_id_number','id_number']));setField('new_address',pick(f,['address','patient_address']));setField('new_sex',pick(f,['sex','gender']));setField('member_no',pick(f,['member_no','membership_no','card_no','insurance_number']));setField('approval_no',pick(f,['approval_no','authorization_no']));if(d.contract_match)document.getElementById('contract').value=String(d.contract_match.id);if(type==='PRESCRIPTION'){(d.procedure_matches||[]).forEach(p=>{if((p.modality||'').toUpperCase()===modality&&!Array.from(examRows.querySelectorAll('select')).some(s=>s.value===String(p.id)))addExam(p.id)})}if(type==='PREVIOUS_REPORT'&&d.text)setField('clinical_history',d.text.slice(0,4000));if(type==='QUESTIONNAIRE'&&d.text)setField('questionnaire_note',d.text.slice(0,4000));setMode('new');namePreview();dirty=true;item.querySelector('.accept').disabled=true;item.querySelector('.accept').textContent='Accepted'};document.getElementById('ocrResults').append(item)}catch(e){st.textContent=e.message}};
+form.addEventListener('input',()=>dirty=true);form.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{document.getElementById('fAction').value=b.dataset.action;dirty=false});
+document.getElementById('calDate').onchange=e=>{const u=new URL(location.href);u.searchParams.set('date',e.target.value);location.href=u};
+const qs=new URLSearchParams(location.search);if(qs.get('open_registration')==='1'){const b=document.querySelector('.rb-add');if(b)openWs(b.closest('.rb-cell'))}
+})();
+</script>
+{% endblock %}

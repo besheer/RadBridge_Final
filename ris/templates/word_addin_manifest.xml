@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
+  <Id>e272c173-f0bf-4abc-8ee7-cb0cc79ce401</Id><Version>1.0.0.0</Version><ProviderName>RIS Central</ProviderName><DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="RIS Reporting"/><Description DefaultValue="Radiology reporting integration for Microsoft Word."/>
+  <IconUrl DefaultValue="{{ ris_public_url }}/static/word-addin/icon-32.png"/><HighResolutionIconUrl DefaultValue="{{ ris_public_url }}/static/word-addin/icon-80.png"/>
+  <SupportUrl DefaultValue="{{ ris_public_url }}/"/>
+  <AppDomains><AppDomain>{{ ris_public_url }}</AppDomain></AppDomains>
+  <Hosts><Host Name="Document"/></Hosts>
+  <Requirements><Sets DefaultMinVersion="1.1"><Set Name="WordApi" MinVersion="1.1"/></Sets></Requirements>
+  <DefaultSettings><SourceLocation DefaultValue="{{ ris_public_url }}/word-addin/taskpane"/></DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Requirements><bt:Sets DefaultMinVersion="1.1"><bt:Set Name="WordApi" MinVersion="1.1"/></bt:Sets></Requirements>
+    <Hosts><Host xsi:type="Document"><DesktopFormFactor>
+      <GetStarted><Title resid="GetStarted.Title"/><Description resid="GetStarted.Description"/><LearnMoreUrl resid="GetStarted.LearnMoreUrl"/></GetStarted>
+      <FunctionFile resid="Commands.Url"/>
+      <ExtensionPoint xsi:type="PrimaryCommandSurface"><OfficeTab id="TabHome"><Group id="RIS.Group"><Label resid="RIS.GroupLabel"/>
+        <Control xsi:type="Button" id="RIS.OpenTaskpane"><Label resid="RIS.ButtonLabel"/><Supertip><Title resid="RIS.ButtonLabel"/><Description resid="RIS.ButtonDescription"/></Supertip><Icon><bt:Image size="16" resid="Icon.16"/><bt:Image size="32" resid="Icon.32"/><bt:Image size="80" resid="Icon.80"/></Icon><Action xsi:type="ShowTaskpane"><TaskpaneId>Office.AutoShowTaskpaneWithDocument</TaskpaneId><SourceLocation resid="Taskpane.Url"/></Action></Control>
+      </Group></OfficeTab></ExtensionPoint>
+    </DesktopFormFactor></Host></Hosts>
+    <Resources><bt:Images><bt:Image id="Icon.16" DefaultValue="{{ ris_public_url }}/static/word-addin/icon-16.png"/><bt:Image id="Icon.32" DefaultValue="{{ ris_public_url }}/static/word-addin/icon-32.png"/><bt:Image id="Icon.80" DefaultValue="{{ ris_public_url }}/static/word-addin/icon-80.png"/></bt:Images>
+      <bt:Urls><bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="{{ ris_public_url }}/"/><bt:Url id="Commands.Url" DefaultValue="{{ ris_public_url }}/word-addin/taskpane"/><bt:Url id="Taskpane.Url" DefaultValue="{{ ris_public_url }}/word-addin/taskpane"/></bt:Urls>
+      <bt:ShortStrings><bt:String id="GetStarted.Title" DefaultValue="RIS Reporting ready"/><bt:String id="RIS.GroupLabel" DefaultValue="RIS"/><bt:String id="RIS.ButtonLabel" DefaultValue="RIS Report"/></bt:ShortStrings>
+      <bt:LongStrings><bt:String id="GetStarted.Description" DefaultValue="Open the RIS Reporting pane to save or finalize this radiology report."/><bt:String id="RIS.ButtonDescription" DefaultValue="Open RIS Reporting for the current Word document."/></bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

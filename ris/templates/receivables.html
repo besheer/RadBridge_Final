@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block page_title %}{{'البواقي والمديونيات' if ui_lang=='ar' else 'Patient Receivables'}}{% endblock %}
+{% block subtitle %}Outstanding patient balances with filters and export.{% endblock %}
+{% block content %}
+<form class="panel filterbar" method="get">
+<select name="branch_id"><option value="">All branches</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select>
+<select name="contract_id"><option value="">All payers</option>{% for c in contracts %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}</select>
+<button class="btn primary">Apply</button><a class="btn" href="{{url_for('receivables_csv')}}">Export CSV</a>
+</form>
+<div class="cards"><div class="metric"><small>Total Outstanding</small><b>{{'%.2f'|format(total)}} EGP</b></div><div class="metric"><small>Cases with Balance</small><b>{{rows|length}}</b></div></div>
+<div class="panel"><div class="table-wrap"><table><thead><tr><th>Accession</th><th>Patient</th><th>Procedure</th><th>Payer</th><th>Patient Share</th><th>Paid</th><th>Balance</th><th></th></tr></thead><tbody>
+{% for o,b in rows %}<tr><td>{{o.accession}}</td><td><b>{{o.patient.name}}</b><small>{{o.patient.patient_id}}</small></td><td>{{o.proc.name if o.proc else o.procedure}}</td><td>{{o.contract.name if o.contract else 'Cash / Private'}}</td><td>{{o.patient_share or o.contract_price or o.gross_price or 0}}</td><td>{{o.paid_amount or 0}}</td><td><b>{{'%.2f'|format(b)}}</b></td><td><a class="btn small" href="{{url_for('order_detail',order_id=o.id)}}">Open</a></td></tr>
+{% else %}<tr><td colspan="8" class="empty">No outstanding balances.</td></tr>{% endfor %}
+</tbody></table></div></div>{% endblock %}

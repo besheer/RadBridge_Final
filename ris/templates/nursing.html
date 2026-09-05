@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block page_title %}Nursing Queue / قائمة التمريض{% endblock %}{% block content %}
+{% if has_perm('inventory.view') %}<div class="actions inventory-workstation-actions"><a class="btn" href="{{url_for('inventory_stock')}}">📦 Branch Stock</a><a class="btn" href="{{url_for('inventory_transfers')}}">⇄ Transfers</a>{% if has_perm('inventory.reports') %}<a class="btn" href="{{url_for('inventory_consumption_report')}}">📊 Usage Report</a>{% endif %}</div>{% endif %}
+
+<form method="get" class="panel global-screen-filter"><div class="filter-grid">
+<input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
+<input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
+<input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
+<select name="priority"><option value="">Priority</option><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select>
+</div><div class="actions"><button class="btn small primary">Filter</button><a class="btn small" href="{{request.path}}">Clear</a></div></form><div class="panel"><table><tr><th>Time</th><th>Patient</th><th>Exam</th><th>Defaults</th><th>Status</th><th></th></tr>{% for o,d,c in rows %}<tr><td>{{o.scheduled}}</td><td>{{o.patient.name}}</td><td>{{o.proc.name if o.proc else o.procedure}}</td><td>{{d}}</td><td>{{"Confirmed" if c else "Pending"}}</td><td><a class="btn primary" href="{{url_for("nursing_case",order_id=o.id)}}">Open</a></td></tr>{% endfor %}</table></div>{% endblock %}

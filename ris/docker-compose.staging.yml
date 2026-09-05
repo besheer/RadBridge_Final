@@ -1,0 +1,45 @@
+services:
+  ris-db-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: risweb_test
+      POSTGRES_PASSWORD: risweb_test
+      POSTGRES_DB: risweb_test
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U risweb_test -d risweb_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    volumes:
+      - ris_test_db:/var/lib/postgresql/data
+
+  ris-web-test:
+    build: .
+    depends_on:
+      ris-db-test:
+        condition: service_healthy
+    ports:
+      - "18090:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://risweb_test:risweb_test@ris-db-test:5432/risweb_test
+      SECRET_KEY: staging-only-secret
+      RIS_ADMIN_PASSWORD: staging-admin-only
+      RIS_PUBLIC_URL: http://127.0.0.1:18090
+      ORTHANC_URL: ${TEST_ORTHANC_URL:-http://host.docker.internal:8042}
+      ORTHANC_USER: ${TEST_ORTHANC_USER:-}
+      ORTHANC_PASSWORD: ${TEST_ORTHANC_PASSWORD:-}
+      PACS_ORTHANC_URL: ${TEST_ORTHANC_URL:-http://host.docker.internal:8042}
+      PACS_ORTHANC_USER: ${TEST_ORTHANC_USER:-}
+      PACS_ORTHANC_PASSWORD: ${TEST_ORTHANC_PASSWORD:-}
+      REPORT_DIR: /app/report-files
+      ATTACHMENT_DIR: /app/attachments
+    volumes:
+      - ris_test_reports:/app/report-files
+      - ris_test_attachments:/app/attachments
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  ris_test_db:
+  ris_test_reports:
+  ris_test_attachments:

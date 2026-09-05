@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% block page_title %}{{order.accession}} — {{order.patient.name}}
+<div class="panel">
+<h3>Exam Workflow</h3>
+<div class="workflow-strip">
+{% for st in ['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING','VERIFIED','FINAL'] %}
+<span class="status-chip status-{{st|lower|replace('_','-')}} {% if (order.exam_status or 'ORDERED')==st %}current{% endif %}">{{st}}</span>
+{% endfor %}
+</div>
+<p><b>PACS Images:</b> {{order.pacs_image_count or 0}} · <b>PACS:</b> {{order.pacs_status or 'WAITING'}}</p>
+{% if has_perm('users.view') %}
+<details><summary>Supervisor Override</summary>
+<form method="post" action="{{url_for('order_exam_status_override',order_id=order.id)}}" class="override-form">
+<select name="status">{% for st in ['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING','VERIFIED','FINAL'] %}<option value="{{st}}">{{st}}</option>{% endfor %}</select>
+<input name="reason" required minlength="5" placeholder="Required reason"><button class="btn">Apply Override</button>
+</form></details>
+{% endif %}
+</div>
+
+{% endblock %}
+{% block subtitle %}{{order.modality}} · {{order.proc.name_ar if ui_lang=='ar' and order.proc and order.proc.name_ar else (order.proc.name if order.proc else order.procedure)}} · {{order.status}}{% endblock %}
+
+{% block content %}
+<div class="rb-case-workspace rb-order-workspace">
+
+{% if request.args.get('created')=='1' %}
+<div class="panel rb-order-created-summary" id="post_save_summary"
+     style="border-left:5px solid #22a06b;margin-bottom:16px">
+
+  <div style="font-size:19px;font-weight:700">
+    ✅ {{'تم إنشاء الزيارة بنجاح' if ui_lang=='ar'
+         else 'Visit created successfully'}}
+  </div>
+
+  <div class="cards" style="margin-top:12px">
+
+    <div class="metric">
+      <small>{{'المريض' if ui_lang=='ar' else 'Patient'}}</small>
+      <b>{{order.patient.patient_id}}</b>
+      <span>{{order.patient.name}}</span>
+    </div>
+
+    <div class="metric">
+      <small>Accession</small>
+      <b>{{order.accession}}</b>
+    </div>
+
+    <div class="metric">
+      <small>{{'الفحص' if ui_lang=='ar' else 'Exam'}}</small>
+      <b>{{order.modality}}</b>
+      <span>{{order.procedure}}</span>
+    </div>
+
+    <div class="metric">
+      <small>MWL</small>
+      {% if order.status=='SCHEDULED' %}
+        <b>🟢 {{'تم الإرسال' if ui_lang=='ar' else 'Sent'}}</b>
+      {% elif order.status=='MWL_ERROR' %}
+        <b>🔴 {{'فشل الإرسال' if ui_lang=='ar' else 'Failed'}}</b>
+      {% else %}
+        <b>🟡 {{order.status}}</b>
+      {% endif %}
+    </div>
+
+  </div>
+
+  {% if insurance_approval %}
+  <div style="margin-top:12px">
+    <b>🛡 {{'الموافقة الطبية:' if ui_lang=='ar' else 'Medical Approval:'}}</b>
+
+    {% if insurance_approval.status=='APPROVED' %}
+      🟢 {{'تمت الموافقة' if ui_lang=='ar' else 'Approved'}}
+    {% elif insurance_approval.status in ['PENDING','SUBMITTED'] %}
+      🟡 {{'تحت المراجعة' if ui_lang=='ar' else 'Pending'}}
+    {% elif insurance_approval.status=='REQUIRED' %}
+      ⚪ {{'مطلوبة' if ui_lang=='ar' else 'Required'}}
+    {% else %}
+      {{insurance_approval.status}}
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
+
+
+<details class="panel rb-case-section rb-order-section" id="attachment_manager_panel"><summary>📎 {{'المرفقات' if ui_lang=='ar' else 'Attachments'}}</summary><div class="rb-case-section-body">
+<h3>📎 {{'المرفقات' if ui_lang=='ar' else 'Attachments'}}</h3>
+{% if has_perm('attachments.upload') %}
+<form method="post" enctype="multipart/form-data" action="{{url_for('attachment_upload')}}" class="attachment-upload-inline">
+<input type="hidden" name="patient_id" value="{{order.patient_id}}">
+<input type="hidden" name="order_id" value="{{order.id}}">
+<input type="file" name="files" multiple required>
+<select name="category"><option>PRESCRIPTION</option><option>APPROVAL</option><option>IDENTITY</option><option>INSURANCE_CARD</option><option>PREVIOUS_REPORT</option><option>PREVIOUS_IMAGES</option><option>LAB</option><option>CONSENT</option><option>QUESTIONNAIRE</option><option>CLINICAL</option><option>OTHER</option></select>
+<input name="notes" placeholder="Notes"><button class="btn">＋ Add Files</button></form>
+{% endif %}
+<div class="attachment-list">{% for a in attachments %}
+<div class="attachment-item"><div><b>{{a.category}}</b> · {{a.original_name}}<small>{{a.created_at}} · {{a.notes}}</small></div><div class="actions"><a class="btn small" target="_blank" href="{{url_for('attachment_preview',attachment_id=a.id)}}">👁 Preview</a><a class="btn small" href="{{url_for('attachment_download',attachment_id=a.id)}}">⬇ Download</a>{% if has_perm('attachments.upload') %}<form method="post" action="{{url_for('attachment_delete',attachment_id=a.id)}}" onsubmit="return confirm('Delete attachment?')"><button class="btn small danger">🗑</button></form>{% endif %}</div></div>
+{% else %}<p>—</p>{% endfor %}</div></div></details>
+<div class="actions rb-case-primary-actions"><a class="btn" href="{{url_for('order_clinical_notes',order_id=order.id)}}">📝 Clinical Notes</a></div>
+
+
+<div class="panel rb-approval-panel rb-order-section" id="insurance_approval_panel">
+  <div class="section-title">
+    🛡 {{'الموافقة الطبية' if ui_lang=='ar' else 'Medical Approval'}}
+  </div>
+
+  {% if not order.contract %}
+
+    <p>⚪ {{'حالة نقدي / خاص — لا تحتاج موافقة' if ui_lang=='ar'
+             else 'Cash / Private — approval not required'}}</p>
+
+  {% elif not insurance_approval %}
+
+    <p>
+      {{'لا يوجد طلب موافقة لهذه الحالة.' if ui_lang=='ar'
+        else 'No approval request for this case.'}}
+    </p>
+
+    <div class="actions">
+
+      <form method="post"
+            action="{{url_for('insurance_approval_start',order_id=order.id)}}">
+        <input type="hidden" name="method" value="AUTO">
+        <button class="btn primary">
+          ⚡ {{'طلب تلقائي' if ui_lang=='ar' else 'Automatic'}}
+        </button>
+      </form>
+
+      <form method="post"
+            action="{{url_for('insurance_approval_start',order_id=order.id)}}">
+        <input type="hidden" name="method" value="MANUAL">
+        <button class="btn">
+          ✋ {{'يدوي' if ui_lang=='ar' else 'Manual'}}
+        </button>
+      </form>
+
+    </div>
+
+  {% else %}
+
+    {% set ast=insurance_approval.status or 'REQUIRED' %}
+
+    <p>
+      {% if ast=='APPROVED' %}
+        🟢 <b>{{'تمت الموافقة' if ui_lang=='ar' else 'Approved'}}</b>
+      {% elif ast=='REJECTED' %}
+        🔴 <b>{{'مرفوض' if ui_lang=='ar' else 'Rejected'}}</b>
+      {% elif ast in ['PENDING','SUBMITTED'] %}
+        🟡 <b>{{'تحت المراجعة' if ui_lang=='ar' else 'Pending'}}</b>
+      {% elif ast=='NEED_INFO' %}
+        🟠 <b>{{'مطلوب استكمال' if ui_lang=='ar' else 'More information required'}}</b>
+      {% elif ast=='ERROR' %}
+        🔴 <b>{{'يحتاج تدخل' if ui_lang=='ar' else 'Action required'}}</b>
+      {% else %}
+        ⚪ <b>{{'مطلوبة' if ui_lang=='ar' else 'Required'}}</b>
+      {% endif %}
+    </p>
+
+    <p>
+      <b>{{'الجهة:' if ui_lang=='ar' else 'Payer:'}}</b>
+      {{insurance_approval.payer_name or (order.contract.name if order.contract else '')}}
+      ·
+      <b>{{'الطريقة:' if ui_lang=='ar' else 'Method:'}}</b>
+      {{'تلقائي' if insurance_approval.method=='AUTO' and ui_lang=='ar'
+        else ('يدوي' if insurance_approval.method=='MANUAL' and ui_lang=='ar'
+        else insurance_approval.method)}}
+    </p>
+
+    {% if insurance_approval.approval_no %}
+      <p>
+        <b>{{'رقم الموافقة:' if ui_lang=='ar' else 'Approval No:'}}</b>
+        {{insurance_approval.approval_no}}
+      </p>
+    {% endif %}
+
+    {% if approval_attachment %}
+      <a class="btn"
+         target="_blank"
+         href="{{url_for('attachment_preview',attachment_id=approval_attachment.id)}}">
+         📎 {{'عرض الموافقة' if ui_lang=='ar' else 'View Approval'}}
+      </a>
+    {% endif %}
+
+    <details>
+      <summary>
+        {{'تحديث الموافقة' if ui_lang=='ar' else 'Update Approval'}}
+      </summary>
+
+      <form method="post"
+            action="{{url_for('insurance_approval_update',order_id=order.id)}}"
+            class="grid2">
+
+        <div>
+          <label>{{'الحالة' if ui_lang=='ar' else 'Status'}}</label>
+          <select name="status">
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="NEED_INFO">Need Info</option>
+            <option value="ERROR">Error</option>
+          </select>
+        </div>
+
+        <div>
+          <label>{{'رقم الموافقة' if ui_lang=='ar' else 'Approval No.'}}</label>
+          <input name="approval_no"
+                 value="{{insurance_approval.approval_no or ''}}">
+        </div>
+
+        <div>
+          <label>{{'ملاحظات' if ui_lang=='ar' else 'Notes'}}</label>
+          <input name="notes"
+                 value="{{insurance_approval.notes or ''}}">
+        </div>
+
+        <div>
+          <button class="btn primary">
+            {{'حفظ' if ui_lang=='ar' else 'Save'}}
+          </button>
+        </div>
+
+      </form>
+    </details>
+
+  {% endif %}
+</div>
+
+<div class="cards">
+  <div class="metric"><small>Patient ID</small><b>{{order.patient.patient_id}}</b></div>
+  <div class="metric"><small>Accession</small><b>{{order.accession}}</b></div>
+  <div class="metric"><small>Modality</small><b>{{order.modality}}</b></div>
+  <div class="metric"><small>Status</small><b>{{order.status}}</b></div>
+</div>
+
+<div class="grid2">
+<div class="panel">
+  <div class="section-title">Case / بيانات الحالة</div>
+  <table>
+    <tr><td>Patient</td><td><b>{{order.patient.name}}</b></td></tr>
+    <tr><td>Procedure</td><td>{{order.proc.name_ar if ui_lang=='ar' and order.proc and order.proc.name_ar else (order.proc.name if order.proc else order.procedure)}}</td></tr>
+    <tr><td>Branch</td><td>{{order.branch.name if order.branch else ''}}</td></tr>
+    <tr><td>Scheduled</td><td>{{order.scheduled}}</td></tr>
+    <tr><td>AE Title</td><td>{{order.station_ae or 'Automatic routing'}}</td></tr>
+    <tr><td>Payer</td><td>{{order.contract.name if order.contract else 'Cash / Private'}}</td></tr>
+  </table>
+  <div class="actions">
+    {% if has_perm('devices.manage') %}<form method="post" action="{{url_for('resend_mwl',order_id=order.id)}}"><button class="btn">Resend MWL</button></form>{% endif %}
+    {% if has_perm('reports.view') %}<a class="btn primary" href="{{url_for('report_editor',order_id=order.id)}}">Reporting</a>{% endif %} <a class="btn" href="{{url_for('order_sticker_preview',order_id=order.id)}}">Sticker / ملصق</a>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="section-title">Payment & Balance / التحصيل والبواقي</div>
+  {% set gross_due=(order.patient_share or order.contract_price or order.gross_price or 0)|float %}
+  {% set due=effective_due|float %}
+  {% set paid=(order.paid_amount or 0)|float %}
+  <div class="pricing-preview">
+    <div><small>Original Patient Due</small><b>{{'%.2f'|format(gross_due)}} EGP</b></div>
+    <div><small>Approved Discount</small><b>{{'%.2f'|format(gross_due-due)}} EGP</b></div>
+    <div><small>Net Due</small><b>{{'%.2f'|format(due)}} EGP</b></div>
+    <div><small>Paid</small><b>{{'%.2f'|format(paid)}} EGP</b></div>
+    <div><small>Balance</small><b>{{'%.2f'|format(due-paid)}} EGP</b></div>
+  </div>
+  {% if order_discounts %}
+  <div class="discount-history">{% for d in order_discounts %}<span>🏷 {{d.percent|round(2)}}% · {{d.amount|round(2)}} EGP · {{d.reason}}</span>{% endfor %}</div>
+  {% endif %}
+  {% if has_perm('payments.create') %}
+  <form method="post" action="{{url_for('receive_payment',order_id=order.id)}}" class="grid2">
+    <div><label>Amount</label><input type="number" step="0.01" min="0.01" name="amount" required></div>
+    <div><label>Method</label><select name="payment_method"><option>CASH</option><option>VISA</option><option>MASTERCARD</option><option>WALLET</option><option>BANK_TRANSFER</option></select></div>
+    <div><label>Reference</label><input name="reference_no"></div>
+    <div><label>Notes</label><input name="notes"></div>
+    {% if has_perm('finance.discount.request') or has_perm('finance.discount.apply') or has_perm('finance.discount.approve') %}
+    <div><label>Discount %</label><input name="discount_percent" type="number" min="0" max="100" step="0.01" placeholder="0"></div>
+    <div><label>Discount Reason</label><input name="discount_reason" placeholder="Required when discount is requested"></div>
+    <div class="span2 finance-policy-hint">
+      {% if has_perm('finance.discount.approve') %}Management approval permission: direct approval available.
+      {% elif discount_policy %}Direct up to {{discount_policy.max_direct_percent|round(2)}}% · Request approval up to {{discount_policy.max_request_percent|round(2)}}%.
+      {% else %}No discount policy is configured for this user/role/exam.{% endif %}
+    </div>
+    {% endif %}
+    <div><button class="btn primary">Receive Payment</button></div>
+  </form>
+  {% endif %}
+  {% if receipts %}
+  <h4>Receipts</h4>
+  <table><tr><th>Receipt</th><th>Amount</th><th>Method</th><th>Date</th></tr>
+  {% for r in receipts %}<tr><td><a href="{{url_for('receipt_view',receipt_id=r.id)}}">{{r.receipt_no}}</a></td><td>{{r.amount}}</td><td>{{r.payment_method}}</td><td>{{r.created_at}}</td></tr>{% endfor %}
+  </table>
+  {% endif %}
+</div>
+</div>
+
+<div class="grid2 inventory-case-section rb-order-inventory">
+<div class="panel">
+  <div class="section-title">Consumables / المستهلكات</div>
+  <p>Warehouse: <b>{{branch_warehouse.name if branch_warehouse else 'Not configured'}}</b></p>
+  <p>Recorded Consumable Cost: <b>{{'%.2f'|format(consumable_cost or 0)}} EGP</b></p>
+  {% if has_perm('inventory.view') %}<a class="btn primary" href="{{url_for('order_consumables',order_id=order.id)}}">📦 Manage Case Consumables</a>{% endif %}
+</div>
+</div>
+
+<div class="grid2 finance-doctor-section rb-order-doctor">
+<div class="panel">
+  <div class="section-title">Performing Doctor / الطبيب القائم بالفحص</div>
+  <p><b>{{performing_doctor.full_name if performing_doctor else 'Not assigned'}}</b></p>
+  <p>Calculated Share: <b>{{'%.2f'|format(performing_share or 0)}} EGP</b></p>
+  {% if has_perm('orders.status') %}
+  <form method="post" action="{{url_for('set_performing_doctor',order_id=order.id)}}" class="grid2">
+    <select name="doctor_user_id" required><option value="">Select doctor</option>{% for d in doctors %}<option value="{{d.id}}" {% if performing_doctor and performing_doctor.id==d.id %}selected{% endif %}>{{d.full_name or d.username}}</option>{% endfor %}</select>
+    <input name="notes" placeholder="Notes">
+    <button class="btn">Set Performing Doctor</button>
+  </form>{% endif %}
+</div>
+</div>
+
+<div class="grid2">
+<div class="panel">
+  <div class="section-title">Delivery / التسليم</div>
+  <div class="pricing-preview">
+    <div><small>Report</small><b>{{'Delivered' if order.report_delivered else 'Pending'}}</b></div>
+    <div><small>Images</small><b>{{'Delivered' if order.images_delivered else 'Pending'}}</b></div>
+  </div>
+  {% if has_perm('delivery.manage') %}
+  <form method="post" action="{{url_for('mark_delivery',order_id=order.id,item_type='REPORT')}}" class="grid2">
+    <div><label>Report method</label><select name="delivery_method"><option>IN_PERSON</option><option>EMAIL</option><option>PORTAL</option><option>WHATSAPP</option></select></div>
+    <div><label>Recipient</label><input name="recipient_name"></div>
+    <div><button class="btn primary">Mark Report Delivered</button></div>
+  </form>
+  <form method="post" action="{{url_for('mark_delivery',order_id=order.id,item_type='IMAGES')}}" class="grid2">
+    <div><label>Images method</label><select name="delivery_method"><option>CD</option><option>FILM</option><option>PORTAL</option><option>LINK</option></select></div>
+    <div><label>Recipient</label><input name="recipient_name"></div>
+    <div><button class="btn">Mark Images Delivered</button></div>
+  </form>
+  {% endif %}
+  {% if delivery_events %}
+  <h4>Delivery History</h4><table><tr><th>Item</th><th>Method</th><th>Recipient</th><th>Date</th></tr>
+  {% for d in delivery_events %}<tr><td>{{d.item_type}}</td><td>{{d.delivery_method}}</td><td>{{d.recipient_name}}</td><td>{{d.delivered_at}}</td></tr>{% endfor %}</table>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <div class="section-title">Case Attachments / مرفقات الحالة</div>
+  {% if has_perm('attachments.upload') %}
+  <form method="post" action="{{url_for('attachment_upload')}}" enctype="multipart/form-data" class="grid2">
+    <input type="hidden" name="patient_id" value="{{order.patient.id}}"><input type="hidden" name="order_id" value="{{order.id}}">
+    <div><label>Type</label><select name="category"><option>REFERRAL</option><option>APPROVAL</option><option>INSURANCE_CARD</option><option>NATIONAL_ID</option><option>LAB_RESULT</option><option>CREATININE</option><option>CONSENT</option><option>PREVIOUS_REPORT</option><option>OTHER</option></select></div>
+    <div><label>File</label><input type="file" name="file" required></div>
+    <div><label>Notes</label><input name="notes"></div>
+    <div><button class="btn primary">Upload Attachment</button></div>
+  </form>
+  {% endif %}
+  {% if attachments %}
+  <table><tr><th>Type</th><th>File</th><th>Date</th></tr>{% for a in attachments %}<tr><td>{{a.category}}</td><td><a href="{{url_for('attachment_download',attachment_id=a.id)}}">{{a.original_name}}</a></td><td>{{a.created_at}}</td></tr>{% endfor %}</table>
+  {% else %}<p class="muted">No attachments.</p>{% endif %}
+</div>
+</div>
+
+{% if consumables %}
+<div class="panel"><div class="section-title">Consumables / المستهلكات</div><table><tr><th>Item</th><th>Qty</th></tr>{% for c in consumables %}<tr><td>{{c.consumable.name if c.consumable else ''}}</td><td>{{c.qty}}</td></tr>{% endfor %}</table></div>
+{% endif %}
+
+</div>
+{% endblock %}

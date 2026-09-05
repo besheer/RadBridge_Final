@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block page_title %}Incoming Call / مكالمة واردة{% endblock %}{% block content %}
+<div class="caller-card"><h2>☎ {{call.caller_number}}</h2>{% if patient %}<h3>{{patient.name}}</h3><p>{{patient.patient_id}} · {{patient.phone}}</p><div class="quick-actions"><a class="btn" href="{{url_for('patient_timeline',patient_id=patient.id)}}">History</a><a class="btn" href="{{url_for('patient_documents',patient_id=patient.id)}}">Documents</a><a class="btn primary" href="{{url_for('order_new')}}">New Booking / Visit</a></div>
+<h4>Previous Exams</h4>{% for o in orders %}<div class="ops-row"><b>{{o.procedure}}</b><span>{{o.accession}}</span></div>{% endfor %}{% else %}<h3>Unknown Caller / متصل غير مسجل</h3><a class="btn primary" href="{{url_for('patient_new')}}">Create New Patient</a>{% endif %}
+<form method="post" action="{{url_for('telephony_call_notes',call_id=call.id)}}"><textarea name="notes" placeholder="Call notes / ملاحظات المكالمة">{{call.notes}}</textarea><button class="btn">Save</button></form></div>
+{% endblock %}

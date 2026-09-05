@@ -1,0 +1,92 @@
+import hashlib
+import io
+import zipfile
+
+
+class ReportSafetyError(Exception):
+    code = "REPORT_SAFETY_ERROR"
+
+
+class ReportVersionConflict(ReportSafetyError):
+    code = "REPORT_VERSION_CONFLICT"
+
+
+class InvalidReportDocument(ReportSafetyError):
+    code = "REPORT_DOCUMENT_INVALID"
+
+
+class DuplicateReportVersion(ReportSafetyError):
+    code = "REPORT_VERSION_DUPLICATE"
+
+
+class ReportImmutable(ReportSafetyError):
+    code = "REPORT_IMMUTABLE"
+
+
+def sha256_bytes(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def validate_docx_bytes(data):
+    if not data:
+        raise InvalidReportDocument("Document is empty")
+
+    if len(data) < 100:
+        raise InvalidReportDocument("Document is too small")
+
+    try:
+        z = zipfile.ZipFile(io.BytesIO(data))
+    except Exception as exc:
+        raise InvalidReportDocument(
+            "Invalid DOCX/ZIP container"
+        ) from exc
+
+    required = {
+        "[Content_Types].xml",
+        "word/document.xml",
+    }
+
+    names = set(z.namelist())
+
+    missing = required - names
+
+    if missing:
+        raise InvalidReportDocument(
+            "DOCX structure incomplete: " +
+            ",".join(sorted(missing))
+        )
+
+    return {
+        "sha256": sha256_bytes(data),
+        "size": len(data),
+    }
+
+
+def assert_base_version(current_version, supplied_base):
+    if supplied_base is None:
+        return
+
+    try:
+        supplied_base = int(supplied_base)
+    except Exception:
+        raise ReportVersionConflict(
+            "Invalid base version"
+        )
+
+    if int(current_version or 0) != supplied_base:
+        raise ReportVersionConflict(
+            "A newer report version already exists"
+        )
+
+
+def assert_report_editable(status):
+    status = (status or "").upper()
+
+    if status in ("FINAL", "FINALIZED"):
+        raise ReportImmutable(
+            "Finalized report cannot be overwritten"
+        )
+
+
+def next_version(current_version):
+    return int(current_version or 0) + 1

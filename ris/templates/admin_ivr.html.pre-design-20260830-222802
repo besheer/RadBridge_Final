@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1">IVR & Call Center</h2>
+      <div class="text-muted">
+        Telephony, routing, recordings and voice services
+      </div>
+    </div>
+
+    <span class="badge bg-warning text-dark">
+      PBX Not Connected
+    </span>
+  </div>
+
+  <div class="row g-3 mb-4">
+
+    {% for title,value in [
+      ("Calls Today","0"),
+      ("Active Calls","0"),
+      ("Extensions",extension_count),
+      ("Queues","0"),
+      ("IVR Flows","0"),
+      ("Recordings","0")
+    ] %}
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">{{ title }}</div>
+          <div class="fs-3 fw-bold">{{ value }}</div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <div class="row g-3">
+
+    {% set modules = [
+      ("IVR Flows","Design inbound call routing","ivr"),
+      ("Extensions","Manage users and extensions","extensions"),
+      ("Queues","Reception and department queues","queues"),
+      ("Audio Library","Welcome, hold and IVR prompts","audio"),
+      ("Numbers / DIDs","External incoming numbers","dids"),
+      ("Outbound Routing","External call rules","outbound"),
+      ("Live Calls","Current calls and agents","live"),
+      ("Call History","Existing telephony call log","history"),
+      ("Recordings","Search and playback recordings","recordings"),
+      ("Voice Booking","Voice intake and booking","booking"),
+      ("Communications","Patient communication requests","communications"),
+      ("Public Click-to-Call","Browser calling service","public-call"),
+      ("Business Hours","Open / closed routing","hours"),
+      ("Block / Allow List","Caller control","caller-control"),
+      ("Settings","PBX and IVR configuration","settings")
+    ] %}
+
+    {% for title,desc,key in modules %}
+    <div class="col-md-6 col-xl-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5>{{ title }}</h5>
+          <p class="text-muted mb-3">{{ desc }}</p>
+
+          {% if key == "history" %}
+            <a class="btn btn-outline-primary btn-sm"
+               href="/telephony/calls">Open</a>
+
+          {% elif key == "live" %}
+            <a class="btn btn-outline-primary btn-sm"
+               href="/telephony">Open</a>
+
+          {% elif key == "booking" %}
+            <a class="btn btn-outline-primary btn-sm"
+               href="/voice-intake/review">Open</a>
+
+          {% elif key == "communications" %}
+            <a class="btn btn-outline-primary btn-sm"
+               href="/communications">Open</a>
+
+          {% elif key == "public-call" %}
+            <a class="btn btn-outline-primary btn-sm"
+               href="/call">Open</a>
+
+          {% else %}
+            <button class="btn btn-outline-secondary btn-sm"
+                    disabled>
+              Coming in IVR v1
+            </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <div class="alert alert-info mt-4 mb-0">
+    IVR Control Plane is in development mode.
+    PBX publishing is disabled.
+  </div>
+
+</div>
+{% endblock %}

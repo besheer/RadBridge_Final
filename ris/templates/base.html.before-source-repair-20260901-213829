@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="{{ui_lang}}" dir="{{ui_dir}}">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}RIS Operations{% endblock %}</title>
+<link rel="stylesheet" href="{{url_for('static',filename='app.css')}}">
+<style id="rb-nav-v3-style">
+.rb-nav-v3{display:flex;flex-direction:column;gap:3px}
+.rb-nav-group{border-radius:8px}
+.rb-nav-group>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.rb-nav-group>summary::-webkit-details-marker{display:none}
+.rb-nav-group>summary::after{content:"›";font-size:16px;opacity:.55;transition:transform .15s ease}
+.rb-nav-group[open]>summary::after{transform:rotate(90deg)}
+.rb-nav-group-links{display:flex;flex-direction:column;gap:1px;padding-bottom:3px}
+.rb-nav-group .nav-link{margin-left:3px;margin-right:3px}
+.sidebar{overflow-y:auto}
+</style>
+</head>
+<body class="{{ui_dir}} ui-lang-{{ui_lang}} {% if user_profile %}theme-{{user_profile.theme}} density-{{user_profile.density}} sidebar-{{user_profile.sidebar_mode}}{% endif %}">
+<div class="mobile-topbar mobile-only">
+<button class="icon-btn" id="mobileMenuOpen">☰</button>
+<strong>RIS</strong>
+<a class="icon-btn" href="{{url_for('universal_search')}}">🔎</a>
+</div>
+
+{% if me %}
+<div class="app-shell">
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
+
+<div class="brand-row">
+<a class="brand" href="{{url_for('dashboard')}}">
+<div class="logo">R</div>
+<div class="brand-copy"><b>{{'نظام الأشعة' if ui_lang=='ar' else 'RIS Operations'}}</b><small>{{'إدارة الأشعة المتكاملة' if ui_lang=='ar' else 'Radiology Information System'}}</small></div>
+</a>
+<button class="icon-btn mobile-only" id="sidebarClose">×</button>
+</div>
+
+<div class="workspace-card">
+<div class="workspace-dot"></div>
+<div><strong>{{me.full_name or me.username}}</strong><small>{{me.role.name}}</small></div>
+</div>
+
+
+<div class="role-quick-action-bar">
+{% for key,en,ar,icon,endpoint in role_quick_actions %}
+<a class="quick-action-btn" href="{{safe_url_for_endpoint(endpoint)}}" title="{{ar if ui_lang=='ar' else en}}">
+<span class="qa-icon">{{icon}}</span><span>{{ar if ui_lang=='ar' else en}}</span>
+</a>
+{% endfor %}
+</div>
+
+
+<div class="sidebar-menu-search">
+  <span class="sidebar-search-icon">⌕</span>
+  <input id="sidebarMenuSearch"
+         type="search"
+         autocomplete="off"
+         placeholder="{{'ابحث في القائمة...' if ui_lang=='ar' else 'Search menu...'}}"
+         aria-label="{{'البحث في القائمة' if ui_lang=='ar' else 'Search menu'}}">
+  <button type="button" id="sidebarMenuSearchClear" title="{{'مسح' if ui_lang=='ar' else 'Clear'}}">×</button>
+</div>
+<div id="sidebarSearchEmpty" class="sidebar-search-empty" hidden>
+  {{'لا توجد نتيجة في القائمة' if ui_lang=='ar' else 'No matching menu item'}}
+</div>
+
+<nav class="nav-menu rb-nav-v3" id="sidebarNavMenu">
+<details class="rb-nav-group" open>
+<summary class="nav-caption">{{"مساحة العمل" if ui_lang=="ar" else "Workspace"}}</summary>
+<div class="rb-nav-group-links">
+<a class="nav-link" href="{{url_for('dashboard')}}">⌂ <span>{{"لوحة التحكم" if ui_lang=="ar" else "Dashboard"}}</span></a>
+<a class="nav-link" href="{{url_for('universal_search')}}">🔎 <span>{{"بحث شامل" if ui_lang=="ar" else "Universal Search"}}</span></a>
+<a class="nav-link" href="{{url_for('advanced_search')}}">⌕ <span>{{"بحث متقدم" if ui_lang=="ar" else "Advanced Search"}}</span></a>
+<a class="nav-link" href="{{url_for('notification_center')}}">🔔 <span>{{"الإشعارات" if ui_lang=="ar" else "Notifications"}}</span></a>
+</div></details>
+<details class="rb-nav-group" open>
+<summary class="nav-caption">{{"الاستقبال" if ui_lang=="ar" else "Reception"}}</summary>
+<div class="rb-nav-group-links">
+{% if has_perm("appointments.manage") %}<a class="nav-link nav-link-featured" href="{{url_for('schedule_calendar')}}">📅 <span>{{"الجدول والتسجيل" if ui_lang=="ar" else "Scheduler & Registration"}}</span></a>{% endif %}
+{% if has_perm("patients.view") %}<a class="nav-link" href="{{url_for('patients')}}">♙ <span>{{"المرضى" if ui_lang=="ar" else "Patients"}}</span></a>{% endif %}
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('orders')}}">▤ <span>{{"الزيارات / الطلبات" if ui_lang=="ar" else "Visits / Orders"}}</span></a>{% endif %}
+{% if has_perm("appointments.manage") %}<a class="nav-link" href="{{url_for('appointments')}}">🗓 <span>{{"المواعيد" if ui_lang=="ar" else "Appointments"}}</span></a>{% endif %}
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('barcode_scan')}}">▣ <span>{{"مسح الباركود" if ui_lang=="ar" else "Barcode Scan"}}</span></a>{% endif %}
+{% if has_perm("patients.create") %}<a class="nav-link" href="{{url_for('smart_intake_start')}}">🧾 <span>{{"الإدخال الذكي / OCR" if ui_lang=="ar" else "Smart Intake / OCR"}}</span></a>{% endif %}
+{% if has_perm("cashier.workstation") %}<a class="nav-link" href="{{url_for('cashier_workstation')}}">💳 <span>{{"الكاشير" if ui_lang=="ar" else "Cashier"}}</span></a>{% endif %}
+</div></details>
+<details class="rb-nav-group">
+<summary class="nav-caption">{{"العمل السريري" if ui_lang=="ar" else "Clinical"}}</summary>
+<div class="rb-nav-group-links">
+{% if has_perm("technician.worklist") %}<a class="nav-link" href="{{url_for('technician_worklist')}}">⌁ <span>{{"الفني" if ui_lang=="ar" else "Technician"}}</span></a>{% endif %}
+{% if has_perm("nursing.worklist") %}<a class="nav-link" href="{{url_for('nursing_worklist')}}">✚ <span>{{"التمريض" if ui_lang=="ar" else "Nursing"}}</span></a>{% endif %}
+{% if has_perm("reports.view") %}<a class="nav-link" href="{{url_for('doctor_workspace')}}">🩺 <span>{{"مساحة الطبيب" if ui_lang=="ar" else "Doctor Workspace"}}</span></a>{% endif %}
+{% if has_perm("reports.coordinate") %}<a class="nav-link" href="{{url_for('coordinator_queue')}}">🗂 <span>{{"قائمة المنسق" if ui_lang=="ar" else "Coordinator Queue"}}</span></a>{% endif %}
+{% if has_perm("reports.view") %}<a class="nav-link" href="{{url_for('reports_portal')}}">📄 <span>{{"التقارير" if ui_lang=="ar" else "Reporting"}}</span></a>{% endif %}
+<a class="nav-link" href="{{url_for('returned_cases_queue')}}">↩ <span>{{"الحالات المرتجعة" if ui_lang=="ar" else "Returned Cases"}}</span></a>
+<a class="nav-link" href="{{url_for('doctor_templates')}}">📝 <span>{{"قوالب الطبيب" if ui_lang=="ar" else "Doctor Templates"}}</span></a>
+</div></details>
+<details class="rb-nav-group">
+<summary class="nav-caption">{{"PACS والتصوير" if ui_lang=="ar" else "PACS & Imaging"}}</summary>
+<div class="rb-nav-group-links">
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('pacs_tracking')}}">🩻 <span>{{"متابعة PACS" if ui_lang=="ar" else "PACS Tracking"}}</span></a>{% endif %}
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('pacs_reconciliation')}}">⇄ <span>{{"المطابقة" if ui_lang=="ar" else "Reconciliation"}}</span></a>{% endif %}
+{% if has_perm("pacs.intake.view") %}<a class="nav-link" href="{{url_for('pacs_unregistered_cases')}}">⚠ <span>{{"دراسات غير مسجلة" if ui_lang=="ar" else "Unregistered Studies"}}</span></a>{% endif %}
+{% if has_perm("pacs.archive.manage") %}<a class="nav-link" href="{{url_for('pacs_archive_dashboard')}}">🗄 <span>{{"أرشيف PACS" if ui_lang=="ar" else "PACS Archive"}}</span></a>{% endif %}
+{% if has_perm("pacs.destinations.manage") %}<a class="nav-link" href="{{url_for('pacs_destinations')}}">🎯 <span>{{"وجهات DICOM" if ui_lang=="ar" else "Destinations"}}</span></a>{% endif %}
+{% if has_perm("pacs.discovery.view") %}<a class="nav-link" href="{{url_for('pacs_discovery')}}">⌁ <span>{{"اكتشاف الأجهزة" if ui_lang=="ar" else "Discovery"}}</span></a>{% endif %}
+{% if has_perm("pacs.archive.manage") %}<a class="nav-link" href="{{url_for('pacs_routing_rules')}}">⇢ <span>{{"قواعد التوجيه" if ui_lang=="ar" else "Routing Rules"}}</span></a>{% endif %}
+</div></details>
+<details class="rb-nav-group">
+<summary class="nav-caption">{{"التشغيل" if ui_lang=="ar" else "Operations"}}</summary>
+<div class="rb-nav-group-links">
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('operations_dashboard')}}">📊 <span>{{"لوحة التشغيل" if ui_lang=="ar" else "Operations Dashboard"}}</span></a>{% endif %}
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('operations_journey')}}">🧭 <span>{{"رحلة المريض" if ui_lang=="ar" else "Patient Journey"}}</span></a>{% endif %}
+{% if has_perm("workflow.command.view") %}<a class="nav-link" href="{{url_for('workflow_command_center')}}">🎛 <span>{{"مركز التحكم" if ui_lang=="ar" else "Command Center"}}</span></a>{% endif %}
+{% if has_perm("appointments.manage") %}<a class="nav-link" href="{{url_for('operations_booking_board')}}">▦ <span>{{"لوحة الحجز" if ui_lang=="ar" else "Booking Board"}}</span></a>{% endif %}
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('case_readiness_dashboard')}}">✓ <span>{{"جاهزية الحالات" if ui_lang=="ar" else "Case Readiness"}}</span></a>{% endif %}
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('assignment_dashboard')}}">⇶ <span>{{"لوحة التوزيع" if ui_lang=="ar" else "Assignment Dashboard"}}</span></a>{% endif %}
+{% if has_perm("reports.view") %}<a class="nav-link" href="{{url_for('unassigned_cases')}}">○ <span>{{"حالات غير موزعة" if ui_lang=="ar" else "Unassigned Cases"}}</span></a>{% endif %}
+<a class="nav-link" href="{{url_for('open_pool_cases')}}">◎ <span>{{"الحالات المفتوحة" if ui_lang=="ar" else "Open Pool"}}</span></a>
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('escalation_board')}}">⚑ <span>{{"التصعيدات" if ui_lang=="ar" else "Escalations"}}</span></a>{% endif %}
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('tat_dashboard')}}">⏱ <span>{{"زمن الإنجاز" if ui_lang=="ar" else "TAT Dashboard"}}</span></a>{% endif %}
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('insurance_approvals_dashboard')}}">🛡 <span>{{"موافقات التأمين" if ui_lang=="ar" else "Insurance Approvals"}}</span></a>{% endif %}
+</div></details>
+<details class="rb-nav-group">
+<summary class="nav-caption">{{"المالية" if ui_lang=="ar" else "Finance"}}</summary>
+<div class="rb-nav-group-links">
+{% if has_perm("financial.view") %}<a class="nav-link" href="{{url_for('financial_center')}}">¤ <span>{{"المركز المالي" if ui_lang=="ar" else "Financial Center"}}</span></a>{% endif %}
+{% if has_perm("receivables.view") %}<a class="nav-link" href="{{url_for('receivables')}}">◫ <span>{{"المديونيات" if ui_lang=="ar" else "Receivables"}}</span></a>{% endif %}
+{% if has_perm("financial.view") %}<a class="nav-link" href="{{url_for('financial_entries')}}">≡ <span>{{"القيود المالية" if ui_lang=="ar" else "Financial Entries"}}</span></a>{% endif %}
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('daily_closing')}}">☑ <span>{{"الإقفال اليومي" if ui_lang=="ar" else "Daily Closing"}}</span></a>{% endif %}
+{% if has_perm("financial.view") %}<a class="nav-link" href="{{url_for('accounting_reports')}}">▥ <span>{{"التقارير المحاسبية" if ui_lang=="ar" else "Accounting Reports"}}</span></a>{% endif %}
+{% if has_perm("finance.discount.approve") %}<a class="nav-link" href="{{url_for('discount_approval_queue')}}">% <span>{{"موافقات الخصم" if ui_lang=="ar" else "Discount Approvals"}}</span></a>{% endif %}
+{% if has_perm("finance.doctor_share.view") %}<a class="nav-link" href="{{url_for('doctor_earnings_report')}}">₤ <span>{{"مستحقات الأطباء" if ui_lang=="ar" else "Doctor Earnings"}}</span></a>{% endif %}
+{% if has_perm("finance.discount.manage") %}<a class="nav-link" href="{{url_for('admin_discount_policies')}}">% <span>{{"سياسات الخصم" if ui_lang=="ar" else "Discount Policies"}}</span></a>{% endif %}
+{% if has_perm("finance.doctor_share.manage") %}<a class="nav-link" href="{{url_for('admin_doctor_share_rules')}}">₤ <span>{{"قواعد مستحقات الأطباء" if ui_lang=="ar" else "Doctor Share Rules"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_referral_commissions')}}">↗ <span>{{"عمولات الإحالات" if ui_lang=="ar" else "Referral Commissions"}}</span></a>{% endif %}
+</div></details>
+<details class="rb-nav-group">
+<summary class="nav-caption">{{"المخزون" if ui_lang=="ar" else "Inventory"}}</summary>
+<div class="rb-nav-group-links">
+{% if has_perm("inventory.view") %}<a class="nav-link" href="{{url_for('inventory_stock')}}">▤ <span>{{"المخزون" if ui_lang=="ar" else "Stock"}}</span></a>{% endif %}
+{% if has_perm("inventory.manage") %}<a class="nav-link" href="{{url_for('inventory_items')}}">□ <span>{{"الأصناف" if ui_lang=="ar" else "Items"}}</span></a>{% endif %}
+{% if has_perm("inventory.manage") %}<a class="nav-link" href="{{url_for('inventory_warehouses')}}">⌂ <span>{{"المخازن" if ui_lang=="ar" else "Warehouses"}}</span></a>{% endif %}
+{% if has_perm("inventory.view") %}<a class="nav-link" href="{{url_for('inventory_transfers')}}">⇄ <span>{{"التحويلات" if ui_lang=="ar" else "Transfers"}}</span></a>{% endif %}
+{% if has_perm("inventory.manage") %}<a class="nav-link" href="{{url_for('admin_inventory_movements')}}">⇅ <span>{{"حركات المخزون" if ui_lang=="ar" else "Inventory Movements"}}</span></a>{% endif %}
+{% if has_perm("inventory.manage") %}<a class="nav-link" href="{{url_for('admin_inventory_batches')}}">▦ <span>{{"الدفعات والتشغيلات" if ui_lang=="ar" else "Inventory Batches"}}</span></a>{% endif %}
+{% if has_perm("inventory.manage") %}<a class="nav-link" href="{{url_for('inventory_stock_policies')}}">⚙ <span>{{"سياسات المخزون" if ui_lang=="ar" else "Stock Policies"}}</span></a>{% endif %}
+{% if has_perm("inventory.manage") %}<a class="nav-link" href="{{url_for('admin_erp')}}">▣ <span>{{"إعدادات ERP" if ui_lang=="ar" else "ERP Setup"}}</span></a>{% endif %}
+{% if has_perm("inventory.reports") %}<a class="nav-link" href="{{url_for('inventory_ledger')}}">≣ <span>{{"دفتر المخزون" if ui_lang=="ar" else "Inventory Ledger"}}</span></a>{% endif %}
+{% if has_perm("inventory.reports") %}<a class="nav-link" href="{{url_for('inventory_consumption_report')}}">▥ <span>{{"تقرير الاستهلاك" if ui_lang=="ar" else "Consumption Report"}}</span></a>{% endif %}
+{% if has_perm("inventory.manage") %}<a class="nav-link" href="{{url_for('inventory_procedure_defaults')}}">⚙ <span>{{"افتراضيات الفحوصات" if ui_lang=="ar" else "Procedure Defaults"}}</span></a>{% endif %}
+</div></details>
+<details class="rb-nav-group">
+<summary class="nav-caption">{{"الاتصالات" if ui_lang=="ar" else "Communications"}}</summary>
+<div class="rb-nav-group-links">
+<a class="nav-link" href="{{url_for('communications_dashboard')}}">☎ <span>{{"مركز الاتصالات" if ui_lang=="ar" else "Communications Center"}}</span></a>
+<a class="nav-link" href="{{url_for('chat_home')}}">💬 <span>{{"المحادثات" if ui_lang=="ar" else "Chat"}}</span></a>
+<a class="nav-link" href="{{url_for('telephony_console')}}">📞 <span>{{"الهاتف" if ui_lang=="ar" else "Telephony"}}</span></a>
+<a class="nav-link" href="{{url_for('telephony_calls')}}">☏ <span>{{"سجل المكالمات" if ui_lang=="ar" else "Call History"}}</span></a>
+<a class="nav-link" href="{{url_for('voice_intake_review')}}">🎙 <span>{{"مراجعة الإدخال الصوتي" if ui_lang=="ar" else "Voice Intake Review"}}</span></a>
+</div></details>
+<details class="rb-nav-group">
+<summary class="nav-caption">{{"الإدارة" if ui_lang=="ar" else "Management"}}</summary>
+<div class="rb-nav-group-links">
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('management_dashboard')}}">◈ <span>{{"لوحة الإدارة" if ui_lang=="ar" else "Management Dashboard"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}
+<a class="nav-link nav-link-featured" href="{{url_for('studio_home')}}">🎨 <span>{{"استوديو RIS" if ui_lang=="ar" else "RIS Studio"}}</span></a>
+<a class="nav-link" href="{{url_for('studio_templates',template_type='FORM')}}">▤ <span>{{"قوالب النماذج" if ui_lang=="ar" else "Form Templates"}}</span></a>
+<a class="nav-link" href="{{url_for('studio_templates',template_type='RECEIPT')}}">🧾 <span>{{"قوالب الإيصالات" if ui_lang=="ar" else "Receipt Templates"}}</span></a>
+<a class="nav-link" href="{{url_for('studio_templates',template_type='REPORT')}}">📄 <span>{{"قوالب التقارير" if ui_lang=="ar" else "Report Templates"}}</span></a>
+<a class="nav-link" href="{{url_for('studio_shortcuts')}}">⭐ <span>{{"اختصارات الاستوديو" if ui_lang=="ar" else "Studio Shortcuts"}}</span></a>
+{% endif %}
+{% if has_perm("analytics.view") %}<a class="nav-link" href="{{url_for('analytics')}}">▥ <span>{{"التحليلات" if ui_lang=="ar" else "Analytics"}}</span></a>{% endif %}
+{% if has_perm("analytics.executive.view") %}<a class="nav-link" href="{{url_for('executive_analytics')}}">📈 <span>{{"التحليلات التنفيذية" if ui_lang=="ar" else "Executive Analytics"}}</span></a>{% endif %}
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('referral_analytics')}}">↗ <span>{{"تحليلات الإحالات" if ui_lang=="ar" else "Referral Analytics"}}</span></a>{% endif %}
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('assignment_reports')}}">⇶ <span>{{"تقارير التوزيع" if ui_lang=="ar" else "Assignment Reports"}}</span></a>{% endif %}
+</div></details>
+<details class="rb-nav-group">
+<summary class="nav-caption">{{"الإعدادات" if ui_lang=="ar" else "Administration"}}</summary>
+<div class="rb-nav-group-links">
+{% if has_perm("*") or has_perm("users.view") or has_perm("users.manage") or has_perm("roles.manage") or has_perm("branches.manage") or has_perm("devices.manage") or has_perm("procedures.view") or has_perm("contracts.manage") or has_perm("inventory.manage") or has_perm("audit.view") or has_perm("backup.view") %}<a class="nav-link" href="{{url_for('admin_home')}}">⚙ <span>{{"الرئيسية الإدارية" if ui_lang=="ar" else "Administration Home"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_users')}}">👥 <span>{{"المستخدمون" if ui_lang=="ar" else "Users"}}</span></a>{% endif %}
+{% if has_perm("roles.manage") %}<a class="nav-link" href="{{url_for('admin_roles')}}">🔐 <span>{{"الأدوار والصلاحيات" if ui_lang=="ar" else "Roles & Permissions"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_assignment')}}">⇶ <span>{{"إعدادات التوزيع" if ui_lang=="ar" else "Assignment Setup"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_assignment_offers')}}">◎ <span>{{"عروض التوزيع" if ui_lang=="ar" else "Assignment Offers"}}</span></a>{% endif %}
+{% if has_perm("assignment.manage") %}<a class="nav-link" href="{{url_for('admin_assignment_strategies')}}">🧠 <span>{{"استراتيجيات التوزيع" if ui_lang=="ar" else "Assignment Strategies"}}</span></a>{% endif %}
+{% if has_perm("assignment.manage") %}<a class="nav-link nav-link-featured" href="{{url_for('admin_assignment_strategy_simulate_ui')}}">🧪 <span>{{"محاكي استراتيجية التوزيع" if ui_lang=="ar" else "Strategy Simulator"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_dictionary')}}">A↔ع <span>{{"قاموس النظام" if ui_lang=="ar" else "System Dictionary"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_field_rules')}}">☷ <span>{{"قواعد الحقول" if ui_lang=="ar" else "Field Rules"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_procedure_quality_rules')}}">✓ <span>{{"قواعد جودة الفحوصات" if ui_lang=="ar" else "Procedure Quality Rules"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_registration_defaults')}}">⚙ <span>{{"افتراضيات التسجيل" if ui_lang=="ar" else "Registration Defaults"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_company')}}">🏢 <span>{{"الشركة" if ui_lang=="ar" else "Company"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_company_legal')}}">§ <span>{{"البيانات القانونية" if ui_lang=="ar" else "Company Legal"}}</span></a>{% endif %}
+{% if has_perm("branches.manage") %}<a class="nav-link" href="{{url_for('admin_branches')}}">⌂ <span>{{"الفروع" if ui_lang=="ar" else "Branches"}}</span></a>{% endif %}
+{% if has_perm("devices.manage") %}<a class="nav-link" href="{{url_for('admin_devices')}}">🖥 <span>{{"الأجهزة" if ui_lang=="ar" else "Devices"}}</span></a>{% endif %}
+{% if has_perm("devices.manage") %}<a class="nav-link" href="{{url_for('admin_device_schedules')}}">🗓 <span>{{"جداول الأجهزة" if ui_lang=="ar" else "Device Schedules"}}</span></a>{% endif %}
+{% if has_perm("procedures.view") %}<a class="nav-link" href="{{url_for('admin_procedures')}}">🧪 <span>{{"الفحوصات" if ui_lang=="ar" else "Procedures"}}</span></a>{% endif %}
+{% if has_perm("referrers.manage") %}<a class="nav-link" href="{{url_for('admin_referrers')}}">↗ <span>{{"الأطباء المحولون" if ui_lang=="ar" else "Referrers"}}</span></a>{% endif %}
+{% if has_perm("contracts.manage") %}<a class="nav-link" href="{{url_for('admin_contracts')}}">📑 <span>{{"التعاقدات" if ui_lang=="ar" else "Contracts"}}</span></a>{% endif %}
+{% if has_perm("contracts.manage") %}<a class="nav-link" href="{{url_for('admin_insurance_approvals')}}">🛡 <span>{{"بوابات التأمين" if ui_lang=="ar" else "Insurance Portals"}}</span></a>{% endif %}
+{% if has_perm("devices.manage") %}<a class="nav-link" href="{{url_for('admin_booking_control')}}">⛔ <span>{{"التحكم في الحجز" if ui_lang=="ar" else "Booking Control"}}</span></a>{% endif %}
+{% if has_perm("devices.manage") %}<a class="nav-link" href="{{url_for('admin_booking_availability')}}">✓ <span>{{"إتاحة الحجز" if ui_lang=="ar" else "Booking Availability"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_ocr_settings')}}">🔎 <span>{{"إعدادات OCR" if ui_lang=="ar" else "OCR Settings"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_qa')}}">✓ <span>{{"ضمان الجودة" if ui_lang=="ar" else "QA"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_qa_control')}}">☑ <span>{{"التحكم في الجودة" if ui_lang=="ar" else "QA Control"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_ai_reporting')}}">AI <span>{{"تقارير الذكاء الاصطناعي" if ui_lang=="ar" else "AI Reporting"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_imaging_ai')}}">AI <span>{{"ذكاء التصوير" if ui_lang=="ar" else "Imaging AI"}}</span></a>{% endif %}
+{% if has_perm("inventory.manage") %}<a class="nav-link" href="{{url_for('admin_inventory')}}">▦ <span>{{"إعدادات المخزون" if ui_lang=="ar" else "Inventory Setup"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_communications')}}">☎ <span>{{"إعدادات الاتصالات" if ui_lang=="ar" else "Communications Setup"}}</span></a>{% endif %}
+{% if has_perm("audit.view") %}<a class="nav-link" href="{{url_for('admin_notifications')}}">🔔 <span>{{"إعدادات الإشعارات" if ui_lang=="ar" else "Notifications Setup"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_printer_profiles')}}">🖨 <span>{{"ملفات الطابعات" if ui_lang=="ar" else "Printer Profiles"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_label_templates')}}">🏷 <span>{{"قوالب الملصقات" if ui_lang=="ar" else "Label Templates"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_sticker_templates')}}">▣ <span>{{"قوالب الاستيكر" if ui_lang=="ar" else "Sticker Templates"}}</span></a>{% endif %}
+{% if has_perm("storage.cloud.view") %}<a class="nav-link" href="{{url_for('storage_cloud_manager')}}">☁ <span>{{"التخزين السحابي" if ui_lang=="ar" else "Cloud Storage"}}</span></a>{% endif %}
+{% if has_perm("storage.targets.view") %}<a class="nav-link" href="{{url_for('storage_dr_manager')}}">🛡 <span>{{"التخزين والتعافي" if ui_lang=="ar" else "Storage & DR"}}</span></a>{% endif %}
+{% if has_perm("*") or has_perm("import.manage") or has_perm("export.view") %}<a class="nav-link" href="{{url_for('admin_import_export')}}">⇅ <span>{{"الاستيراد / التصدير" if ui_lang=="ar" else "Import / Export"}}</span></a>{% endif %}
+{% if has_perm("backup.view") %}<a class="nav-link" href="{{url_for('admin_data_management')}}">🗃 <span>{{"إدارة البيانات" if ui_lang=="ar" else "Data Management"}}</span></a>{% endif %}
+{% if has_perm("audit.view") %}<a class="nav-link" href="{{url_for('admin_audit')}}">◉ <span>{{"سجل المراجعة" if ui_lang=="ar" else "Audit Log"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_diagnostics')}}">🛠 <span>{{"التشخيص" if ui_lang=="ar" else "Diagnostics"}}</span></a>{% endif %}
+{% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_ribbon_designer')}}">⭐ <span>{{"مصمم الاختصارات" if ui_lang=="ar" else "Ribbon Designer"}}</span></a>{% endif %}
+</div></details>
+<details class="rb-nav-group">
+<summary class="nav-caption">{{"حسابي" if ui_lang=="ar" else "My Account"}}</summary>
+<div class="rb-nav-group-links">
+<a class="nav-link" href="{{url_for('my_profile')}}">👤 <span>{{t("nav.profile","My Profile")}}</span></a>
+<a class="nav-link" href="{{url_for('my_ribbon')}}">⭐ <span>{{t("nav.ribbon","My Ribbon")}}</span></a>
+<a class="nav-link" href="{{url_for('my_quick_actions')}}">⚡ <span>{{"إجراءاتي السريعة" if ui_lang=="ar" else "My Quick Actions"}}</span></a>
+<a class="nav-link" href="{{url_for('my_registration_defaults')}}">⚙ <span>{{"افتراضيات التسجيل" if ui_lang=="ar" else "My Registration Defaults"}}</span></a>
+<a class="nav-link" href="{{url_for('my_assignment_offers')}}">◎ <span>{{"عروض التوزيع الخاصة بي" if ui_lang=="ar" else "My Assignment Offers"}}</span></a>
+<a class="nav-link" href="{{url_for('change_password')}}">🔑 <span>{{"تغيير كلمة المرور" if ui_lang=="ar" else "Change Password"}}</span></a>
+</div></details>
+</nav>
+
+<div class="sidebar-bottom">
+<div class="pacs-mini {% if pacs_online %}online{% else %}offline{% endif %}">
+<span class="health-dot"></span><div><strong>PACS</strong><small>{{'متصل' if pacs_online and ui_lang=='ar' else 'غير متصل' if (not pacs_online and ui_lang=='ar') else 'Online' if pacs_online else 'Offline'}}</small></div>
+</div>
+
+<form method="post" action="{{url_for('ui_language_switch')}}" class="language-switcher">
+<button type="submit" name="language" value="ar" class="lang-btn {% if ui_lang=='ar' %}active{% endif %}">العربية</button>
+<button type="submit" name="language" value="en" class="lang-btn {% if ui_lang=='en' %}active{% endif %}">English</button>
+</form>
+
+<a class="sidebar-logout js-confirm-logout" href="{{url_for('logout')}}">⇥ <span>{{'تسجيل الخروج' if ui_lang=='ar' else 'Logout'}}</span></a>
+</div>
+</aside>
+
+<main class="main">
+<header class="app-header">
+<div class="header-left">
+<button class="icon-btn mobile-only" id="sidebarOpen">☰</button>
+<div><div class="breadcrumb"><a href="{{url_for('dashboard')}}">{{t("nav.dashboard","Dashboard")}}</a><span>/</span><span>{% block page_title %}RIS{% endblock %}</span></div><p class="page-subtitle">{% block subtitle %}{% endblock %}</p></div>
+</div>
+<div class="header-actions">
+<div class="system-pill {% if pacs_online %}ok{% else %}bad{% endif %}"><span class="health-dot"></span>PACS {{'متصل' if pacs_online and ui_lang=='ar' else 'غير متصل' if (not pacs_online and ui_lang=='ar') else 'Online' if pacs_online else 'Offline'}}</div>
+
+<form method="post" action="{{url_for('ui_language_switch')}}" class="header-language-switch">
+<button type="submit" name="language" value="ar" class="{% if ui_lang=='ar' %}active{% endif %}">ع</button>
+<button type="submit" name="language" value="en" class="{% if ui_lang=='en' %}active{% endif %}">EN</button>
+</form>
+
+<div class="user-menu">
+<button class="user-trigger" id="userTrigger"><span class="avatar">{{(me.full_name or me.username)[:1]|upper}}</span><span class="user-meta"><strong>{{me.full_name or me.username}}</strong><small>{{me.role.name}}</small></span><span>⌄</span></button>
+<div class="user-dropdown" id="userDropdown">
+<div class="dropdown-user"><span class="avatar">{{(me.full_name or me.username)[:1]|upper}}</span><div><strong>{{me.full_name or me.username}}</strong><small>{{me.role.name}}</small></div></div>
+<div class="dropdown-divider"></div>
+<a href="{{url_for('my_profile')}}">👤 {{t("nav.profile","My Profile")}}</a>
+<a href="{{url_for('my_ribbon')}}">⭐ {{t("nav.ribbon","My Ribbon")}}</a>
+<a href="{{url_for('change_password')}}">⚿ {{'تغيير كلمة المرور' if ui_lang=='ar' else 'Change Password'}}</a>
+<div class="dropdown-divider"></div>
+<a class="danger js-confirm-logout" href="{{url_for('logout')}}">⇥ {{'تسجيل الخروج' if ui_lang=='ar' else 'Logout'}}</a>
+</div></div>
+</div>
+</header>
+
+{% if ribbon_actions %}
+<div class="quick-ribbon">
+{% for x in ribbon_actions %}
+{% set a=x.action %}
+<a class="quick-ribbon-action" href="{{url_for(a.route_name)}}"><span>{{a.icon}}</span><small>{{a.label_ar if ui_lang=='ar' and a.label_ar else a.label_en}}</small></a>
+{% endfor %}
+<a class="quick-ribbon-action customize" href="{{url_for('my_ribbon')}}"><span>⚙</span><small>{{'تخصيص' if ui_lang=='ar' else 'Customize'}}</small></a>
+</div>
+{% endif %}
+
+<section class="page-heading"><h1>{{self.page_title()}}</h1></section>
+{% with msgs=get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flash-stack">{% for cat,msg in msgs %}<div class="flash {{cat}}"><div>{{msg}}</div><button class="flash-close">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
+<div class="page-content">{% block content %}{% endblock %}</div>
+{% if has_perm("users.view") %}<div class="admin-quick-link"><a href="{{url_for('admin_printer_profiles')}}">🖨️ Printer Profiles</a></div>{% endif %}
+<div class="registration-default-links"><a href="{{url_for('my_registration_defaults')}}">⚙ Registration Defaults</a>{% if has_perm("users.view") %} · <a href="{{url_for('admin_registration_defaults')}}">Admin Defaults</a>{% endif %}</div>
+<footer class="app-footer"><span>RIS Operations</span><span>•</span><span>{{ app_version or version or 'R7' }}</span></footer>
+</main>
+</div>
+
+<div class="confirm-modal" id="confirmModal">
+<div class="confirm-dialog"><div class="confirm-icon">⇥</div>
+<h3>{{'تسجيل الخروج؟' if ui_lang=='ar' else 'Sign out?'}}</h3>
+<p>{{'هل تريد إنهاء الجلسة الحالية؟' if ui_lang=='ar' else 'Are you sure you want to end your current session?'}}</p>
+<div class="confirm-actions"><button class="btn" id="confirmCancel">{{'إلغاء' if ui_lang=='ar' else 'Cancel'}}</button><a class="btn danger" href="{{url_for('logout')}}">{{'تسجيل الخروج' if ui_lang=='ar' else 'Logout'}}</a></div>
+</div></div>
+
+<script src="{{url_for('static',filename='app.js')}}"></script>
+
+<script id="sidebar-menu-search-v5463">
+document.addEventListener('DOMContentLoaded',function(){
+  const input=document.getElementById('sidebarMenuSearch');
+  const clear=document.getElementById('sidebarMenuSearchClear');
+  const nav=document.getElementById('sidebarNavMenu');
+  const empty=document.getElementById('sidebarSearchEmpty');
+  if(!input || !nav) return;
+  const groups=[...nav.querySelectorAll('.rb-nav-group')];
+  const links=[...nav.querySelectorAll('.nav-link')];
+  function norm(v){return String(v||'').toLocaleLowerCase().normalize('NFKD').replace(/[\u064B-\u065F\u0670]/g,'').trim();}
+  function apply(){
+    const q=norm(input.value); let visible=0;
+    links.forEach(link=>{
+      const match=!q || norm(link.textContent).includes(q) || norm(link.getAttribute('href')).includes(q);
+      link.hidden=!match; if(match) visible++;
+    });
+    groups.forEach(group=>{
+      const matched=[...group.querySelectorAll('.nav-link')].some(x=>!x.hidden);
+      group.hidden=!!q && !matched;
+      if(q && matched) group.open=true;
+    });
+    if(empty) empty.hidden=!q || visible>0;
+    if(clear) clear.classList.toggle('visible',!!input.value);
+  }
+  input.addEventListener('input',apply);
+  input.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){input.value='';apply();input.blur();}
+    if(e.key==='Enter'){
+      const first=links.find(x=>!x.hidden && !x.closest('.rb-nav-group')?.hidden);
+      if(first){e.preventDefault();first.click();}
+    }
+  });
+  if(clear) clear.addEventListener('click',function(){input.value='';apply();input.focus();});
+  apply();
+});
+</script>
+
+{% else %}
+{% block public_content %}{% endblock %}
+{% endif %}
+
+<script id="mobile-menu-fallback-v5222">
+document.addEventListener('DOMContentLoaded',function(){
+  const sidebar=document.getElementById('sidebar');
+  const open=document.getElementById('mobileMenuOpen');
+  const close=document.getElementById('sidebarClose');
+  const overlay=document.getElementById('sidebarOverlay');
+  function show(){ if(sidebar) sidebar.classList.add('open'); if(overlay) overlay.classList.add('show'); }
+  function hide(){ if(sidebar) sidebar.classList.remove('open'); if(overlay) overlay.classList.remove('show'); }
+  if(open) open.addEventListener('click',show);
+  if(close) close.addEventListener('click',hide);
+  if(overlay) overlay.addEventListener('click',hide);
+});
+</script>
+
+
+
+<div id="rbOfferBell"
+     onclick="rbCheckAssignmentOffer()"
+     title="Pending assignment offers"
+     style="
+       position:fixed;
+       top:18px;
+       right:22px;
+       z-index:99990;
+       cursor:pointer;
+       background:white;
+       border:1px solid #ddd;
+       border-radius:50%;
+       width:46px;
+       height:46px;
+       display:flex;
+       align-items:center;
+       justify-content:center;
+       box-shadow:0 3px 12px rgba(0,0,0,.18);
+       font-size:22px;
+     ">
+  🔔
+
+  <span id="rbOfferBadge"
+        style="
+          display:none;
+          position:absolute;
+          top:-4px;
+          right:-4px;
+          min-width:20px;
+          height:20px;
+          padding:0 5px;
+          border-radius:10px;
+          background:#d32f2f;
+          color:white;
+          font-size:12px;
+          font-weight:bold;
+          align-items:center;
+          justify-content:center;
+        ">
+    0
+  </span>
+</div>
+
+<div id="rbAssignmentOfferModal" style="display:none;position:fixed;inset:0;background:#0008;z-index:99999;align-items:center;justify-content:center"><div class="panel" style="width:min(560px,92vw)"><h2>New Case Offer</h2>
+<div id="rbOfferCountdown"
+     style="
+       margin-top:10px;
+       font-weight:bold;
+       font-size:16px;
+     ">
+</div>
+
+<div id="rbOfferSummary"></div><div class="actions" style="margin-top:16px"><a id="rbOfferViewer" class="btn" target="_blank">Open Images</a><form id="rbOfferForm" method="post" style="display:inline"><button class="btn primary" name="action" value="ACCEPT">Accept</button><button class="btn" name="action" value="BUSY">Busy</button><button class="btn danger" name="action" value="REJECT">Reject</button></form><button class="btn" type="button" onclick="document.getElementById('rbAssignmentOfferModal').style.display='none'">Later</button></div></div></div>
+<script>
+let rbOfferTimer=null;
+
+function rbStartOfferCountdown(expiresAt){
+
+  if(rbOfferTimer){
+    clearInterval(rbOfferTimer);
+  }
+
+  const el=document.getElementById('rbOfferCountdown');
+
+  function tick(){
+
+    if(!el || !expiresAt){
+      return;
+    }
+
+    const expires=new Date(expiresAt).getTime();
+    const now=Date.now();
+    let sec=Math.floor((expires-now)/1000);
+
+    if(sec<=0){
+
+      el.textContent='Offer expired';
+
+      const badge=document.getElementById('rbOfferBadge');
+
+      if(badge){
+        badge.style.display='none';
+      }
+
+      clearInterval(rbOfferTimer);
+
+      setTimeout(rbCheckAssignmentOffer,1000);
+
+      return;
+    }
+
+    const min=Math.floor(sec/60);
+    sec=sec%60;
+
+    el.textContent=
+      'Time remaining: '+
+      min+':'+
+      String(sec).padStart(2,'0');
+  }
+
+  tick();
+
+  rbOfferTimer=setInterval(
+    tick,
+    1000
+  );
+}
+
+async function rbCheckAssignmentOffer(){try{const r=await fetch('/api/assignment/offers/pending',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();if(!d.pending)return;document.getElementById('rbOfferSummary').innerHTML='<b>'+d.accession+'</b><br>'+d.modality+' · '+d.procedure+'<br>Priority: '+d.priority+'<br>Images: '+d.images+'<br>Expires: '+(d.expires_at||'-');document.getElementById('rbOfferViewer').href=d.viewer_url;
+
+rbStartOfferCountdown(d.expires_at);document.getElementById('rbOfferForm').action=d.respond_url;document.getElementById('rbAssignmentOfferModal').style.display='flex'}catch(e){}}setTimeout(rbCheckAssignmentOffer,1500);setInterval(rbCheckAssignmentOffer,20000);</script>
+
+
+{% include "_telephony_widget.html" %}
+
+
+<!-- RADBRIDGE-GLOBAL-COMM-ALERT-V5423 -->
+
+<style>
+
+#rbGlobalCommAlert{
+ position:fixed;
+ left:22px;
+ bottom:22px;
+ z-index:99999;
+ background:#fff;
+ border:2px solid #2563eb;
+ border-radius:18px;
+ padding:11px 14px;
+ min-width:255px;
+ box-shadow:0 15px 40px rgba(15,23,42,.24);
+ display:none;
+ align-items:center;
+ gap:12px;
+ cursor:pointer;
+ user-select:none;
+}
+
+#rbGlobalCommPhone{
+ width:52px;
+ height:52px;
+ flex:none;
+ border-radius:16px;
+ background:#2563eb;
+ color:#fff;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-size:28px;
+ position:relative;
+ box-shadow:0 8px 18px rgba(37,99,235,.25);
+}
+
+#rbGlobalCommCount{
+ position:absolute;
+ right:-8px;
+ top:-8px;
+ min-width:24px;
+ height:24px;
+ padding:0 6px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ background:#dc2626;
+ color:#fff;
+ border-radius:999px;
+ border:2px solid #fff;
+ font-size:11px;
+ font-weight:900;
+}
+
+#rbGlobalCommPhone.ringing{
+ animation:
+   rbGlobalPhoneRing
+   .15s
+   ease-in-out
+   infinite alternate;
+}
+
+#rbGlobalCommAlert.ringing-alert{
+ animation:
+   rbGlobalAlertPulse
+   1.1s
+   ease-in-out
+   infinite;
+}
+
+@keyframes rbGlobalPhoneRing{
+
+ 0%{
+   transform:
+     rotate(-13deg)
+     translateX(-2px);
+ }
+
+ 100%{
+   transform:
+     rotate(13deg)
+     translateX(2px);
+ }
+
+}
+
+@keyframes rbGlobalAlertPulse{
+
+ 0%,100%{
+   box-shadow:
+     0 15px 40px
+     rgba(15,23,42,.24);
+ }
+
+ 50%{
+   box-shadow:
+     0 0 0 6px
+     rgba(239,68,68,.12),
+     0 15px 40px
+     rgba(15,23,42,.24);
+ }
+
+}
+
+.rb-global-alert-copy{
+ min-width:0;
+}
+
+.rb-global-alert-copy strong{
+ display:block;
+ font-size:14px;
+ color:#0f172a;
+ margin-bottom:2px;
+}
+
+.rb-global-alert-copy small{
+ color:#64748b;
+ font-size:12px;
+}
+
+@media(max-width:650px){
+
+ #rbGlobalCommAlert{
+   left:10px;
+   right:10px;
+   bottom:10px;
+ }
+
+}
+
+</style>
+
+
+<div id="rbGlobalCommAlert">
+
+<div id="rbGlobalCommPhone">
+
+☎
+
+<span id="rbGlobalCommCount">
+0
+</span>
+
+</div>
+
+<div class="rb-global-alert-copy">
+
+<strong>
+طلبات مرضى جديدة
+</strong>
+
+<small id="rbGlobalCommText">
+اضغط للمتابعة
+</small>
+
+</div>
+
+</div>
+
+
+<script>
+
+(function(){
+
+ const alertBox =
+   document.getElementById(
+     'rbGlobalCommAlert'
+   );
+
+ const phone =
+   document.getElementById(
+     'rbGlobalCommPhone'
+   );
+
+ const badge =
+   document.getElementById(
+     'rbGlobalCommCount'
+   );
+
+ const text =
+   document.getElementById(
+     'rbGlobalCommText'
+   );
+
+
+ if(
+   !alertBox ||
+   !phone ||
+   !badge ||
+   !text
+ ){
+   return;
+ }
+
+
+ let previous = 0;
+
+ let audioReady = false;
+
+
+ function unlockAudio(){
+
+   audioReady = true;
+
+ }
+
+
+ document.addEventListener(
+   'click',
+   unlockAudio,
+   {
+     once:true
+   }
+ );
+
+
+ function ringTone(){
+
+   if(!audioReady){
+     return;
+   }
+
+
+   try{
+
+     const AC =
+       window.AudioContext ||
+       window.webkitAudioContext;
+
+
+     const ctx =
+       new AC();
+
+
+     const osc1 =
+       ctx.createOscillator();
+
+
+     const osc2 =
+       ctx.createOscillator();
+
+
+     const gain =
+       ctx.createGain();
+
+
+     osc1.type = 'sine';
+     osc2.type = 'sine';
+
+
+     osc1.frequency.value = 740;
+     osc2.frequency.value = 930;
+
+
+     gain.gain.setValueAtTime(
+       0.0001,
+       ctx.currentTime
+     );
+
+
+     gain.gain.exponentialRampToValueAtTime(
+       0.16,
+       ctx.currentTime + 0.03
+     );
+
+
+     gain.gain.exponentialRampToValueAtTime(
+       0.0001,
+       ctx.currentTime + 0.45
+     );
+
+
+     osc1.connect(gain);
+     osc2.connect(gain);
+
+     gain.connect(
+       ctx.destination
+     );
+
+
+     osc1.start();
+     osc2.start();
+
+
+     osc1.stop(
+       ctx.currentTime + 0.48
+     );
+
+     osc2.stop(
+       ctx.currentTime + 0.48
+     );
+
+
+   }catch(e){
+
+     console.error(
+       'RadBridge notification sound:',
+       e
+     );
+
+   }
+
+ }
+
+
+ function playRingSequence(){
+
+   ringTone();
+
+   setTimeout(
+     ringTone,
+     560
+   );
+
+   setTimeout(
+     ringTone,
+     1120
+   );
+
+ }
+
+
+ async function pollQueue(){
+
+   try{
+
+     const r =
+       await fetch(
+         '/api/staff/communications/queue',
+         {
+           credentials:
+             'same-origin',
+
+           cache:
+             'no-store'
+         }
+       );
+
+
+     if(!r.ok){
+
+       if(
+         r.status === 401 ||
+         r.status === 403
+       ){
+
+         alertBox.style.display =
+           'none';
+
+       }
+
+       return;
+
+     }
+
+
+     const j =
+       await r.json();
+
+
+     if(!j.ok){
+       return;
+     }
+
+
+     const waiting =
+       (j.items || [])
+       .filter(
+         x =>
+           x.status === 'NEW' ||
+           x.status ===
+             'WAITING_HUMAN'
+       )
+       .length;
+
+
+     badge.textContent =
+       String(waiting);
+
+
+     if(waiting > 0){
+
+       alertBox.style.display =
+         'flex';
+
+
+       phone.classList.add(
+         'ringing'
+       );
+
+
+       alertBox.classList.add(
+         'ringing-alert'
+       );
+
+
+       text.textContent =
+         waiting +
+         (
+           waiting === 1
+             ? ' طلب يحتاج متابعة'
+             : ' طلبات تحتاج متابعة'
+         );
+
+
+     }else{
+
+       alertBox.style.display =
+         'none';
+
+
+       phone.classList.remove(
+         'ringing'
+       );
+
+
+       alertBox.classList.remove(
+         'ringing-alert'
+       );
+
+     }
+
+
+     if(
+       waiting >
+       previous
+     ){
+
+       playRingSequence();
+
+     }
+
+
+     previous =
+       waiting;
+
+
+   }catch(e){
+
+     console.error(
+       'RadBridge communication alert:',
+       e
+     );
+
+   }
+
+ }
+
+
+ alertBox.addEventListener(
+   'click',
+   function(){
+
+     window.location.href =
+       '/communications';
+
+   }
+ );
+
+
+ pollQueue();
+
+
+ setInterval(
+   pollQueue,
+   3000
+ );
+
+})();
+
+</script>
+
+
+</body></html>

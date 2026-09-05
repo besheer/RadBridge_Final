@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block page_title %}Referring Doctors / الأطباء المحولون{% endblock %}
+{% block content %}
+<div class="panel form-card"><form method="post"><div class="grid3">
+<div><label>Code</label><input name="code" required></div><div><label>Name</label><input name="name" required></div>
+<div><label>Specialty</label><input name="specialty"></div><div><label>Organization</label><input name="organization"></div>
+<div><label>Phone</label><input name="phone"></div></div><button class="btn primary">Add Doctor</button></form></div>
+<div class="panel"><table><tr><th>Code</th><th>Name</th><th>Specialty</th><th>Organization</th><th>Phone</th></tr>
+{% for r in rows %}<tr><td>{{r.code}}</td><td>{{r.name}}</td><td>{{r.specialty}}</td><td>{{r.organization}}</td><td>{{r.phone}}</td></tr>{% endfor %}</table></div>{% endblock %}

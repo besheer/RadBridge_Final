@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block page_title %}DICOM Auto Discovery{% endblock %}
+{% block subtitle %}Automatically discover new AE Titles seen by PACS Auto Intake; approve, classify or block them{% endblock %}
+{% block content %}
+<div class="panel">
+  <h3>Register Viewer / Node Manually</h3>
+  <form method="post" action="{{url_for('pacs_discovery_manual')}}" class="form-grid">
+    <input name="ae_title" placeholder="AE Title (e.g. RADIANT)" required>
+    <input name="host" placeholder="IP / hostname (optional)">
+    <input name="port" type="number" placeholder="Listener port (for C-MOVE / resend)">
+    <select name="node_type"><option>VIEWER</option><option>MODALITY</option><option>UNKNOWN</option></select>
+    <button class="btn primary">Add to Discovery Registry</button>
+  </form>
+  <small>Any viewer can still use C-FIND/C-GET when Orthanc is configured permissively; a routable IP/port is required for C-MOVE destinations.</small>
+</div>
+
+<div class="panel">
+<table>
+<tr><th>Status</th><th>AE Title</th><th>Host</th><th>Port</th><th>Type</th><th>Modality</th><th>Studies</th><th>Last Seen</th><th>Action</th></tr>
+{% for r in rows %}
+<tr>
+<td><span class="badge">{{r.status}}</span></td>
+<td><b>{{r.ae_title}}</b></td>
+<td>{{r.host or 'Not reported by study metadata'}}</td>
+<td>{{r.port or '-'}}</td>
+<td>{{r.node_type}}</td>
+<td>{{r.modality or '-'}}</td>
+<td>{{r.studies_seen}}</td>
+<td>{{r.last_seen_at}}</td>
+<td>
+  {% if r.status != 'APPROVED' %}
+  <form method="post" action="{{url_for('pacs_discovery_approve',node_id=r.id)}}" style="display:grid;gap:5px">
+    <select name="node_type"><option {% if r.node_type=='MODALITY' %}selected{% endif %}>MODALITY</option><option {% if r.node_type=='VIEWER' %}selected{% endif %}>VIEWER</option><option>UNKNOWN</option></select>
+    <select name="branch_id"><option value="">No branch</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select>
+    <input name="port" type="number" value="{{r.port or ''}}" placeholder="Port if needed">
+    <input name="notes" placeholder="Notes">
+    <button class="btn primary">Approve</button>
+  </form>
+  {% endif %}
+  {% if r.status != 'BLOCKED' %}
+  <form method="post" action="{{url_for('pacs_discovery_block',node_id=r.id)}}" style="margin-top:5px">
+    <button class="btn">Block</button>
+  </form>
+  {% endif %}
+</td>
+</tr>
+{% endfor %}
+</table>
+</div>
+{% endblock %}

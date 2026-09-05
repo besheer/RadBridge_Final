@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block page_title %}Executive Analytics{% endblock %}
+{% block subtitle %}Interactive management reporting from live RIS data{% endblock %}
+{% block content %}
+<div class="panel exec-filters">
+<form method="get" class="exec-filter-grid">
+<div><label>From</label><input type="date" name="start" value="{{f.start}}"></div>
+<div><label>To</label><input type="date" name="end" value="{{f.end}}"></div>
+<div><label>Branch</label><select name="branch_id"><option value="">All Branches</option>{% for x in branches %}<option value="{{x.id}}" {% if f.branch_id==x.id %}selected{% endif %}>{{x.name}}</option>{% endfor %}</select></div>
+<div><label>Modality</label><select name="modality"><option value="">All Modalities</option>{% for x in modalities %}<option value="{{x}}" {% if f.modality==x %}selected{% endif %}>{{x}}</option>{% endfor %}</select></div>
+<div><label>Doctor</label><select name="doctor_id"><option value="">All Doctors</option>{% for x in doctors %}<option value="{{x.id}}" {% if f.doctor_id==x.id %}selected{% endif %}>{{x.full_name or x.username}}</option>{% endfor %}</select></div>
+<div><label>Device</label><select name="device_id"><option value="">All Devices</option>{% for x in devices %}<option value="{{x.id}}" {% if f.device_id==x.id %}selected{% endif %}>{{x.name}}</option>{% endfor %}</select></div>
+<div><label>Contract</label><select name="contract_id"><option value="">All Contracts</option>{% for x in contracts %}<option value="{{x.id}}" {% if f.contract_id==x.id %}selected{% endif %}>{{x.name}}</option>{% endfor %}</select></div>
+<div class="exec-filter-action"><button class="btn primary">Apply Filters</button></div>
+</form></div>
+
+<div class="exec-kpis">
+<div><span>Total Exams</span><b>{{data.kpi.total_exams}}</b></div>
+<div><span>New Patients</span><b>{{data.kpi.new_patients}}</b></div>
+<div><span>Average TAT</span><b>{{data.kpi.avg_tat}} <small>min</small></b></div>
+<div><span>Completion Rate</span><b>{{data.kpi.completion_rate}}%</b></div>
+<div><span>Revenue</span><b>{{'{:,.0f}'.format(data.kpi.revenue)}} <small>EGP</small></b></div>
+<div><span>Collected</span><b>{{'{:,.0f}'.format(data.kpi.paid)}} <small>EGP</small></b></div>
+</div>
+
+<div class="exec-grid">
+<div class="panel exec-chart-card wide"><h3>Daily Exams</h3><div id="chartDaily" class="exec-chart"></div></div>
+<div class="panel exec-chart-card"><h3>Exams by Modality</h3><div id="chartModalities" class="exec-chart"></div></div>
+<div class="panel exec-chart-card"><h3>Case Status</h3><div id="chartStatuses" class="exec-chart"></div></div>
+<div class="panel exec-chart-card wide"><h3>Revenue Trend</h3><div id="chartRevenue" class="exec-chart"></div></div>
+<div class="panel exec-chart-card"><h3>Branch Performance</h3><div id="chartBranches" class="exec-chart"></div></div>
+<div class="panel exec-chart-card"><h3>Top Doctors by Exam Volume</h3><div id="chartDoctors" class="exec-chart"></div></div>
+<div class="panel exec-chart-card"><h3>Device Utilization by Exam Volume</h3><div id="chartDevices" class="exec-chart"></div></div>
+</div>
+
+<script id="executive-data" type="application/json">{{data|tojson}}</script>
+<script>
+(()=> {
+ const D=JSON.parse(document.getElementById('executive-data').textContent);
+ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ function bars(id,rows){
+   const el=document.getElementById(id); if(!el)return;
+   const max=Math.max(1,...rows.map(x=>Number(x.value)||0));
+   el.innerHTML='<div class="bar-list">'+rows.map(x=>`<div class="bar-row"><span>${esc(x.label)}</span><div class="bar-track"><i style="width:${Math.max(2,(Number(x.value)||0)*100/max)}%"></i></div><b>${Number(x.value||0).toLocaleString()}</b></div>`).join('')+'</div>';
+ }
+ function line(id,rows,money=false){
+   const el=document.getElementById(id); if(!el)return;
+   const vals=rows.map(x=>Number(x.value)||0), max=Math.max(1,...vals), w=760,h=220,p=28;
+   const pts=vals.map((v,i)=>`${p+i*(w-2*p)/Math.max(1,vals.length-1)},${h-p-v*(h-2*p)/max}`).join(' ');
+   const labels=rows.filter((x,i)=>i===0||i===rows.length-1||i%Math.max(1,Math.floor(rows.length/6))===0)
+     .map((x)=>{const i=rows.indexOf(x),xx=p+i*(w-2*p)/Math.max(1,rows.length-1);return `<text x="${xx}" y="${h-6}" text-anchor="middle">${esc(x.label)}</text>`}).join('');
+   el.innerHTML=`<svg viewBox="0 0 ${w} ${h}" class="line-svg"><line x1="${p}" y1="${h-p}" x2="${w-p}" y2="${h-p}"/><polyline points="${pts}"/>${labels}</svg>`;
+ }
+ function donut(id,rows){
+   const el=document.getElementById(id); if(!el)return;
+   const total=rows.reduce((a,x)=>a+(Number(x.value)||0),0)||1; let acc=0;
+   const colors=['#2563eb','#14b8a6','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#84cc16','#64748b'];
+   const seg=rows.map((x,i)=>{const a=acc/total*360;acc+=Number(x.value)||0;const b=acc/total*360;return `${colors[i%colors.length]} ${a}deg ${b}deg`}).join(',');
+   el.innerHTML=`<div class="donut-wrap"><div class="donut" style="background:conic-gradient(${seg})"><div><b>${total.toLocaleString()}</b><small>Exams</small></div></div><div class="donut-legend">${rows.map((x,i)=>`<div><i style="background:${colors[i%colors.length]}"></i><span>${esc(x.label)}</span><b>${x.value}</b></div>`).join('')}</div></div>`;
+ }
+ line('chartDaily',D.daily_exams); line('chartRevenue',D.daily_revenue,true);
+ donut('chartModalities',D.modalities); donut('chartStatuses',D.statuses);
+ bars('chartBranches',D.branches);bars('chartDoctors',D.doctors);bars('chartDevices',D.devices);
+})();
+</script>
+{% endblock %}

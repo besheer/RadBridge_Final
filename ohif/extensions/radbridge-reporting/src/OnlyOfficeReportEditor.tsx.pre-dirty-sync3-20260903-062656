@@ -1,0 +1,671 @@
+import React, { useEffect, useRef, useState } from 'react';
+
+declare global {
+  interface Window {
+    DocsAPI?: any;
+  }
+}
+
+type Props = {
+  orderId: string;
+  studyInstanceUID: string;
+  identity: string;
+  leaseToken: string;
+  onClose: () => void;
+};
+
+const API_SCRIPT =
+  '/onlyoffice/web-apps/apps/api/documents/api.js';
+
+export default function OnlyOfficeReportEditor({
+  orderId,
+  studyInstanceUID,
+  identity,
+  leaseToken,
+  onClose,
+}: Props) {
+  const editorRef = useRef<any>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [workflowBusy, setWorkflowBusy] = useState(false);
+  const [workflowMessage, setWorkflowMessage] = useState('');
+  const [baseVersionNo, setBaseVersionNo] = useState(0);
+  const [reportStatus, setReportStatus] = useState('DRAFT');
+  const [documentKey, setDocumentKey] = useState('');
+  const [editorReloadToken, setEditorReloadToken] =
+    useState(0);
+
+  function configUrl() {
+    const query = new URLSearchParams();
+
+    if (studyInstanceUID) {
+      query.set(
+        'StudyInstanceUIDs',
+        studyInstanceUID
+      );
+    }
+
+    return (
+      `/radbridge-api/api/ohif/report/` +
+      `${encodeURIComponent(orderId)}` +
+      `/onlyoffice/config?${query.toString()}`
+    );
+  }
+
+  async function loadOnlyOfficeApi() {
+    if (window.DocsAPI?.DocEditor) {
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const existing =
+        document.querySelector<HTMLScriptElement>(
+          `script[src="${API_SCRIPT}"]`
+        );
+
+      if (existing) {
+        if (window.DocsAPI?.DocEditor) {
+          resolve();
+          return;
+        }
+
+        existing.addEventListener(
+          'load',
+          () => resolve(),
+          { once: true }
+        );
+
+        existing.addEventListener(
+          'error',
+          () => reject(
+            new Error(
+              'ONLYOFFICE API failed to load'
+            )
+          ),
+          { once: true }
+        );
+
+        return;
+      }
+
+      const script =
+        document.createElement('script');
+
+      script.src = API_SCRIPT;
+      script.async = true;
+
+      script.onload = () => resolve();
+
+      script.onerror = () =>
+        reject(
+          new Error(
+            'ONLYOFFICE API failed to load'
+          )
+        );
+
+      document.head.appendChild(script);
+    });
+  }
+
+  function workflowUrl(action: string) {
+    const query = new URLSearchParams();
+
+    if (studyInstanceUID) {
+      query.set(
+        'StudyInstanceUIDs',
+        studyInstanceUID
+      );
+    }
+
+    const base =
+      `/radbridge-api/api/ohif/report/` +
+      `${encodeURIComponent(orderId)}` +
+      `/onlyoffice/${action}`;
+
+    return query.toString()
+      ? `${base}?${query.toString()}`
+      : base;
+  }
+
+  async function forceSaveWorkingCopy() {
+    if (!documentKey) {
+      throw new Error(
+        'ONLYOFFICE_DOCUMENT_KEY_MISSING'
+      );
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (identity) {
+      headers['X-RadBridge-Doctor-Identity'] =
+        identity;
+    }
+
+    if (leaseToken) {
+      headers['X-RadBridge-Report-Lease'] =
+        leaseToken;
+    }
+
+    const response = await fetch(
+      workflowUrl('forcesave'),
+      {
+        method: 'POST',
+        credentials: 'omit',
+        headers,
+        body: JSON.stringify({
+          document_key: documentKey,
+        }),
+      }
+    );
+
+    let payload: any = {};
+
+    try {
+      payload = await response.json();
+    } catch {
+      payload = {};
+    }
+
+    if (
+      !response.ok ||
+      payload?.ok === false
+    ) {
+      throw new Error(
+        payload?.message ||
+        payload?.error ||
+        `ForceSave HTTP ${response.status}`
+      );
+    }
+
+    if (payload?.forcesaved !== true) {
+      throw new Error(
+        'ONLYOFFICE_FORCESAVE_NOT_CONFIRMED'
+      );
+    }
+  }
+
+  async function runWorkflowAction(
+    action: 'commit-draft' | 'verify' | 'finalize'
+  ) {
+    if (workflowBusy || loading) {
+      return;
+    }
+
+    if (
+      action === 'finalize' &&
+      !window.confirm(
+        'Finalize this report? It will become read only.'
+      )
+    ) {
+      return;
+    }
+
+    setWorkflowBusy(true);
+    setError('');
+    setWorkflowMessage('');
+
+    try {
+      if (action === 'commit-draft') {
+        setWorkflowMessage(
+          'Saving latest ONLYOFFICE changes...'
+        );
+
+        await forceSaveWorkingCopy();
+
+        setWorkflowMessage(
+          'Creating clinical draft...'
+        );
+      }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (identity) {
+        headers['X-RadBridge-Doctor-Identity'] =
+          identity;
+      }
+
+      if (leaseToken) {
+        headers['X-RadBridge-Report-Lease'] =
+          leaseToken;
+      }
+
+      const body =
+        action === 'finalize'
+          ? {}
+          : {
+              base_version_no: baseVersionNo,
+            };
+
+      const response = await fetch(
+        workflowUrl(action),
+        {
+          method: 'POST',
+          credentials: 'omit',
+          headers,
+          body: JSON.stringify(body),
+        }
+      );
+
+      let payload: any = {};
+
+      try {
+        payload = await response.json();
+      } catch {
+        payload = {};
+      }
+
+      if (
+        !response.ok ||
+        payload?.ok === false
+      ) {
+        throw new Error(
+          payload?.message ||
+          payload?.error ||
+          `HTTP ${response.status}`
+        );
+      }
+
+      const nextVersion =
+        Number(payload?.version_no);
+
+      if (Number.isFinite(nextVersion)) {
+        setBaseVersionNo(nextVersion);
+      }
+
+      if (action === 'commit-draft') {
+        setReportStatus('DRAFT');
+        setWorkflowMessage(
+          `Draft saved · Version ${nextVersion}`
+        );
+      } else if (action === 'verify') {
+        setReportStatus('VERIFIED');
+        setWorkflowMessage(
+          `Report verified · Version ${nextVersion}`
+        );
+      } else {
+        setReportStatus('FINAL');
+        setWorkflowMessage(
+          `Report finalized · Version ${nextVersion}`
+        );
+
+        setEditorReloadToken(
+          value => value + 1
+        );
+      }
+    } catch (e: any) {
+      setError(
+        e?.message || String(e)
+      );
+    } finally {
+      setWorkflowBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function start() {
+      try {
+        setLoading(true);
+        setError('');
+
+        await loadOnlyOfficeApi();
+
+        const headers: Record<string, string> = {};
+
+        if (identity) {
+          headers['X-RadBridge-Doctor-Identity'] =
+            identity;
+        }
+
+        const response = await fetch(
+          configUrl(),
+          {
+            credentials: 'omit',
+            headers,
+          }
+        );
+
+        const payload = await response.json();
+
+        if (
+          !response.ok ||
+          payload?.ok === false
+        ) {
+          throw new Error(
+            payload?.message ||
+            payload?.error ||
+            `HTTP ${response.status}`
+          );
+        }
+
+        if (!window.DocsAPI?.DocEditor) {
+          throw new Error(
+            'ONLYOFFICE DocsAPI unavailable'
+          );
+        }
+
+        if (!cancelled) {
+          const versionNo =
+            Number(payload?.base_version_no ?? 0);
+
+          setBaseVersionNo(
+            Number.isFinite(versionNo)
+              ? versionNo
+              : 0
+          );
+
+          setReportStatus(
+            String(
+              payload?.report_status || 'DRAFT'
+            ).toUpperCase()
+          );
+
+          setDocumentKey(
+            String(
+              payload?.config?.document?.key || ''
+            )
+          );
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        const config = {
+          ...(payload?.config || {}),
+
+          events: {
+            ...(payload?.config?.events || {}),
+
+            onAppReady: () => {
+              if (!cancelled) {
+                setLoading(false);
+              }
+            },
+
+            onError: (event: any) => {
+              if (!cancelled) {
+                const code =
+                  event?.data?.errorCode ??
+                  'UNKNOWN';
+
+                const description =
+                  event?.data?.errorDescription ??
+                  '';
+
+                setError(
+                  `ONLYOFFICE error ${code}` +
+                  (
+                    description
+                      ? `: ${description}`
+                      : ''
+                  )
+                );
+              }
+            },
+          },
+        };
+
+        editorRef.current =
+          new window.DocsAPI.DocEditor(
+            'radbridge-onlyoffice-editor',
+            config
+          );
+
+      } catch (e: any) {
+        if (!cancelled) {
+          setLoading(false);
+          setError(
+            e?.message || String(e)
+          );
+        }
+      }
+    }
+
+    start();
+
+    return () => {
+      cancelled = true;
+
+      try {
+        editorRef.current?.destroyEditor?.();
+      } catch {
+        // Ignore editor cleanup errors.
+      }
+
+      editorRef.current = null;
+    };
+  }, [
+    orderId,
+    studyInstanceUID,
+    identity,
+    editorReloadToken,
+  ]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="RadBridge ONLYOFFICE Editor"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 10020,
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#071219',
+      }}
+    >
+      <div
+        style={{
+          height: '48px',
+          flex: '0 0 48px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          padding: '0 14px',
+          color: '#fff',
+          background: '#0b1820',
+          borderBottom: '1px solid #173242',
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontWeight: 700,
+            }}
+          >
+            RadBridge ONLYOFFICE Report Editor
+          </div>
+
+          <div
+            style={{
+              fontSize: '11px',
+              opacity: 0.7,
+            }}
+          >
+            Autosave working copy · Finalization remains in RadBridge
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '12px',
+              fontWeight: 700,
+              padding: '5px 9px',
+              border: '1px solid #355365',
+              borderRadius: '5px',
+              background: '#10232e',
+            }}
+          >
+            {reportStatus} · Version {baseVersionNo}
+          </span>
+
+          <button
+            type="button"
+            disabled={
+              workflowBusy ||
+              loading ||
+              reportStatus === 'FINAL'
+            }
+            onClick={() => {
+              void runWorkflowAction(
+                'commit-draft'
+              );
+            }}
+            style={{
+              border: '1px solid #496170',
+              borderRadius: '5px',
+              padding: '6px 12px',
+              background: '#17394a',
+              color: '#fff',
+              cursor: 'pointer',
+            }}
+          >
+            Save Draft
+          </button>
+
+          <button
+            type="button"
+            disabled={
+              workflowBusy ||
+              loading ||
+              reportStatus !== 'DRAFT'
+            }
+            onClick={() => {
+              void runWorkflowAction(
+                'verify'
+              );
+            }}
+            style={{
+              border: '1px solid #496170',
+              borderRadius: '5px',
+              padding: '6px 12px',
+              background: '#14532d',
+              color: '#fff',
+              cursor: 'pointer',
+            }}
+          >
+            ✓ Verify
+          </button>
+
+          <button
+            type="button"
+            disabled={
+              workflowBusy ||
+              loading ||
+              reportStatus !== 'VERIFIED'
+            }
+            onClick={() => {
+              void runWorkflowAction(
+                'finalize'
+              );
+            }}
+            style={{
+              border: '1px solid #496170',
+              borderRadius: '5px',
+              padding: '6px 12px',
+              background: '#7c2d12',
+              color: '#fff',
+              cursor: 'pointer',
+            }}
+          >
+            🔒 Finalize
+          </button>
+
+          <button
+            type="button"
+            disabled={workflowBusy}
+            onClick={onClose}
+            style={{
+              border: '1px solid #496170',
+              borderRadius: '5px',
+              padding: '6px 12px',
+              background: '#162832',
+              color: '#fff',
+              cursor: 'pointer',
+            }}
+          >
+            Close Editor
+          </button>
+        </div>
+      </div>
+
+      {workflowMessage && (
+        <div
+          style={{
+            padding: '7px 14px',
+            color: '#bbf7d0',
+            background: '#14532d',
+            fontSize: '12px',
+          }}
+        >
+          {workflowMessage}
+        </div>
+      )}
+
+      {error && (
+        <div
+          style={{
+            padding: '9px 14px',
+            color: '#ffb4b4',
+            background: '#501e1e',
+            fontSize: '12px',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      <div
+        style={{
+          position: 'relative',
+          flex: 1,
+          minHeight: 0,
+          background: '#fff',
+        }}
+      >
+        {loading && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#101b22',
+              color: '#fff',
+            }}
+          >
+            Loading ONLYOFFICE…
+          </div>
+        )}
+
+        <div
+          id="radbridge-onlyoffice-editor"
+          style={{
+            width: '100%',
+            height: '100%',
+          }}
+        />
+      </div>
+    </div>
+  );
+}

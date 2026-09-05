@@ -1,0 +1,663 @@
+{% extends "base.html" %}
+{% from "_action_guidance.html" import action_info %}
+
+{% block page_title %}
+Smart Assignment Strategy Center
+{% endblock %}
+
+{% block subtitle %}
+Configure, edit and clone assignment behavior without changing code
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+<h3 id="formTitle">Create Strategy</h3>
+
+<form method="post" id="strategyForm">
+
+<input type="hidden"
+       name="strategy_id"
+       id="strategy_id">
+
+<div class="grid">
+
+<label>
+Name
+<input name="name"
+       id="strategy_name"
+       value="Default Strategy"
+       required>
+</label>
+
+<label>
+Priority
+<input type="number"
+       name="priority"
+       id="strategy_priority"
+       value="100">
+</label>
+
+<label>
+Branch
+<select name="branch_id"
+        id="strategy_branch">
+
+<option value="">
+Any branch
+</option>
+
+{% for b in branches %}
+
+<option value="{{b.id}}">
+{{b.name}}
+</option>
+
+{% endfor %}
+
+</select>
+</label>
+
+<label>
+Modality
+<input name="modality"
+       id="strategy_modality"
+       placeholder="CT / MR / US">
+</label>
+
+<label>
+Procedure contains
+<input name="procedure_pattern"
+       id="strategy_procedure">
+</label>
+
+<label>
+Assignment Mode
+
+<select name="assignment_mode"
+        id="strategy_mode">
+
+<option value="OFFER_ACCEPT">
+Offer → Accept / Busy / Reject
+</option>
+
+<option value="DIRECT_ASSIGN">
+Direct Assign
+</option>
+
+<option value="OPEN_POOL">
+Open Pool / Assign to Me
+</option>
+
+<option value="HYBRID">
+Hybrid
+</option>
+
+<option value="MANUAL_ONLY">
+Manual Only
+</option>
+
+</select>
+</label>
+
+<label>
+Fallback
+
+<select name="fallback_mode"
+        id="strategy_fallback">
+
+<option value="OPEN_POOL">
+Open Pool
+</option>
+
+<option value="COORDINATOR">
+Coordinator
+</option>
+
+<option value="MANUAL_ONLY">
+Manual Only
+</option>
+
+</select>
+
+</label>
+
+</div>
+
+
+<h3>Readiness Rules</h3>
+
+<div class="grid">
+
+{% for field,title in [
+('pacs_missing_action','Missing PACS'),
+('images_incomplete_action','Incomplete Images'),
+('documents_missing_action','Missing Documents'),
+('notes_missing_action','Missing Notes'),
+('attachments_missing_action','Missing Attachments'),
+('history_missing_action','Missing History / Priors')
+] %}
+
+<label>
+
+{{title}}
+
+<select name="{{field}}"
+        id="{{field}}">
+
+<option value="BLOCK">BLOCK</option>
+<option value="WARN">WARN</option>
+<option value="ALLOW">ALLOW</option>
+<option value="IGNORE">IGNORE</option>
+<option value="COORDINATOR">COORDINATOR</option>
+
+</select>
+
+</label>
+
+{% endfor %}
+
+</div>
+
+
+<h3>Images & Timing</h3>
+
+<div class="grid">
+
+<label>
+Minimum Images
+<input type="number"
+       name="min_images"
+       id="min_images"
+       value="0">
+</label>
+
+<label>
+Completion %
+<input type="number"
+       name="min_completion_percent"
+       id="min_completion_percent"
+       value="0">
+</label>
+
+<label>
+Stable Seconds
+<input type="number"
+       name="stable_seconds"
+       id="stable_seconds"
+       value="120">
+</label>
+
+<label>
+Routine Timeout
+<input type="number"
+       name="routine_timeout_seconds"
+       id="routine_timeout_seconds"
+       value="300">
+</label>
+
+<label>
+Urgent Timeout
+<input type="number"
+       name="urgent_timeout_seconds"
+       id="urgent_timeout_seconds"
+       value="120">
+</label>
+
+<label>
+STAT Timeout
+<input type="number"
+       name="stat_timeout_seconds"
+       id="stat_timeout_seconds"
+       value="60">
+</label>
+
+<label>
+Busy Snooze
+<input type="number"
+       name="busy_snooze_minutes"
+       id="busy_snooze_minutes"
+       value="30">
+</label>
+
+<label>
+Maximum Attempts
+<input type="number"
+       name="max_offer_attempts"
+       id="max_offer_attempts"
+       value="5">
+</label>
+
+<label>
+Active From
+<input type="time"
+       name="active_from"
+       id="active_from">
+</label>
+
+<label>
+Active To
+<input type="time"
+       name="active_to"
+       id="active_to">
+</label>
+
+</div>
+
+
+<h3>Doctor Matching</h3>
+
+<div class="actions"
+     style="display:flex;gap:14px;flex-wrap:wrap">
+
+<label>
+<input type="checkbox"
+       name="enabled"
+       id="strategy_enabled"
+       value="1"
+       checked>
+Enabled
+</label>
+
+<label>
+<input type="checkbox"
+       name="require_modality_match"
+       id="require_modality_match"
+       value="1"
+       checked>
+Require Modality
+</label>
+
+<label>
+<input type="checkbox"
+       name="require_branch_match"
+       id="require_branch_match"
+       value="1">
+Require Branch
+</label>
+
+<label>
+<input type="checkbox"
+       name="require_online"
+       id="require_online"
+       value="1">
+Require Online
+</label>
+
+<label>
+<input type="checkbox"
+       name="prefer_online"
+       id="prefer_online"
+       value="1"
+       checked>
+Prefer Online
+</label>
+
+</div>
+
+
+<p>
+
+<input name="change_note"
+       id="change_note"
+       placeholder="Describe why this strategy changed"
+       style="width:100%">
+
+</p>
+
+<div class="actions">
+
+<button class="btn primary"
+        id="saveStrategyButton">
+Save Strategy
+</button>
+
+{{ action_info(
+  'Save Strategy' if ui_lang != 'ar' else 'حفظ الاستراتيجية',
+  'Creates or updates assignment decision rules.' if ui_lang != 'ar' else 'ينشئ أو يحدّث قواعد قرار توزيع الحالات.',
+  'Use after reviewing scope, priority, readiness actions, timeouts and fallback.' if ui_lang != 'ar' else 'استخدمه بعد مراجعة النطاق والأولوية وإجراءات الجاهزية والمهلات والمسار الاحتياطي.',
+  'Document the reason for change and avoid overlapping enabled rules.' if ui_lang != 'ar' else 'وثّق سبب التغيير وتجنب تداخل القواعد المفعلة.',
+  'Changes future assignment decisions; it does not reassign existing cases.' if ui_lang != 'ar' else 'يغيّر قرارات التوزيع المستقبلية ولا يعيد توزيع الحالات الحالية.',
+  'Test with the simulator before enabling a production strategy.' if ui_lang != 'ar' else 'اختبر بالمحاكي قبل تفعيل استراتيجية للاستخدام الفعلي.',
+  ui_lang
+) }}
+
+<button type="button"
+        class="btn"
+        onclick="resetStrategyForm()">
+New Strategy
+</button>
+
+</div>
+
+</form>
+
+</div>
+
+
+<div class="panel">
+
+<h3>Strategy Simulator</h3>
+
+<p>
+Test the decision engine without assigning the case.
+</p>
+
+<form method="post"
+      action="{{url_for('admin_assignment_strategy_simulate_ui')}}"
+      target="_blank">
+
+<input type="number"
+       name="order_id"
+       placeholder="Order ID"
+       required>
+
+<button class="btn">
+Simulate
+</button>
+
+{{ action_info(
+  'Simulate Strategy' if ui_lang != 'ar' else 'محاكاة الاستراتيجية',
+  'Evaluates assignment policy for an order without assigning it.' if ui_lang != 'ar' else 'يقيّم سياسة التوزيع لأمر دون تعيينه.',
+  'Use before enabling or changing a strategy.' if ui_lang != 'ar' else 'استخدمه قبل تفعيل استراتيجية أو تعديلها.',
+  'Enter a valid order ID with current readiness data.' if ui_lang != 'ar' else 'أدخل رقم أمر صحيحًا وله بيانات جاهزية حديثة.',
+  'Displays the decision and reasons without changing ownership.' if ui_lang != 'ar' else 'يعرض القرار وأسبابه دون تغيير المسؤولية.',
+  'Simulation results depend on current data and policy configuration.' if ui_lang != 'ar' else 'تعتمد نتيجة المحاكاة على البيانات الحالية وإعدادات السياسة.',
+  ui_lang
+) }}
+
+</form>
+
+</div>
+
+
+<div class="panel table-wrap">
+
+<h3>Configured Strategies</h3>
+
+<table>
+
+<tr>
+
+<th>Priority</th>
+<th>Name</th>
+<th>Scope</th>
+<th>Mode</th>
+<th>PACS</th>
+<th>Images</th>
+<th>Docs</th>
+<th>Notes</th>
+<th>Version</th>
+<th>Status</th>
+<th>Actions</th>
+
+</tr>
+
+{% for s in rows %}
+
+<tr>
+
+<td>{{s.priority}}</td>
+
+<td>
+<b>{{s.name}}</b>
+</td>
+
+<td>
+Branch {{s.branch_id or '*'}}
+<br>
+{{s.modality or '*'}}
+<br>
+{{s.procedure_pattern or '*'}}
+</td>
+
+<td>
+{{s.assignment_mode}}
+</td>
+
+<td>
+{{s.pacs_missing_action}}
+</td>
+
+<td>
+{{s.images_incomplete_action}}
+</td>
+
+<td>
+{{s.documents_missing_action}}
+</td>
+
+<td>
+{{s.notes_missing_action}}
+</td>
+
+<td>
+v{{s.version_no}}
+</td>
+
+<td>
+
+{% if s.enabled %}
+
+<span class="badge">
+Enabled
+</span>
+
+{% else %}
+
+<span class="badge">
+Disabled
+</span>
+
+{% endif %}
+
+</td>
+
+
+<td style="white-space:nowrap">
+
+<button type="button"
+        class="btn btn-sm"
+        onclick="editStrategy(this)"
+
+        data-id="{{s.id}}"
+        data-name="{{s.name|e}}"
+        data-priority="{{s.priority}}"
+        data-branch="{{s.branch_id or ''}}"
+        data-modality="{{s.modality or ''}}"
+        data-procedure="{{s.procedure_pattern or ''}}"
+
+        data-mode="{{s.assignment_mode}}"
+        data-fallback="{{s.fallback_mode}}"
+
+        data-pacs="{{s.pacs_missing_action}}"
+        data-images="{{s.images_incomplete_action}}"
+        data-documents="{{s.documents_missing_action}}"
+        data-notes="{{s.notes_missing_action}}"
+        data-attachments="{{s.attachments_missing_action}}"
+        data-history="{{s.history_missing_action}}"
+
+        data-min-images="{{s.min_images or 0}}"
+        data-completion="{{s.min_completion_percent or 0}}"
+        data-stable="{{s.stable_seconds or 120}}"
+
+        data-routine="{{s.routine_timeout_seconds or 300}}"
+        data-urgent="{{s.urgent_timeout_seconds or 120}}"
+        data-stat="{{s.stat_timeout_seconds or 60}}"
+
+        data-busy="{{s.busy_snooze_minutes or 30}}"
+        data-attempts="{{s.max_offer_attempts or 5}}"
+
+        data-from="{{s.active_from or ''}}"
+        data-to="{{s.active_to or ''}}"
+
+        data-enabled="{{1 if s.enabled else 0}}"
+        data-require-modality="{{1 if s.require_modality_match else 0}}"
+        data-require-branch="{{1 if s.require_branch_match else 0}}"
+        data-require-online="{{1 if s.require_online else 0}}"
+        data-prefer-online="{{1 if s.prefer_online else 0}}">
+
+Edit
+
+</button>
+
+
+<a class="btn btn-sm"
+href="{{url_for('admin_assignment_strategy_history',strategy_id=s.id)}}">
+History
+</a>
+
+<form method="post"
+      action="{{url_for('admin_assignment_strategy_clone',strategy_id=s.id)}}"
+      style="display:inline">
+
+<button class="btn btn-sm">
+Clone
+</button>
+
+{{ action_info(
+  'Clone Strategy' if ui_lang != 'ar' else 'نسخ الاستراتيجية',
+  'Creates a separate editable copy of this strategy.' if ui_lang != 'ar' else 'ينشئ نسخة مستقلة قابلة للتعديل من هذه الاستراتيجية.',
+  'Use when creating a variation while preserving the original.' if ui_lang != 'ar' else 'استخدمه لإنشاء نسخة معدلة مع الحفاظ على الأصل.',
+  'Review the cloned name, scope and priority before enabling it.' if ui_lang != 'ar' else 'راجع اسم النسخة ونطاقها وأولويتها قبل تفعيلها.',
+  'Adds a new strategy record; the original remains unchanged.' if ui_lang != 'ar' else 'يضيف سجل استراتيجية جديدًا ويترك الأصل دون تغيير.',
+  'Do not enable overlapping clones until simulation is complete.' if ui_lang != 'ar' else 'لا تفعّل نسخًا متداخلة قبل إكمال المحاكاة.',
+  ui_lang
+) }}
+
+</form>
+
+
+<form method="post"
+      action="{{url_for('admin_assignment_strategy_toggle',strategy_id=s.id)}}"
+      style="display:inline">
+
+<button class="btn btn-sm">
+
+{% if s.enabled %}
+Disable
+{% else %}
+Enable
+{% endif %}
+
+</button>
+
+{{ action_info(
+  ('Disable Strategy' if s.enabled else 'Enable Strategy') if ui_lang != 'ar' else ('تعطيل الاستراتيجية' if s.enabled else 'تفعيل الاستراتيجية'),
+  'Changes whether this strategy participates in future assignment decisions.' if ui_lang != 'ar' else 'يغيّر مشاركة هذه الاستراتيجية في قرارات التوزيع المستقبلية.',
+  'Use only after simulation and overlap review.' if ui_lang != 'ar' else 'استخدمه فقط بعد المحاكاة ومراجعة التداخل.',
+  'Confirm another safe policy or fallback remains available when disabling.' if ui_lang != 'ar' else 'تأكد من بقاء سياسة آمنة أخرى أو مسار احتياطي عند التعطيل.',
+  'Affects future decisions only; existing assignments remain unchanged.' if ui_lang != 'ar' else 'يؤثر على القرارات المستقبلية فقط؛ التعيينات الحالية لا تتغير.',
+  'Enabling overlapping rules can change which strategy wins by priority.' if ui_lang != 'ar' else 'تفعيل قواعد متداخلة قد يغيّر الاستراتيجية الفائزة حسب الأولوية.',
+  ui_lang
+) }}
+
+</form>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+
+<script>
+
+function v(id,value){
+  const el=document.getElementById(id);
+  if(el) el.value=value ?? '';
+}
+
+function c(id,value){
+  const el=document.getElementById(id);
+  if(el) el.checked=String(value)==='1';
+}
+
+
+function editStrategy(btn){
+
+  const d=btn.dataset;
+
+  const idField=document.getElementById('strategy_id');
+  if(!idField){
+    alert('Strategy ID field missing');
+    return;
+  }
+
+  idField.value=btn.getAttribute('data-id') || '';
+
+  v('strategy_name',btn.getAttribute('data-name'));
+  v('strategy_priority',btn.getAttribute('data-priority'));
+  v('strategy_branch',btn.getAttribute('data-branch'));
+  v('strategy_modality',btn.getAttribute('data-modality'));
+  v('strategy_procedure',btn.getAttribute('data-procedure'));
+
+  v('strategy_mode',btn.getAttribute('data-mode'));
+  v('strategy_fallback',btn.getAttribute('data-fallback'));
+
+  v('pacs_missing_action',btn.getAttribute('data-pacs'));
+  v('images_incomplete_action',btn.getAttribute('data-images'));
+  v('documents_missing_action',btn.getAttribute('data-documents'));
+  v('notes_missing_action',btn.getAttribute('data-notes'));
+  v('attachments_missing_action',btn.getAttribute('data-attachments'));
+  v('history_missing_action',btn.getAttribute('data-history'));
+
+  v('min_images',btn.getAttribute('data-min-images'));
+  v('min_completion_percent',btn.getAttribute('data-completion'));
+  v('stable_seconds',btn.getAttribute('data-stable'));
+
+  v('routine_timeout_seconds',btn.getAttribute('data-routine'));
+  v('urgent_timeout_seconds',btn.getAttribute('data-urgent'));
+  v('stat_timeout_seconds',btn.getAttribute('data-stat'));
+
+  v('busy_snooze_minutes',btn.getAttribute('data-busy'));
+  v('max_offer_attempts',btn.getAttribute('data-attempts'));
+
+  v('active_from',btn.getAttribute('data-from'));
+  v('active_to',btn.getAttribute('data-to'));
+
+  c('strategy_enabled',btn.getAttribute('data-enabled'));
+  c('require_modality_match',btn.getAttribute('data-require-modality'));
+  c('require_branch_match',btn.getAttribute('data-require-branch'));
+  c('require_online',btn.getAttribute('data-require-online'));
+  c('prefer_online',btn.getAttribute('data-prefer-online'));
+
+  document.getElementById('formTitle').textContent=
+    'Edit Strategy #'+idField.value;
+
+  document.getElementById('saveStrategyButton').textContent=
+    'Save Changes';
+
+  document.getElementById('strategyForm').scrollIntoView({
+    behavior:'smooth'
+  });
+
+  console.log('Editing strategy ID:',idField.value);
+}
+
+
+function resetStrategyForm(){
+
+  document.getElementById(
+    'strategyForm'
+  ).reset();
+
+  v('strategy_id','');
+
+  document.getElementById(
+    'formTitle'
+  ).textContent='Create Strategy';
+
+  document.getElementById(
+    'saveStrategyButton'
+  ).textContent='Save Strategy';
+}
+
+</script>
+
+{% endblock %}

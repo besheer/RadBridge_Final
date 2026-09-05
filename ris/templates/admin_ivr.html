@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="/ivr-preview-static/css/ivr-admin.css">
+
+<div class="ivr-page">
+
+  <div class="ivr-header">
+    <div>
+      <h1 class="ivr-title">IVR & Call Center</h1>
+      <div class="ivr-subtitle">
+        Manage call flows, extensions, queues, recordings and voice services.
+      </div>
+    </div>
+
+    <div class="ivr-status">
+      <span class="ivr-status-dot"></span>
+      PBX Not Connected
+    </div>
+  </div>
+
+  <div class="ivr-kpis">
+
+    <div class="ivr-kpi">
+      <div class="ivr-kpi-icon blue">☎</div>
+      <div>
+        <div class="ivr-kpi-label">Calls Today</div>
+        <div class="ivr-kpi-value">0</div>
+      </div>
+    </div>
+
+    <div class="ivr-kpi">
+      <div class="ivr-kpi-icon green">●</div>
+      <div>
+        <div class="ivr-kpi-label">Active Calls</div>
+        <div class="ivr-kpi-value">0</div>
+      </div>
+    </div>
+
+    <div class="ivr-kpi">
+      <div class="ivr-kpi-icon purple">◉</div>
+      <div>
+        <div class="ivr-kpi-label">Extensions</div>
+        <div class="ivr-kpi-value">{{ extension_count }}</div>
+      </div>
+    </div>
+
+    <div class="ivr-kpi">
+      <div class="ivr-kpi-icon orange">≡</div>
+      <div>
+        <div class="ivr-kpi-label">Queues</div>
+        <div class="ivr-kpi-value">0</div>
+      </div>
+    </div>
+
+    <div class="ivr-kpi">
+      <div class="ivr-kpi-icon red">◌</div>
+      <div>
+        <div class="ivr-kpi-label">Recordings</div>
+        <div class="ivr-kpi-value">0</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="ivr-grid">
+
+    <div class="ivr-card">
+      <div class="ivr-card-head">
+        <div class="ivr-card-title">IVR Overview</div>
+        <span class="ivr-pill green">Draft Mode</span>
+      </div>
+
+      <div class="ivr-card-body">
+        <div class="ivr-flow">
+
+          <div class="ivr-flow-main">
+            ☎ Main IVR
+          </div>
+
+          <div class="ivr-flow-line"></div>
+
+          <div class="ivr-flow-branches">
+
+            <div class="ivr-flow-node">
+              <div class="ivr-key blue">1</div>
+              <strong>Booking</strong>
+              <small>Voice Booking</small>
+            </div>
+
+            <div class="ivr-flow-node">
+              <div class="ivr-key green">2</div>
+              <strong>Reports</strong>
+              <small>Patient Reports</small>
+            </div>
+
+            <div class="ivr-flow-node">
+              <div class="ivr-key purple">3</div>
+              <strong>Complaints</strong>
+              <small>Communications</small>
+            </div>
+
+            <div class="ivr-flow-node">
+              <div class="ivr-key orange">0</div>
+              <strong>Reception</strong>
+              <small>Operator</small>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="ivr-card">
+      <div class="ivr-card-head">
+        <div class="ivr-card-title">Quick Actions</div>
+      </div>
+
+      <div class="ivr-card-body">
+        <div class="ivr-actions">
+
+          <a class="ivr-action" href="/telephony">
+            <div class="ivr-action-icon">☎</div>
+            <div>
+              <strong>Telephony Console</strong>
+              <small>Open user calling workspace</small>
+            </div>
+          </a>
+
+          <a class="ivr-action" href="/telephony/calls">
+            <div class="ivr-action-icon">☏</div>
+            <div>
+              <strong>Call History</strong>
+              <small>Review existing call logs</small>
+            </div>
+          </a>
+
+          <a class="ivr-action" href="/voice-intake/review">
+            <div class="ivr-action-icon">🎙</div>
+            <div>
+              <strong>Voice Booking</strong>
+              <small>Review voice intake requests</small>
+            </div>
+          </a>
+
+          <a class="ivr-action" href="/communications">
+            <div class="ivr-action-icon">✉</div>
+            <div>
+              <strong>Communications</strong>
+              <small>Patient communication queue</small>
+            </div>
+          </a>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="ivr-card">
+      <div class="ivr-card-head">
+        <div class="ivr-card-title">System Status</div>
+      </div>
+
+      <div class="ivr-card-body">
+
+        <div class="ivr-health-row">
+          <div class="ivr-health-left">
+            <span>●</span>
+            <strong>RIS Database</strong>
+          </div>
+          <span class="ivr-health-ok">Healthy</span>
+        </div>
+
+        <div class="ivr-health-row">
+          <div class="ivr-health-left">
+            <span>●</span>
+            <strong>IVR Control Plane</strong>
+          </div>
+          <span class="ivr-health-ok">Ready</span>
+        </div>
+
+        <div class="ivr-health-row">
+          <div class="ivr-health-left">
+            <span>●</span>
+            <strong>PBX Engine</strong>
+          </div>
+          <span class="ivr-health-warn">Not Connected</span>
+        </div>
+
+        <div class="ivr-health-row">
+          <div class="ivr-health-left">
+            <span>●</span>
+            <strong>Recording Storage</strong>
+          </div>
+          <span class="ivr-health-warn">Not Configured</span>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div class="ivr-bottom-grid">
+
+    <div class="ivr-card">
+      <div class="ivr-card-head">
+        <div class="ivr-card-title">Recent Call Activity</div>
+        <a href="/telephony/calls">View All</a>
+      </div>
+
+      <div class="ivr-card-body">
+
+        <table class="ivr-table">
+          <thead>
+            <tr>
+              <th>Caller</th>
+              <th>Extension</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr>
+              <td colspan="3" style="text-align:center;color:#6f7b91;">
+                No live PBX call data available.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div>
+    </div>
+
+    <div class="ivr-card">
+      <div class="ivr-card-head">
+        <div class="ivr-card-title">IVR Modules</div>
+      </div>
+
+      <div class="ivr-card-body">
+
+        <table class="ivr-table">
+          <tbody>
+            <tr>
+              <td>Extensions</td>
+              <td>{{ extension_count }}</td>
+            </tr>
+            <tr>
+              <td>Queues</td>
+              <td>Coming in IVR v1</td>
+            </tr>
+            <tr>
+              <td>Audio Library</td>
+              <td>Coming in IVR v1</td>
+            </tr>
+            <tr>
+              <td>DIDs / External Numbers</td>
+              <td>Coming in IVR v1</td>
+            </tr>
+            <tr>
+              <td>Outbound Routing</td>
+              <td>Coming in IVR v1</td>
+            </tr>
+            <tr>
+              <td>Recordings</td>
+              <td>Coming in IVR v1</td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div class="ivr-footer-note">
+    RadBridge v5.48.0 IVR Canary Preview
+  </div>
+
+</div>
+{% endblock %}

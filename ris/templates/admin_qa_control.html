@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block page_title %}Automation & QA Control Center{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+<h2>Automation & QA Control Center</h2>
+
+{% if latest %}
+<div class="panel">
+<h3>Latest QA Run #{{ latest.id }}</h3>
+
+<table>
+<tr><th>Status</th><td>{{ latest.status }}</td></tr>
+<tr><th>Type</th><td>{{ latest.run_type }}</td></tr>
+<tr><th>Release</th><td>{{ latest.release_name }}</td></tr>
+<tr><th>Total</th><td>{{ latest.total_tests }}</td></tr>
+<tr><th>Passed</th><td>{{ latest.passed_tests }}</td></tr>
+<tr><th>Failed</th><td>{{ latest.failed_tests }}</td></tr>
+<tr><th>Critical</th><td>{{ latest.critical_tests }}</td></tr>
+<tr><th>Warnings</th><td>{{ latest.warning_tests }}</td></tr>
+</table>
+</div>
+{% endif %}
+
+<div class="panel">
+
+<h3>Run QA</h3>
+
+<form method="post" action="{{ url_for('admin_qa_control_run') }}">
+
+<select name="run_type">
+<option value="FULL">Full System QA</option>
+<option value="REGISTRATION">Registration</option>
+<option value="APPROVAL">Approval</option>
+<option value="PACS">PACS & Demographics</option>
+<option value="ASSIGNMENT">Assignment</option>
+<option value="OPEN_POOL">Open Pool</option>
+<option value="OFFER">Offer Workflow</option>
+<option value="DOCTOR">Doctor Workflow</option>
+<option value="COORDINATOR">Coordinator</option>
+<option value="OHIF">OHIF</option>
+<option value="IMAGING_AI">Imaging AI</option>
+<option value="REPORTING">Reporting</option>
+<option value="SIGNATURE">Digital Signature</option>
+</select>
+
+<button class="btn primary">
+Run QA
+</button>
+
+</form>
+
+{% if latest and latest.failed_tests %}
+<form method="post" action="{{ url_for('admin_qa_retry_failed') }}">
+<input type="hidden" name="run_id" value="{{ latest.id }}">
+<button class="btn">
+Retry Failed Tests
+</button>
+</form>
+{% endif %}
+
+</div>
+
+
+<div class="panel">
+
+<h3>QA Automation</h3>
+
+<form method="post"
+action="{{ url_for('admin_qa_workflow_control',action='enable') }}">
+<button class="btn primary">
+Enable QA Automation
+</button>
+</form>
+
+<form method="post"
+action="{{ url_for('admin_qa_workflow_control',action='disable') }}">
+<button class="btn">
+Disable QA Automation
+</button>
+</form>
+
+<p>
+n8n service itself should remain online.
+These controls enable or disable the RadBridge QA automation workflow.
+</p>
+
+</div>
+
+
+{% if failed %}
+<div class="panel">
+
+<h3>Failed Tests</h3>
+
+<table>
+
+<tr>
+<th>Test</th>
+<th>Category</th>
+<th>Severity</th>
+<th>Expected</th>
+<th>Actual</th>
+<th>Error</th>
+</tr>
+
+{% for x in failed %}
+<tr>
+<td>{{ x.title or x.test_key }}</td>
+<td>{{ x.category }}</td>
+<td>{{ x.severity }}</td>
+<td>{{ x.expected }}</td>
+<td>{{ x.actual }}</td>
+<td>{{ x.error_text }}</td>
+</tr>
+{% endfor %}
+
+</table>
+
+</div>
+{% endif %}
+
+
+<div class="panel">
+
+<h3>Run History</h3>
+
+<table>
+
+<tr>
+<th>ID</th>
+<th>Type</th>
+<th>Status</th>
+<th>Total</th>
+<th>Pass</th>
+<th>Fail</th>
+<th>Critical</th>
+<th>Started</th>
+</tr>
+
+{% for x in runs %}
+<tr>
+<td>{{ x.id }}</td>
+<td>{{ x.run_type }}</td>
+<td>{{ x.status }}</td>
+<td>{{ x.total_tests }}</td>
+<td>{{ x.passed_tests }}</td>
+<td>{{ x.failed_tests }}</td>
+<td>{{ x.critical_tests }}</td>
+<td>{{ x.started_at }}</td>
+</tr>
+{% endfor %}
+
+</table>
+
+</div>
+
+</div>
+
+{% endblock %}

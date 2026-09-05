@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block page_title %}Referral Analytics{% endblock %}
+{% block content %}
+<div class="panel"><form method="get" class="actions"><input type="date" name="start" value="{{start}}"><input type="date" name="end" value="{{end}}"><button class="btn primary">Apply</button><a class="btn" href="{{url_for('admin_referral_commissions')}}">Commission Rules</a></form></div>
+<div class="table-wrap"><table><tr><th>Referrer</th><th>Cases</th><th>Revenue</th><th>Commission</th><th>Modalities</th></tr>{% for x in rows %}<tr><td>{{x.name}}</td><td>{{x.cases}}</td><td>{{'%.2f'|format(x.revenue)}}</td><td>{{'%.2f'|format(x.commission)}}</td><td>{% for m,c in x.modalities.items() %}<span class="tag">{{m}} {{c}}</span> {% endfor %}</td></tr>{% endfor %}</table></div>{% endblock %}

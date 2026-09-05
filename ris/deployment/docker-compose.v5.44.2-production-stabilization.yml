@@ -1,0 +1,9 @@
+services:
+  ris-web:
+    image: radbridge-ris:v5.44.2-production-stabilization
+    environment:
+      RADBRIDGE_ENV: production
+      SESSION_COOKIE_SECURE: "1"
+      SESSION_COOKIE_SAMESITE: Lax
+      RADBRIDGE_TRUSTED_ORIGINS: ${RADBRIDGE_TRUSTED_ORIGINS:-https://ris.dynuddns.net}
+      RADBRIDGE_REPORTING_TOKEN: ${RADBRIDGE_REPORTING_TOKEN:?RADBRIDGE_REPORTING_TOKEN must be set}

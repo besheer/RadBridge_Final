@@ -1,0 +1,38 @@
+services:
+
+  ohif-app:
+    image: ohif/app:v3.12.10
+    container_name: radbridge-ohif-app
+    restart: unless-stopped
+
+    networks:
+      - ris-network
+
+    volumes:
+      - ./ohif/app-config.js:/usr/share/nginx/html/app-config.js:ro
+
+
+  ohif-proxy:
+    image: nginx:alpine
+    container_name: radbridge-ohif
+    restart: unless-stopped
+
+    depends_on:
+      - ohif-app
+
+    env_file:
+      - ./ohif/.orthanc-auth.env
+
+    networks:
+      - ris-network
+
+    ports:
+      - "8092:80"
+
+    volumes:
+      - ./ohif/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+
+
+networks:
+  ris-network:
+    external: true

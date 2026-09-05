@@ -1,0 +1,468 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+🛡 {{'إدارة الموافقات الطبية' if ui_lang=='ar' else 'Insurance Approval Administration'}}
+{% endblock %}
+
+{% block subtitle %}
+{{'إعداد بوابات شركات التأمين ومسارات العمل والتدريب'
+  if ui_lang=='ar'
+  else 'Configure insurance portals, workflows and training'}}
+{% endblock %}
+
+
+{% block content %}
+
+{% if edit_row %}
+<div class="panel" id="portal_config_summary"
+     style="border-left:5px solid #22a06b;margin-bottom:16px">
+
+  <div style="font-size:18px;font-weight:700">
+    ✅ {{edit_row.payer_name}}
+  </div>
+
+  <div class="cards" style="margin-top:12px">
+
+    <div class="metric">
+      <small>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</small>
+      <b>{{edit_row.branch.name if edit_row.branch else ''}}</b>
+    </div>
+
+    <div class="metric">
+      <small>{{'الحالة' if ui_lang=='ar' else 'Status'}}</small>
+      <b>
+        {{'🟢 Active' if edit_row.enabled else '⚪ Disabled'}}
+      </b>
+    </div>
+
+    <div class="metric">
+      <small>Workflow</small>
+      <b>{{edit_row.workflow_mode}}</b>
+    </div>
+
+    <div class="metric">
+      <small>Automation</small>
+      <b>{{'⚡ ON' if edit_row.automation_enabled else 'OFF'}}</b>
+    </div>
+
+  </div>
+
+  {% if edit_row.last_error %}
+  <div class="notice" style="margin-top:10px">
+    🔴 {{edit_row.last_error}}
+  </div>
+  {% endif %}
+
+  <div class="actions" style="margin-top:12px">
+
+    <form method="post"
+          action="{{url_for('admin_insurance_approval_test',portal_id=edit_row.id)}}">
+      <button class="btn primary">
+        🧪 {{'اختبار الإعداد' if ui_lang=='ar' else 'Test Configuration'}}
+      </button>
+    </form>
+
+    <a class="btn"
+       href="{{url_for('admin_insurance_approvals')}}">
+      ＋ {{'شركة جديدة' if ui_lang=='ar' else 'New Company'}}
+    </a>
+
+  </div>
+
+</div>
+{% endif %}
+
+
+<div class="panel">
+
+<div class="section-title">
+➕ {{'إعداد شركة / بوابة تأمين' if ui_lang=='ar' else 'Insurance Portal Configuration'}}
+</div>
+
+{% set saved_steps =
+    edit_row.automation_config_json
+    if edit_row and edit_row.automation_config_json
+    else ''
+%}
+
+<form method="post"
+      action="{{url_for('admin_insurance_approvals')}}"
+      class="grid2">
+
+<div>
+<label>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</label>
+<select name="branch_id" required>
+<option value="">—</option>
+{% for b in branches %}
+<option value="{{b.id}}"
+{% if edit_row and edit_row.branch_id==b.id %}selected{% endif %}>
+{{b.name}}
+</option>
+{% endfor %}
+</select>
+</div>
+
+<div>
+<label>{{'شركة التأمين' if ui_lang=='ar' else 'Insurance Company'}}</label>
+<select name="payer_name" required>
+<option value="">—</option>
+
+{% for c in contracts %}
+{% if c.code!='CASH' %}
+<option value="{{c.name}}"
+{% if edit_row and edit_row.payer_name==c.name %}selected{% endif %}>
+{{c.name}}
+</option>
+{% endif %}
+{% endfor %}
+
+</select>
+</div>
+
+<div>
+<label>Portal URL</label>
+<input name="portal_url"
+       value="{{edit_row.portal_url if edit_row else ''}}">
+</div>
+
+<div>
+<label>Login URL</label>
+<input name="login_url"
+       value="{{edit_row.login_url if edit_row else ''}}">
+</div>
+
+<div>
+<label>Portal Type</label>
+<select name="portal_type">
+<option value="WEB" {% if edit_row and edit_row.portal_type=='WEB' %}selected{% endif %}>WEB</option>
+<option value="API" {% if edit_row and edit_row.portal_type=='API' %}selected{% endif %}>API</option>
+<option value="EMAIL" {% if edit_row and edit_row.portal_type=='EMAIL' %}selected{% endif %}>EMAIL</option>
+<option value="HYBRID" {% if edit_row and edit_row.portal_type=='HYBRID' %}selected{% endif %}>HYBRID</option>
+</select>
+</div>
+
+<div>
+<label>Username</label>
+<input name="username"
+       value="{{edit_row.username if edit_row else ''}}">
+</div>
+
+<div>
+<label>Credential Reference</label>
+<input name="credential_ref"
+       placeholder="Example: INSURANCE_AXA_MAIN_PASSWORD"
+       value="{{edit_row.credential_ref if edit_row else ''}}">
+
+<small>
+{{'لا يتم تخزين كلمة المرور كنص صريح.'
+  if ui_lang=='ar'
+  else 'Password is not stored as plaintext.'}}
+</small>
+</div>
+
+<div>
+<label>Workflow Mode</label>
+<select name="workflow_mode">
+<option value="MANUAL" {% if edit_row and edit_row.workflow_mode=='MANUAL' %}selected{% endif %}>Manual</option>
+<option value="BROWSER" {% if edit_row and edit_row.workflow_mode=='BROWSER' %}selected{% endif %}>Browser Automation</option>
+<option value="API" {% if edit_row and edit_row.workflow_mode=='API' %}selected{% endif %}>API</option>
+<option value="EMAIL" {% if edit_row and edit_row.workflow_mode=='EMAIL' %}selected{% endif %}>Email</option>
+<option value="HYBRID" {% if edit_row and edit_row.workflow_mode=='HYBRID' %}selected{% endif %}>Hybrid</option>
+</select>
+</div>
+
+
+<div class="span2">
+<div class="actions">
+
+<label>
+<input type="checkbox" name="enabled" value="1"
+{% if edit_row and edit_row.enabled %}checked{% endif %}>
+Enabled
+</label>
+
+<label>
+<input type="checkbox" name="automation_enabled" value="1"
+{% if edit_row and edit_row.automation_enabled %}checked{% endif %}>
+⚡ Automation
+</label>
+
+<label>
+<input type="checkbox" name="telegram_enabled" value="1"
+{% if edit_row and edit_row.telegram_enabled %}checked{% endif %}>
+Telegram
+</label>
+
+<label>
+<input type="checkbox" name="email_enabled" value="1"
+{% if edit_row and edit_row.email_enabled %}checked{% endif %}>
+Email
+</label>
+
+<label>
+<input type="checkbox" name="requires_otp" value="1"
+{% if edit_row and edit_row.requires_otp %}checked{% endif %}>
+OTP Required
+</label>
+
+</div>
+</div>
+
+
+<div class="span2">
+<label>
+🎓 {{'التدريب / طريقة استخدام الموقع'
+if ui_lang=='ar'
+else 'Training / Portal Instructions'}}
+</label>
+
+<textarea name="training_notes"
+          rows="7"
+          placeholder="1. Open portal&#10;2. Login&#10;3. Search member&#10;4. Create approval request...">{{edit_row.training_notes if edit_row else ''}}</textarea>
+</div>
+
+
+
+<div class="span2" id="portal_training_steps">
+
+  <div style="margin-bottom:10px">
+    <strong style="font-size:17px">
+      🧭 {{'خطوات التعامل مع البوابة'
+           if ui_lang=='ar'
+           else 'Portal Workflow Steps'}}
+    </strong>
+
+    <small style="display:block;opacity:.7;margin-top:4px">
+      {{'حدد فقط الخطوات التي تستخدمها هذه الشركة. الترتيب يمثل طريقة العمل.'
+        if ui_lang=='ar'
+        else 'Select only the steps used by this company. Order represents the workflow.'}}
+    </small>
+  </div>
+
+  <div class="panel" style="background:var(--surface-soft,#f8fafc)">
+
+    <label style="display:block;margin:7px 0">
+      <input type="checkbox"
+             name="step_login"
+             value="1" {% if '"LOGIN"' in saved_steps %}checked{% endif %}>
+      1. 🔐 LOGIN
+      — {{'تسجيل الدخول' if ui_lang=='ar' else 'Portal Login'}}
+    </label>
+
+    <label style="display:block;margin:7px 0">
+      <input type="checkbox"
+             name="step_search_member"
+             value="1" {% if '"SEARCH_MEMBER"' in saved_steps %}checked{% endif %}>
+      2. 🔎 SEARCH MEMBER
+      — {{'البحث عن المريض / العضوية' if ui_lang=='ar' else 'Find Member / Patient'}}
+    </label>
+
+    <label style="display:block;margin:7px 0">
+      <input type="checkbox"
+             name="step_create_request"
+             value="1" {% if '"CREATE_REQUEST"' in saved_steps %}checked{% endif %}>
+      3. 📝 CREATE REQUEST
+      — {{'إنشاء طلب الموافقة' if ui_lang=='ar' else 'Create Approval Request'}}
+    </label>
+
+    <label style="display:block;margin:7px 0">
+      <input type="checkbox"
+             name="step_upload_documents"
+             value="1" {% if '"UPLOAD_DOCUMENTS"' in saved_steps %}checked{% endif %}>
+      4. 📎 UPLOAD DOCUMENTS
+      — {{'رفع المستندات' if ui_lang=='ar' else 'Upload Documents'}}
+    </label>
+
+    <label style="display:block;margin:7px 0">
+      <input type="checkbox"
+             name="step_submit"
+             value="1" {% if '"SUBMIT"' in saved_steps %}checked{% endif %}>
+      5. 📤 SUBMIT
+      — {{'إرسال الطلب' if ui_lang=='ar' else 'Submit Request'}}
+    </label>
+
+    <label style="display:block;margin:7px 0">
+      <input type="checkbox"
+             name="step_check_status"
+             value="1" {% if '"CHECK_STATUS"' in saved_steps %}checked{% endif %}>
+      6. 🔄 CHECK STATUS
+      — {{'متابعة حالة الطلب' if ui_lang=='ar' else 'Check Approval Status'}}
+    </label>
+
+    <label style="display:block;margin:7px 0">
+      <input type="checkbox"
+             name="step_download_approval"
+             value="1" {% if '"DOWNLOAD_APPROVAL"' in saved_steps %}checked{% endif %}>
+      7. 📥 DOWNLOAD APPROVAL
+      — {{'تحميل الموافقة' if ui_lang=='ar' else 'Download Approval'}}
+    </label>
+
+  </div>
+
+</div>
+
+<div class="span2">
+<label>
+🧭 {{'ملاحظات سير العمل'
+if ui_lang=='ar'
+else 'Workflow Notes'}}
+</label>
+
+<textarea name="workflow_notes"
+          rows="6"
+          placeholder="SEARCH_MEMBER -> CREATE_REQUEST -> UPLOAD -> SUBMIT -> CHECK_STATUS">{{edit_row.workflow_notes if edit_row else ''}}</textarea>
+</div>
+
+
+<div class="span2">
+<label>
+🔑 {{'ملاحظات تسجيل الدخول'
+if ui_lang=='ar'
+else 'Login Notes'}}
+</label>
+
+<textarea name="login_notes"
+          rows="4">{{edit_row.login_notes if edit_row else ''}}</textarea>
+</div>
+
+
+<details class="span2">
+
+<summary>
+⚙ Advanced Automation Configuration
+</summary>
+
+<label>Selectors JSON</label>
+
+<textarea name="selectors_json"
+          rows="8">{{edit_row.selectors_json if edit_row else '{}'}}</textarea>
+
+
+<label>Automation Config JSON</label>
+
+<textarea name="automation_config_json"
+          rows="8">{{edit_row.automation_config_json if edit_row else '{}'}}</textarea>
+
+</details>
+
+
+<div class="span2">
+
+<button class="btn primary">
+💾 {{'حفظ الإعدادات' if ui_lang=='ar' else 'Save Configuration'}}
+</button>
+
+</div>
+
+</form>
+
+</div>
+
+
+
+<div class="panel">
+
+<div class="section-title">
+🛡 {{'الشركات المضافة' if ui_lang=='ar' else 'Configured Insurance Portals'}}
+</div>
+
+{% if rows %}
+
+<table>
+
+<tr>
+<th>{{'الشركة' if ui_lang=='ar' else 'Company'}}</th>
+<th>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</th>
+<th>Mode</th>
+<th>Automation</th>
+<th>Status</th>
+<th>Last Test</th>
+<th></th>
+</tr>
+
+
+{% for r in rows %}
+
+<tr>
+
+<td><b>{{r.payer_name}}</b></td>
+
+<td>
+{{r.branch.name if r.branch else ''}}
+</td>
+
+<td>
+{{r.workflow_mode}}
+</td>
+
+<td>
+{{'⚡ ON' if r.automation_enabled else 'OFF'}}
+</td>
+
+<td>
+{{'🟢 Active' if r.enabled else '⚪ Disabled'}}
+</td>
+
+<td>
+
+{% if r.last_error %}
+🔴 {{r.last_error}}
+{% elif r.last_success_at %}
+🟢 {{r.last_success_at}}
+{% else %}
+—
+{% endif %}
+
+</td>
+
+
+<td>
+
+<div class="actions">
+
+<a class="btn small"
+   href="{{url_for('admin_insurance_approval_edit',portal_id=r.id)}}">
+✎ Edit
+</a>
+
+<form method="post"
+      action="{{url_for('admin_insurance_approval_test',portal_id=r.id)}}">
+
+<button class="btn small">
+🧪 Test
+</button>
+
+</form>
+
+<form method="post"
+      action="{{url_for('admin_insurance_approval_toggle',portal_id=r.id)}}">
+
+<button class="btn small">
+{{'Disable' if r.enabled else 'Enable'}}
+</button>
+
+</form>
+
+</div>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+{% else %}
+
+<p>
+{{'لا توجد بوابات تأمين مضافة حتى الآن.'
+if ui_lang=='ar'
+else 'No insurance portals configured yet.'}}
+</p>
+
+{% endif %}
+
+</div>
+
+{% endblock %}

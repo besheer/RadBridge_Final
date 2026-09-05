@@ -1,0 +1,12 @@
+RIS Web v5.17 Smart Scheduling
+- Millensys-inspired, original scheduling UX: device/room columns and 15-minute timeline.
+- Quick booking for existing/new patient.
+- Procedure duration stored per appointment.
+- Overlap/double-booking protection by duration.
+- Waiting List, Priority, Confirm, Cancel, No-show, Check-in.
+- Status color coding.
+- Drag/drop rescheduling before clinical workflow starts.
+- Maintenance/device blocking.
+- Multi-branch/device filters.
+- Orthanc MWL payload corrected to /worklists/create {Tags:{... ScheduledProcedureStepSequence:[...]}}.
+- Automated tests for scheduling routes, statuses, overlap helper and MWL envelope.

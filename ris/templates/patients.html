@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% block page_title %}Patients{% endblock %}{% block subtitle %}Master patient registry{% endblock %}
+{% block content %}
+<form method="get" class="panel global-screen-filter"><div class="filter-grid">
+<input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
+<input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
+<input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
+<select name="priority"><option value="">Priority</option><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select>
+</div><div class="actions"><button class="btn small primary">Filter</button><a class="btn small" href="{{request.path}}">Clear</a></div></form><div class="panel"><div class="panel-head"><form class="search"><input name="q" value="{{q}}" placeholder="Name, Patient ID, phone, national ID"><button class="btn">Search</button></form>{% if has_perm('patients.create') %}<a class="btn primary" href="{{url_for('new_patient')}}">+ Register Patient</a>{% endif %}</div>
+<table><thead><tr><th>Patient ID</th><th>Name</th><th>DOB</th><th>Sex</th><th>Phone</th><th>National ID</th><th></th></tr></thead><tbody>
+{% for p in patients %}<tr><td><b>{{p.patient_id}}</b></td><td>{{p.name}}</td><td>{{p.dob}}</td><td>{{p.sex}}</td><td>{{p.phone or '-'}}</td><td>{{p.national_id or '-'}}</td><td>{% if has_perm('orders.create') %}<a class="btn small" href="{{url_for('new_order',patient=p.id)}}">New Order</a>{% endif %}</td></tr>{% else %}<tr><td colspan="7" class="empty">No patients.</td></tr>{% endfor %}
+</tbody></table></div>{% endblock %}

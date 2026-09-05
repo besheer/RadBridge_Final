@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+{% block page_title %}Reporting — {{order.accession}}
+<script id="radiology-dictation-js">
+(function(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ const status=document.getElementById('dictationStatus');
+ document.querySelectorAll('[data-dictate]').forEach(btn=>{
+   btn.addEventListener('click',()=>{
+     if(!SR){status.textContent='Speech recognition is not supported in this browser.';return;}
+     const target=document.querySelector('textarea[name="'+btn.dataset.dictate+'"]');
+     if(!target || target.readOnly)return;
+     const rec=new SR(); rec.lang=document.getElementById('dictationLanguage').value; rec.interimResults=true; rec.continuous=false;
+     const original=target.value; let finalText='';
+     rec.onstart=()=>{status.textContent='Listening…';btn.classList.add('recording');};
+     rec.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=t+' ';else interim+=t;}target.value=(original+(original?' ':'')+finalText+interim).trim();};
+     rec.onerror=e=>status.textContent='Dictation error: '+e.error;
+     rec.onend=()=>{status.textContent='Ready';btn.classList.remove('recording');};
+     rec.start();
+   });
+ });
+})();
+</script>
+{% endblock %}
+{% block subtitle %}{{order.patient.name}} · {{order.patient.patient_id}} · {{order.modality}}{% endblock %}
+{% block content %}
+
+<div class="panel ai-prior-banner">
+<a class="btn primary" href="{{url_for('imaging_ai_workspace',order_id=order.id)}}">🧠 PACS AI Imaging</a>
+<a class="btn" href="{{url_for('ai_report_assistant',order_id=order.id)}}">🤖 AI Draft</a>
+<a class="btn" href="{{url_for('patient_external_priors',patient_id=order.patient.id)}}">📀 Priors</a>
+<small>Image AI requires demographic verification before analysis.</small>
+</div>
+
+
+<div class="panel ai-prior-banner">
+<a class="btn primary" href="{{url_for('ai_report_assistant',order_id=order.id)}}">🤖 AI Draft Assistant</a>
+<a class="btn" href="{{url_for('patient_external_priors',patient_id=order.patient.id)}}">📀 External Priors</a>
+<small>AI output is a draft only. Physician review and finalization are required.</small>
+</div>
+
+{% set all_states=['DRAFT','VERIFIED','FINAL'] %}
+<div class="panel report-summary">
+  <div>
+    <h3>{{order.patient.name}}</h3>
+    <small>Patient ID: {{order.patient.patient_id}} · Accession: {{order.accession}} · {{order.procedure}}</small>
+  </div>
+  <div class="actions">
+    <span class="badge">Current: {{report.status.replace('_',' ')}}</span>
+    <a class="btn" target="_blank" href="{{pacs_url}}">Open Case Images</a>
+  </div>
+</div>
+
+<div class="panel workflow-panel">
+  <div class="workflow-caption">
+    <strong>Report Approval Workflow</strong>
+    <span>Version v{{'%03d'|format((history|length) if history else 1)}}</span>
+  </div>
+  <div class="workflow-strip">
+    {% for st in all_states %}
+      <button form="web-report-form" name="action" value="{{st}}"
+        class="workflow-step {{'current' if report.status==st else ''}} {{'allowed' if report.status!='FINAL' else 'disabled'}}"
+        {% if report.status=='FINAL' %}disabled{% endif %}
+        {% if st=='FINAL' %}onclick="return confirm('Finalize this report? The final version will be locked and later changes require an Addendum.');"{% endif %}>
+        <span class="step-number">{{loop.index}}</span>
+        <span>{{st.replace('_',' ')}}</span>
+      </button>
+      {% if not loop.last %}<span class="workflow-arrow">→</span>{% endif %}
+    {% endfor %}
+    {% if report.status=='FINAL' %}
+      <span class="workflow-step disabled">
+        ADDENDUM unavailable
+      </span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel">
+  <div class="section-title">Report Editors</div>
+  <div class="reporting-options">
+    <div class="reporting-option">
+      <h3>Microsoft Word</h3>
+      <p>Open this case using the Reporting Agent.</p>
+      <a class="btn primary" href="risreport://open?accession={{order.accession}}&token={{reporting_case_token(order.accession)|urlencode}}&editor=word">Open in Word</a>
+    </div>
+    <div class="reporting-option">
+      <h3>LibreOffice Writer</h3>
+      <p>Open the same report workflow in LibreOffice.</p>
+      <a class="btn primary" href="risreport://open?accession={{order.accession}}&token={{reporting_case_token(order.accession)|urlencode}}&editor=libreoffice">Open in LibreOffice</a>
+      <a class="btn" href="{{url_for('word_template',order_id=order.id)}}">Download DOCX</a>
+    </div>
+  </div>
+</div>
+
+
+{% if word_templates %}
+<div class="panel">
+<div class="section-title">Doctor Template Library</div>
+<div class="template-chip-grid">
+{% for wt in word_templates %}
+<a class="btn" href="{{url_for('report_word_from_doctor_template',order_id=order.id,template_id=wt.id)}}">📝 {{wt.name}}{% if wt.modality %} · {{wt.modality}}{% endif %}</a>
+{% endfor %}
+</div>
+<small>Supported placeholders: {{PATIENT_NAME}}, {{PATIENT_ID}}, {{ACCESSION}}, {{EXAM}}, {{STUDY_DATE}}, {{REFERRING_DOCTOR}}, {{FINDINGS}}, {{IMPRESSION}}</small>
+</div>
+{% endif %}
+
+<div class="panel upload-panel">
+  <div class="section-title">Manual Report Upload</div>
+<div class="patient-identity-banner">
+<div><b>Patient Name:</b> {{order.patient.name}}</div>
+<div><b>Patient ID:</b> {{order.patient.patient_id}}</div>
+<div><b>Accession:</b> {{order.accession}}</div>
+</div>
+  {% if report.status!='FINAL' %}
+  <form method="post" action="{{url_for('report_upload',order_id=order.id)}}" enctype="multipart/form-data" class="upload-row">
+    <div class="upload-field file-field">
+      <label>Report File</label>
+      <input type="file" name="document" accept=".docx" required>
+    </div>
+    <div class="upload-field status-field">
+      <label>Report Status</label>
+      <input type="hidden" name="action" value="DRAFT">
+      <input type="hidden" name="base_version_no" value="{{base_version_no}}">
+      <input type="hidden" name="commit_id" value="{{upload_commit_id}}">
+      <strong>DRAFT only</strong>
+      <small>Verify and Finalize are separate explicit actions.</small>
+    </div>
+    <div class="upload-field upload-button">
+      <label>&nbsp;</label>
+      <div class="patient-safety-box">
+        <b>Patient Safety Check</b>
+        <small>The RIS will inspect Patient Name, Patient ID and Accession inside the uploaded document before accepting it.</small>
+        <label class="safety-confirm">
+          <input type="checkbox" name="safety_override" value="1">
+          I reviewed the patient details if the document has no readable identifiers.
+        </label>
+      </div>
+      <button class="btn primary" type="submit">Upload Report</button>
+    </div>
+  </form>
+  {% else %}
+    <div class="flash success">This report is FINAL. Create an Addendum to make a new revision.</div>
+  {% endif %}
+</div>
+
+
+
+{% if can_admin_reopen %}
+<div class="panel" id="admin-report-reopen-panel">
+  <div class="section-title">Administrative Report Correction</div>
+
+  <div class="flash warning">
+    This report is FINAL. Reopening creates a new editable DRAFT while
+    preserving the previous final report in Version History.
+  </div>
+
+  <form method="post"
+        action="{{ url_for('admin_report_reopen', order_id=order.id) }}"
+        onsubmit="return confirm('Reopen this FINAL report as DRAFT? The previous final version will remain in Version History.');">
+
+    <label for="admin-reopen-reason">
+      Reopen reason
+    </label>
+
+    <input id="admin-reopen-reason"
+           name="reason"
+           type="text"
+           minlength="8"
+           maxlength="500"
+           required
+           autocomplete="off"
+           placeholder="Enter the reason for reopening this final report">
+
+    <div class="actions" style="margin-top:10px">
+      <button type="submit" class="btn">
+        Reopen Final Report
+      </button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="panel" id="doctor-needs-action-panel">
+
+  <div class="section-title">
+    🔁 {{'إرجاع الحالة للمراجعة' if ui_lang=='ar'
+         else 'Return Case / Request Action'}}
+  </div>
+
+  <p style="margin-top:4px;opacity:.75">
+    {{'استخدم هذا الخيار عندما تحتاج الحالة إلى معلومات أو صور إضافية قبل استكمال التقرير.'
+      if ui_lang=='ar'
+      else 'Request missing information or imaging before continuing the report.'}}
+  </p>
+
+  {% if report.status != 'FINAL' %}
+
+  <form method="post"
+        action="{{url_for('return_case_to_workflow',order_id=order.id)}}"
+        onsubmit="return confirm('Return this case for additional action?');">
+
+    <div class="grid2">
+
+      <div>
+        <label>
+          {{'المطلوب' if ui_lang=='ar' else 'Required Action'}}
+        </label>
+
+        <select name="reason_code" id="returnCaseReason" required>
+
+<option value="">
+{{'اختر المطلوب...' if ui_lang=='ar' else 'Select required action...'}}
+</option>
+
+<optgroup label="{{'مطلوب من الفرع / الاستقبال' if ui_lang=='ar' else 'Branch / Reception'}}">
+
+<option value="MISSING_HISTORY">
+📝 {{'مطلوب تاريخ مرضي / معلومات إكلينيكية' if ui_lang=='ar' else 'Missing clinical history'}}
+</option>
+
+<option value="MISSING_REFERRAL">
+📎 {{'مطلوب تحويل أو مستندات' if ui_lang=='ar' else 'Missing referral / attachment'}}
+</option>
+
+<option value="DEMOGRAPHIC_MISMATCH">
+👤 {{'مراجعة بيانات المريض' if ui_lang=='ar' else 'Patient demographic mismatch'}}
+</option>
+
+<option value="NEED_PRIOR">
+🗂 {{'مطلوب فحص سابق للمقارنة' if ui_lang=='ar' else 'Need prior / comparison study'}}
+</option>
+
+</optgroup>
+
+<optgroup label="{{'مطلوب من الفني' if ui_lang=='ar' else 'Technician'}}">
+
+<option value="INCOMPLETE_IMAGES">
+🖼 {{'الصور غير مكتملة' if ui_lang=='ar' else 'Incomplete images'}}
+</option>
+
+<option value="MISSING_SERIES">
+📚 {{'Series / Sequence ناقصة' if ui_lang=='ar' else 'Missing series / sequence'}}
+</option>
+
+<option value="WRONG_PROTOCOL">
+⚙️ {{'البروتوكول غير صحيح' if ui_lang=='ar' else 'Wrong protocol'}}
+</option>
+
+<option value="MOTION_ARTIFACT">
+⚠️ {{'جودة الصور ضعيفة / حركة' if ui_lang=='ar' else 'Motion artifact / poor image quality'}}
+</option>
+
+<option value="ADDITIONAL_IMAGING">
+➕ {{'مطلوب تصوير إضافي' if ui_lang=='ar' else 'Additional imaging required'}}
+</option>
+
+</optgroup>
+
+<option value="OUTSIDE_SPECIALTY">
+👨‍⚕️ {{'الحالة خارج تخصص الطبيب' if ui_lang=='ar' else 'Outside doctor specialty'}}
+</option>
+
+<option value="OTHER">
+❓ {{'سبب آخر' if ui_lang=='ar' else 'Other'}}
+</option>
+
+</select>
+      </div>
+
+
+
+      <div style="grid-column:1/-1">
+        <label>
+          {{'ملاحظة الطبيب' if ui_lang=='ar' else 'Doctor Note'}}
+        </label>
+
+        <textarea name="note"
+                  id="returnCaseNote"
+                  rows="3"
+                  placeholder="{{'اكتب بالتحديد ما تحتاجه لاستكمال التقرير...'
+                    if ui_lang=='ar'
+                    else 'Describe exactly what is required to continue reporting...'}}"></textarea>
+      </div>
+
+    </div>
+
+    <div style="margin-top:12px">
+      <button type="submit" class="btn">
+        🔁 {{'إرسال للمراجعة' if ui_lang=='ar'
+             else 'Send for Review'}}
+      </button>
+    </div>
+
+  </form>
+
+  {% else %}
+
+  <div class="flash success">
+    🔒 {{'التقرير نهائي. يجب إنشاء Addendum قبل طلب تعديل جديد.'
+          if ui_lang=='ar'
+          else 'Report is FINAL. Create an Addendum before requesting further changes.'}}
+  </div>
+
+  {% endif %}
+
+</div>
+
+
+
+
+<div class="panel form-card">
+  <div class="section-title">Web Report Editor</div>
+  <form method="post" id="web-report-form">
+    <input type="hidden" name="base_version_no" value="{{base_version_no}}">
+    <input type="hidden" name="commit_id" value="{{web_commit_id}}">
+    <label>Radiologist</label>
+    <input name="radiologist" value="{{report.radiologist}}" {% if report.status=='FINAL' %}readonly{% endif %}>
+    <label>Findings</label>
+    <div class="dictation-bar" id="radiology-dictation-controls">
+<button type="button" class="btn" data-dictate="findings">🎙 Dictate Findings</button>
+<button type="button" class="btn" data-dictate="impression">🎙 Dictate Impression</button>
+<select id="dictationLanguage"><option value="en-US">English</option><option value="ar-EG">العربية - مصر</option></select>
+<span id="dictationStatus">Ready</span>
+</div>
+<textarea name="findings" rows="12" {% if report.status=='FINAL' %}readonly{% endif %}>{{report.findings}}</textarea>
+    <label>Impression</label>
+    <textarea name="impression" rows="7" {% if report.status=='FINAL' %}readonly{% endif %}>{{report.impression}}</textarea>
+  </form>
+
+  <div class="workflow-meta">
+    {% if report.verified_by %}<div><b>Verified by:</b> {{report.verified_by}} · {{report.verified_at or ''}}</div>{% endif %}
+    {% if report.second_verified_by %}<div><b>Second verified by:</b> {{report.second_verified_by}} · {{report.second_verified_at or ''}}</div>{% endif %}
+    {% if report.finalized_by %}<div><b>Finalized by:</b> {{report.finalized_by}} · {{report.finalized_at or ''}}</div>{% endif %}
+    {% if report.addendum_no %}<div><b>Addendum:</b> #{{report.addendum_no}}</div>{% endif %}
+  </div>
+</div>
+
+<div class="panel workflow-panel workflow-bottom">
+  <div class="workflow-caption"><strong>Save / Change Report Status</strong><span>Current: {{report.status.replace('_',' ')}}</span></div>
+  <div class="workflow-strip">
+    {% for st in all_states %}
+      <button form="web-report-form" name="action" value="{{st}}"
+        class="workflow-step {{'current' if report.status==st else ''}} {{'allowed' if report.status!='FINAL' else 'disabled'}}"
+        {% if report.status=='FINAL' %}disabled{% endif %}
+        {% if st=='FINAL' %}onclick="return confirm('Finalize this report? Later changes require an Addendum.');"{% endif %}>
+        <span>{{st.replace('_',' ')}}</span>
+      </button>
+      {% if not loop.last %}<span class="workflow-arrow">→</span>{% endif %}
+    {% endfor %}
+    {% if report.status=='FINAL' %}
+      <span class="workflow-step disabled">
+        ADDENDUM unavailable
+      </span>
+    {% endif %}
+  </div>
+</div>
+
+{% if history %}
+<div class="panel">
+  <div class="section-title">Version History / Audit Trail</div>
+  <table>
+    <tr><th>Version</th><th>Action</th><th>Actor Role</th><th>Radiologist</th><th>Change Summary</th><th>SHA256</th><th>Date</th></tr>
+    {% for h in history %}<tr><td>v{{'%03d'|format(h.version_no)}}</td><td>{{h.action}}</td><td>{{h.created_role or '-'}}</td><td>{{h.radiologist}}</td><td>{{h.change_summary or '-'}}</td><td><small>{{(h.sha256 or '')[:12]}}</small></td><td>{{h.created_at}}</td></tr>{% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

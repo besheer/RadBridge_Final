@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block page_title %}Operations Dashboard{% endblock %}
+{% block subtitle %}Today’s radiology workflow at a glance{% endblock %}
+{% block content %}
+<div id="studio-launcher-dashboard">{% set placement='DASHBOARD' %}{% set shortcut_context={} %}{% include "_studio_shortcuts.html" %}</div>
+
+<div class="cards rb-dashboard-kpis">
+<div class="metric"><small>Patients</small><b>{{stats.patients}}</b></div>
+<div class="metric"><small>Total Orders</small><b>{{stats.orders}}</b></div>
+<div class="metric"><small>Today</small><b>{{stats.today}}</b></div>
+<div class="metric"><small>Final Reports</small><b>{{stats.final}}</b></div>
+<div class="metric"><small>Routing / MWL Alerts</small><b>{{stats.mwl_errors}}</b></div>
+<div class="metric"><small>Collected</small><b>{{"%.2f"|format(stats.revenue)}} EGP</b></div>
+</div>
+<div class="panel rb-dashboard-recent"><div class="panel-head"><h3>Recent Orders</h3>{% if has_perm('orders.create') %}<a class="btn primary" href="{{url_for('new_order')}}">+ New Order</a>{% endif %}</div>
+<div class="rb-dashboard-table-wrap"><table class="rb-dashboard-table"><thead><tr><th>Accession</th><th>Patient</th><th>Procedure</th><th>Branch</th><th>Device</th><th>Status</th></tr></thead><tbody>
+{% for o in recent %}<tr><td><a href="{{url_for('order_detail',order_id=o.id)}}">{{o.accession}}</a></td><td>{{o.patient.name}}<small>{{o.patient.patient_id}}</small></td><td>{{o.procedure}}</td><td>{{o.branch.name if o.branch else '-'}}</td><td>{{o.device.name if o.device else '-'}}</td><td><span class="badge {{o.status|lower}}">{{o.status}}</span></td></tr>{% else %}<tr><td colspan="6" class="empty">No orders yet.</td></tr>{% endfor %}
+</tbody></table></div></div>{% endblock %}

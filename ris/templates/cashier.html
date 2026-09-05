@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block page_title %}{{t("cashier.title","Cashier Workstation")}}{% endblock %}
+{% block subtitle %}Collection, receipts and permission-controlled refunds.{% endblock %}
+{% block content %}
+<form method="get" class="panel global-screen-filter"><div class="filter-grid">
+<input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
+<input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
+<input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
+<select name="priority"><option value="">Priority</option><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select>
+</div><div class="actions"><button class="btn small primary">Filter</button><a class="btn small" href="{{request.path}}">Clear</a></div></form>
+<div class="panel">
+<form method="get" class="cashier-search"><input name="q" value="{{q}}" placeholder="Accession, patient ID, name or mobile"><button class="btn primary">{{t("common.search","Search")}}</button></form>
+</div>
+{% for o in orders %}
+<div class="panel cashier-order">
+  <div class="cashier-order-head">
+    <div><b>{{o.accession}} — {{o.patient.name}}</b><small>{{o.patient.patient_id}} · {{o.procedure}} · {{o.scheduled}}</small></div>
+    <div><b>Net Due: {{discount_ctx[o.id].due|round(2)}} EGP</b><small>Discount: {{discount_ctx[o.id].discount|round(2)}} · Paid: {{(o.paid_amount or 0)|round(2)}} EGP</small></div>
+  </div>
+
+  {% if has_perm('payments.create') %}
+  <form method="post" action="{{url_for('receive_payment',order_id=o.id)}}" class="grid4 cashier-collect">
+    <input name="amount" type="number" step="0.01" min="0.01" placeholder="Amount" required>
+    <select name="payment_method"><option>CASH</option><option>VISA</option><option>MASTERCARD</option><option>WALLET</option><option>BANK_TRANSFER</option></select>
+    <input name="reference_no" placeholder="Reference / POS">
+    {% if has_perm('finance.discount.request') or has_perm('finance.discount.apply') or has_perm('finance.discount.approve') %}
+    <input name="discount_percent" type="number" min="0" max="100" step="0.01" placeholder="Discount %">
+    <input name="discount_reason" placeholder="Discount reason">
+    {% endif %}
+    <button class="btn primary">{{t("cashier.collect","Collect Payment")}}</button>
+  </form>
+  {% if has_perm('finance.discount.request') or has_perm('finance.discount.apply') or has_perm('finance.discount.approve') %}
+  <small class="finance-policy-hint">{% set pol=discount_ctx[o.id].policy %}{% if has_perm('finance.discount.approve') %}Management can approve discounts directly.{% elif pol %}Direct {{pol.max_direct_percent|round(2)}}% · Approval request {{pol.max_request_percent|round(2)}}%.{% else %}No discount policy configured.{% endif %}</small>
+  {% endif %}
+  {% endif %}
+
+  {% for p in payments[o.id] %}
+  <div class="payment-row">
+    <span>Payment #{{p.id}} · {{p.amount|round(2)}} · {{p.method}} · {{status_label(p.status)}}</span>
+    <span>
+      {% if has_perm('receipts.print') %}<a class="btn small" href="{{url_for('order_detail',order_id=o.id)}}">{{t("cashier.receipt","Receipt")}}</a>{% endif %}
+      {% if has_perm('payments.refund') and p.status!='REFUNDED' %}
+      <details><summary class="btn small danger">{{t("cashier.refund","Refund")}}</summary>
+        <form method="post" action="{{url_for('refund_payment',payment_id=p.id)}}" class="refund-form">
+          <input name="amount" type="number" step="0.01" min="0.01" max="{{p.amount}}" value="{{p.amount}}" required>
+          <input name="reason" placeholder="{{t("cashier.refund_reason","Refund Reason")}}" required>
+          <input name="reference" placeholder="Reference">
+          <button class="btn danger">{{t("cashier.confirm_refund","Confirm Refund")}}</button>
+        </form>
+      </details>
+      {% endif %}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="panel">No visits found.</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block page_title %}Management Dashboard{% endblock %}
+{% block content %}
+<div class="panel"><form method="get" class="actions"><input type="date" name="start" value="{{start}}"><input type="date" name="end" value="{{end}}"><button class="btn primary">Apply</button><a class="btn" href="{{url_for('referral_analytics',start=start,end=end)}}">Referrals</a><a class="btn" href="{{url_for('daily_closing')}}">Daily Closing</a>{% if has_perm('analytics.executive.view') %}<a class="btn primary" href="{{url_for('executive_analytics')}}">📈 Executive Analytics</a>{% endif %}</form></div>
+<div class="management-kpis">
+<div><b>{{summary.total}}</b><span>Total Exams</span></div><div><b>{{summary.finalized}}</b><span>Finalized</span></div><div><b>{{summary.unassigned}}</b><span>Unassigned</span></div><div><b>{{summary.delayed}}</b><span>Delayed</span></div><div><b>{{summary.urgent}}</b><span>Urgent</span></div><div><b>{{'%.0f'|format(summary.avg_tat)}}</b><span>Avg TAT Min</span></div><div><b>{{'%.2f'|format(summary.revenue)}}</b><span>Revenue</span></div><div><b>{{'%.2f'|format(summary.company_share)}}</b><span>Company Share</span></div>
+</div>
+<div class="grid3">
+<div class="panel"><h3>By Branch</h3>{% for x in branch_rows %}<div class="bi-row"><span>{{x.name}}</span><b>{{x.count}}</b></div>{% endfor %}</div>
+<div class="panel"><h3>By Modality</h3>{% for x in modality_rows %}<div class="bi-row"><span>{{x.name}}</span><b>{{x.count}}</b></div>{% endfor %}</div>
+<div class="panel"><h3>Top Referrers</h3>{% for x in referrer_rows %}<div class="bi-row"><span>{{x.name}}</span><b>{{x.count}}</b></div>{% endfor %}</div>
+</div>{% endblock %}

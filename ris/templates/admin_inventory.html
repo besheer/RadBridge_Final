@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block page_title %}Consumables / Inventory{% endblock %}
+{% block subtitle %}Master catalog, codes, barcode, stock, batch/expiry and ERP-ready data{% endblock %}
+{% block content %}
+<div class="panel inventory-actions">
+<form method="post" action="{{url_for('admin_inventory_seed_defaults')}}"><button class="btn primary">Add Default Catalog</button></form>
+<a class="btn" href="{{url_for('admin_inventory_import_template')}}">Import Template XLSX</a>
+<a class="btn" href="{{url_for('admin_inventory_export',fmt='xlsx')}}">Export XLSX</a>
+<a class="btn" href="{{url_for('admin_inventory_export',fmt='csv')}}">Export CSV</a>
+<a class="btn" href="{{url_for('admin_inventory_batches')}}">Batch / Expiry</a>
+<a class="btn" href="{{url_for('admin_inventory_movements')}}">Stock Movements</a>
+<a class="btn" href="{{url_for('admin_erp')}}">ERP Integration</a>
+<form method="post" action="{{url_for('admin_inventory_import')}}" enctype="multipart/form-data" class="inline-import"><input type="file" name="file" accept=".csv,.xlsx" required><button class="btn">Import</button></form>
+</div>
+
+<div class="detail-grid">
+<form method="post" class="panel form-card"><h3>Add Item</h3>
+<div class="grid2">
+<div><label>Code</label><input name="code" required></div><div><label>Barcode</label><input name="barcode"></div>
+<div><label>Name EN</label><input name="name_en" required></div><div><label>الاسم عربي</label><input name="name_ar" dir="rtl"></div>
+<div><label>Category</label><input name="category"></div><div><label>Unit</label><input name="unit" value="pcs"></div>
+<div><label>Opening Stock</label><input name="stock_qty" type="number" step=".01" value="0"></div><div><label>Reorder Level</label><input name="reorder_level" type="number" step=".01" value="0"></div>
+<div><label>Unit Cost</label><input name="unit_cost" type="number" step=".01" value="0"></div><div><label>Selling Price</label><input name="selling_price" type="number" step=".01" value="0"></div>
+<div><label>Expiry Tracking</label><select name="expiry_tracking"><option value="0">No</option><option value="1">Yes</option></select></div>
+</div><button class="btn primary">Add Item</button></form>
+
+<div class="panel"><h3>Stock</h3><div class="table-wrap"><table><thead><tr><th>Code / Barcode</th><th>Item</th><th>Category</th><th>Stock</th><th>Reorder</th><th>Cost</th><th>Status</th><th>Manage</th></tr></thead><tbody>
+{% for i in items %}<tr class="{% if i.stock_qty<=i.reorder_level %}low-stock{% endif %}">
+<td><b>{{i.code}}</b><small>{{i.barcode or ''}}</small></td><td><b>{{i.name_en or i.name}}</b><small dir="rtl">{{i.name_ar}}</small></td><td>{{i.category}}</td><td><b>{{i.stock_qty}}</b> {{i.unit}}</td><td>{{i.reorder_level}}</td><td>{{i.unit_cost}}</td><td>{{'Active' if i.active else 'Inactive'}}</td>
+<td><details><summary class="btn small">Edit</summary>
+<form method="post" action="{{url_for('admin_inventory_edit',item_id=i.id)}}" class="compact-admin-form">
+<input name="barcode" value="{{i.barcode or ''}}" placeholder="Barcode"><input name="name_en" value="{{i.name_en or i.name}}" required><input name="name_ar" value="{{i.name_ar or ''}}" dir="rtl"><input name="category" value="{{i.category or ''}}"><input name="unit" value="{{i.unit}}" required>
+<input type="number" step=".01" min="0" name="reorder_level" value="{{i.reorder_level}}"><input type="number" step=".01" min="0" name="unit_cost" value="{{i.unit_cost}}"><input type="number" step=".01" min="0" name="selling_price" value="{{i.selling_price or 0}}">
+<select name="expiry_tracking"><option value="0" {% if not i.expiry_tracking %}selected{% endif %}>No Expiry</option><option value="1" {% if i.expiry_tracking %}selected{% endif %}>Track Expiry</option></select>
+<select name="active"><option value="1" {% if i.active %}selected{% endif %}>Active</option><option value="0" {% if not i.active %}selected{% endif %}>Inactive</option></select><button class="btn small">Save Item</button></form>
+<form method="post" action="{{url_for('admin_inventory_adjust',item_id=i.id)}}" class="compact-admin-form"><input type="number" step=".01" name="delta" placeholder="+10 or -2" required><input name="reason" minlength="5" placeholder="Adjustment reason" required><button class="btn small">Adjust Stock</button></form>
+</details></td></tr>{% endfor %}
+</tbody></table></div></div></div>
+{% endblock %}

@@ -1,0 +1,28 @@
+# Production secrets must never be baked into images
+secrets/
+*.key
+*.pem
+*.crt
+.env
+.env.*
+**/.env
+**/.env.*
+**/*.env
+!**/*.env.example
+
+# Runtime/patient data
+attachments/
+report-files/
+backups/
+test-runtime/
+
+# Development artifacts
+.git/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+*.log
+*.tar
+*.tar.gz
+*.zip

@@ -1,0 +1,51 @@
+<div class="registration-style-switch panel"
+     style="margin-bottom:14px">
+
+  <div style="display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap:12px;
+              flex-wrap:wrap">
+
+    <div>
+      <strong>
+        🖥 {{'واجهة التسجيل' if ui_lang=='ar'
+             else 'Registration Interface'}}
+      </strong>
+
+      <small style="display:block;margin-top:3px;opacity:.7">
+        {{'اختيارك محفوظ تلقائياً على حسابك'
+          if ui_lang=='ar'
+          else 'Your choice is saved to your account'}}
+      </small>
+    </div>
+
+    <form method="post"
+          action="{{url_for('my_registration_style')}}"
+          style="display:flex;gap:7px;flex-wrap:wrap">
+
+      <button class="btn small {{'primary' if registration_style=='MODERN' else ''}}"
+              name="style_key"
+              value="MODERN">
+        {% if registration_style=='MODERN' %}✓ {% endif %}
+        Modern
+      </button>
+
+      <button class="btn small {{'primary' if registration_style=='COMPACT' else ''}}"
+              name="style_key"
+              value="COMPACT">
+        {% if registration_style=='COMPACT' %}✓ {% endif %}
+        Compact
+      </button>
+
+      <button class="btn small {{'primary' if registration_style=='CLASSIC' else ''}}"
+              name="style_key"
+              value="CLASSIC">
+        {% if registration_style=='CLASSIC' %}✓ {% endif %}
+        Classic
+      </button>
+
+    </form>
+
+  </div>
+</div>

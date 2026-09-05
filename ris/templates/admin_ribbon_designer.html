@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block page_title %}{{'مصمم شريط الاختصارات' if ui_lang=='ar' else 'Ribbon Designer'}}{% endblock %}
+{% block content %}
+<form method="post" class="panel grid2">
+<div><label>Action Key</label><input name="action_key" required></div>
+<div><label>{{'الأيقونة' if ui_lang=='ar' else 'Icon'}}</label><input name="icon" value="•"></div>
+<div><label>English</label><input name="label_en" required></div>
+<div><label>العربية</label><input name="label_ar" dir="rtl"></div>
+<div><label>Route</label><input name="route_name" required></div>
+<div><label>Permission</label><input name="required_permission"></div>
+<div><label>Context</label><select name="context"><option>GLOBAL</option><option>PATIENT</option><option>ORDER</option><option>REPORT</option></select></div>
+<div><label>{{'الترتيب' if ui_lang=='ar' else 'Order'}}</label><input type="number" name="order_no" value="100"></div>
+<div><label>Status</label><select name="active"><option value="1">Active</option><option value="0">Inactive</option></select></div>
+<div><button class="btn primary">{{'حفظ' if ui_lang=='ar' else 'Save Action'}}</button></div>
+</form>
+<div class="panel">
+<table><thead><tr><th>Icon</th><th>Key</th><th>English</th><th>العربية</th><th>Route</th><th>Permission</th><th>Context</th></tr></thead>
+<tbody>{% for r in rows %}<tr><td>{{r.icon}}</td><td>{{r.action_key}}</td><td>{{r.label_en}}</td><td dir="rtl">{{r.label_ar}}</td><td>{{r.route_name}}</td><td>{{r.required_permission}}</td><td>{{r.context}}</td></tr>{% endfor %}</tbody>
+</table>
+</div>
+{% endblock %}

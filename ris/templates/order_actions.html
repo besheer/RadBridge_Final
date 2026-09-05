@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block page_title %}Case Command Center{% endblock %}
+{% block content %}
+<div id="studio-launcher-order">{% set placement='ORDER' %}{% set shortcut_context={'order_id':order.id,'patient_id':order.patient.id,'accession':order.accession} %}{% include "_studio_shortcuts.html" %}</div>
+
+<div class="panel case-command-header">
+  <div>
+    <h2>{{order.patient.name}} <small>· {{order.accession}}</small></h2>
+    <div class="clinical-meta"><span>{{order.modality}} · {{order.procedure}}</span><span>{{order.priority}}</span><span>{{order.status}}</span></div>
+  </div>
+  <div class="case-flags">
+    {% for kind,label in visual.flags %}<span class="case-flag {{kind}}">{{label}}</span>{% endfor %}
+  </div>
+</div>
+
+<div class="case-lifecycle">
+{% set current=visual.stage %}
+{% for key,label in lifecycle %}
+  <div class="life-step {% if key==current %}current{% endif %}"><span></span><b>{{label}}</b></div>
+{% endfor %}
+</div>
+
+<div class="radiology-command-bar">
+  {% if ctx.receipt %}<a target="_blank" href="{{url_for('receipt_studio_print',receipt_id=ctx.receipt.id)}}">🧾<span>Receipt</span></a>{% endif %}
+  <a target="_blank" href="{{url_for('order_label_print',order_id=order.id)}}">🏷️<span>Sticker</span></a>
+  <a href="{{url_for('order_print_center',order_id=order.id)}}">🖨️<span>Print</span></a>
+  <a href="{{url_for('order_attachments',order_id=order.id)}}">📎<span>Documents</span><em>{{visual.attachments}}</em></a>
+  <a href="{{url_for('imaging_ai_workspace',order_id=order.id)}}">🩻<span>PACS / AI</span></a>
+  <a href="{{url_for('report_editor',order_id=order.id)}}">📄<span>Report</span></a>
+</div>
+
+<div class="case-action-grid">
+<a class="case-action-card" href="{{url_for('doctor_clinical_workspace',order_id=order.id)}}">🩺<b>Clinical Workspace</b></a>
+<a class="case-action-card" href="{{url_for('patient_timeline',patient_id=order.patient.id)}}">🕘<b>Patient History</b></a>
+<a class="case-action-card" href="{{url_for('ai_report_assistant',order_id=order.id)}}">🤖<b>AI Draft</b></a>
+<a class="case-action-card" href="{{url_for('chat_case',order_id=order.id)}}">💬<b>Case Chat</b></a>
+<a class="case-action-card" href="{{url_for('return_case_form',order_id=order.id)}}">↩️<b>Return Case</b></a>
+</div>
+{% endblock %}

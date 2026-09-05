@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_action_guidance.html" import action_info %}
+{% block page_title %}Unassigned Cases{% endblock %}
+{% block subtitle %}Cases waiting for manual or automatic doctor assignment{% endblock %}
+{% block content %}
+<div class="panel">
+<table>
+<thead><tr><th>Priority</th><th>Patient</th><th>Accession</th><th>Exam</th><th>Modality</th><th>Actions</th></tr></thead>
+<tbody>
+{% for o in rows %}
+<tr>
+<td><span class="badge">{{o.priority or 'ROUTINE'}}</span></td>
+<td><b>{{o.patient.name}}</b><small>{{o.patient.patient_id}}</small></td>
+<td>{{o.accession}}</td>
+<td>{{o.proc.name if o.proc else o.procedure}}</td>
+<td>{{o.modality}}</td>
+<td>
+  {% if has_perm('assignment.manage') %}
+  <form method="post" action="{{url_for('assign_case',order_id=o.id)}}" class="actions">
+    <select name="doctor_user_id">
+      <option value="">Choose doctor</option>
+      {% for d in doctors %}<option value="{{d.id}}">{{d.full_name or d.username}}</option>{% endfor %}
+    </select>
+    <button class="btn" name="mode" value="manual">Assign</button>
+    {{ action_info('Manual Assignment','Assigns the case to the selected doctor.','Use when a coordinator has confirmed the responsible doctor.','Select an active authorized doctor.','Creates one active assignment through the protected assignment service.','Do not use to bypass readiness or an active assignment.',ui_lang) }}
+    <button class="btn primary" name="mode" value="auto">Auto Assign</button>
+    {{ action_info('Auto Assignment','Runs the configured assignment policy for this case.','Use after case readiness and doctor availability are current.','The case must satisfy the active strategy and safety gates.','May assign, create an offer, or route to Open Pool according to policy.','It never overrides an existing active assignment.',ui_lang) }}
+  </form>
+  {% else %}
+  <span class="muted">Coordinator assignment required</span>
+  {% endif %}
+</td>
+</tr>
+{% else %}
+<tr><td colspan="6" class="empty">No unassigned cases</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}

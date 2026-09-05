@@ -1,0 +1,2368 @@
+<!doctype html>
+
+<html lang="ar" dir="rtl">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta
+ name="viewport"
+ content="width=device-width,initial-scale=1">
+
+<title>RadBridge - تواصل وحجز الأشعة</title>
+
+<style>
+
+*{
+ box-sizing:border-box;
+}
+
+:root{
+ --blue:#2563eb;
+ --blue-soft:#eff6ff;
+ --green:#16a34a;
+ --green-soft:#ecfdf5;
+ --amber:#d97706;
+ --amber-soft:#fffbeb;
+ --red:#dc2626;
+ --purple:#7c3aed;
+ --purple-soft:#f5f3ff;
+ --border:#e2e8f0;
+ --text:#0f172a;
+ --muted:#64748b;
+ --bg:#f6f8fc;
+}
+
+body{
+ margin:0;
+ background:
+   radial-gradient(
+     circle at 90% 0%,
+     #dbeafe 0,
+     transparent 28%
+   ),
+   var(--bg);
+ color:var(--text);
+ font-family:
+   "Segoe UI",
+   Tahoma,
+   Arial,
+   sans-serif;
+}
+
+.rb-header{
+ background:#fff;
+ border-bottom:1px solid var(--border);
+ padding:14px 24px;
+ position:sticky;
+ top:0;
+ z-index:20;
+}
+
+.rb-header-inner{
+ max-width:1450px;
+ margin:auto;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:20px;
+}
+
+.rb-brand{
+ display:flex;
+ align-items:center;
+ gap:12px;
+}
+
+.rb-logo{
+ width:46px;
+ height:46px;
+ border-radius:14px;
+ background:
+   linear-gradient(
+     135deg,
+     #2563eb,
+     #06b6d4
+   );
+ color:#fff;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-size:24px;
+ box-shadow:
+   0 8px 20px
+   rgba(37,99,235,.2);
+}
+
+.rb-brand strong{
+ display:block;
+ font-size:19px;
+}
+
+.rb-brand small{
+ color:var(--muted);
+}
+
+.rb-live{
+ display:flex;
+ align-items:center;
+ gap:8px;
+ background:var(--green-soft);
+ color:#166534;
+ padding:8px 12px;
+ border-radius:999px;
+ font-weight:700;
+ font-size:13px;
+}
+
+.rb-dot{
+ width:9px;
+ height:9px;
+ border-radius:50%;
+ background:#22c55e;
+ box-shadow:
+   0 0 0 5px
+   rgba(34,197,94,.12);
+}
+
+.rb-page{
+ max-width:1450px;
+ margin:24px auto;
+ padding:0 20px 40px;
+ display:grid;
+ grid-template-columns:minmax(0,1fr) 390px;
+ gap:22px;
+}
+
+.rb-main,
+.rb-side{
+ display:flex;
+ flex-direction:column;
+ gap:18px;
+}
+
+.rb-card{
+ background:#fff;
+ border:1px solid var(--border);
+ border-radius:20px;
+ box-shadow:
+   0 10px 30px
+   rgba(15,23,42,.05);
+ overflow:hidden;
+}
+
+.rb-card-head{
+ padding:16px 18px;
+ border-bottom:1px solid var(--border);
+ display:flex;
+ align-items:center;
+ gap:12px;
+}
+
+.rb-icon{
+ width:42px;
+ height:42px;
+ border-radius:13px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-size:21px;
+ flex:none;
+}
+
+.rb-blue{
+ background:var(--blue-soft);
+ color:var(--blue);
+}
+
+.rb-green{
+ background:var(--green-soft);
+ color:var(--green);
+}
+
+.rb-purple{
+ background:var(--purple-soft);
+ color:var(--purple);
+}
+
+.rb-amber{
+ background:var(--amber-soft);
+ color:var(--amber);
+}
+
+.rb-title{
+ margin:0;
+ font-size:17px;
+}
+
+.rb-subtitle{
+ margin:3px 0 0;
+ font-size:13px;
+ color:var(--muted);
+}
+
+.rb-card-body{
+ padding:18px;
+}
+
+.rb-grid{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:13px;
+}
+
+.rb-span-2{
+ grid-column:1 / -1;
+}
+
+.rb-field label{
+ display:block;
+ font-size:13px;
+ font-weight:700;
+ margin-bottom:6px;
+}
+
+.rb-field input,
+.rb-field select,
+.rb-field textarea{
+ width:100%;
+ border:1px solid #cbd5e1;
+ background:#fff;
+ border-radius:11px;
+ padding:11px 12px;
+ font-size:14px;
+ outline:none;
+ transition:.15s;
+}
+
+.rb-field input:focus,
+.rb-field select:focus,
+.rb-field textarea:focus{
+ border-color:#60a5fa;
+ box-shadow:
+   0 0 0 3px
+   rgba(59,130,246,.1);
+}
+
+.rb-field textarea{
+ min-height:90px;
+ resize:vertical;
+}
+
+.rb-section-note{
+ background:#f8fafc;
+ border:1px dashed #cbd5e1;
+ border-radius:12px;
+ padding:11px 12px;
+ color:var(--muted);
+ font-size:13px;
+}
+
+.rb-upload-box{
+ border:1px dashed #94a3b8;
+ border-radius:12px;
+ padding:12px;
+ background:#fafafa;
+}
+
+.rb-upload-box label{
+ display:block;
+ font-size:13px;
+ font-weight:700;
+ margin-bottom:8px;
+}
+
+.rb-checks{
+ display:grid;
+ grid-template-columns:repeat(2,1fr);
+ gap:8px;
+}
+
+.rb-check{
+ display:flex;
+ align-items:center;
+ gap:7px;
+ border:1px solid var(--border);
+ padding:9px 10px;
+ border-radius:10px;
+ background:#fff;
+ font-size:13px;
+}
+
+.rb-actions{
+ display:flex;
+ gap:10px;
+ margin-top:18px;
+}
+
+.rb-btn{
+ border:0;
+ border-radius:12px;
+ padding:12px 17px;
+ cursor:pointer;
+ font-size:14px;
+ font-weight:800;
+ transition:.15s;
+}
+
+.rb-btn:hover{
+ transform:translateY(-1px);
+}
+
+.rb-btn-primary{
+ background:var(--blue);
+ color:#fff;
+ flex:1;
+}
+
+.rb-btn-secondary{
+ background:#f1f5f9;
+ color:#334155;
+}
+
+.rb-btn-call{
+ width:100%;
+ background:var(--green);
+ color:#fff;
+ font-size:17px;
+ padding:15px;
+}
+
+.rb-btn-end{
+ width:100%;
+ background:var(--red);
+ color:#fff;
+ margin-top:8px;
+ display:none;
+}
+
+.rb-status{
+ text-align:center;
+ padding:10px 12px;
+ border-radius:11px;
+ background:#f1f5f9;
+ color:#475569;
+ font-weight:700;
+ margin-bottom:12px;
+}
+
+.rb-status.online{
+ background:var(--green-soft);
+ color:#166534;
+}
+
+.rb-status.busy{
+ background:var(--amber-soft);
+ color:#92400e;
+}
+
+.rb-call-input{
+ display:flex;
+ gap:8px;
+ margin-top:12px;
+}
+
+.rb-call-input input{
+ flex:1;
+ border:1px solid #cbd5e1;
+ border-radius:11px;
+ padding:11px;
+ text-align:center;
+ direction:ltr;
+}
+
+.rb-call-input button{
+ border:1px solid var(--blue);
+ background:#fff;
+ color:var(--blue);
+ border-radius:11px;
+ padding:0 15px;
+ font-weight:800;
+ cursor:pointer;
+}
+
+.rb-ref{
+ margin-top:10px;
+ text-align:center;
+ color:#166534;
+ font-weight:700;
+}
+
+.rb-upload-status{
+ color:var(--muted);
+ font-size:13px;
+ margin-top:8px;
+}
+
+.rb-chat{
+ display:none;
+}
+
+.rb-messages{
+ height:300px;
+ overflow:auto;
+ padding:10px;
+ background:#f8fafc;
+ border-radius:12px;
+}
+
+.rb-msg{
+ max-width:88%;
+ margin:6px 0;
+ padding:9px 11px;
+ border-radius:12px;
+ font-size:14px;
+ line-height:1.6;
+}
+
+.rb-msg.patient{
+ background:#dbeafe;
+ margin-right:auto;
+}
+
+.rb-msg.bot{
+ background:#f1f5f9;
+}
+
+.rb-msg.staff{
+ background:#dcfce7;
+}
+
+.rb-msg.system{
+ background:#fef3c7;
+}
+
+.rb-chat-send{
+ display:flex;
+ gap:7px;
+ margin-top:9px;
+}
+
+.rb-chat-send input{
+ flex:1;
+ border:1px solid #cbd5e1;
+ border-radius:11px;
+ padding:11px;
+}
+
+.rb-chat-send button{
+ border:0;
+ border-radius:11px;
+ background:var(--blue);
+ color:#fff;
+ padding:0 15px;
+ font-weight:800;
+ cursor:pointer;
+}
+
+.rb-human{
+ width:100%;
+ margin-top:8px;
+ background:#fff;
+ border:1px solid var(--purple);
+ color:var(--purple);
+ border-radius:11px;
+ padding:10px;
+ font-weight:800;
+ cursor:pointer;
+}
+
+.rb-feature{
+ display:flex;
+ align-items:flex-start;
+ gap:10px;
+ padding:11px 0;
+ border-bottom:1px solid #f1f5f9;
+}
+
+.rb-feature:last-child{
+ border:0;
+}
+
+.rb-feature span{
+ font-size:22px;
+}
+
+.rb-feature strong{
+ display:block;
+ font-size:14px;
+}
+
+.rb-feature small{
+ color:var(--muted);
+ line-height:1.6;
+}
+
+.rb-progress{
+ display:flex;
+ gap:8px;
+ margin-bottom:18px;
+}
+
+.rb-step{
+ flex:1;
+ padding:9px;
+ border-radius:10px;
+ text-align:center;
+ background:#f1f5f9;
+ color:#64748b;
+ font-size:12px;
+ font-weight:700;
+}
+
+.rb-step.active{
+ background:#dbeafe;
+ color:#1d4ed8;
+}
+
+audio{
+ display:none;
+}
+
+@media(max-width:1050px){
+
+ .rb-page{
+   grid-template-columns:1fr;
+ }
+
+ .rb-side{
+   order:-1;
+ }
+
+}
+
+@media(max-width:650px){
+
+ .rb-page{
+   padding:0 10px 30px;
+ }
+
+ .rb-header{
+   padding:10px;
+ }
+
+ .rb-live{
+   display:none;
+ }
+
+ .rb-grid{
+   grid-template-columns:1fr;
+ }
+
+ .rb-span-2{
+   grid-column:auto;
+ }
+
+ .rb-checks{
+   grid-template-columns:1fr;
+ }
+
+ .rb-actions{
+   flex-direction:column;
+ }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+
+<header class="rb-header">
+
+<div class="rb-header-inner">
+
+<div class="rb-brand">
+
+<div class="rb-logo">
+✚
+</div>
+
+<div>
+<strong>RadBridge RIS</strong>
+<small>بوابة التواصل وحجز خدمات الأشعة</small>
+</div>
+
+</div>
+
+<div class="rb-live">
+
+<span class="rb-dot"></span>
+
+خدمة التواصل متاحة
+
+</div>
+
+</div>
+
+</header>
+
+
+<main class="rb-page">
+
+
+<section class="rb-main">
+
+
+<div class="rb-progress">
+
+<div class="rb-step active">
+1. بيانات التواصل
+</div>
+
+<div class="rb-step">
+2. بيانات الفحص
+</div>
+
+<div class="rb-step">
+3. المرفقات
+</div>
+
+<div class="rb-step">
+4. مراجعة الموظف
+</div>
+
+</div>
+
+
+<div class="rb-card">
+
+<div class="rb-card-head">
+
+<div class="rb-icon rb-blue">
+👤
+</div>
+
+<div>
+
+<h2 class="rb-title">
+بيانات التواصل
+</h2>
+
+<p class="rb-subtitle">
+أدخل البيانات الأساسية ليتمكن موظف الاستقبال من مراجعة طلبك.
+</p>
+
+</div>
+
+</div>
+
+
+<div class="rb-card-body rb-grid">
+
+<div class="rb-field">
+<label>الاسم *</label>
+<input id="rbPublicName"
+       placeholder="اسم المريض">
+</div>
+
+<div class="rb-field">
+<label>رقم الموبايل *</label>
+<input id="rbPublicPhone"
+       inputmode="tel"
+       placeholder="01xxxxxxxxx">
+</div>
+
+<div class="rb-field">
+<label>رقم الحجز / Accession</label>
+<input id="rbPublicBooking"
+       placeholder="اختياري">
+</div>
+
+<div class="rb-field">
+<label>نوع الطلب</label>
+
+<select id="rbPublicType">
+
+<option value="BOOKING">
+حجز جديد
+</option>
+
+<option value="APPOINTMENT">
+استفسار عن موعد
+</option>
+
+<option value="REPORT">
+استفسار عن تقرير
+</option>
+
+<option value="PRICE">
+استفسار عن سعر
+</option>
+
+<option value="COMPLAINT">
+شكوى
+</option>
+
+<option value="OTHER">
+أخرى
+</option>
+
+</select>
+
+</div>
+
+<div class="rb-field rb-span-2">
+
+<label>
+شرح مختصر للطلب
+</label>
+
+<textarea
+ id="rbPublicMessage"
+ placeholder="اكتب طلبك أو استفسارك هنا"></textarea>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="rb-card">
+
+<div class="rb-card-head">
+
+<div class="rb-icon rb-green">
+🩻
+</div>
+
+<div>
+
+<h2 class="rb-title">
+بيانات الفحص
+</h2>
+
+<p class="rb-subtitle">
+بيانات طبية أولية لمساعدة الاستقبال في تجهيز الحجز.
+</p>
+
+</div>
+
+</div>
+
+
+<div class="rb-card-body rb-grid">
+
+<div class="rb-field">
+
+<label>
+تاريخ الميلاد
+</label>
+
+<input
+ id="rbDob"
+ type="date">
+
+</div>
+
+
+<div class="rb-field">
+
+<label>
+السن
+</label>
+
+<input
+ id="rbAge"
+ type="number"
+ min="0"
+ max="120"
+ placeholder="السن">
+
+</div>
+
+
+<div class="rb-field rb-span-2">
+
+<label>
+الفحص المطلوب
+</label>
+
+<input
+ id="rbExamName"
+ placeholder="مثال: MRI Brain">
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="rb-card">
+
+<div class="rb-card-head">
+
+<div class="rb-icon rb-purple">
+🛡️
+</div>
+
+<div>
+
+<h2 class="rb-title">
+التأمين والموافقة الطبية
+</h2>
+
+<p class="rb-subtitle">
+يمكن ترك هذه البيانات فارغة إذا كان الحجز نقدي.
+</p>
+
+</div>
+
+</div>
+
+
+<div class="rb-card-body rb-grid">
+
+<div class="rb-field">
+
+<label>
+شركة التأمين / جهة التعاقد
+</label>
+
+<input
+ id="rbInsuranceCompany"
+ placeholder="اسم الجهة">
+
+</div>
+
+
+<div class="rb-field">
+
+<label>
+رقم العضوية / الكارنيه
+</label>
+
+<input
+ id="rbInsuranceMember"
+ placeholder="Membership No.">
+
+</div>
+
+
+<div class="rb-field">
+
+<label>
+رقم الموافقة الطبية
+</label>
+
+<input
+ id="rbApprovalNo"
+ placeholder="إن وجد">
+
+</div>
+
+
+<div class="rb-field">
+
+<label>
+حالة الموافقة
+</label>
+
+<select id="rbApprovalStatus">
+
+<option value="NOT_DECLARED">
+غير محددة
+</option>
+
+<option value="NOT_REQUIRED">
+لا تحتاج موافقة
+</option>
+
+<option value="REQUIRED">
+تحتاج موافقة
+</option>
+
+<option value="PENDING">
+تحت المراجعة
+</option>
+
+<option value="PATIENT_HAS_APPROVAL">
+لدي موافقة
+</option>
+
+</select>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="rb-card">
+
+<div class="rb-card-head">
+
+<div class="rb-icon rb-amber">
+📎
+</div>
+
+<div>
+
+<h2 class="rb-title">
+المرفقات الطبية
+</h2>
+
+<p class="rb-subtitle">
+يمكن رفع PDF أو JPG أو PNG بحد أقصى 10MB للملف.
+</p>
+
+</div>
+
+</div>
+
+
+<div class="rb-card-body rb-grid">
+
+
+<div class="rb-upload-box">
+
+<label>
+💳 صورة الكارنيه / بطاقة التأمين
+</label>
+
+<input
+ type="file"
+ id="rbInsuranceCard"
+ accept=".pdf,.jpg,.jpeg,.png">
+
+</div>
+
+
+<div class="rb-upload-box">
+
+<label>
+✅ الموافقة الطبية
+</label>
+
+<input
+ type="file"
+ id="rbMedicalApproval"
+ accept=".pdf,.jpg,.jpeg,.png">
+
+</div>
+
+
+<div class="rb-upload-box rb-span-2">
+
+<label>
+🗂️ مرفقات أخرى
+</label>
+
+<div class="rb-grid">
+
+<div class="rb-field">
+
+<select id="rbOtherAttachmentType">
+
+<option value="OLD_REPORT">
+تقرير فحص سابق
+</option>
+
+<option value="OLD_IMAGE">
+صور فحص سابق للمقارنة
+</option>
+
+<option value="PRESCRIPTION">
+روشتة
+</option>
+
+<option value="LAB_RESULT">
+تحاليل
+</option>
+
+<option value="REFERRAL">
+خطاب تحويل
+</option>
+
+<option value="OTHER">
+مستند آخر
+</option>
+
+</select>
+
+</div>
+
+<div class="rb-field">
+
+<input
+ id="rbAttachmentDescription"
+ placeholder="وصف المرفق - اختياري">
+
+</div>
+
+</div>
+
+<input
+ type="file"
+ id="rbOtherAttachments"
+ accept=".pdf,.jpg,.jpeg,.png"
+ multiple>
+
+</div>
+
+
+<div
+ id="rbUploadStatus"
+ class="rb-upload-status rb-span-2">
+</div>
+
+</div>
+
+</div>
+
+
+<div class="rb-card">
+
+<div class="rb-card-head">
+
+<div class="rb-icon rb-blue">
+🔔
+</div>
+
+<div>
+
+<h2 class="rb-title">
+الدفع واستلام التأكيد
+</h2>
+
+<p class="rb-subtitle">
+طريقة الدفع النهائية يتم تأكيدها بواسطة موظف الاستقبال.
+</p>
+
+</div>
+
+</div>
+
+
+<div class="rb-card-body rb-grid">
+
+
+<div class="rb-field rb-span-2">
+
+<label>
+طريقة الدفع المفضلة
+</label>
+
+<select id="rbPaymentPreference">
+
+<option value="">
+يحددها الموظف لاحقاً
+</option>
+
+<option value="CENTER">
+الدفع في المركز
+</option>
+
+<option value="PAYMENT_LINK">
+رابط دفع إلكتروني
+</option>
+
+<option value="INSTAPAY">
+InstaPay
+</option>
+
+<option value="WALLET">
+محفظة إلكترونية
+</option>
+
+<option value="BANK_TRANSFER">
+تحويل بنكي
+</option>
+
+</select>
+
+</div>
+
+
+<div class="rb-field rb-span-2">
+
+<label>
+طريقة استلام تأكيد الحجز
+</label>
+
+<div class="rb-checks">
+
+<label class="rb-check">
+<input type="checkbox"
+       id="rbNotifyWhatsapp"
+       checked>
+WhatsApp
+</label>
+
+<label class="rb-check">
+<input type="checkbox"
+       id="rbNotifySms">
+SMS
+</label>
+
+<label class="rb-check">
+<input type="checkbox"
+       id="rbNotifyEmail">
+Email
+</label>
+
+<label class="rb-check">
+<input type="checkbox"
+       id="rbNotifyWeb"
+       checked>
+المحادثة داخل الموقع
+</label>
+
+</div>
+
+</div>
+
+
+<div class="rb-field rb-span-2">
+
+<label>
+البريد الإلكتروني
+</label>
+
+<input
+ id="rbNotifyEmailAddress"
+ type="email"
+ placeholder="اختياري">
+
+</div>
+
+
+<div class="rb-section-note rb-span-2">
+
+🔒 لن يتم تأكيد الموعد أو الموافقة الطبية تلقائياً.
+سيقوم موظف الاستقبال بمراجعة البيانات قبل الاعتماد النهائي.
+
+</div>
+
+
+<div class="rb-actions rb-span-2">
+
+<button
+ class="rb-btn rb-btn-primary"
+ id="rbSubmitButton"
+ onclick="rbSubmitContact()">
+
+إرسال الطلب وبدء المحادثة
+
+</button>
+
+<button
+ class="rb-btn rb-btn-secondary"
+ onclick="location.reload()">
+
+مسح البيانات
+
+</button>
+
+</div>
+
+
+<div
+ id="rbPublicReference"
+ class="rb-ref rb-span-2">
+</div>
+
+</div>
+
+</div>
+
+
+</section>
+
+
+<aside class="rb-side">
+
+
+<div class="rb-card">
+
+<div class="rb-card-head">
+
+<div class="rb-icon rb-green">
+☎️
+</div>
+
+<div>
+
+<h2 class="rb-title">
+اتصال مباشر
+</h2>
+
+<p class="rb-subtitle">
+اتصل بالاستقبال من المتصفح.
+</p>
+
+</div>
+
+</div>
+
+
+<div class="rb-card-body">
+
+<div
+ id="status"
+ class="rb-status">
+
+جاري تجهيز الاتصال...
+
+</div>
+
+<button
+ id="receptionCall"
+ class="rb-btn rb-btn-call"
+ disabled>
+
+☎ اتصل بالاستقبال
+
+</button>
+
+<div class="rb-call-input">
+
+<input
+ id="extension"
+ maxlength="4"
+ inputmode="numeric"
+ placeholder="الرقم الداخلي">
+
+<button
+ id="directCall"
+ disabled>
+
+اتصال
+
+</button>
+
+</div>
+
+<button
+ id="hangup"
+ class="rb-btn rb-btn-end">
+
+إنهاء المكالمة
+
+</button>
+
+<audio
+ id="remoteAudio"
+ autoplay>
+</audio>
+
+</div>
+
+</div>
+
+
+<div
+ id="rbChatPanel"
+ class="rb-card rb-chat">
+
+<div class="rb-card-head">
+
+<div class="rb-icon rb-purple">
+💬
+</div>
+
+<div>
+
+<h2 class="rb-title">
+المحادثة
+</h2>
+
+<p class="rb-subtitle">
+ابدأ مع المساعد أو اطلب موظف استقبال.
+</p>
+
+</div>
+
+</div>
+
+
+<div class="rb-card-body">
+
+<div
+ id="rbPublicMessages"
+ class="rb-messages">
+</div>
+
+<div class="rb-chat-send">
+
+<input
+ id="rbChatInput"
+ placeholder="اكتب رسالتك...">
+
+<button onclick="rbSendChat()">
+إرسال
+</button>
+
+</div>
+
+<button
+ class="rb-human"
+ onclick="rbRequestHuman()">
+
+👨‍💼 التحدث مع موظف
+
+</button>
+
+</div>
+
+</div>
+
+
+<div class="rb-card">
+
+<div class="rb-card-body">
+
+<div class="rb-feature">
+
+<span>🕐</span>
+
+<div>
+<strong>متابعة الطلب</strong>
+<small>
+سيظهر طلبك لموظف الاستقبال للمراجعة والتأكيد.
+</small>
+</div>
+
+</div>
+
+
+<div class="rb-feature">
+
+<span>📎</span>
+
+<div>
+<strong>مرفقات طبية</strong>
+<small>
+يمكن إرسال تقارير قديمة وروشتات وموافقات طبية.
+</small>
+</div>
+
+</div>
+
+
+<div class="rb-feature">
+
+<span>🔔</span>
+
+<div>
+<strong>إشعار بالتأكيد</strong>
+<small>
+اختر WhatsApp أو Email أو أي وسيلة متاحة.
+</small>
+</div>
+
+</div>
+
+
+<div class="rb-feature">
+
+<span>🔐</span>
+
+<div>
+<strong>خصوصية البيانات</strong>
+<small>
+لا يتم اعتماد بيانات المريض قبل مراجعة الموظف.
+</small>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+</aside>
+
+
+</main>
+
+
+<script type="module">
+
+import * as SIP
+from "https://cdn.jsdelivr.net/npm/sip.js@0.21.2/+esm";
+
+
+const statusEl=
+ document.getElementById('status');
+
+const receptionButton=
+ document.getElementById('receptionCall');
+
+const directButton=
+ document.getElementById('directCall');
+
+const hangupButton=
+ document.getElementById('hangup');
+
+const extensionInput=
+ document.getElementById('extension');
+
+const remoteAudio=
+ document.getElementById('remoteAudio');
+
+let cfg=null;
+let ua=null;
+let registerer=null;
+let currentSession=null;
+
+
+function setStatus(text,cls=''){
+
+ statusEl.textContent=text;
+ statusEl.className='rb-status '+cls;
+
+}
+
+
+function enableCalling(){
+
+ receptionButton.disabled=false;
+ directButton.disabled=false;
+
+}
+
+
+function disableCalling(){
+
+ receptionButton.disabled=true;
+ directButton.disabled=true;
+
+}
+
+
+function attachRemoteAudio(session){
+
+ try{
+
+   const pc=
+     session
+     .sessionDescriptionHandler
+     .peerConnection;
+
+   if(!pc)
+      return;
+
+   const stream=
+     new MediaStream();
+
+   pc.ontrack=function(event){
+
+     if(
+       event.streams &&
+       event.streams[0]
+     ){
+
+       remoteAudio.srcObject=
+         event.streams[0];
+
+     }else{
+
+       stream.addTrack(
+         event.track
+       );
+
+       remoteAudio.srcObject=
+         stream;
+
+     }
+
+     remoteAudio.muted=false;
+     remoteAudio.volume=1;
+
+     remoteAudio
+       .play()
+       .catch(console.error);
+
+   };
+
+
+   pc.getReceivers()
+     .forEach(receiver=>{
+
+       if(
+         receiver.track &&
+         receiver.track.kind==='audio'
+       ){
+
+         stream.addTrack(
+           receiver.track
+         );
+
+       }
+
+     });
+
+
+   if(
+     stream.getAudioTracks().length
+   ){
+
+     remoteAudio.srcObject=stream;
+
+     remoteAudio
+       .play()
+       .catch(console.error);
+
+   }
+
+ }catch(e){
+
+   console.error(e);
+
+ }
+
+}
+
+
+function watchSession(session){
+
+ session.stateChange
+ .addListener(state=>{
+
+   if(
+     state ===
+     SIP.SessionState.Established
+   ){
+
+     attachRemoteAudio(session);
+
+     setStatus(
+       'المكالمة متصلة',
+       'online'
+     );
+
+     hangupButton.style.display=
+       'block';
+
+   }
+
+
+   if(
+     state ===
+     SIP.SessionState.Terminated
+   ){
+
+     currentSession=null;
+
+     setStatus(
+       'جاهز للاتصال',
+       'online'
+     );
+
+     hangupButton.style.display=
+       'none';
+
+     enableCalling();
+
+   }
+
+ });
+
+}
+
+
+async function callNumber(number){
+
+ number=
+   String(number || '')
+   .trim();
+
+ if(
+   !cfg ||
+   !ua ||
+   currentSession
+ ){
+   return;
+ }
+
+
+ if(
+   !cfg.allowed_extensions
+   .includes(number)
+ ){
+
+   setStatus(
+     'الرقم الداخلي غير متاح'
+   );
+
+   return;
+ }
+
+
+ try{
+
+   await navigator.mediaDevices
+     .getUserMedia({
+       audio:true,
+       video:false
+     });
+
+
+   const target=
+     SIP.UserAgent.makeURI(
+       'sip:'+
+       number+
+       '@ris.dynuddns.net'
+     );
+
+
+   const inviter=
+     new SIP.Inviter(
+       ua,
+       target,
+       {
+         sessionDescriptionHandlerOptions:{
+           constraints:{
+             audio:true,
+             video:false
+           }
+         }
+       }
+     );
+
+
+   currentSession=inviter;
+
+   watchSession(inviter);
+
+   disableCalling();
+
+   setStatus(
+     'جاري الاتصال...',
+     'busy'
+   );
+
+   await inviter.invite();
+
+ }catch(e){
+
+   console.error(e);
+
+   currentSession=null;
+
+   enableCalling();
+
+   setStatus(
+     'تعذر بدء المكالمة'
+   );
+
+ }
+
+}
+
+
+async function hangup(){
+
+ if(!currentSession)
+    return;
+
+ try{
+
+   if(
+     currentSession.state ===
+     SIP.SessionState.Established
+   ){
+
+     await currentSession.bye();
+
+   }else if(
+     typeof currentSession.cancel ===
+     'function'
+   ){
+
+     await currentSession.cancel();
+
+   }
+
+ }catch(e){
+
+   console.error(e);
+
+ }
+
+}
+
+
+async function initialize(){
+
+ try{
+
+   const response=
+     await fetch(
+       '/api/public-call/config',
+       {
+         cache:'no-store'
+       }
+     );
+
+
+   if(!response.ok){
+     throw new Error(
+       'CONFIG_'+
+       response.status
+     );
+   }
+
+
+   cfg=await response.json();
+
+
+   const uri=
+     SIP.UserAgent.makeURI(
+       cfg.sip_uri
+     );
+
+
+   ua=
+     new SIP.UserAgent({
+
+       uri,
+
+       authorizationUsername:
+         cfg.authorization_username,
+
+       authorizationPassword:
+         cfg.authorization_password,
+
+       transportOptions:{
+         server:
+           cfg.websocket
+       },
+
+       displayName:
+         'Web Patient',
+
+       sessionDescriptionHandlerFactoryOptions:{
+         peerConnectionConfiguration:{
+           iceServers:[
+             {
+               urls:[
+                 'stun:stun.l.google.com:19302'
+               ]
+             }
+           ]
+         }
+       }
+
+     });
+
+
+   await ua.start();
+
+
+   registerer=
+     new SIP.Registerer(ua);
+
+
+   registerer.stateChange
+   .addListener(state=>{
+
+     if(
+       state ===
+       SIP.RegistererState.Registered
+     ){
+
+       setStatus(
+         'جاهز للاتصال',
+         'online'
+       );
+
+       enableCalling();
+
+     }
+
+   });
+
+
+   await registerer.register();
+
+ }catch(e){
+
+   console.error(e);
+
+   setStatus(
+     'خدمة الاتصال غير متاحة حالياً'
+   );
+
+ }
+
+}
+
+
+receptionButton.onclick=
+ ()=>callNumber('720');
+
+directButton.onclick=
+ ()=>callNumber(
+   extensionInput.value
+ );
+
+hangupButton.onclick=
+ hangup;
+
+
+initialize();
+
+</script>
+
+
+<script>
+
+let rbPublicRequestId=null;
+let rbPublicChatToken=null;
+
+
+async function rbJson(
+ url,
+ options={}
+){
+
+ const r=
+   await fetch(
+     url,
+     options
+   );
+
+ return await r.json();
+
+}
+
+
+async function rbSubmitContact(){
+
+ const button=
+   document.getElementById(
+     'rbSubmitButton'
+   );
+
+ const patient_name=
+   document.getElementById(
+     'rbPublicName'
+   ).value.trim();
+
+ const phone=
+   document.getElementById(
+     'rbPublicPhone'
+   ).value.trim();
+
+
+ if(!patient_name || !phone){
+
+   alert(
+     'الاسم ورقم الموبايل مطلوبان'
+   );
+
+   return;
+
+ }
+
+
+ button.disabled=true;
+ button.textContent=
+   'جاري إرسال الطلب...';
+
+
+ try{
+
+   const req=
+     await rbJson(
+       '/api/public-call/request',
+       {
+         method:'POST',
+
+         headers:{
+           'Content-Type':
+             'application/json'
+         },
+
+         body:JSON.stringify({
+
+           patient_name,
+
+           phone,
+
+           booking_reference:
+             document.getElementById(
+               'rbPublicBooking'
+             ).value,
+
+           request_type:
+             document.getElementById(
+               'rbPublicType'
+             ).value,
+
+           message:
+             document.getElementById(
+               'rbPublicMessage'
+             ).value
+
+         })
+       }
+     );
+
+
+   if(!req.ok){
+     throw new Error(
+       req.error ||
+       'REQUEST_FAILED'
+     );
+   }
+
+
+   rbPublicRequestId=
+     req.request_id;
+
+
+   await rbSaveExtendedDetails();
+
+   await rbUploadAllDocuments();
+
+
+   document.getElementById(
+     'rbPublicReference'
+   ).textContent=
+     'تم استلام الطلب - رقم المتابعة: '+
+     req.reference;
+
+
+   const chat=
+     await rbJson(
+       '/api/public-chat/start',
+       {
+         method:'POST',
+
+         headers:{
+           'Content-Type':
+             'application/json'
+         },
+
+         body:JSON.stringify({
+           request_id:
+             rbPublicRequestId
+         })
+       }
+     );
+
+
+   if(chat.ok){
+
+     rbPublicChatToken=
+       chat.token;
+
+     document.getElementById(
+       'rbChatPanel'
+     ).style.display='block';
+
+     await rbLoadChat();
+
+     document.getElementById(
+       'rbChatPanel'
+     ).scrollIntoView({
+       behavior:'smooth',
+       block:'start'
+     });
+
+   }
+
+
+   button.textContent=
+     'تم إرسال الطلب ✓';
+
+
+ }catch(e){
+
+   console.error(e);
+
+   button.disabled=false;
+   button.textContent=
+     'إرسال الطلب وبدء المحادثة';
+
+   alert(
+     'تعذر إرسال الطلب. حاول مرة أخرى.'
+   );
+
+ }
+
+}
+
+
+async function rbSaveExtendedDetails(){
+
+ if(!rbPublicRequestId)
+    return;
+
+
+ await rbJson(
+   '/api/public-call/request/' +
+   rbPublicRequestId +
+   '/details',
+   {
+     method:'POST',
+
+     headers:{
+       'Content-Type':
+         'application/json'
+     },
+
+     body:JSON.stringify({
+
+       date_of_birth:
+         document.getElementById(
+           'rbDob'
+         ).value,
+
+       age_years:
+         document.getElementById(
+           'rbAge'
+         ).value,
+
+       exam_name:
+         document.getElementById(
+           'rbExamName'
+         ).value,
+
+       insurance_company:
+         document.getElementById(
+           'rbInsuranceCompany'
+         ).value,
+
+       insurance_member_no:
+         document.getElementById(
+           'rbInsuranceMember'
+         ).value,
+
+       medical_approval_no:
+         document.getElementById(
+           'rbApprovalNo'
+         ).value,
+
+       medical_approval_status:
+         document.getElementById(
+           'rbApprovalStatus'
+         ).value,
+
+       payment_preference:
+         document.getElementById(
+           'rbPaymentPreference'
+         ).value,
+
+       notification_whatsapp:
+         document.getElementById(
+           'rbNotifyWhatsapp'
+         ).checked,
+
+       notification_sms:
+         document.getElementById(
+           'rbNotifySms'
+         ).checked,
+
+       notification_email:
+         document.getElementById(
+           'rbNotifyEmail'
+         ).checked,
+
+       notification_web_chat:
+         document.getElementById(
+           'rbNotifyWeb'
+         ).checked,
+
+       notification_email_address:
+         document.getElementById(
+           'rbNotifyEmailAddress'
+         ).value
+
+     })
+   }
+ );
+
+}
+
+
+async function rbUploadFiles(
+ input,
+ type,
+ description=''
+){
+
+ if(
+   !rbPublicRequestId ||
+   !input
+ ){
+   return;
+ }
+
+ const files=
+   Array.from(
+     input.files || []
+   );
+
+ if(!files.length)
+    return;
+
+
+ const data=
+   new FormData();
+
+
+ files.forEach(file=>{
+
+   data.append(
+     'files',
+     file
+   );
+
+ });
+
+
+ data.append(
+   'attachment_type',
+   type
+ );
+
+
+ data.append(
+   'description',
+   description
+ );
+
+
+ const r=
+   await fetch(
+     '/api/public-call/request/' +
+     rbPublicRequestId +
+     '/attachments',
+     {
+       method:'POST',
+       body:data
+     }
+   );
+
+
+ const j=
+   await r.json();
+
+
+ if(!j.ok){
+   throw new Error(
+     j.error ||
+     'UPLOAD_FAILED'
+   );
+ }
+
+}
+
+
+async function rbUploadAllDocuments(){
+
+ const status=
+   document.getElementById(
+     'rbUploadStatus'
+   );
+
+
+ status.textContent=
+   'جاري رفع المرفقات...';
+
+
+ await rbUploadFiles(
+   document.getElementById(
+     'rbInsuranceCard'
+   ),
+   'INSURANCE_CARD',
+   'Insurance card'
+ );
+
+
+ await rbUploadFiles(
+   document.getElementById(
+     'rbMedicalApproval'
+   ),
+   'MEDICAL_APPROVAL',
+   'Medical approval'
+ );
+
+
+ await rbUploadFiles(
+   document.getElementById(
+     'rbOtherAttachments'
+   ),
+   document.getElementById(
+     'rbOtherAttachmentType'
+   ).value,
+   document.getElementById(
+     'rbAttachmentDescription'
+   ).value
+ );
+
+
+ status.textContent=
+   'تم رفع المرفقات ✓';
+
+}
+
+
+async function rbSendChatText(message){
+
+ if(
+   !rbPublicChatToken ||
+   !message
+ ){
+   return;
+ }
+
+
+ await rbJson(
+   '/api/public-chat/' +
+   rbPublicChatToken +
+   '/message',
+   {
+     method:'POST',
+
+     headers:{
+       'Content-Type':
+         'application/json'
+     },
+
+     body:JSON.stringify({
+       message
+     })
+   }
+ );
+
+
+ await rbLoadChat();
+
+}
+
+
+async function rbSendChat(){
+
+ const input=
+   document.getElementById(
+     'rbChatInput'
+   );
+
+ const message=
+   input.value.trim();
+
+ if(!message)
+    return;
+
+ input.value='';
+
+ await rbSendChatText(
+   message
+ );
+
+}
+
+
+async function rbRequestHuman(){
+
+ await rbSendChatText(
+   'أريد التحدث مع موظف'
+ );
+
+}
+
+
+async function rbLoadChat(){
+
+ if(!rbPublicChatToken)
+    return;
+
+
+ const j=
+   await rbJson(
+     '/api/public-chat/' +
+     rbPublicChatToken +
+     '/messages'
+   );
+
+
+ if(!j.ok)
+    return;
+
+
+ const box=
+   document.getElementById(
+     'rbPublicMessages'
+   );
+
+
+ box.innerHTML='';
+
+
+ j.messages.forEach(m=>{
+
+   const div=
+     document.createElement(
+       'div'
+     );
+
+
+   div.className=
+     'rb-msg '+
+     String(
+       m.sender_type || ''
+     ).toLowerCase();
+
+
+   div.textContent=
+     m.message;
+
+
+   box.appendChild(div);
+
+ });
+
+
+ box.scrollTop=
+   box.scrollHeight;
+
+}
+
+
+document.getElementById(
+ 'rbChatInput'
+).addEventListener(
+ 'keydown',
+ e=>{
+
+   if(e.key==='Enter'){
+
+     e.preventDefault();
+
+     rbSendChat();
+
+   }
+
+ }
+);
+
+
+setInterval(
+ ()=>{
+
+   if(rbPublicChatToken){
+     rbLoadChat();
+   }
+
+ },
+ 3000
+);
+
+</script>
+
+
+</body>
+
+</html>

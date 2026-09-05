@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block page_title %}PACS Image Tracking{% endblock %}
+{% block subtitle %}Exam workflow and PACS image arrival are tracked separately{% endblock %}
+{% block content %}
+<form method="get" class="panel global-screen-filter"><div class="filter-grid">
+<input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
+<input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
+<input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
+<select name="priority"><option value="">Priority</option><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select>
+</div><div class="actions"><button class="btn small primary">Filter</button><a class="btn small" href="{{request.path}}">Clear</a></div></form>
+<div class="panel">
+<div class="tracking-toolbar"><div><b>PACS Tracking</b><small>Refreshes every 30 seconds</small></div><button id="refreshPacs" class="btn">Refresh</button></div>
+<table>
+<tr><th>Patient</th><th>Accession</th><th>Exam</th><th>Modality</th><th>Exam Status</th><th>Images</th><th>PACS Status</th><th>Last Seen</th><th>Viewer</th></tr>
+{% for o in rows %}
+<tr>
+<td><b>{{o.patient.name}}</b><small>{{o.patient.patient_id}}</small></td>
+<td>{{o.accession}}</td><td>{{o.proc.name if o.proc else o.procedure}}</td><td>{{o.modality}}</td>
+<td><span class="status-chip status-{{(o.exam_status or 'ORDERED')|lower|replace('_','-')}}">{{o.exam_status or 'ORDERED'}}</span></td>
+<td><b>{{o.pacs_image_count or 0}}</b></td>
+<td><span class="pacs-chip pacs-{{(o.pacs_status or 'WAITING')|lower|replace('_','-')}}">{{o.pacs_status or 'WAITING'}}</span></td>
+<td>{{o.pacs_last_seen_at or '-'}}</td>
+<td>{% if o.pacs_study_id %}<a class="btn btn-sm" href="{{case_pacs_url(o)}}" target="_blank">Viewer</a>{% else %}-{% endif %}</td>
+</tr>
+{% endfor %}
+</table>
+</div>
+<script>
+(function(){const b=document.getElementById('refreshPacs'); async function r(){b.disabled=true;try{const x=await fetch('{{url_for("pacs_tracking_refresh")}}',{method:'POST'});if(x.ok)location.reload();}finally{b.disabled=false}} b.onclick=r; setInterval(r,30000);})();
+</script>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block page_title %}{{'التسجيل السريع' if ui_lang=='ar' else 'Compact Registration'}}{% endblock %}
+{% block content %}
+{% set fd=form_data or {} %}{% set rd=registration_defaults %}
+{% set branch_value=(fd.get('branch_id')|int if fd.get('branch_id') else (rd.default_branch_id if rd else 0)) %}
+{% set procedure_value=(fd.get('procedure_id')|int if fd.get('procedure_id') else (rd.default_procedure_id if rd else 0)) %}
+{% set contract_value=(fd.get('contract_id')|int if fd.get('contract_id') else (rd.default_contract_id if rd else 0)) %}
+{% set referrer_value=(fd.get('referring_doctor_id')|int if fd.get('referring_doctor_id') else (rd.default_referrer_id if rd else 0)) %}
+{% set priority_value=(fd.get('priority') or (rd.default_priority if rd else 'ROUTINE')) %}
+{% set patient_mode_value=(fd.get('patient_mode') or (rd.default_patient_mode if rd else 'existing')) %}
+
+{% include "_registration_style_selector.html" %}
+{% include "_patient_created_banner.html" %}
+
+<form method="post" class="panel compact-registration">
+<input type="hidden" name="patient_mode" value="existing">
+<div class="grid3">
+<div><label>Patient</label><select name="patient" required>{% for p in patients %}<option value="{{p.id}}" {% if selected_patient==p.id %}selected{% endif %}>{{p.patient_id}} · {{p.name}}</option>{% endfor %}</select></div>
+<div><label>Branch</label><select name="branch_id" required>{% for b in branches %}<option value="{{b.id}}" {% if branch_value==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div>
+<div><label>Examination</label><select name="procedure_id" required>{% for p in procedures %}<option value="{{p.id}}" {% if procedure_value==p.id %}selected{% endif %}>{{p.modality}} · {{p.name}}</option>{% endfor %}</select></div>
+<div><label>Date/Time</label><input type="datetime-local" name="scheduled" required value="{{fd.get('scheduled','')}}"></div>
+<div><label>Priority</label><select name="priority"><option {% if priority_value=="ROUTINE" %}selected{% endif %}>ROUTINE</option><option {% if priority_value=="URGENT" %}selected{% endif %}>URGENT</option><option {% if priority_value=="STAT" %}selected{% endif %}>STAT</option></select></div>
+
+<div>
+<label>Contract</label>
+<select name="contract_id" id="compactContract">
+<option value="">Cash / Private</option>
+{% for c in contracts %}
+{% if c.code!='CASH' %}
+<option value="{{c.id}}"
+        data-approval-required="{{1 if c.approval_required else 0}}"
+        {% if contract_value==c.id %}selected{% endif %}>
+{{c.name}}
+</option>
+{% endif %}
+{% endfor %}
+</select>
+</div>
+
+<div id="compactApprovalBox" style="display:none">
+<label>🛡 Approval</label>
+<select name="approval_method" id="compactApprovalMethod">
+<option value="AUTO">⚡ Automatic</option>
+<option value="MANUAL">✋ Manual</option>
+<option value="ALREADY_APPROVED">📎 Already Approved</option>
+</select>
+</div>
+
+<div id="compactApprovalNoBox" style="display:none">
+<label>Approval No.</label>
+<input name="approval_no" id="compactApprovalNo" value="{{fd.get('approval_no','')}}">
+</div>
+</div>
+<textarea name="clinical_note" rows="2" placeholder="Clinical note">{{fd.get("clinical_note","")}}</textarea>
+<button class="btn primary">Save</button>
+</form>
+
+<script>
+(function(){
+ const contract=document.getElementById('compactContract');
+ const box=document.getElementById('compactApprovalBox');
+ const method=document.getElementById('compactApprovalMethod');
+ const noBox=document.getElementById('compactApprovalNoBox');
+ const noInput=document.getElementById('compactApprovalNo');
+
+ function refresh(){
+   if(!contract)return;
+
+   const o=contract.options[contract.selectedIndex];
+   const required=o && o.dataset.approvalRequired==='1';
+
+   if(box)box.style.display=required?'block':'none';
+
+   const already=required && method && method.value==='ALREADY_APPROVED';
+
+   if(noBox)noBox.style.display=already?'block':'none';
+   if(noInput)noInput.required=Boolean(already);
+ }
+
+ contract.addEventListener('change',refresh);
+ method.addEventListener('change',refresh);
+ refresh();
+})();
+</script>
+
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% from "_action_guidance.html" import action_info %}
+{% block page_title %}{{'حل مشاكل الحالات وربط البيانات' if ui_lang=='ar' else 'Case Exception Resolution & Data Mapping'}}{% endblock %}
+{% block content %}
+<style>
+  .cer-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(310px,1fr);gap:14px}
+  .cer-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin:12px 0}
+  .cer-card{border:1px solid var(--border,#cbd5e1);border-radius:9px;padding:11px;background:var(--panel,#fff)}
+  .cer-card b{display:block}.cer-muted{font-size:12px;opacity:.72}.cer-danger{color:#b91c1c}.cer-ok{color:#15803d}
+  .cer-form{display:grid;gap:8px}.cer-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .cer-series{margin-bottom:8px}.cer-code{font-family:monospace;font-size:11px;word-break:break-all}
+  .cer-filter{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;align-items:end}
+  .cer-filter label{font-size:12px}.cer-filter select{width:100%}.cer-pages{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:10px}
+  @media(max-width:980px){.cer-grid{grid-template-columns:1fr}}
+</style>
+
+<div class="panel">
+  <h2>⌘ {{'حل مشاكل الحالات وربط البيانات' if ui_lang=='ar' else 'Case Exception Resolution & Data Mapping'}}</h2>
+  <p>{{'ابحث عن الحالة داخل RIS، راجع بيانات RIS وPACS وأسباب الحجب، ثم أصلح كل سبب من مصدره.' if ui_lang=='ar' else 'Search RIS, compare RIS/PACS evidence and blockers, then resolve each issue at its source.'}}</p>
+  <form method="get" class="cer-actions">
+    <input name="q" value="{{q}}" required style="min-width:360px" placeholder="{{'Accession / Patient ID / الاسم / Order ID / Study UID' if ui_lang=='ar' else 'Accession / Patient ID / Name / Order ID / Study UID'}}">
+    <button class="btn primary">{{'بحث في RIS' if ui_lang=='ar' else 'Search RIS'}}</button>
+    {{ action_info('البحث في RIS' if ui_lang=='ar' else 'Search RIS','يبحث بالـAccession ورقم واسم المريض ورقم الطلب وStudy UID.' if ui_lang=='ar' else 'Searches Accession, patient ID/name, Order ID and Study UID.','استخدمه لاختيار الحالة الصحيحة قبل أي Mapping.' if ui_lang=='ar' else 'Use it to select the correct case before mapping.','راجع هوية المريض ونوع وتاريخ الفحص.' if ui_lang=='ar' else 'Confirm patient identity, exam type and date.','البحث للقراءة فقط.' if ui_lang=='ar' else 'Search is read-only.','لا تعتمد على تشابه الاسم وحده.' if ui_lang=='ar' else 'Never rely on a similar patient name alone.',ui_lang) }}
+  </form>
+</div>
+
+<div class="panel">
+  <h3>⚠ {{'قائمة استثناءات الحالات' if ui_lang=='ar' else 'Case Exception Queue'}} <span class="cer-muted">({{queue_total}})</span></h3>
+  <form method="get" class="cer-filter">
+    <label>{{'النطاق' if ui_lang=='ar' else 'Scope'}}<select name="scope"><option value="EDITABLE" {{'selected' if scope_filter=='EDITABLE'}}>Editable only</option><option value="ALL" {{'selected' if scope_filter=='ALL'}}>All cases</option></select></label>
+    <label>{{'حالة الجاهزية' if ui_lang=='ar' else 'Readiness'}}<select name="status"><option value="">All</option>{% for value in ['BLOCKED','WARNING','READY','NOT_CHECKED'] %}<option value="{{value}}" {{'selected' if status_filter==value}}>{{value}}</option>{% endfor %}</select></label>
+    <label>{{'الفرع' if ui_lang=='ar' else 'Branch'}}<select name="branch_id"><option value="">All</option>{% for branch in branches %}<option value="{{branch.id}}" {{'selected' if branch_filter==branch.id}}>{{branch.name}}</option>{% endfor %}</select></label>
+    <label>Modality<select name="modality"><option value="">All</option>{% for value in modalities %}<option value="{{value}}" {{'selected' if modality_filter==value}}>{{value}}</option>{% endfor %}</select></label>
+    <label>Blocker<select name="blocker"><option value="">All</option>{% for value in ['MISSING_PACS','INCOMPLETE_IMAGES','MISSING_SERIES','MISSING_HISTORY','MISSING_ATTACHMENTS','MISSING_DOCUMENTS','MISSING_NOTES'] %}<option value="{{value}}" {{'selected' if blocker_filter==value}}>{{value.replace('_',' ')}}</option>{% endfor %}</select></label>
+    <button class="btn primary">{{'تطبيق الفلاتر' if ui_lang=='ar' else 'Apply Filters'}}</button>
+  </form>
+  <div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>Case</th><th>Patient / Exam</th><th>Readiness</th><th>Blockers</th><th></th></tr></thead><tbody>
+  {% for item in queue %}<tr><td><b>{{item.order.accession}}</b><br><span class="cer-muted">#{{item.order.id}} · {{item.order.status}}</span></td><td>{{item.order.patient.name}}<br><span class="cer-muted">{{item.order.modality}} · {{item.order.procedure}}</span></td><td><b>{{item.readiness.status}}</b><br><span class="cer-muted">{{item.readiness.image_count}} / {{item.readiness.expected_min_images}}</span></td><td>{% for blocker in item.blockers %}<span class="badge cer-danger">{{blocker}}</span> {% else %}—{% endfor %}</td><td><a class="btn btn-sm" href="{{url_for('case_exception_resolver',order_id=item.order.id,q=item.order.accession)}}">{{'فتح الحل' if ui_lang=='ar' else 'Open Resolver'}}</a></td></tr>
+  {% else %}<tr><td colspan="5">{{'لا توجد حالات مطابقة.' if ui_lang=='ar' else 'No matching cases.'}}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <div class="cer-pages">{% if queue_page>1 %}<a class="btn btn-sm" href="{{url_for('case_exception_resolver',scope=scope_filter,status=status_filter,branch_id=branch_filter or '',modality=modality_filter,blocker=blocker_filter,page=queue_page-1)}}">←</a>{% endif %}<span>{{queue_page}} / {{queue_pages}}</span>{% if queue_page<queue_pages %}<a class="btn btn-sm" href="{{url_for('case_exception_resolver',scope=scope_filter,status=status_filter,branch_id=branch_filter or '',modality=modality_filter,blocker=blocker_filter,page=queue_page+1)}}">→</a>{% endif %}</div>
+  {{ action_info('قائمة الاستثناءات' if ui_lang=='ar' else 'Exception Queue','تجمع حالات الجاهزية وتتيح تصفيتها دون تغيير البيانات.' if ui_lang=='ar' else 'Lists and filters readiness cases without changing data.','ابدأ بالحالات القابلة للتعديل ثم افتح الحالة الصحيحة.' if ui_lang=='ar' else 'Start with editable cases and open the correct case.','تظل الحالات النهائية للعرض فقط.' if ui_lang=='ar' else 'Terminal cases remain view-only.','الفلاتر والصفحات للقراءة فقط.' if ui_lang=='ar' else 'Filters and pagination are read-only.','تحقق من المريض والفحص قبل أي إجراء.' if ui_lang=='ar' else 'Verify patient and exam before any action.',ui_lang) }}
+</div>
+
+{% if q %}
+<div class="panel table-wrap">
+  <h3>{{'نتائج البحث' if ui_lang=='ar' else 'RIS Search Results'}}</h3>
+  <table><thead><tr><th>Order</th><th>Accession</th><th>Patient</th><th>Exam</th><th>Status</th><th></th></tr></thead><tbody>
+  {% for o in results %}
+    <tr><td>#{{o.id}}</td><td><b>{{o.accession}}</b></td><td>{{o.patient.name}}<br><span class="cer-muted">{{o.patient.patient_id}}</span></td><td>{{o.modality}} · {{o.procedure}}<br><span class="cer-muted">{{o.scheduled or ''}}</span></td><td>{{o.status}}</td><td><a class="btn btn-sm" href="{{url_for('case_exception_resolver',order_id=o.id,q=q)}}">{{'اختيار ومعاينة' if ui_lang=='ar' else 'Select & Preview'}}</a></td></tr>
+  {% else %}<tr><td colspan="6">{{'لا توجد نتائج.' if ui_lang=='ar' else 'No results found.'}}</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+
+{% if selected %}
+{% if not selected_editable %}<div class="panel"><div class="warn"><b>{{'الحالة مقفلة للعرض فقط' if ui_lang=='ar' else 'Case locked — view only'}}</b><br>{{'لا يمكن تعديل Mapping أو History أو Override بعد وصول الطلب أو التقرير إلى الحالة النهائية.' if ui_lang=='ar' else 'Mapping, History and Override actions are unavailable after the Order or Report becomes terminal.'}}</div></div>{% endif %}
+<div class="panel">
+  <h3>{{'معاينة قبل التنفيذ' if ui_lang=='ar' else 'Preview Before Apply'}} — #{{selected.id}} · {{selected.accession}}</h3>
+  <div class="cer-kpis">
+    <div class="cer-card"><span class="cer-muted">Patient</span><b>{{selected.patient.name}}</b><span>{{selected.patient.patient_id}}</span></div>
+    <div class="cer-card"><span class="cer-muted">Exam</span><b>{{selected.modality}}</b><span>{{selected.procedure}}</span></div>
+    <div class="cer-card"><span class="cer-muted">Order</span><b>{{selected.status}}</b><span>Report: {{report.status if report else 'UNREPORTED'}}</span></div>
+    <div class="cer-card"><span class="cer-muted">Readiness</span><b class="{{'cer-danger' if readiness and readiness.status=='BLOCKED' else 'cer-ok'}}">{{readiness.status if readiness else 'NOT_CHECKED'}}</b><span>{{readiness.image_count if readiness else 0}} / {{readiness.expected_min_images if readiness else 0}}</span></div>
+  </div>
+  <div class="cer-card"><b>Study Instance UID</b><span class="cer-code">{{selected.study_instance_uid or '-'}}</span><b style="margin-top:7px">Orthanc Study</b><span class="cer-code">{{selected.pacs_study_id or '-'}}</span></div>
+  {% if readiness %}<div class="cer-actions" style="margin-top:10px">
+    {% for blocker in details.get('blockers',[]) %}<span class="badge cer-danger">{{blocker}}</span>{% endfor %}
+  </div>{% endif %}
+</div>
+
+<div class="cer-grid">
+<div>
+  <div class="panel">
+    <h3>{{'دليل Series من PACS' if ui_lang=='ar' else 'PACS Series Evidence'}}</h3>
+    {% for item in series %}<div class="cer-card cer-series"><b>{{item.description or '-'}}</b><span>{{item.modality}} · {{item.instance_count}} images</span><div class="cer-muted">Protocol: {{item.protocol or '-'}}</div>{% if item.mapped_series %}<div class="cer-ok">Mapped: {{item.mapped_series|join(', ')}}</div>{% endif %}</div>{% else %}<p>{{'لا يوجد دليل Series محفوظ.' if ui_lang=='ar' else 'No persisted Series evidence.'}}</p>{% endfor %}
+  </div>
+
+  <div class="panel">
+    <h3>{{'ربط اسم Series' if ui_lang=='ar' else 'Map Series Name'}}</h3>
+    {% if can_resolve and rule %}
+    <form method="post" action="{{url_for('case_exception_series_map',order_id=selected.id)}}" class="cer-form">
+      <label>{{'الاسم القادم من PACS' if ui_lang=='ar' else 'Source value from PACS'}}<input name="source_alias" required minlength="2" list="series-source-values" placeholder="Series Description or Protocol"></label>
+      <datalist id="series-source-values">{% for item in series %}{% if item.description %}<option value="{{item.description}}">{% endif %}{% if item.protocol %}<option value="{{item.protocol}}">{% endif %}{% endfor %}</datalist>
+      <label>{{'Series المطلوبة في القاعدة' if ui_lang=='ar' else 'Canonical Series required by rule'}}
+        <select name="canonical_series" required><option value="">—</option>{% for group in (rule.required_series or '').split(',') %}{% for value in group.split('/') %}<option value="{{value|trim}}">{{value|trim}}</option>{% endfor %}{% endfor %}</select>
+      </label>
+      <label>{{'الحقل المطابق' if ui_lang=='ar' else 'Match field'}}<select name="match_field"><option value="EITHER">Description or Protocol</option><option value="DESCRIPTION">Description</option><option value="PROTOCOL">Protocol</option></select></label>
+      <label>{{'سبب موثق' if ui_lang=='ar' else 'Documented reason'}}<textarea name="reason" required minlength="5"></textarea></label>
+      <div class="cer-actions"><button class="btn primary">{{'حفظ Mapping وإعادة التقييم' if ui_lang=='ar' else 'Save Mapping & Re-evaluate'}}</button>
+      {{ action_info('Series Mapping','يربط اسمًا معروفًا من PACS بالاسم المطلوب في قاعدة الجودة.' if ui_lang=='ar' else 'Maps a known PACS Series value to the canonical name required by the quality rule.','استخدمه فقط عندما تؤكد أن الـSeries المكتسبة تحقق المتطلب.' if ui_lang=='ar' else 'Use only when the acquired Series truly satisfies the requirement.','يلزم سبب موثق وصلاحية PACS reconciliation.' if ui_lang=='ar' else 'A documented reason and PACS reconciliation permission are required.','يحفظ Alias ولا يغيّر ملفات DICOM.' if ui_lang=='ar' else 'Stores an alias; DICOM files remain unchanged.','Mapping خاطئ قد يجعل حالة ناقصة تبدو مكتملة.' if ui_lang=='ar' else 'A wrong mapping can make an incomplete case appear complete.',ui_lang) }}</div>
+    </form>
+    {% elif not rule %}<div class="warn">{{'لا توجد قاعدة جودة مطابقة. راجع Procedure Quality Rules.' if ui_lang=='ar' else 'No matching quality rule. Review Procedure Quality Rules.'}}</div>{% elif not selected_editable %}<div class="warn">{{'عرض فقط؛ الحالة أو التقرير نهائي ولا يمكن تعديل Mapping.' if ui_lang=='ar' else 'View only; the Order or Report is terminal and Series Mapping cannot be changed.'}}</div>{% else %}<div class="warn">{{'عرض فقط؛ يلزم تصريح PACS reconciliation.' if ui_lang=='ar' else 'View only; PACS reconciliation permission is required.'}}</div>{% endif %}
+  </div>
+
+  <div class="panel">
+    <h3>{{'استكمال التاريخ المرضي' if ui_lang=='ar' else 'Complete Clinical History'}}</h3>
+    {% if can_resolve %}<form method="post" action="{{url_for('case_exception_history_add',order_id=selected.id)}}" class="cer-form">
+      <textarea name="history_text" required minlength="3" placeholder="{{'التاريخ المرضي المؤكد' if ui_lang=='ar' else 'Confirmed clinical history'}}"></textarea>
+      <input name="reason" required minlength="5" placeholder="{{'سبب ومصدر إضافة المعلومة' if ui_lang=='ar' else 'Reason and source of this information'}}">
+      <div class="cer-actions"><button class="btn primary">{{'إضافة وإعادة التقييم' if ui_lang=='ar' else 'Add & Re-evaluate'}}</button>
+      {{ action_info('Clinical History','يضيف ملاحظة HISTORY للفريق السريري ثم يعيد تقييم الجاهزية.' if ui_lang=='ar' else 'Adds a HISTORY clinical note and re-evaluates readiness.','استخدمه فقط لإدخال معلومات سريرية صحيحة من مصدر موثوق.' if ui_lang=='ar' else 'Use only for verified clinical information from a trusted source.','اكتب المعلومة ومصدرها والسبب.' if ui_lang=='ar' else 'Document the information, source and reason.','يصبح التاريخ المرضي حاضرًا في فحص الجاهزية.' if ui_lang=='ar' else 'Clinical history becomes present for readiness evaluation.','لا تُدخل نصًا افتراضيًا لمجرد إزالة الحجب.' if ui_lang=='ar' else 'Never enter placeholder text merely to clear a blocker.',ui_lang) }}</div>
+    </form>{% elif not selected_editable %}<div class="warn">{{'غير متاح؛ الحالة أو التقرير نهائي.' if ui_lang=='ar' else 'Unavailable; the Order or Report is terminal.'}}</div>{% else %}<div class="warn">{{'عرض فقط؛ يلزم تصريح PACS reconciliation.' if ui_lang=='ar' else 'View only; PACS reconciliation permission is required.'}}</div>{% endif %}
+  </div>
+
+  <div class="panel">
+    <h3>{{'استثناء عدد الصور للحالة' if ui_lang=='ar' else 'Case-specific Image Minimum'}}</h3>
+    <p>{{'استخدمه فقط عندما يكون الفحص مكتملًا سريريًا رغم أن عدد الصور أقل من قاعدة الإجراء العامة.' if ui_lang=='ar' else 'Use only when the acquisition is clinically complete despite having fewer images than the general procedure rule.'}}</p>
+    {% if can_resolve and readiness %}<form method="post" action="{{url_for('case_exception_image_minimum',order_id=selected.id)}}" class="cer-form">
+      <label>{{'الحد الأدنى المعتمد لهذه الحالة' if ui_lang=='ar' else 'Approved minimum for this case'}}<input type="number" name="approved_minimum" min="1" max="{{readiness.image_count}}" value="{{readiness.image_count}}" required></label>
+      <label>{{'مبرر سريري/تشغيلي تفصيلي' if ui_lang=='ar' else 'Detailed clinical/operational justification'}}<textarea name="reason" required minlength="10"></textarea></label>
+      <div class="cer-actions"><button class="btn">{{'حفظ الاستثناء وإعادة التقييم' if ui_lang=='ar' else 'Save Exception & Re-evaluate'}}</button>
+      {{ action_info('استثناء عدد الصور' if ui_lang=='ar' else 'Image Minimum Exception','ينشئ حدًا أدنى خاصًا بهذه الحالة فقط.' if ui_lang=='ar' else 'Creates an image minimum override for this Order only.','استخدمه بعد تأكيد اكتمال الفحص بواسطة شخص مخول.' if ui_lang=='ar' else 'Use only after an authorized person confirms acquisition completeness.','لا يمكن أن يتجاوز الرقم عدد الصور الحالي ويلزم مبرر تفصيلي.' if ui_lang=='ar' else 'The value cannot exceed the current image count and a detailed reason is required.','لا يغيّر قاعدة الإجراء العامة أو ملفات DICOM.' if ui_lang=='ar' else 'The global quality rule and DICOM files remain unchanged.','الاستثناء غير الصحيح قد يخفي نقصًا حقيقيًا في الصور.' if ui_lang=='ar' else 'An incorrect exception can hide a genuine acquisition deficiency.',ui_lang) }}</div>
+    </form>{% elif not selected_editable %}<div class="warn">{{'غير متاح؛ الحالة أو التقرير نهائي.' if ui_lang=='ar' else 'Unavailable; the Order or Report is terminal.'}}</div>{% else %}<div class="warn">{{'عرض فقط؛ يلزم تصريح PACS reconciliation.' if ui_lang=='ar' else 'View only; PACS reconciliation permission is required.'}}</div>{% endif %}
+  </div>
+</div>
+
+<div>
+  <div class="panel"><h3>{{'الإجراءات الآمنة' if ui_lang=='ar' else 'Safe Actions'}}</h3>
+    {% if can_resolve %}<form method="post" action="{{url_for('case_exception_refresh',order_id=selected.id)}}"><button class="btn">{{'تحديث الجاهزية' if ui_lang=='ar' else 'Refresh Readiness'}}</button></form>{% endif %}
+    <a class="btn" href="{{url_for('pacs_reconciliation')}}">{{'فتح PACS Reconciliation' if ui_lang=='ar' else 'Open PACS Reconciliation'}}</a>
+    <a class="btn" href="{{url_for('admin_procedure_quality_rules')}}">{{'قواعد جودة الإجراءات' if ui_lang=='ar' else 'Procedure Quality Rules'}}</a>
+    <p class="cer-muted">{{'لا يوجد تجاوز شامل للجاهزية. يجب حل كل Blocker من مصدره.' if ui_lang=='ar' else 'There is no global readiness bypass. Resolve each blocker at its source.'}}</p>
+  </div>
+  <div class="panel"><h3>{{'Mapping النشط' if ui_lang=='ar' else 'Active Series Mappings'}}</h3>{% for row in aliases %}<div class="cer-card"><b>{{row.source_alias}} → {{row.canonical_series}}</b><span>{{row.match_field}} · {{'ACTIVE' if row.active else 'DISABLED'}}</span><div class="cer-muted">{{row.reason}}</div>{% if can_resolve and row.active %}<form method="post" action="{{url_for('case_exception_series_map_deactivate',order_id=selected.id,alias_id=row.id)}}" class="cer-actions" onsubmit="return confirm('Disable this mapping and re-evaluate readiness?')"><input name="reason" required minlength="5" placeholder="{{'سبب التعطيل' if ui_lang=='ar' else 'Deactivation reason'}}"><button class="btn btn-sm">{{'تعطيل' if ui_lang=='ar' else 'Disable'}}</button></form>{% endif %}</div>{% else %}<p>—</p>{% endfor %}</div>
+  <div class="panel"><h3>{{'استثناءات الجاهزية النشطة' if ui_lang=='ar' else 'Active Readiness Exceptions'}}</h3>{% for row in overrides %}<div class="cer-card"><b>{{row.blocker}} → {{row.override_value}}</b><div class="cer-muted">{{row.reason}}</div>{% if can_resolve and row.active %}<form method="post" action="{{url_for('case_exception_image_minimum_deactivate',order_id=selected.id,override_id=row.id)}}" class="cer-actions" onsubmit="return confirm('Disable this override and re-evaluate readiness?')"><input name="reason" required minlength="5" placeholder="{{'سبب التعطيل' if ui_lang=='ar' else 'Deactivation reason'}}"><button class="btn btn-sm">{{'تعطيل' if ui_lang=='ar' else 'Disable'}}</button></form>{% endif %}</div>{% else %}<p>—</p>{% endfor %}</div>
+  <div class="panel"><h3>{{'سجل الحل' if ui_lang=='ar' else 'Resolution History'}}</h3>{% for row in events %}<div class="cer-card"><b>{{row.action}}</b><span>{{row.old_value}} → {{row.new_value}}</span><div class="cer-muted">{{row.created_at}} · {{row.reason}}</div></div>{% else %}<p>—</p>{% endfor %}</div>
+</div>
+</div>
+{% endif %}
+{% endblock %}

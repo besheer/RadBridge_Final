@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% block page_title %}Orders / Visits{% endblock %}{% block subtitle %}Operational status from registration through final report{% endblock %}
+{% block content %}
+<form method="get" class="panel global-screen-filter"><div class="filter-grid">
+<input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
+<input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
+<input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
+<select name="priority"><option value="">Priority</option><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select>
+</div><div class="actions"><button class="btn small primary">Filter</button><a class="btn small" href="{{request.path}}">Clear</a></div></form><div class="panel"><div class="panel-head"><form class="search"><input name="q" value="{{q}}" placeholder="Accession, patient, procedure"><select name="status"><option value="">All statuses</option>{% for s in ['REGISTERED','SCHEDULED','ARRIVED','IN_PROGRESS','COMPLETED','REPORTING','FINAL','MWL_ERROR','ROUTING_ERROR'] %}<option {% if status==s %}selected{% endif %}>{{s}}</option>{% endfor %}</select><button class="btn">Filter</button></form>{% if has_perm('orders.create') %}<a class="btn primary" href="{{url_for('new_order')}}">+ New Order</a>{% endif %}</div>
+<table><thead><tr><th>Accession</th><th>Patient</th><th>Exam</th><th>Payer</th><th>Patient Share</th><th>Paid</th><th>Device</th><th>Status</th></tr></thead><tbody>
+{% for o in orders %}<tr><td><a href="{{url_for('order_detail',order_id=o.id)}}">{{o.accession}}</a></td><td>{{o.patient.name}}<small>{{o.patient.patient_id}}</small></td><td>{{o.procedure}}</td><td>{{o.contract.name if o.contract else 'Cash / Private'}}</td><td>{{"%.2f"|format(o.patient_share or 0)}}</td><td>{{"%.2f"|format(o.paid_amount or 0)}}</td><td>{{o.device.name if o.device else '-'}}</td><td><span class="badge {{o.status|lower}}">{{o.status}}</span></td></tr>{% else %}<tr><td colspan="8" class="empty">No orders.</td></tr>{% endfor %}
+</tbody></table></div>{% endblock %}

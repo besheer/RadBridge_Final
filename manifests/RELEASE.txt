@@ -1,0 +1,7 @@
+RELEASE=v5.48.1-r8-consolidated
+CREATED_AT_UTC=2026-09-05T15:55:55Z
+RIS_BASE_IMAGE=radbridge-ris:v5.48.0-r8-locked-document2
+OHIF_BASE_IMAGE=radbridge-ohif:v5.48.0-r8-dom-wrapper1
+RIS_SOURCE_ORIGIN=/opt/radbridge/RadBridge-Developer-Source-v5.48.0-ivr-control-plane/ris
+OHIF_SOURCE_ORIGIN=/opt/radbridge/RadBridge-Developer-Source-v5.47.1/ohif
+CONSOLIDATION_CHECKPOINT=/opt/radbridge/checkpoints/r8-consolidation-20260905-155338

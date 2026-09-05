@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block page_title %}New Booking / حجز جديد{% endblock %}
+{% block subtitle %}{{device.modality}} — {{device.name}} · {{scheduled.strftime('%d/%m/%Y %H:%M')}}{% endblock %}
+{% block content %}
+<form method="post" action="{{url_for('schedule_v2_book_submit')}}" class="panel form-card clean-book-form">
+<input type="hidden" name="scheduled" value="{{scheduled.strftime('%Y-%m-%dT%H:%M')}}">
+<input type="hidden" name="device_id" value="{{device.id}}">
+
+<div class="selected-slot-banner">
+  <div><small>Device</small><b>{{device.modality}} — {{device.name}}</b></div>
+  <div><small>Room</small><b>{{device.room or '-'}}</b></div>
+  <div><small>Date</small><b>{{scheduled.strftime('%d/%m/%Y')}}</b></div>
+  <div><small>Time</small><b>{{scheduled.strftime('%H:%M')}}</b></div>
+</div>
+
+<h3>Patient / المريض</h3>
+<div class="booking-mode-tabs">
+  <label><input type="radio" name="patient_mode" value="existing" checked onchange="togglePatientMode()"> Existing Patient</label>
+  <label><input type="radio" name="patient_mode" value="new" onchange="togglePatientMode()"> New Patient / مريض جديد</label>
+</div>
+
+<section id="existingSection">
+<label>Existing Patient</label>
+<select name="patient_id">
+<option value="">Choose patient...</option>
+{% for p in patients %}<option value="{{p.id}}">{{p.patient_id}} — {{p.name}}</option>{% endfor %}
+</select>
+</section>
+
+<section id="newSection" hidden>
+<div class="form-grid">
+<div><label>Name / الاسم *</label><input name="new_name"></div>
+<div><label>Worklist Name</label><input name="new_worklist_name"></div>
+<div><label>DOB</label><input type="date" name="new_dob"></div>
+<div><label>Sex</label><select name="new_sex"><option></option><option value="M">Male</option><option value="F">Female</option></select></div>
+<div><label>Phone</label><input name="new_phone"></div>
+<div><label>National ID</label><input name="new_national_id"></div>
+<div class="wide"><label>Address</label><input name="new_address"></div>
+</div>
+</section>
+
+<h3>Exam / الفحص</h3>
+<div class="form-grid">
+<div><label>Branch</label><select name="branch_id" required>{% for b in branches %}<option value="{{b.id}}" {% if b.id==device.branch_id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div>
+<div><label>Procedure</label><select name="procedure_id" required><option value="">Choose exam...</option>{% for p in procedures %}<option value="{{p.id}}">{{p.name}} — {{p.duration_min}} min</option>{% endfor %}</select></div>
+<div><label>Priority</label><select name="priority"><option>NORMAL</option><option>URGENT</option><option>STAT</option></select></div>
+<div><label>Booking Type</label><select name="waiting_list"><option value="0">Booked Appointment</option><option value="1">Waiting List</option></select></div>
+<div class="wide"><label>Notes</label><textarea name="notes" rows="3"></textarea></div>
+</div>
+
+<div class="booking-safety-note">
+The system re-checks device status, maintenance, working hours and overlapping appointments when you press Save.
+</div>
+
+<div class="actions">
+<a class="btn" href="{{url_for('schedule_v2',date=scheduled.date().isoformat(),device_id=device.id)}}">Cancel</a>
+<button class="btn primary">Save Booking / حفظ الحجز</button>
+</div>
+</form>
+
+<script>
+function togglePatientMode(){
+ const v=document.querySelector('input[name="patient_mode"]:checked').value;
+ document.getElementById('existingSection').hidden=v!=='existing';
+ document.getElementById('newSection').hidden=v!=='new';
+}
+</script>
+{% endblock %}

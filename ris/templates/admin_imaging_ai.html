@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block page_title %}PACS Imaging AI Settings{% endblock %}
+{% block content %}
+<form method="post" class="panel grid2">
+<div><label>Enabled</label><select name="enabled"><option value="0" {% if not row or not row.enabled %}selected{% endif %}>No</option><option value="1" {% if row and row.enabled %}selected{% endif %}>Yes</option></select></div>
+<div><label>Provider Key</label><input name="provider_key" value="{{row.provider_key if row else 'GENERIC_IMAGING_REST'}}"></div>
+<div class="span2"><label>Base URL</label><input name="base_url" value="{{row.base_url if row else ''}}" placeholder="http://imaging-ai:8000"></div>
+<div><label>Model</label><input name="model_name" value="{{row.model_name if row else ''}}"></div>
+<div><label>Modalities</label><input name="modalities" value="{{row.modalities if row else 'XR,CT,MR'}}"></div>
+<div><label>Timeout</label><input type="number" name="timeout_seconds" value="{{row.timeout_seconds if row else 180}}"></div>
+<div><label>Secret Env</label><input name="secret_env_name" value="{{row.secret_env_name if row else 'RIS_IMAGING_AI_TOKEN'}}"></div>
+<div class="span2 ai-warning"><b>Clinical safety:</b> Image AI is decision support only. Demographic verification is mandatory before analysis. Final report approval remains with the physician.</div>
+<button class="btn primary">Save</button>
+</form>{% endblock %}

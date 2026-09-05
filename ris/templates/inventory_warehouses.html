@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block page_title %}Warehouses
+<div class="panel">
+  <h3>Branch Warehouse Status</h3>
+  {% for b in branches %}
+    {% set bw = (rows | selectattr('branch_id','equalto',b.id) | selectattr('warehouse_type','equalto','BRANCH') | list | first) %}
+    <div class="warehouse-branch-status">
+      <div>
+        <b>{{b.name}}</b>
+        {% if bw %}
+          <small>Linked: {{bw.code}} · {{bw.name}}</small>
+        {% else %}
+          <small>No Branch Warehouse linked</small>
+        {% endif %}
+      </div>
+      {% if not bw %}
+      <form method="post" action="{{url_for('inventory_create_for_branch',branch_id=b.id)}}">
+        <button class="btn small">＋ Create Warehouse</button>
+      </form>
+      {% else %}
+      <span class="stock-ok">✓ Connected</span>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+{% endblock %}
+{% block content %}
+
+<div class="panel warehouse-auto-sync">
+  <div class="warehouse-auto-head">
+    <div>
+      <h3>Automatic Warehouse Setup</h3>
+      <p>Create the Main Warehouse once, then create and link a Branch Warehouse for every active branch that does not already have one.</p>
+    </div>
+    <form method="post" action="{{url_for('inventory_warehouses_auto_create')}}">
+      <button class="btn primary">⚡ Auto Create Warehouses From Branches</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid2">
+<form method="post" class="panel"><h3>New Warehouse</h3>
+<input name="code" required placeholder="MAIN / BR-CARIO"><input name="name" required placeholder="Warehouse name">
+<select name="warehouse_type"><option>MAIN</option><option selected>BRANCH</option><option>SUBSTORE</option></select>
+<select name="branch_id"><option value="">No branch / Main</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select>
+<select name="parent_id"><option value="">No parent</option>{% for w in rows %}<option value="{{w.id}}">{{w.name}}</option>{% endfor %}</select>
+<button class="btn primary">Create Warehouse</button></form>
+<div class="panel"><h3>Warehouses</h3>{% for w in rows %}<div class="inventory-row"><b>{{w.code}} · {{w.name}}</b><small>{{w.warehouse_type}} · {{w.branch.name if w.branch else 'Central'}}{% if w.parent %} · Parent: {{w.parent.name}}{% endif %}</small></div>{% endfor %}</div>
+</div>{% endblock %}

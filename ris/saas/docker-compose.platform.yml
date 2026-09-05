@@ -1,0 +1,46 @@
+services:
+  platform-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: platform
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: ${PLATFORM_DB_PASSWORD}
+    volumes:
+      - platform_db:/var/lib/postgresql/data
+    networks: [platform_private]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U platform -d platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  platform-admin:
+    build:
+      context: ../platform_admin
+    restart: unless-stopped
+    depends_on:
+      platform-db: {condition: service_healthy}
+    environment:
+      PLATFORM_DATABASE_URL: postgresql+psycopg2://platform:${PLATFORM_DB_PASSWORD}@platform-db:5432/platform
+      PLATFORM_SECRET_KEY: ${PLATFORM_SECRET_KEY}
+      PLATFORM_ADMIN_USER: ${PLATFORM_ADMIN_USER}
+      PLATFORM_ADMIN_PASSWORD: ${PLATFORM_ADMIN_PASSWORD}
+      PLATFORM_COOKIE_SECURE: "true"
+      BASE_DOMAIN: ${BASE_DOMAIN:-radbridges.com}
+    ports:
+      - "127.0.0.1:${PLATFORM_LOCAL_PORT:-19000}:9000"
+    networks: [platform_private,edge]
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  platform_private:
+    internal: true
+  edge:
+volumes:
+  platform_db:
+    name: radbridge_platform_db

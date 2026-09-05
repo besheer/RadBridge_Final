@@ -1,0 +1,148 @@
+-- RadBridge Unified Report Version Safety
+-- DO NOT run directly on production.
+-- Test on cloned/scratch PostgreSQL first.
+
+ALTER TABLE report_version
+    ADD COLUMN IF NOT EXISTS status VARCHAR(30);
+
+ALTER TABLE report_version
+    ADD COLUMN IF NOT EXISTS editor_type VARCHAR(30);
+
+ALTER TABLE report_version
+    ADD COLUMN IF NOT EXISTS base_version_no INTEGER;
+
+ALTER TABLE report_version
+    ADD COLUMN IF NOT EXISTS verified_by_user_id INTEGER;
+
+ALTER TABLE report_version
+    ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP;
+
+-- Historical rows: derive conservatively from action.
+UPDATE report_version
+SET status =
+    CASE
+        WHEN UPPER(action) LIKE '%FINAL%' THEN 'FINALIZED'
+        WHEN UPPER(action) LIKE '%SECOND_VERIFIED%' THEN 'SECOND_VERIFIED'
+        WHEN UPPER(action) LIKE '%VERIFIED%' THEN 'VERIFIED'
+        WHEN UPPER(action) LIKE '%PARTIAL%' THEN 'PARTIAL'
+        ELSE 'DRAFT'
+    END
+WHERE status IS NULL;
+
+UPDATE report_version
+SET editor_type =
+    CASE
+        WHEN UPPER(action) LIKE '%OHIF%' THEN 'BROWSER'
+        WHEN UPPER(action) LIKE '%WORD%' THEN 'WORD'
+        WHEN UPPER(action) LIKE '%UPLOAD%' THEN 'UPLOAD'
+        WHEN UPPER(action) LIKE '%ONLYOFFICE%' THEN 'ONLYOFFICE'
+        ELSE 'LEGACY'
+    END
+WHERE editor_type IS NULL;
+
+ALTER TABLE report_version
+    ALTER COLUMN status SET DEFAULT 'DRAFT';
+
+ALTER TABLE report_version
+    ALTER COLUMN editor_type SET DEFAULT 'UNKNOWN';
+
+ALTER TABLE report_version
+    ALTER COLUMN status SET NOT NULL;
+
+ALTER TABLE report_version
+    ALTER COLUMN editor_type SET NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+          'fk_report_version_verified_by_user'
+    ) THEN
+        ALTER TABLE report_version
+        ADD CONSTRAINT fk_report_version_verified_by_user
+        FOREIGN KEY (verified_by_user_id)
+        REFERENCES "user"(id);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+          'uq_report_version_report_version_no'
+    ) THEN
+        ALTER TABLE report_version
+        ADD CONSTRAINT uq_report_version_report_version_no
+        UNIQUE (report_id, version_no);
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS
+idx_report_version_authority
+ON report_version
+(report_id, status, version_no DESC);
+
+-- Phase 2G:
+-- VERIFIED remains the clinical authority.
+-- Finalization is lock/audit metadata.
+
+ALTER TABLE report_version
+    ADD COLUMN IF NOT EXISTS
+    finalized_by_user_id INTEGER;
+
+ALTER TABLE report_version
+    ADD COLUMN IF NOT EXISTS
+    finalized_at TIMESTAMP;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+          'fk_report_version_finalized_by_user'
+    ) THEN
+
+        ALTER TABLE report_version
+        ADD CONSTRAINT
+        fk_report_version_finalized_by_user
+        FOREIGN KEY (finalized_by_user_id)
+        REFERENCES "user"(id);
+
+    END IF;
+END $$;
+
+-- Phase 2I-A
+-- Database-backed idempotency.
+
+ALTER TABLE report_version
+    ADD COLUMN IF NOT EXISTS
+    commit_id VARCHAR(36);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname =
+          'uq_report_version_report_commit_id'
+    ) THEN
+
+        ALTER TABLE report_version
+        ADD CONSTRAINT
+          uq_report_version_report_commit_id
+        UNIQUE (report_id, commit_id);
+
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS
+    idx_report_version_commit_lookup
+ON report_version (
+    report_id,
+    commit_id
+);

@@ -1,0 +1,1190 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import EmbeddedReportEditor from './EmbeddedReportEditor';
+import OnlyOfficeReportEditor from './OnlyOfficeReportEditor';
+
+export default function RadBridgeReportingPanel() {
+  const [data, setData] = useState<any>(null);
+  const [findings, setFindings] = useState('');
+  const [impression, setImpression] = useState('');
+  const [returnReason, setReturnReason] = useState('');
+  const [returnNote, setReturnNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [selectedWordFile, setSelectedWordFile] = useState<File | null>(null);
+  const [embeddedEditorOpen, setEmbeddedEditorOpen] = useState(false);
+  const [onlyOfficeEditorOpen, setOnlyOfficeEditorOpen] = useState(false);
+  const [preferredEditor, setPreferredEditor] = useState('ONLYOFFICE');
+  const [preferredLayout, setPreferredLayout] = useState('50_50');
+
+  // RadBridge report edit lease.
+  // The backend requires a valid lease for every clinical write.
+  const [leaseToken, setLeaseToken] = useState('');
+  const [leaseExpiresAt, setLeaseExpiresAt] = useState('');
+  const [leaseEditorType, setLeaseEditorType] = useState('BROWSER');
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+
+  const params = useMemo(
+    () => new URLSearchParams(window.location.search),
+    []
+  );
+
+  const orderId =
+    params.get('radbridgeOrderId') ||
+    params.get('orderId') ||
+    '';
+
+  const identity =
+    params.get('radbridgeIdentity') ||
+    '';
+
+  const studyInstanceUID =
+    params.get('StudyInstanceUIDs') ||
+    params.get('StudyInstanceUID') ||
+    '';
+
+  function reportApiUrl(suffix = '') {
+    const base =
+      `/radbridge-api/api/ohif/report/${encodeURIComponent(orderId)}${suffix}`;
+
+    if (!studyInstanceUID) {
+      return base;
+    }
+
+    const query = new URLSearchParams();
+    query.set('StudyInstanceUIDs', studyInstanceUID);
+
+    return `${base}?${query.toString()}`;
+  }
+
+  const accession =
+    data?.order?.accession || '';
+
+  const status =
+    String(data?.report?.status || 'DRAFT').toUpperCase();
+
+  const locked = status === 'FINAL';
+
+  function headers(
+    json = false,
+    includeLease = false,
+    tokenOverride = ''
+  ) {
+    const h: Record<string, string> = {};
+
+    if (json) {
+      h['Content-Type'] = 'application/json';
+    }
+
+    if (identity) {
+      h['X-RadBridge-Doctor-Identity'] = identity;
+    }
+
+    const activeLeaseToken = tokenOverride || leaseToken;
+
+    if (includeLease && activeLeaseToken) {
+      h['X-RadBridge-Report-Lease'] = activeLeaseToken;
+    }
+
+    return h;
+  }
+
+  async function acquireReportLease(
+    editorType = 'BROWSER',
+    tokenOverride = ''
+  ) {
+    if (!orderId) {
+      throw new Error('Order ID is missing.');
+    }
+
+    const token = tokenOverride || leaseToken;
+
+    const response = await fetch(
+      reportApiUrl('/lease/acquire'),
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: headers(true, false),
+        body: JSON.stringify({
+          editor_type: editorType,
+          ...(token ? { lease_token: token } : {}),
+        }),
+      }
+    );
+
+    const payload = await response.json();
+
+    if (!response.ok || payload?.ok === false) {
+      throw new Error(
+        payload?.message ||
+        payload?.reason ||
+        payload?.error ||
+        `HTTP ${response.status}`
+      );
+    }
+
+    const newToken = String(payload?.lease_token || '');
+
+    if (!newToken) {
+      throw new Error('REPORT_LEASE_TOKEN_MISSING');
+    }
+
+    setLeaseToken(newToken);
+    setLeaseExpiresAt(String(payload?.expires_at || ''));
+    setLeaseEditorType(editorType);
+
+    return newToken;
+  }
+
+  async function releaseReportLease(tokenOverride = '') {
+    const token = tokenOverride || leaseToken;
+
+    if (!orderId || !token) {
+      return;
+    }
+
+    try {
+      await fetch(
+        reportApiUrl('/lease/release'),
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: headers(true, true, token),
+          body: JSON.stringify({
+            lease_token: token,
+          }),
+        }
+      );
+    } catch {
+      // Lease expiry is a safe fallback if explicit release fails.
+    }
+
+    if (token === leaseToken) {
+      setLeaseToken('');
+      setLeaseExpiresAt('');
+    }
+  }
+
+  async function openReportEditor(
+    editorType: 'ONLYOFFICE' | 'BROWSER'
+  ) {
+    if (!orderId || locked) {
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setMessage('');
+
+    try {
+      await acquireReportLease(editorType);
+
+      if (editorType === 'ONLYOFFICE') {
+        setOnlyOfficeEditorOpen(true);
+      } else {
+        setEmbeddedEditorOpen(true);
+      }
+    } catch (e: any) {
+      setError(e?.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function closeReportEditor(
+    editorType: 'ONLYOFFICE' | 'BROWSER'
+  ) {
+    const token = leaseToken;
+
+    if (editorType === 'ONLYOFFICE') {
+      setOnlyOfficeEditorOpen(false);
+    } else {
+      setEmbeddedEditorOpen(false);
+    }
+
+    if (token) {
+      await releaseReportLease(token);
+    }
+  }
+
+  function applyData(d: any) {
+    setData(d);
+    setFindings(d?.report?.findings || '');
+    setImpression(d?.report?.impression || '');
+  }
+
+  async function loadPreferences() {
+    if (!orderId || !identity) {
+      setPreferencesLoaded(true);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        reportApiUrl('/preferences'),
+        {
+          method: 'GET',
+          headers: headers(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Preferences request failed (${response.status})`
+        );
+      }
+
+      const payload = await response.json();
+
+      const editor = String(
+        payload?.preferred_editor || 'ONLYOFFICE'
+      ).toUpperCase();
+
+      const layout = String(
+        payload?.preferred_layout || '50_50'
+      ).toUpperCase();
+
+      const allowedEditors = [
+        'ONLYOFFICE',
+        'BROWSER',
+        'WORD',
+        'LIBREOFFICE',
+        'ASK',
+      ];
+
+      const allowedLayouts = [
+        '50_50',
+        '70_30',
+        '30_70',
+        'FULL_EDITOR',
+        'FULL_VIEWER',
+        'DUAL_MONITOR',
+      ];
+
+      setPreferredEditor(
+        allowedEditors.includes(editor)
+          ? editor
+          : 'ONLYOFFICE'
+      );
+
+      setPreferredLayout(
+        allowedLayouts.includes(layout)
+          ? layout
+          : '50_50'
+      );
+
+    } catch (err) {
+
+      console.warn(
+        'RadBridge reporting preferences fallback',
+        err
+      );
+
+      setPreferredEditor('ONLYOFFICE');
+      setPreferredLayout('50_50');
+
+    } finally {
+      setPreferencesLoaded(true);
+    }
+  }
+
+
+  useEffect(() => {
+    if (
+      !leaseToken ||
+      (!onlyOfficeEditorOpen && !embeddedEditorOpen)
+    ) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      acquireReportLease(
+        leaseEditorType,
+        leaseToken
+      ).catch((e: any) => {
+        setError(e?.message || String(e));
+      });
+    }, 60000);
+
+    return () => window.clearInterval(timer);
+  }, [
+    leaseToken,
+    leaseEditorType,
+    onlyOfficeEditorOpen,
+    embeddedEditorOpen,
+  ]);
+
+  async function loadReport() {
+    if (!orderId) {
+      setError(
+        'Order ID missing. Open this study from RadBridge RIS.'
+      );
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const r = await fetch(
+        reportApiUrl(),
+        {
+          credentials: 'same-origin',
+          headers: headers(false),
+        }
+      );
+
+      const d = await r.json();
+
+      if (!r.ok || d?.ok === false) {
+        throw new Error(
+          d?.message ||
+          d?.reason ||
+          d?.error ||
+          `HTTP ${r.status}`
+        );
+      }
+
+      applyData(d);
+    } catch (e: any) {
+      setError(e?.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveReport(action: 'draft' | 'finalize') {
+    if (!orderId || locked) return;
+
+    if (
+      action === 'finalize' &&
+      !window.confirm(
+        'Finalize this report? It will be locked.'
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const activeToken =
+        leaseToken ||
+        await acquireReportLease(
+          onlyOfficeEditorOpen
+            ? 'ONLYOFFICE'
+            : 'BROWSER'
+        );
+
+      const r = await fetch(
+        reportApiUrl(`/${action}`),
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: headers(
+            true,
+            true,
+            activeToken
+          ),
+          body: JSON.stringify({
+            findings,
+            impression,
+            radiologist:
+              data?.report?.radiologist || '',
+          }),
+        }
+      );
+
+      const d = await r.json();
+
+      if (!r.ok || d?.ok === false) {
+        throw new Error(
+          d?.message ||
+          d?.reason ||
+          d?.error ||
+          `HTTP ${r.status}`
+        );
+      }
+
+      applyData(d);
+
+      setMessage(
+        action === 'finalize'
+          ? 'Report finalized successfully.'
+          : 'Draft saved successfully.'
+      );
+    } catch (e: any) {
+      setError(e?.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function returnCase() {
+    if (!orderId || !returnReason) {
+      setError('Select return reason first.');
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const r = await fetch(
+        reportApiUrl('/return'),
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: headers(true),
+          body: JSON.stringify({
+            reason_code: returnReason,
+            note: returnNote,
+          }),
+        }
+      );
+
+      const d = await r.json();
+
+      if (!r.ok || d?.ok === false) {
+        throw new Error(
+          d?.message ||
+          d?.reason ||
+          d?.error ||
+          `HTTP ${r.status}`
+        );
+      }
+
+      setMessage('Case returned successfully.');
+      setReturnReason('');
+      setReturnNote('');
+    } catch (e: any) {
+      setError(e?.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openWord() {
+    if (!accession) {
+      setError('Accession Number unavailable.');
+      return;
+    }
+
+    window.location.href =
+      `risreport://open?accession=${encodeURIComponent(accession)}&editor=word`;
+  }
+
+
+  async function downloadFromRis(
+    url: string,
+    fallbackName: string
+  ) {
+    setBusy(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const r = await fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: headers(false),
+      });
+
+      if (!r.ok) {
+        let detail = `HTTP ${r.status}`;
+
+        try {
+          const d = await r.json();
+          detail =
+            d?.message ||
+            d?.reason ||
+            d?.error ||
+            detail;
+        } catch (_) {}
+
+        throw new Error(detail);
+      }
+
+      const blob = await r.blob();
+
+      let filename = fallbackName;
+
+      const disposition =
+        r.headers.get('content-disposition') || '';
+
+      const match =
+        disposition.match(
+          /filename\*?=(?:UTF-8''|")?([^";]+)/i
+        );
+
+      if (match?.[1]) {
+        filename = decodeURIComponent(
+          match[1].replace(/"/g, '')
+        );
+      }
+
+      const objectUrl =
+        window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.URL.revokeObjectURL(objectUrl);
+
+      setMessage(`Downloaded ${filename}`);
+    } catch (e: any) {
+      setError(e?.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+
+  function downloadAgent() {
+    return downloadFromRis(
+      '/radbridge-api/api/ohif/reporting-agent/download',
+      'RIS-Reporting-Agent-Auto-v2.zip'
+    );
+  }
+
+
+  function downloadWordTemplate() {
+    if (!orderId) {
+      setError('Order ID is missing.');
+      return;
+    }
+
+    return downloadFromRis(
+      reportApiUrl('/word'),
+      `${accession || 'RadBridge-Report'}.docx`
+    );
+  }
+
+
+  async function uploadWord(
+    action: 'draft' | 'finalize'
+  ) {
+    if (!orderId) {
+      setError('Order ID is missing.');
+      return;
+    }
+
+    if (!selectedWordFile) {
+      setError('Choose a DOCX report first.');
+      return;
+    }
+
+    if (
+      !selectedWordFile.name
+        .toLowerCase()
+        .endsWith('.docx')
+    ) {
+      setError(
+        'Manual Word workflow currently accepts DOCX files only.'
+      );
+      return;
+    }
+
+    if (locked) {
+      setError('FINAL report is locked.');
+      return;
+    }
+
+    if (
+      action === 'finalize' &&
+      !window.confirm(
+        'Upload and FINALIZE this Word report? The report will be locked.'
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const form = new FormData();
+
+      form.append(
+        'document',
+        selectedWordFile,
+        selectedWordFile.name
+      );
+
+      const r = await fetch(
+        reportApiUrl(`/word/${action}`),
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: headers(false),
+          body: form,
+        }
+      );
+
+      let d: any = {};
+
+      try {
+        d = await r.json();
+      } catch (_) {}
+
+      if (!r.ok || d?.ok === false) {
+        throw new Error(
+          d?.message ||
+          d?.reason ||
+          d?.error ||
+          `HTTP ${r.status}`
+        );
+      }
+
+      applyData(d);
+
+      setMessage(
+        action === 'finalize'
+          ? 'Word report uploaded and finalized successfully.'
+          : 'Word draft uploaded successfully.'
+      );
+
+      setSelectedWordFile(null);
+    } catch (e: any) {
+      setError(e?.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+
+  useEffect(() => {
+    loadReport();
+    loadPreferences();
+  }, []);
+
+  const fieldStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '9px',
+    background: '#071219',
+    color: '#fff',
+    border: '1px solid #31434e',
+    borderRadius: '5px',
+    boxSizing: 'border-box',
+  };
+
+  const buttonStyle: React.CSSProperties = {
+    width: '100%',
+    marginTop: '8px',
+    padding: '10px',
+    cursor: busy ? 'wait' : 'pointer',
+  };
+
+  return (
+    <div
+      style={{
+        padding: '16px',
+        height: '100%',
+        overflowY: 'auto',
+        color: '#fff',
+        background: '#0b1820',
+      }}
+    >
+      <h3 style={{ marginTop: 0, marginBottom: '4px' }}>
+        RadBridge Reporting Workspace
+      </h3>
+
+      <div
+        style={{
+          fontSize: '11px',
+          opacity: .65,
+          marginBottom: '12px'
+        }}
+      >
+        Unified clinical reporting · ONE report · ONE workflow
+      </div>
+
+      {error && (
+        <div style={{
+          background: '#511',
+          padding: '9px',
+          marginBottom: '10px'
+        }}>
+          {error}
+        </div>
+      )}
+
+      {message && (
+        <div style={{
+          background: '#143b26',
+          padding: '9px',
+          marginBottom: '10px'
+        }}>
+          {message}
+        </div>
+      )}
+
+      <div
+        style={{
+          background: '#071219',
+          padding: '12px',
+          marginBottom: '12px',
+          borderRadius: '7px',
+          border: '1px solid #263845'
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 800,
+            fontSize: '14px',
+            marginBottom: '6px'
+          }}
+        >
+          {data?.patient?.name || '-'}
+        </div>
+
+        <div
+          style={{
+            fontSize: '12px',
+            lineHeight: 1.55
+          }}
+        >
+          <div>
+            <b>Patient ID:</b> {data?.patient?.id || '-'}
+          </div>
+
+          <div>
+            <b>Accession:</b> {accession || '-'}
+          </div>
+
+          <div>
+            <b>Study:</b>{' '}
+            {[data?.order?.modality, data?.order?.procedure]
+              .filter(Boolean)
+              .join(' · ') || '-'}
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          padding: '10px',
+          marginBottom: '12px',
+          border: '1px solid #334155',
+          borderRadius: '7px'
+        }}
+      >
+        <div
+          style={{
+            fontSize: '10px',
+            opacity: .65,
+            marginBottom: '7px',
+            fontWeight: 700
+          }}
+        >
+          REPORT WORKFLOW
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <span
+            style={{
+              padding: '4px 7px',
+              borderRadius: '999px',
+              border: '1px solid #475569',
+              fontWeight: status === 'DRAFT' ? 800 : 400,
+              opacity: status === 'DRAFT' ? 1 : .45
+            }}
+          >
+            DRAFT
+          </span>
+
+          <span style={{ opacity: .5 }}>→</span>
+
+          <span
+            style={{
+              padding: '4px 7px',
+              borderRadius: '999px',
+              border: '1px solid #475569',
+              fontWeight: status === 'VERIFIED' ? 800 : 400,
+              opacity: status === 'VERIFIED' ? 1 : .45
+            }}
+          >
+            VERIFIED
+          </span>
+
+          <span style={{ opacity: .5 }}>→</span>
+
+          <span
+            style={{
+              padding: '4px 7px',
+              borderRadius: '999px',
+              border: '1px solid #475569',
+              fontWeight: status === 'FINAL' ? 800 : 400,
+              opacity: status === 'FINAL' ? 1 : .45
+            }}
+          >
+            FINAL
+          </span>
+        </div>
+
+        <div
+          style={{
+            fontSize: '11px',
+            marginTop: '8px'
+          }}
+        >
+          Current status: <strong>{status}</strong>
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginBottom: '12px'
+        }}
+      >
+        <div
+          style={{
+            fontSize: '10px',
+            opacity: .65,
+            marginBottom: '7px',
+            fontWeight: 700
+          }}
+        >
+          REPORT EDITOR
+        </div>
+
+        <button
+          disabled={busy || !orderId || locked}
+          style={{
+            ...buttonStyle,
+            marginTop: 0,
+            fontWeight: 800,
+            background: '#17394a'
+          }}
+          onClick={() => openReportEditor('ONLYOFFICE')}
+        >
+          📄 Open ONLYOFFICE
+        </button>
+
+        <button
+          disabled={busy || !orderId}
+          style={buttonStyle}
+          onClick={() => openReportEditor('BROWSER')}
+        >
+          🌐 Browser Report Editor
+        </button>
+
+        <div
+          style={{
+            marginTop: '8px',
+            padding: '8px',
+            border: '1px solid #334155',
+            borderRadius: '6px',
+            fontSize: '11px'
+          }}
+        >
+          Primary editor: <strong>{preferredEditor}</strong>
+          {' · '}
+          Layout: <strong>{preferredLayout}</strong>
+          {!preferencesLoaded && ' · Loading…'}
+        </div>
+      </div>
+
+      <div
+        style={{
+          fontSize: '10px',
+          opacity: .65,
+          marginBottom: '7px',
+          fontWeight: 700
+        }}
+      >
+        REPORTING TOOLS
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '7px',
+          marginBottom: '12px'
+        }}
+      >
+        {[
+          ['📄', 'Templates', 'Doctor & study templates'],
+          ['🕘', 'Previous Reports', 'Prior reports & versions'],
+          ['📝', 'Clinical Notes', 'Clinical history & notes'],
+          ['📎', 'Attachments', 'Referral & documents'],
+          ['🖼️', 'Key Images', 'Selected OHIF images'],
+          ['🎙️', 'Dictation', 'Voice reporting tools']
+        ].map(([icon, title, subtitle]) => (
+          <div
+            key={title}
+            style={{
+              border: '1px solid #334155',
+              borderRadius: '7px',
+              padding: '8px',
+              minHeight: '54px',
+              background: '#0b1820'
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: '11px'
+              }}
+            >
+              {icon} {title}
+            </div>
+
+            <div
+              style={{
+                fontSize: '9px',
+                opacity: .6,
+                marginTop: '3px'
+              }}
+            >
+              {subtitle}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          padding: '8px',
+          marginBottom: '12px',
+          borderLeft: '3px solid #475569',
+          fontSize: '10px',
+          opacity: .7
+        }}
+      >
+        ONLYOFFICE is the primary reporting editor.
+        External desktop editors remain optional.
+      </div>
+
+      <hr style={{ margin: '16px 0', opacity: .2 }} />
+
+      <div
+        style={{
+          fontWeight: 700,
+          marginBottom: '8px'
+        }}
+      >
+        External DOCX Workflow (Optional)
+      </div>
+
+      <button
+        disabled={busy || !orderId}
+        style={{ ...buttonStyle, marginTop: 0 }}
+        onClick={downloadWordTemplate}
+      >
+        ⬇ Download Current Report DOCX
+      </button>
+
+      <input
+        type="file"
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        disabled={busy || locked}
+        onChange={e =>
+          setSelectedWordFile(
+            e.target.files?.[0] || null
+          )
+        }
+        style={{
+          width: '100%',
+          marginTop: '10px',
+          padding: '8px',
+          boxSizing: 'border-box'
+        }}
+      />
+
+      {selectedWordFile && (
+        <div
+          style={{
+            fontSize: '12px',
+            marginTop: '6px',
+            opacity: .75
+          }}
+        >
+          Selected: {selectedWordFile.name}
+        </div>
+      )}
+
+      <button
+        disabled={
+          busy ||
+          locked ||
+          !selectedWordFile
+        }
+        style={buttonStyle}
+        onClick={() => uploadWord('draft')}
+      >
+        ⬆ Upload Word Draft
+      </button>
+
+      <button
+        disabled={
+          busy ||
+          locked ||
+          !selectedWordFile
+        }
+        style={{
+          ...buttonStyle,
+          fontWeight: 700
+        }}
+        onClick={() => uploadWord('finalize')}
+      >
+        ⬆ Upload & Finalize Word Report
+      </button>
+
+      <hr style={{ margin: '18px 0', opacity: .2 }} />
+
+      <div>Findings</div>
+
+      <textarea
+        value={findings}
+        disabled={busy || locked}
+        onChange={e => setFindings(e.target.value)}
+        style={{
+          ...fieldStyle,
+          minHeight: '170px',
+          marginTop: '6px'
+        }}
+      />
+
+      <div style={{ marginTop: '14px' }}>
+        Impression
+      </div>
+
+      <textarea
+        value={impression}
+        disabled={busy || locked}
+        onChange={e => setImpression(e.target.value)}
+        style={{
+          ...fieldStyle,
+          minHeight: '100px',
+          marginTop: '6px'
+        }}
+      />
+
+      <button
+        disabled={busy || locked}
+        style={buttonStyle}
+        onClick={() => saveReport('draft')}
+      >
+        Save Draft
+      </button>
+
+      <button
+        disabled={busy || locked}
+        style={buttonStyle}
+        onClick={() => saveReport('finalize')}
+      >
+        Finalize Report
+      </button>
+
+      {locked && (
+        <div style={{
+          fontSize: '12px',
+          marginTop: '8px',
+          opacity: .7
+        }}>
+          FINAL report is locked.
+        </div>
+      )}
+
+      <hr style={{ margin: '22px 0', opacity: .2 }} />
+
+      <div style={{ fontWeight: 600 }}>
+        Return Case
+      </div>
+
+      <select
+        value={returnReason}
+        disabled={busy}
+        onChange={e => setReturnReason(e.target.value)}
+        style={{ ...fieldStyle, marginTop: '8px' }}
+      >
+        <option value="">Select reason...</option>
+        <option value="MISSING_HISTORY">Missing clinical history</option>
+        <option value="MISSING_REFERRAL">Missing referral / attachment</option>
+        <option value="NEED_PRIOR">Need prior / comparison study</option>
+        <option value="INCOMPLETE_IMAGES">Incomplete images</option>
+        <option value="MISSING_SERIES">Missing series / sequence</option>
+        <option value="WRONG_PROTOCOL">Wrong protocol</option>
+        <option value="MOTION_ARTIFACT">Motion artifact</option>
+        <option value="ADDITIONAL_IMAGING">Additional imaging required</option>
+      </select>
+
+      <textarea
+        value={returnNote}
+        disabled={busy}
+        onChange={e => setReturnNote(e.target.value)}
+        placeholder="Doctor note..."
+        style={{
+          ...fieldStyle,
+          marginTop: '8px',
+          minHeight: '70px'
+        }}
+      />
+
+      <button
+        disabled={busy}
+        style={buttonStyle}
+        onClick={returnCase}
+      >
+        Return Case
+      </button>
+
+      <button
+        disabled={busy}
+        style={buttonStyle}
+        onClick={loadReport}
+      >
+        Refresh
+      </button>
+
+      {onlyOfficeEditorOpen && (
+        <OnlyOfficeReportEditor
+          orderId={orderId}
+          studyInstanceUID={studyInstanceUID}
+          identity={identity}
+          leaseToken={leaseToken}
+          onClose={() => {
+            void closeReportEditor('ONLYOFFICE');
+          }}
+        />
+      )}
+
+      {embeddedEditorOpen && (
+        <EmbeddedReportEditor
+          data={data}
+          findings={findings}
+          impression={impression}
+          busy={busy}
+          message={message}
+          error={error}
+          onFindingsChange={setFindings}
+          onImpressionChange={setImpression}
+          onSaveDraft={() => saveReport('draft')}
+          onFinalize={() => saveReport('finalize')}
+          onClose={() => {
+            void closeReportEditor('BROWSER');
+          }}
+        />
+      )}
+    </div>
+  );
+}

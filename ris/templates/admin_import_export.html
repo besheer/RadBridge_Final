@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block page_title %}Import / Export{% endblock %}
+{% block subtitle %}Bulk master-data management with UTF-8 CSV files.{% endblock %}
+{% block content %}
+<div class="grid2"><div class="panel"><h3>Export</h3>
+<div class="actions"><a class="btn" href="{{url_for('admin_export_entity',entity='procedures')}}">Procedures CSV</a>
+<a class="btn" href="{{url_for('admin_export_entity',entity='contracts')}}">Contracts CSV</a>
+<a class="btn" href="{{url_for('admin_export_entity',entity='consumables')}}">Consumables CSV</a>
+<a class="btn" href="{{url_for('admin_export_entity',entity='devices')}}">Devices CSV</a></div></div>
+<div class="panel"><h3>Import</h3><form method="post" enctype="multipart/form-data">
+<label>Type</label><select name="entity"><option value="procedures">Procedures</option><option value="contracts">Contracts</option><option value="consumables">Consumables</option></select>
+<label>CSV File</label><input type="file" name="file" accept=".csv" required><button class="btn primary">Import CSV</button></form>
+<p class="muted">Existing rows are updated by unique Code. New codes are inserted.</p></div></div>{% endblock %}

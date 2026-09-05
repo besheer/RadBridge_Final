@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block page_title %}Communication Hub Settings{% endblock %}
+{% block content %}
+<div class="panel"><h2>Communication Hub</h2><p>Secrets are read from server environment variables; passwords/tokens are not displayed here.</p></div>
+<div class="comm-settings-grid">
+{% for r in rows %}<form method="post" class="panel">
+<input type="hidden" name="channel" value="{{r.channel}}">
+<h3>{{r.channel}}</h3>
+<label>Enabled</label><select name="enabled"><option value="0" {% if not r.enabled %}selected{% endif %}>No</option><option value="1" {% if r.enabled %}selected{% endif %}>Yes</option></select>
+<label>Provider</label><input name="provider" value="{{r.provider}}">
+<label>API/Base URL</label><input name="base_url" value="{{r.base_url}}">
+<label>Sender</label><input name="sender" value="{{r.sender}}">
+{% if r.channel=='EMAIL' %}
+<label>SMTP Host</label><input name="smtp_host" value="{{r.smtp_host}}">
+<label>SMTP Port</label><input type="number" name="smtp_port" value="{{r.smtp_port}}">
+<label>TLS</label><select name="smtp_tls"><option value="1" {% if r.smtp_tls %}selected{% endif %}>Yes</option><option value="0" {% if not r.smtp_tls %}selected{% endif %}>No</option></select>
+<label>SMTP User</label><input name="smtp_user" value="{{r.smtp_user}}">
+{% endif %}
+<label>Secret Environment Variable</label><input name="secret_env_name" value="{{r.secret_env_name}}">
+<button class="btn primary">Save {{r.channel}}</button>
+</form>{% endfor %}
+</div>
+
+<div class="panel"><h3>Message Templates</h3>
+{% for t in templates %}
+<form method="post" action="{{url_for('admin_communication_template_save')}}" class="comm-template-row">
+<input type="hidden" name="template_id" value="{{t.id}}">
+<input name="code" value="{{t.code}}" readonly>
+<input name="name_en" value="{{t.name_en}}">
+<input name="name_ar" value="{{t.name_ar}}">
+<select name="channel"><option {% if t.channel=='ANY' %}selected{% endif %}>ANY</option><option {% if t.channel=='WHATSAPP' %}selected{% endif %}>WHATSAPP</option><option {% if t.channel=='TELEGRAM' %}selected{% endif %}>TELEGRAM</option><option {% if t.channel=='EMAIL' %}selected{% endif %}>EMAIL</option></select>
+<input name="event_key" value="{{t.event_key}}">
+<input name="subject_template" value="{{t.subject_template}}">
+<textarea name="body_template">{{t.body_template}}</textarea>
+<input type="hidden" name="active" value="1">
+<button class="btn small">Save</button>
+</form>{% endfor %}
+</div>
+{% endblock %}

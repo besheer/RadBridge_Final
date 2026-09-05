@@ -1,0 +1,20 @@
+{% macro action_info(title, summary, when_text='', requirements='', effect='', warning='', lang='en') -%}
+<details class="rb-action-guidance" style="display:inline-block;margin-left:6px;vertical-align:middle">
+  <summary
+    title="{{ 'معلومات عن' if lang=='ar' else 'Information about' }} {{ title }}"
+    aria-label="{{ 'معلومات عن' if lang=='ar' else 'Information about' }} {{ title }}"
+    style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid #2563eb;border-radius:50%;color:#2563eb;font-weight:800;list-style:none"
+  >i</summary>
+  <div
+    role="note"
+    style="position:relative;z-index:20;margin-top:8px;max-width:620px;padding:14px;border:1px solid #93c5fd;border-radius:8px;background:#eff6ff;color:#172033;line-height:1.55"
+  >
+    <strong>{{ title }}</strong>
+    <p style="margin:7px 0">{{ summary }}</p>
+    {% if when_text %}<p><strong>{{ 'متى يُستخدم:' if lang=='ar' else 'When to use:' }}</strong> {{ when_text }}</p>{% endif %}
+    {% if requirements %}<p><strong>{{ 'المتطلبات:' if lang=='ar' else 'Requirements:' }}</strong> {{ requirements }}</p>{% endif %}
+    {% if effect %}<p><strong>{{ 'التأثير:' if lang=='ar' else 'Effect:' }}</strong> {{ effect }}</p>{% endif %}
+    {% if warning %}<p style="color:#991b1b"><strong>{{ 'تحذير:' if lang=='ar' else 'Warning:' }}</strong> {{ warning }}</p>{% endif %}
+  </div>
+</details>
+{%- endmacro %}

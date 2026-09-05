@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block page_title %}{{t("dictionary.title","System Dictionary")}}{% endblock %}
+{% block content %}
+<div class="panel"><form method="get" class="dictionary-search">
+<input name="q" value="{{q or ''}}" placeholder="{{t('dictionary.search_hint','Search key, English or Arabic')}}">
+<button class="btn">{{t("common.search","Search")}}</button></form></div>
+<div class="panel"><table>
+<thead><tr><th>{{t("dictionary.key","Key")}}</th><th>{{t("dictionary.module","Module")}}</th><th>{{t("dictionary.english","English Label")}}</th><th>{{t("dictionary.arabic","Arabic Label")}}</th><th>{{t("common.status","Status")}}</th><th>{{t("common.actions","Actions")}}</th></tr></thead>
+<tbody>{% for r in rows %}<tr>
+<form method="post">
+<td><input name="key" value="{{r.key}}" readonly></td>
+<td><input name="module" value="{{r.module}}"></td>
+<td><input name="label_en" value="{{r.label_en}}"></td>
+<td><input name="label_ar" value="{{r.label_ar}}" dir="rtl"></td>
+<td><select name="active"><option value="1" {% if r.active %}selected{% endif %}>{{t("common.active","Active")}}</option><option value="0" {% if not r.active %}selected{% endif %}>{{t("common.inactive","Inactive")}}</option></select></td>
+<td><button class="btn small primary">{{t("common.save","Save")}}</button></form>
+<form method="post" action="{{url_for('admin_dictionary_reset',entry_id=r.id)}}"><button class="btn small">{{t("dictionary.reset","Reset to Default")}}</button></form></td>
+</tr>{% endfor %}</tbody></table></div>
+<details class="panel"><summary><b>+ {{t("common.add","Add")}}</b></summary>
+<form method="post" class="grid2">
+<input name="key" placeholder="key" required><input name="module" value="GLOBAL">
+<input name="label_en" placeholder="{{t('dictionary.english','English Label')}}" required>
+<input name="label_ar" placeholder="{{t('dictionary.arabic','Arabic Label')}}" dir="rtl">
+<select name="active"><option value="1">{{t("common.active","Active")}}</option><option value="0">{{t("common.inactive","Inactive")}}</option></select>
+<button class="btn primary">{{t("common.save","Save")}}</button>
+</form></details>
+{% endblock %}

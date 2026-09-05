@@ -1,0 +1,88 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - tenant_db:/var/lib/postgresql/data
+    networks: [tenant_private]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  pacs:
+    image: orthancteam/orthanc:latest
+    restart: unless-stopped
+    environment:
+      ORTHANC__NAME: ${TENANT_NAME}
+      ORTHANC__DICOM_AET: ${PACS_AET}
+      ORTHANC__REGISTERED_USERS: '{"${PACS_USER}":"${PACS_PASSWORD}"}'
+      ORTHANC__AUTHENTICATION_ENABLED: "true"
+      ORTHANC__REMOTE_ACCESS_ALLOWED: "true"
+    volumes:
+      - tenant_pacs:/var/lib/orthanc/db
+    networks: [tenant_private]
+    # DICOM is bound to the host only when explicitly configured.
+    ports:
+      - "${PACS_BIND_IP:-127.0.0.1}:${PACS_DICOM_PORT:-4242}:4242"
+
+  ris-web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      APP_ENV: production
+      TENANT_ID: ${TENANT_ID}
+      TENANT_NAME: ${TENANT_NAME}
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_URL: postgresql+psycopg2://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      REPORT_DIR: /tenant-data/reports
+      ATTACHMENT_DIR: /tenant-data/attachments
+      UPLOAD_DIR: /tenant-data/uploads
+      ORTHANC_URL: http://pacs:8042
+      PACS_ORTHANC_URL: http://pacs:8042
+      ORTHANC_USER: ${PACS_USER}
+      ORTHANC_PASSWORD: ${PACS_PASSWORD}
+      PACS_ORTHANC_USER: ${PACS_USER}
+      PACS_ORTHANC_PASSWORD: ${PACS_PASSWORD}
+      RIS_PUBLIC_URL: ${RIS_PUBLIC_URL}
+      ORTHANC_PUBLIC_URL: ${ORTHANC_PUBLIC_URL:-}
+    volumes:
+      - tenant_reports:/tenant-data/reports
+      - tenant_attachments:/tenant-data/attachments
+      - tenant_uploads:/tenant-data/uploads
+      - tenant_backups:/tenant-data/backups
+    networks: [tenant_private, edge]
+    labels:
+      com.radbridge.tenant: ${TENANT_ID}
+      com.radbridge.isolation: dedicated-db-storage-pacs
+    # Publish only behind your TLS reverse proxy.
+    ports:
+      - "127.0.0.1:${RIS_LOCAL_PORT}:8000"
+
+networks:
+  tenant_private:
+    internal: true
+  edge:
+
+volumes:
+  tenant_db:
+    name: radbridge_${TENANT_ID}_db
+  tenant_pacs:
+    name: radbridge_${TENANT_ID}_pacs
+  tenant_reports:
+    name: radbridge_${TENANT_ID}_reports
+  tenant_attachments:
+    name: radbridge_${TENANT_ID}_attachments
+  tenant_uploads:
+    name: radbridge_${TENANT_ID}_uploads
+  tenant_backups:
+    name: radbridge_${TENANT_ID}_backups

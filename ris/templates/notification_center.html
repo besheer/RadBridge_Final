@@ -1,0 +1,2 @@
+{% extends "base.html" %}{% block page_title %}Notifications{% endblock %}{% block content %}
+{% for n in rows %}<div class="panel notif notif-{{n.severity|lower}}"><b>{{n.title}}</b><small>{{n.created_at}} · {{n.event_type}}</small><p>{{n.body}}</p>{% if n.status=='NEW' %}<form method="post" action="{{url_for('notification_ack',notification_id=n.id)}}"><button class="btn primary">Acknowledge</button></form>{% else %}<span>✓ Acknowledged</span>{% endif %}</div>{% else %}<div class="panel">No notifications.</div>{% endfor %}{% endblock %}

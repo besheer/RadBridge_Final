@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block page_title %}PACS AI Imaging{% endblock %}
+{% block content %}
+<div class="panel ai-warning">
+<b>Imaging AI Decision Support</b>
+<p>Demographics must be verified against PACS DICOM metadata before image analysis. Any Patient ID, DOB or Accession mismatch blocks analysis unless an authorized admin documents an override.</p>
+</div>
+<div class="grid2">
+<div class="panel"><h3>{{order.patient.name}} · {{order.patient.patient_id}}</h3>
+<p>{{order.accession}} · {{order.modality}} · {{order.procedure}}</p>
+{% if provider %}<p>Provider: {{provider.provider_key}} · {{provider.model_name}}</p>{% else %}<p>No Imaging AI provider configured for this modality.</p>{% endif %}
+<form method="post" action="{{url_for('imaging_ai_verify_demographics',order_id=order.id)}}"><button class="btn primary">1. Verify Demographics Against PACS</button></form>
+</div>
+<div class="panel"><h3>Workflow</h3><p>RIS Order → PACS Study → Demographic Verification → Imaging AI → Structured Findings → AI Draft Report → Doctor Review → Finalize</p></div>
+</div>
+
+{% for a in rows %}
+<div class="panel imaging-analysis-card">
+<div class="analysis-head"><b>Analysis #{{a.id}}</b><span>{{a.status}} · {{a.requested_at}}</span></div>
+<div class="demographic-badge demographic-{{a.demographic_status|lower|replace('_','-')}}">{{a.demographic_status}} · {{'%.0f'|format((a.demographic_score or 0)*100)}}%</div>
+{% set dd=(a.demographic_details_json|default('{}')) %}
+{% if a.demographic_details_json %}
+<details><summary>Demographic comparison</summary><pre>{{a.demographic_details_json}}</pre></details>
+{% endif %}
+{% if a.demographic_status=='VERIFIED' and a.status in ['DEMOGRAPHICS_CHECKED','FAILED'] %}
+<form method="post" action="{{url_for('imaging_ai_analyze',order_id=order.id,analysis_id=a.id)}}"><button class="btn primary">2. Analyze PACS Study</button></form>
+{% endif %}
+{% if a.demographic_status in ['BLOCKED','REVIEW_REQUIRED'] %}
+<form method="post" action="{{url_for('imaging_ai_demographic_override',order_id=order.id,analysis_id=a.id)}}" class="override-box">
+<textarea name="reason" required placeholder="Authorized override reason"></textarea><button class="btn danger">Admin Override to VERIFIED</button></form>
+{% endif %}
+{% if a.status in ['AI_FINDINGS_READY','DOCTOR_REVIEWED'] %}
+<h4>Structured Findings</h4><pre>{{a.structured_findings_json}}</pre>
+<h4>Summary</h4><pre>{{a.summary_text}}</pre>
+{% if a.uncertainty_text %}<div class="ai-safety"><b>Uncertainty / limitations</b><pre>{{a.uncertainty_text}}</pre></div>{% endif %}
+<a class="btn primary" href="{{url_for('ai_report_assistant',order_id=order.id)}}">3. Build Draft Report</a>
+{% if a.status=='AI_FINDINGS_READY' %}<form method="post" action="{{url_for('imaging_ai_mark_reviewed',order_id=order.id,analysis_id=a.id)}}"><button class="btn">Mark Findings Reviewed</button></form>{% endif %}
+{% endif %}
+{% if a.error_text %}<div class="error-box">{{a.error_text}}</div>{% endif %}
+</div>{% else %}<div class="panel"><p>No Imaging AI analysis yet.</p></div>{% endfor %}
+{% endblock %}

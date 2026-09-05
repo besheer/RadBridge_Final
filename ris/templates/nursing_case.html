@@ -1,0 +1,60 @@
+{% extends "base.html" %}{% block page_title %}Nursing — {{order.patient.name}}
+{% endblock %}{% block subtitle %}Default quantities are suggested per exam; nursing confirms actual use{% endblock %}{% block content %}
+<div id="nursing-extra-consumables-v52721" class="panel" style="margin-top:16px">
+  <div class="section-title">Extra Consumables / مستهلكات إضافية</div>
+  {% set inv_wh=default_warehouse_for_order(order) %}
+  <p class="muted">Branch Warehouse:
+    <b>{{inv_wh.name if inv_wh else 'Not configured'}}</b>
+  </p>
+
+  {% if inv_wh and has_perm('inventory.add_extra_consumable') %}
+  <form method="post" action="{{url_for('order_consumables',order_id=order.id)}}" class="grid3">
+    <input type="hidden" name="action" value="EXTRA">
+    <select name="item_id" required id="nursingExtraItem">
+      <option value="">Select extra consumable</option>
+      {% for i in InventoryItem.query.filter_by(active=True).order_by(InventoryItem.name).all() %}
+      <option value="{{i.id}}" data-stock="{{inventory_available_qty(inv_wh.id,i.id)}}" data-unit="{{i.unit}}">
+        {{i.name}} — Available {{inventory_available_qty(inv_wh.id,i.id)}} {{i.unit}}
+      </option>
+      {% endfor %}
+    </select>
+    <input name="qty" type="number" min="0.0001" step="0.0001" value="1" required>
+    <input name="reason" required placeholder="Reason for extra consumable">
+    <button class="btn primary">＋ Add Extra Consumable</button>
+  </form>
+  {% endif %}
+
+  {% if inv_wh and (has_perm('inventory.waste') or has_perm('inventory.return')) %}
+  <details style="margin-top:12px">
+    <summary>Waste / Return</summary>
+    <form method="post" action="{{url_for('order_consumables',order_id=order.id)}}" class="grid3" style="margin-top:10px">
+      <select name="item_id" required>
+        <option value="">Select consumable</option>
+        {% for i in InventoryItem.query.filter_by(active=True).order_by(InventoryItem.name).all() %}
+        <option value="{{i.id}}">{{i.name}} — Available {{inventory_available_qty(inv_wh.id,i.id)}} {{i.unit}}</option>
+        {% endfor %}
+      </select>
+      <input name="qty" type="number" min="0.0001" step="0.0001" value="1" required>
+      <select name="action">
+        {% if has_perm('inventory.waste') %}<option value="WASTE">Waste</option>{% endif %}
+        {% if has_perm('inventory.return') %}<option value="RETURN">Return to Stock</option>{% endif %}
+      </select>
+      <input name="reason" required placeholder="Reason is required">
+      <button class="btn">Save Movement</button>
+    </form>
+  </details>
+  {% endif %}
+
+  {% if has_perm('inventory.view') %}
+  <div class="actions" style="margin-top:12px">
+    <a class="btn small" href="{{url_for('order_consumables',order_id=order.id)}}">📦 Full Case Consumables</a>
+    <a class="btn small" href="{{url_for('inventory_stock',warehouse_id=inv_wh.id if inv_wh else '')}}">🏬 Branch Stock</a>
+  </div>
+  {% endif %}
+</div>
+
+
+{% set any_confirmed = entries and (entries.values()|selectattr('confirmed')|list|length > 0) %}
+<div class="panel"><h3>{{order.proc.name if order.proc else order.procedure}}</h3><p>Accession: <b>{{order.accession}}</b></p></div>
+{% if not any_confirmed %}<form method="post" class="panel"><h3>Confirm Actual Consumables</h3><table><tr><th>Item</th><th>Default</th><th>Actual</th></tr>{% for x in defaults %}<tr><td>{{x.consumable.name}}</td><td>{{x.qty}} {{x.consumable.unit}}</td><td><input type="number" min="0" step=".01" name="qty_{{x.consumable_id}}" value="{{x.qty}}"></td></tr>{% endfor %}</table><button class="btn primary">Confirm Actual Consumables</button></form>
+{% else %}<div class="panel"><h3>Confirmed Consumables</h3><table><tr><th>Item</th><th>Default</th><th>Actual</th></tr>{% for x in defaults %}{% set n=entries.get(x.consumable_id) %}<tr><td>{{x.consumable.name}}</td><td>{{x.qty}}</td><td>{{n.actual_qty if n else 0}}</td></tr>{% endfor %}</table><p><b>Locked after confirmation.</b> A supervisor correction requires permission and a reason.</p></div>{% if has_perm('consumables.correct') %}<form method="post" action="{{url_for('nursing_consumable_correct',order_id=order.id)}}" class="panel"><h3>Supervisor Correction</h3>{% for x in defaults %}{% set n=entries.get(x.consumable_id) %}<label>{{x.consumable.name}}</label><input type="number" min="0" step=".01" name="qty_{{x.consumable_id}}" value="{{n.actual_qty if n else x.qty}}">{% endfor %}<label>Reason</label><input name="reason" minlength="5" required placeholder="Why is this correction required?"><button class="btn">Save Audited Correction</button></form>{% endif %}{% endif %}{% endblock %}

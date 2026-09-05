@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="panel">
+
+<h2>Caller History / سجل المتصل</h2>
+
+<p>
+Reference:
+<strong>{{ intake.reference }}</strong>
+</p>
+
+<p>
+Phone:
+<strong>{{ phone or 'غير مؤكد' }}</strong>
+</p>
+
+{% if control %}
+
+<div class="grid3">
+
+<div>
+<small>Status</small>
+<div><strong>{{ control.status }}</strong></div>
+</div>
+
+<div>
+<small>Call Count</small>
+<div>{{ control.call_count }}</div>
+</div>
+
+<div>
+<small>Last Call</small>
+<div>{{ control.last_call_at or '-' }}</div>
+</div>
+
+</div>
+
+{% endif %}
+
+</div>
+
+<div class="panel" style="margin-top:16px">
+
+<h3>Previous Voice Requests</h3>
+
+<table>
+
+<thead>
+<tr>
+<th>Reference</th>
+<th>Date</th>
+<th>Status</th>
+<th>Spam</th>
+<th>Reason</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for r in history %}
+
+<tr>
+
+<td>{{ r.reference }}</td>
+
+<td>
+{{ r.created_at.strftime('%Y-%m-%d %H:%M')
+   if r.created_at else '-' }}
+</td>
+
+<td>{{ r.status }}</td>
+
+<td>
+{% if r.spam_flag %}
+🚩 Yes
+{% else %}
+No
+{% endif %}
+</td>
+
+<td>{{ r.reason }}</td>
+
+</tr>
+
+{% else %}
+
+<tr>
+<td colspan="5">
+No previous calls found.
+</td>
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+{% endblock %}

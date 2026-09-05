@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block page_title %}📎 {{'مرفقات الحالة' if ui_lang=='ar' else 'Case Attachments'}} · {{order.accession}}{% endblock %}
+{% block content %}
+<div class="case-action-bar">
+  <a class="case-action" href="{{url_for('orders')}}">← {{'الحالات' if ui_lang=='ar' else 'Orders'}}</a>
+  <a class="case-action" href="{{url_for('order_actions',order_id=order.id)}}">🖨️ {{'الطباعة والإجراءات' if ui_lang=='ar' else 'Print / Actions'}}</a>
+</div>
+
+<div class="panel">
+  <div class="attachment-title-row">
+    <div>
+      <h2>📎 {{'المرفقات' if ui_lang=='ar' else 'Attachments'}}
+        <span class="count-badge">{{attachments|length}}</span>
+      </h2>
+      <small>{{order.accession}} · {{order.patient.name}}</small>
+    </div>
+  </div>
+
+  {% if has_perm('attachments.upload') %}
+  <form method="post" enctype="multipart/form-data"
+        action="{{url_for('attachment_upload')}}" class="attachment-upload-inline">
+    <input type="hidden" name="patient_id" value="{{order.patient_id}}">
+    <input type="hidden" name="order_id" value="{{order.id}}">
+    <input type="file" name="files" multiple required>
+    <select name="category">
+      <option value="PRESCRIPTION">Prescription / Referral</option>
+      <option value="APPROVAL">Medical Approval</option>
+      <option value="IDENTITY">ID / Identity</option>
+      <option value="INSURANCE_CARD">Insurance / Contract Card</option>
+      <option value="PREVIOUS_REPORT">Previous Report</option>
+      <option value="PREVIOUS_IMAGES">Previous Images / DICOM</option>
+      <option value="LAB">Lab</option>
+      <option value="CONSENT">Consent</option>
+      <option value="QUESTIONNAIRE">Questionnaire</option>
+      <option value="CLINICAL">Clinical</option>
+      <option value="OTHER">Other</option>
+    </select>
+    <input name="notes" placeholder="{{'ملاحظات' if ui_lang=='ar' else 'Notes'}}">
+    <button class="btn primary">＋ {{'إضافة ملفات' if ui_lang=='ar' else 'Add Files'}}</button>
+  </form>
+  {% endif %}
+
+  <div class="attachment-review-list">
+  {% for a in attachments %}
+    <div class="attachment-review-card">
+      <div class="attachment-icon">📄</div>
+      <div class="attachment-info">
+        <b>{{a.original_name}}</b>
+        <span>{{a.category}}</span>
+        <small>{{a.created_at}}{% if a.notes %} · {{a.notes}}{% endif %}</small>
+      </div>
+      <div class="actions">
+        <a class="btn small" target="_blank"
+           href="{{url_for('attachment_preview',attachment_id=a.id)}}">👁 {{'عرض' if ui_lang=='ar' else 'Preview'}}</a>
+        <a class="btn small"
+           href="{{url_for('attachment_download',attachment_id=a.id)}}">⬇ {{'تحميل' if ui_lang=='ar' else 'Download'}}</a>
+        {% if has_perm('attachments.upload') %}
+        <form method="post" action="{{url_for('attachment_delete',attachment_id=a.id)}}"
+              onsubmit="return confirm('Delete attachment?')">
+          <button class="btn small danger">🗑</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <div class="empty-state">📎 {{'لا توجد مرفقات لهذه الحالة.' if ui_lang=='ar' else 'No attachments for this case.'}}</div>
+  {% endfor %}
+  </div>
+</div>
+{% endblock %}

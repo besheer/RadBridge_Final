@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block page_title %}Register Patient{% endblock %}
+{% block subtitle %}Patient ID is generated automatically and remains permanent{% endblock %}
+{% block content %}{% if duplicates %}<div class="panel duplicate-warning"><h3>⚠ Possible duplicate patient / احتمال تكرار المريض</h3>{% for d in duplicates %}<p><b>{{d.name}}</b> — {{d.patient_id}} — {{d.dob}} — {{d.phone}}</p>{% endfor %}<p>Review the existing patient before creating a new record.</p></div>{% endif %}<form method="post" class="panel form-card">{% if duplicates %}<input type="hidden" name="confirm_duplicate" value="1">{% endif %}<div class="notice">Patient ID will be created automatically after Save. Reception never types it.</div>
+<div class="grid2">
+<div><label>Full Name *</label><input name="name" required></div><div class="form-group">
+<label>{{'الاسم بالإنجليزية / Worklist Name' if ui_lang=='ar' else 'English / Worklist Name'}}</label>
+<input id="worklist_name" name="worklist_name" value="{{patient.worklist_name if patient is defined and patient else ''}}" placeholder="MOHAMED AHMED ALI">
+<small>{{'يستخدم في DICOM Worklist ويمكن تعديله قبل الحفظ.' if ui_lang=='ar' else 'Used in DICOM Worklist and can be edited before saving.'}}</small>
+</div>
+<div><label>National ID</label><input name="national_id"></div>
+<div><label>Date of Birth</label><input type="date" name="dob"></div>
+<div><label>Sex</label><select name="sex"><option value="">Select</option><option value="M">Male</option><option value="F">Female</option></select></div>
+<div><label>Mobile</label><input name="phone"></div>
+<div><label>Address</label><input name="address"></div>
+</div><div class="actions"><button class="btn primary">Save & Continue to Order</button><a class="btn" href="{{url_for('patients')}}">Cancel</a></div><label>Email</label>
+<input type="email" name="email" value="{{patient.email if patient else ''}}" placeholder="patient@example.com">
+</form>{% endblock %}

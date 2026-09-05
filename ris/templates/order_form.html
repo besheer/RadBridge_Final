@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+{% block page_title %}{{t("visit.title","Patient & Visit")}}{% endblock %}
+{% block subtitle %}{{ "ابحث عن مريض مسجل أو أنشئ مريضًا جديدًا ثم أكمل الزيارة في شاشة واحدة." if ui_lang=="ar" else "Search an existing patient or create a new patient, then complete the visit in one screen." }}{% endblock %}
+{% block content %}
+{% set fd=form_data or {} %}
+{% set rd=registration_defaults %}
+{% set branch_value=(fd.get('branch_id')|int if fd.get('branch_id') else (rd.default_branch_id if rd else 0)) %}
+{% set procedure_value=(fd.get('procedure_id')|int if fd.get('procedure_id') else (rd.default_procedure_id if rd else 0)) %}
+{% set contract_value=(fd.get('contract_id')|int if fd.get('contract_id') else (rd.default_contract_id if rd else 0)) %}
+{% set referrer_value=(fd.get('referring_doctor_id')|int if fd.get('referring_doctor_id') else (rd.default_referrer_id if rd else 0)) %}
+{% set priority_value=(fd.get('priority') or (rd.default_priority if rd else 'ROUTINE')) %}
+{% set payment_method_value=(fd.get('payment_method') or (rd.default_payment_method if rd else '')) %}
+{% set patient_mode_value=(fd.get('patient_mode') or (rd.default_patient_mode if rd else 'existing')) %}
+<script id="registration-defaults-js">
+document.addEventListener('DOMContentLoaded', async function(){
+  const wantedProcedure={{ procedure_value|int }};
+  const branch=document.getElementById('branchSelect');
+  const proc=document.getElementById('procedureSelect');
+  if(branch && branch.value){
+    await loadProcedures();
+    if(proc && wantedProcedure) proc.value=String(wantedProcedure);
+    if(proc && proc.value) updatePricing();
+  }
+  const contract=document.getElementById('contractSelect');
+  if(contract && {{ contract_value|int }}) contract.value=String({{ contract_value|int }});
+  const pay=document.querySelector('select[name="payment_method"]');
+  if(pay && {{ payment_method_value|tojson }}) pay.value={{ payment_method_value|tojson }};
+});
+</script>
+
+<div class="actions"><a class="btn primary" href="{{url_for('smart_intake_start')}}">📥 {{'ابدأ من مستند' if ui_lang=='ar' else 'Start from Document'}}</a></div>
+{% include '_registration_style_selector.html' %}
+{% include "_patient_created_banner.html" %}
+
+<form method="post" enctype="multipart/form-data" class="panel form-card easy-registration" id="easyRegistrationForm"><div class="notice info validation-preserve-note">Validation errors keep the entered patient/visit data on this screen. Browser security may require re-selecting file attachments after a server-side validation response.</div>
+
+<div class="registration-head">
+  <div><b>{{t("visit.title","Patient & Visit")}}</b><small>{{ "تسجيل سريع ومتكامل" if ui_lang=="ar" else "Fast integrated registration" }}</small></div>
+  <div class="mode-switch">
+    <label><input type="radio" name="patient_mode" value="existing" {% if patient_mode_value=="existing" %}checked{% endif %}> {{t("patient.existing","Existing Patient")}}</label>
+    <label><input type="radio" name="patient_mode" value="new" {% if patient_mode_value=="new" %}checked{% endif %}> + {{t("patient.new","New Patient")}}</label>
+  </div>
+</div>
+
+<section id="existingPatientSection" class="registration-section">
+  <div class="section-title">{{t("common.search","Search")}} {{t("patient.title","Patient")}}</div>
+  <div class="patient-search-row">
+    <input id="patientSearch" type="search" placeholder="{{t("patient.search_hint","Patient ID, name or mobile")}}">
+    <select name="patient" id="patientSelect">
+      <option value="">{{t("patient.select","Select patient...")}}</option>
+      {% for p in patients %}
+      <option value="{{p.id}}" data-search="{{p.patient_id}} {{p.name}} {{p.phone or ''}} {{p.national_id or ''}}" {% if (fd.get("patient")|int)==p.id or selected_patient==p.id %}selected{% endif %}>
+        {{p.patient_id}} — {{p.name}}{% if p.phone %} — {{p.phone}}{% endif %}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+</section>
+
+<section id="newPatientSection" class="registration-section" hidden>
+  <div class="section-title">{{t("patient.new","New Patient")}}</div>
+  {% if duplicate_patients %}
+  <div class="notice warning"><b>{{t("patient.duplicate","Possible duplicate patients")}}:</b>
+    {% for d in duplicate_patients %}<div>{{d.patient_id}} — {{d.name}} — {{d.phone or ''}}</div>{% endfor %}
+    <label><input type="checkbox" name="confirm_duplicate" value="1"> Create new patient anyway</label>
+  </div>
+  {% endif %}
+  <div class="grid3">
+    <div><label>{{t("patient.name","Patient Name")}} *</label><input name="new_name" value="{{form_data.get('new_name','')}}"></div>
+    <div><label>{{t("patient.worklist_name","Worklist Name")}}</label><input name="new_worklist_name" value="{{form_data.get('new_worklist_name','')}}"></div>
+    <div><label>{{t("patient.mobile","Mobile")}}</label><input name="new_phone" inputmode="numeric" pattern="[0-9]*" {% set fr=field_rules.get("patient.phone") %}{% if fr and fr.min_length is not none %}minlength="{{fr.min_length}}"{% endif %} {% if fr and fr.max_length is not none %}maxlength="{{fr.max_length}}"{% endif %} {% if fr and fr.required %}required{% endif %} value="{{form_data.get('new_phone','')}}"></div>
+    <div><label>{{t("patient.dob","Date of Birth")}}</label><input type="date" name="new_dob" value="{{form_data.get('new_dob','')}}"></div>
+    <div><label>{{t("patient.sex","Sex")}}</label><select name="new_sex"><option value=""></option><option value="M" {% if fd.get("new_sex")=="M" %}selected{% endif %}>{{t("patient.male","Male")}}</option><option value="F" {% if fd.get("new_sex")=="F" %}selected{% endif %}>{{t("patient.female","Female")}}</option></select></div>
+    <div><label>{{"الجنسية" if ui_lang=="ar" else "Nationality"}}</label><input name="new_nationality" value="{{fd.get('new_nationality','')}}"></div><div><label>{{t("patient.national_id","National ID")}}</label><input name="new_national_id" inputmode="numeric" pattern="[0-9]*" {% set frid=field_rules.get("patient.national_id") %}{% if frid and frid.exact_length %}minlength="{{frid.exact_length}}" maxlength="{{frid.exact_length}}"{% else %}{% if frid and frid.min_length is not none %}minlength="{{frid.min_length}}"{% endif %} {% if frid and frid.max_length is not none %}maxlength="{{frid.max_length}}"{% endif %}{% endif %} {% if frid and frid.required %}required{% endif %} value="{{form_data.get('new_national_id','')}}"></div>
+    <div><label>{{t("patient.email","Email")}}</label><input type="email" name="new_email" value="{{fd.get('new_email','')}}"></div>
+    <div class="span2"><label>{{t("patient.address","Address")}}</label><input name="new_address" value="{{fd.get('new_address','')}}"></div>
+  </div>
+</section>
+
+<div class="section-title">{{t("visit.title","Patient & Visit")}} — {{t("exam.title","Examination")}}</div>
+<div class="grid3">
+  <div><label>{{t("common.branch","Branch")}} *</label><select name="branch_id" id="branchSelect" required><option value="">{{t("branch.select","Select branch")}}</option>{% for b in branches %}<option value="{{b.id}}" {% if branch_value==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div>
+  <div class="span2"><label>{{t("exam.title","Examination")}} *</label><select name="procedure_id" id="procedureSelect" required><option value="">{{t("exam.select_branch_first","Select branch first...")}}</option></select></div>
+  <div><label>{{t("visit.date_time","Visit Date / Time")}} *</label><input type="datetime-local" name="scheduled" required value="{{fd.get('scheduled','')}}"></div>
+  <div><label>{{t("common.priority","Priority")}}</label><select name="priority"><option value="ROUTINE" {% if priority_value=="ROUTINE" %}selected{% endif %}>{{t("priority.ROUTINE","Routine")}}</option><option value="URGENT" {% if priority_value=="URGENT" %}selected{% endif %}>{{t("priority.URGENT","Urgent")}}</option><option value="STAT" {% if priority_value=="STAT" %}selected{% endif %}>{{t("priority.STAT","STAT")}}</option></select></div>
+  <div><label>{{t("referrer.title","Referring Doctor")}}</label><select name="referring_doctor_id"><option value="">—</option>{% for r in referrers %}<option value="{{r.id}}" {% if referrer_value==r.id %}selected{% endif %}>{{r.name}}{% if r.name_ar %} / {{r.name_ar}}{% endif %}{% if r.specialty %} — {{r.specialty}}{% endif %}</option>{% endfor %}</select></div>
+  <div>
+    <label>{{t("payer.title","Payer")}}</label>
+    <select name="contract_id" id="contractSelect">
+      <option value="">{{t("payer.cash","Cash / Private")}}</option>
+      {% for c in contracts %}
+        {% if c.code!='CASH' %}
+        <option value="{{c.id}}"
+                data-approval-required="{{1 if c.approval_required else 0}}"
+                {% if contract_value==c.id %}selected{% endif %}>
+          {{c.name}}
+        </option>
+        {% endif %}
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+<div id="pricingPreview" class="pricing-preview">
+  <div><small>Base Price</small><b id="gross">—</b></div>
+  <div><small>Contract Price</small><b id="contractPrice">—</b></div>
+  <div><small>Patient Share</small><b id="patientShare">—</b></div>
+  <div><small>Company Share</small><b id="companyShare">—</b></div>
+</div>
+
+<div id="approvalBox" class="panel" style="display:none;margin-top:12px">
+  <div class="section-title">
+    🛡 {{'الموافقة الطبية مطلوبة' if ui_lang=='ar' else 'Medical Approval Required'}}
+  </div>
+
+  <div class="actions">
+    <label>
+      <input type="radio" name="approval_method" value="AUTO" checked>
+      ⚡ {{'تلقائي' if ui_lang=='ar' else 'Automatic'}}
+    </label>
+
+    <label>
+      <input type="radio" name="approval_method" value="MANUAL">
+      ✋ {{'يدوي' if ui_lang=='ar' else 'Manual'}}
+    </label>
+
+    <label>
+      <input type="radio" name="approval_method" value="ALREADY_APPROVED">
+      📎 {{'الموافقة جاهزة' if ui_lang=='ar' else 'Already Approved'}}
+    </label>
+  </div>
+
+  <div id="approvalNumberBox" style="display:none;margin-top:10px">
+    <label>{{'رقم الموافقة' if ui_lang=='ar' else 'Approval No.'}}</label>
+    <input name="approval_no"
+           id="approvalNoInput"
+           value="{{fd.get('approval_no','')}}">
+  </div>
+</div>
+
+
+<div class="section-title">{{t("clinical.information","Clinical Information")}}</div>
+<div class="grid2">
+  <div class="span2"><label>{{t("clinical.note","Clinical Note")}}</label><textarea name="clinical_note" rows="4" placeholder="{{t('clinical.note_placeholder','Reason for exam, symptoms, special instructions...')}}">{{fd.get("clinical_note","")}}</textarea></div>
+  {% if has_perm('attachments.upload') %}
+  <div class="span2 multi-attachment-manager">
+    <div class="attachment-head">
+      <label>{{"Notes / Attachments" if ui_lang!="ar" else "الملاحظات / المرفقات"}}</label>
+      <button type="button" class="btn small" id="addAttachmentRow">＋ {{'إضافة مرفق' if ui_lang=='ar' else 'Add Attachment'}}</button>
+    </div>
+    <div id="attachmentRows">
+      <div class="attachment-row">
+        <input type="file" name="attachment_files" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.odt,.dcm,.dicom,.zip">
+        <select name="attachment_categories">
+          <option value="PRESCRIPTION">{{"روشتة / تحويل" if ui_lang=="ar" else "Prescription / Referral"}}</option>
+          <option value="APPROVAL">{{"موافقة" if ui_lang=="ar" else "Medical Approval"}}</option>
+          <option value="IDENTITY">{{"بطاقة / هوية" if ui_lang=="ar" else "ID / Identity"}}</option>
+          <option value="INSURANCE_CARD">{{"كارنيه تأمين / تعاقد" if ui_lang=="ar" else "Insurance / Contract Card"}}</option>
+          <option value="PREVIOUS_REPORT">{{"تقرير سابق" if ui_lang=="ar" else "Previous Report"}}</option>
+          <option value="PREVIOUS_IMAGES">{{"صور / DICOM سابق" if ui_lang=="ar" else "Previous Images / DICOM"}}</option>
+          <option value="LAB">{{"تحاليل" if ui_lang=="ar" else "Lab"}}</option>
+          <option value="CONSENT">{{"إقرار / موافقة مريض" if ui_lang=="ar" else "Consent"}}</option>
+          <option value="QUESTIONNAIRE">{{"استبيان" if ui_lang=="ar" else "Questionnaire"}}</option>
+          <option value="CLINICAL">{{"مستند سريري" if ui_lang=="ar" else "Clinical"}}</option>
+          <option value="OTHER">{{"أخرى" if ui_lang=="ar" else "Other"}}</option>
+        </select>
+        <input name="attachment_notes" placeholder="{{'ملاحظة على المرفق' if ui_lang=='ar' else 'Attachment note'}}">
+        <button type="button" class="icon-btn remove-attachment-row" title="Remove">×</button>
+      </div>
+    </div>
+    <small>{{"يمكن إضافة أكثر من ملف وتصنيف كل ملف بصورة مستقلة." if ui_lang=="ar" else "Add multiple files and classify each attachment separately."}}</small>
+  </div>
+  {% endif %}
+</div>
+
+{% if has_perm('payments.create') %}
+<div class="section-title">{{t("cashier.payment","Payment")}}</div>
+<div class="grid3">
+  <div><label>{{t("cashier.amount","Amount")}}</label><input name="payment_amount" type="number" min="0" step="0.01" value="{{fd.get('payment_amount','0')}}"></div>
+  <div><label>{{t("cashier.method","Payment Method")}}</label><select name="payment_method"><option value="">{{t("payment.no_payment","No payment now")}}</option><option value="CASH">{{t("payment.CASH","Cash")}}</option><option value="VISA">{{t("payment.VISA","Visa")}}</option><option value="MASTERCARD">{{t("payment.MASTERCARD","Mastercard")}}</option><option value="WALLET">{{t("payment.WALLET","Wallet")}}</option><option value="BANK_TRANSFER">{{t("payment.BANK_TRANSFER","Bank Transfer")}}</option></select></div>
+  <div><label>{{t("cashier.reference","Reference / POS")}}</label><input name="payment_reference"></div>
+</div>
+{% endif %}
+
+<div class="registration-footer">
+  <div class="notice">{{t("registration.validation_notice","The system automatically checks branch availability, examination availability, device status, maintenance, staffing blocks and overlapping appointments before Save.")}}</div>
+  <div class="actions"><button type="submit" class="btn primary" id="savePatientVisitBtn">{{t("visit.save","Save Patient & Visit")}}</button><a class="btn" href="{{url_for('orders')}}">{{t("common.cancel","Cancel")}}</a></div>
+</div>
+</form>
+
+<script id="multi-attachment-manager-js">
+document.addEventListener('DOMContentLoaded',function(){
+  const rows=document.getElementById('attachmentRows');
+  const add=document.getElementById('addAttachmentRow');
+  if(!rows||!add)return;
+  function wireRemove(btn){
+    if(!btn)return;
+    btn.addEventListener('click',function(){
+      const all=rows.querySelectorAll('.attachment-row');
+      const row=btn.closest('.attachment-row');
+      if(!row)return;
+      if(all.length===1){
+        const file=row.querySelector('input[type=file]');
+        const note=row.querySelector('input[name="attachment_notes"]');
+        if(file)file.value='';
+        if(note)note.value='';
+      }else row.remove();
+    });
+  }
+  rows.querySelectorAll('.remove-attachment-row').forEach(wireRemove);
+  add.addEventListener('click',function(){
+    const first=rows.querySelector('.attachment-row');
+    if(!first)return;
+    const clone=first.cloneNode(true);
+    const file=clone.querySelector('input[type=file]');
+    const note=clone.querySelector('input[name="attachment_notes"]');
+    if(file)file.value='';
+    if(note)note.value='';
+    wireRemove(clone.querySelector('.remove-attachment-row'));
+    rows.appendChild(clone);
+  });
+});
+</script>
+
+<script>
+const modeRadios=document.querySelectorAll('input[name="patient_mode"]');
+const existingPatientSection=document.getElementById('existingPatientSection');
+const newPatientSection=document.getElementById('newPatientSection');
+
+function rememberValidationState(section){
+  if(!section)return;
+  section.querySelectorAll('input,select,textarea').forEach(el=>{
+    if(el.dataset.rbInitiallyRequired===undefined){
+      el.dataset.rbInitiallyRequired=el.required?'1':'0';
+    }
+  });
+}
+
+function setSectionActive(section,active){
+  if(!section)return;
+  section.hidden=!active;
+  section.querySelectorAll('input,select,textarea').forEach(el=>{
+    el.disabled=!active;
+    el.required=active && el.dataset.rbInitiallyRequired==='1';
+  });
+}
+
+rememberValidationState(existingPatientSection);
+rememberValidationState(newPatientSection);
+
+function applyMode(){
+ const selected=document.querySelector('input[name="patient_mode"]:checked');
+ const mode=selected?selected.value:'existing';
+ setSectionActive(existingPatientSection,mode==='existing');
+ setSectionActive(newPatientSection,mode==='new');
+ const patientSelect=document.getElementById('patientSelect');
+ if(patientSelect) patientSelect.required=mode==='existing';
+}
+modeRadios.forEach(x=>x.addEventListener('change',applyMode));
+applyMode();
+
+const patientSearch=document.getElementById('patientSearch'), patientSelect=document.getElementById('patientSelect');
+patientSearch.addEventListener('input',()=>{
+ const q=patientSearch.value.toLowerCase().trim();
+ [...patientSelect.options].forEach((o,i)=>{if(i===0)return;o.hidden=q && !(o.dataset.search||'').toLowerCase().includes(q);});
+});
+
+async function loadProcedures(){
+ const branch=document.getElementById('branchSelect').value;
+ const sel=document.getElementById('procedureSelect');
+ sel.innerHTML='<option value="">Loading...</option>';
+ if(!branch){sel.innerHTML='<option value="">{{t("exam.select_branch_first","Select branch first...")}}</option>';return;}
+ try {
+  const r=await fetch('/api/registration/procedures?branch_id='+encodeURIComponent(branch));
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const x=await r.json();
+ sel.innerHTML='<option value="">Select examination...</option>';
+  if(x.ok) x.procedures.forEach(p=>{
+    const o=document.createElement('option');o.value=p.id;
+    o.textContent=(p.modality+' — '+p.name+(p.name_ar?' / '+p.name_ar:'')+' — '+Number(p.base_price||0).toFixed(2)+' EGP');
+    sel.appendChild(o);
+  });
+ } catch(err) {
+  console.error('Procedure loading failed',err);
+  sel.innerHTML='<option value="">Unable to load examinations</option>';
+ }
+}
+document.getElementById('branchSelect').addEventListener('change',loadProcedures);
+
+async function updatePricing(){
+ const p=document.getElementById('procedureSelect').value;
+ const c=document.getElementById('contractSelect').value;
+ if(!p)return;
+ const r=await fetch('/api/pricing?procedure_id='+encodeURIComponent(p)+(c?'&contract_id='+encodeURIComponent(c):''));
+ if(!r.ok)return; const x=await r.json(); const fmt=v=>Number(v).toFixed(2)+' EGP';
+ document.getElementById('gross').textContent=fmt(x.gross);
+ document.getElementById('contractPrice').textContent=fmt(x.contract_price);
+ document.getElementById('patientShare').textContent=fmt(x.patient_share);
+ document.getElementById('companyShare').textContent=fmt(x.company_share);
+ applyApprovalUI(Boolean(x.approval_required));
+}
+
+function applyApprovalUI(required){
+  const box=document.getElementById('approvalBox');
+  if(!box)return;
+
+  box.style.display=required?'block':'none';
+
+  if(!required){
+    document.querySelectorAll('input[name="approval_method"]').forEach(x=>x.checked=false);
+    const n=document.getElementById('approvalNoInput');
+    if(n){n.required=false;n.value='';}
+  } else {
+    const checked=document.querySelector('input[name="approval_method"]:checked');
+    if(!checked){
+      const auto=document.querySelector('input[name="approval_method"][value="AUTO"]');
+      if(auto)auto.checked=true;
+    }
+  }
+
+  updateApprovalMethodUI();
+}
+
+function updateApprovalMethodUI(){
+  const checked=document.querySelector('input[name="approval_method"]:checked');
+  const numberBox=document.getElementById('approvalNumberBox');
+  const numberInput=document.getElementById('approvalNoInput');
+
+  const already=checked && checked.value==='ALREADY_APPROVED';
+
+  if(numberBox)numberBox.style.display=already?'block':'none';
+  if(numberInput)numberInput.required=Boolean(already);
+}
+
+document.querySelectorAll('input[name="approval_method"]').forEach(
+  x=>x.addEventListener('change',updateApprovalMethodUI)
+);
+
+document.getElementById('procedureSelect').addEventListener('change',updatePricing);
+document.getElementById('contractSelect').addEventListener('change',updatePricing);
+</script>
+{% endblock %}

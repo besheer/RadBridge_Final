@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block page_title %}Reporting Demo Cases{% endblock %}
+{% block content %}
+<div class="panel"><h3>Demo Reporting Workflow</h3>
+<table><tr><th>Patient</th><th>Modality</th><th>Status</th></tr>
+<tr><td>Ahmed Hassan Demo</td><td>CT</td><td>DRAFT</td></tr>
+<tr><td>Mona Ali Demo</td><td>MR</td><td>PARTIAL</td></tr>
+<tr><td>Omar Mahmoud Demo</td><td>US</td><td>VERIFIED</td></tr>
+<tr><td>Sara Ibrahim Demo</td><td>MR</td><td>SECOND_VERIFIED</td></tr>
+<tr><td>Youssef Adel Demo</td><td>CT</td><td>FINAL</td></tr>
+<tr><td>Nour Sameh Demo</td><td>DX</td><td>ADDENDUM</td></tr></table>
+<form method="post"><button class="btn primary">Create / Refresh Demo Cases</button></form></div>
+{% endblock %}

@@ -1,0 +1,11 @@
+v5.8.4 Arabic Worklist + Manual Upload
+- Original Patient Name preserved.
+- Separate English/Latin Worklist Name stored.
+- Worklist Name generated deterministically from Arabic if empty.
+- DICOM PatientName uses Worklist Name.
+- Manual Report Upload explicitly shown.
+- Patient Safety checks Patient Name + Patient ID + Accession.
+- ID/Accession mismatch blocks.
+- Name mismatch with matching ID/Accession warns.
+- Reporting workflow states retained.
+- Known stabilization fixes retained.

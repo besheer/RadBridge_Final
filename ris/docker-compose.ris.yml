@@ -1,0 +1,112 @@
+services:
+  ris-db:
+    image: postgres:16-alpine
+    container_name: ris-web-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: risweb
+      POSTGRES_PASSWORD: ${RIS_DB_PASSWORD:?RIS_DB_PASSWORD must be set}
+      POSTGRES_DB: risweb
+    volumes:
+      - ./ris-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U risweb -d risweb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ris-network
+
+  ris-web:
+    build: .
+    container_name: ris-web
+    restart: unless-stopped
+
+    depends_on:
+      ris-db:
+        condition: service_healthy
+
+    ports:
+      - "8090:8000"
+
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://risweb:${RIS_DB_PASSWORD:?RIS_DB_PASSWORD must be set}@ris-db:5432/risweb"
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      RIS_ADMIN_PASSWORD: ${RIS_ADMIN_PASSWORD:?RIS_ADMIN_PASSWORD must be set}
+
+      ORTHANC_URL: "http://ris-pacs:8042"
+      ORTHANC_USER: "admin"
+      ORTHANC_PASSWORD: ${ORTHANC_PASSWORD:?ORTHANC_PASSWORD must be set}
+      ORTHANC_PUBLIC_URL: "${ORTHANC_PUBLIC_URL:-http://pacs.radbridges.com}"
+
+      PACS_ORTHANC_URL: "http://ris-pacs:8042"
+      PACS_ORTHANC_USER: "admin"
+      PACS_ORTHANC_PASSWORD: ${ORTHANC_PASSWORD:?ORTHANC_PASSWORD must be set}
+      PACS_IMAGES_STABLE_SECONDS: "120"
+
+      RIS_PUBLIC_URL: "https://ris.dynuddns.net"
+      REPORT_DIR: "/app/report-files"
+      ATTACHMENT_DIR: "/app/attachments"
+
+    volumes:
+      - ./report-files:/app/report-files
+      - ./attachments:/app/attachments
+
+    networks:
+      - ris-network
+
+  pacs-worker:
+    build: .
+    container_name: ris-pacs-worker
+    restart: unless-stopped
+    command: ["python","pacs_worker.py"]
+    depends_on:
+      ris-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://risweb:${RIS_DB_PASSWORD:?RIS_DB_PASSWORD must be set}@ris-db:5432/risweb"
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      ORTHANC_URL: "http://ris-pacs:8042"
+      ORTHANC_USER: "admin"
+      ORTHANC_PASSWORD: ${ORTHANC_PASSWORD:?ORTHANC_PASSWORD must be set}
+      PACS_ORTHANC_URL: "http://ris-pacs:8042"
+      PACS_ORTHANC_USER: "admin"
+      PACS_ORTHANC_PASSWORD: ${ORTHANC_PASSWORD:?ORTHANC_PASSWORD must be set}
+      PACS_WORKER_INTERVAL_SECONDS: "30"
+      REPORT_DIR: "/app/report-files"
+      ATTACHMENT_DIR: "/app/attachments"
+    volumes:
+      - ./report-files:/app/report-files
+      - ./attachments:/app/attachments
+      - ./backups:/app/backups
+      - ./rclone:/app/rclone
+    networks:
+      - ris-network
+
+  backup-worker:
+    build: .
+    container_name: ris-backup-worker
+    restart: unless-stopped
+    command: ["python","backup_worker.py"]
+    depends_on:
+      ris-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://risweb:${RIS_DB_PASSWORD:?RIS_DB_PASSWORD must be set}@ris-db:5432/risweb"
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      REPORT_DIR: "/app/report-files"
+      ATTACHMENT_DIR: "/app/attachments"
+      BACKUP_DIR: "/app/backups"
+      RCLONE_CONFIG: "/app/rclone/rclone.conf"
+    volumes:
+      - ./report-files:/app/report-files:ro
+      - ./attachments:/app/attachments:ro
+      - ./backups:/app/backups
+      - ./rclone:/app/rclone:ro
+    networks:
+      - ris-network
+
+
+networks:
+  ris-network:
+    external: true

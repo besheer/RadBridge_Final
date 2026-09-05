@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+{{ t('profile.title','My Profile') }}
+{% endblock %}
+
+{% block content %}
+
+<form method="post" class="panel">
+
+  <h2 style="margin-top:0">
+    {{ t('profile.title','My Profile & Workspace') }}
+  </h2>
+
+  <div class="grid2">
+
+    <label>
+      Department
+      <input
+        name="department"
+        value="{{ profile.department or '' }}"
+      >
+    </label>
+
+    <label>
+      Specialty
+      <input
+        name="specialty"
+        value="{{ profile.specialty or '' }}"
+      >
+    </label>
+
+    <label>
+      Default Workspace
+      <input
+        name="default_workspace"
+        value="{{ profile.default_workspace or '' }}"
+      >
+    </label>
+
+    <label>
+      Language
+      <select name="ui_language">
+        <option
+          value="en"
+          {% if profile.ui_language == 'en' %}selected{% endif %}
+        >
+          English
+        </option>
+
+        <option
+          value="ar"
+          {% if profile.ui_language == 'ar' %}selected{% endif %}
+        >
+          العربية
+        </option>
+      </select>
+    </label>
+
+    <label>
+      Theme
+      <select name="theme">
+        {% for x in ['light','dark','auto'] %}
+        <option
+          value="{{ x }}"
+          {% if profile.theme == x %}selected{% endif %}
+        >
+          {% if x == 'light' %}
+            Light
+          {% elif x == 'dark' %}
+            Dark
+          {% else %}
+            System / Auto
+          {% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Accent
+      <input
+        name="accent"
+        value="{{ profile.accent or 'default' }}"
+      >
+    </label>
+
+    <label>
+      Density
+      <select name="density">
+        {% for x in ['comfortable','compact'] %}
+        <option
+          value="{{ x }}"
+          {% if profile.density == x %}selected{% endif %}
+        >
+          {{ x }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Font Size
+      <select name="font_scale">
+        {% for x in ['small','normal','large'] %}
+        <option
+          value="{{ x }}"
+          {% if profile.font_scale == x %}selected{% endif %}
+        >
+          {{ x }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Sidebar
+      <select name="sidebar_mode">
+        {% for x in ['expanded','collapsed'] %}
+        <option
+          value="{{ x }}"
+          {% if profile.sidebar_mode == x %}selected{% endif %}
+        >
+          {{ x }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+  </div>
+
+  <hr style="margin:24px 0">
+
+  <h3>
+    Reporting Preferences
+  </h3>
+
+  <p class="muted">
+    These settings control how RadBridge opens the reporting editor.
+    Clinical workflow remains controlled by RadBridge.
+  </p>
+
+  <div class="grid2">
+
+    <label>
+      Preferred Report Editor
+
+      <select name="preferred_editor">
+
+        {% set editor =
+          reporting_preferences.preferred_editor
+        %}
+
+        <option
+          value="ONLYOFFICE"
+          {% if editor == 'ONLYOFFICE' %}selected{% endif %}
+        >
+          ONLYOFFICE
+        </option>
+
+        <option
+          value="BROWSER"
+          {% if editor == 'BROWSER' %}selected{% endif %}
+        >
+          RadBridge Browser Editor
+        </option>
+
+        <option
+          value="WORD"
+          {% if editor == 'WORD' %}selected{% endif %}
+        >
+          Microsoft Word
+        </option>
+
+        <option
+          value="LIBREOFFICE"
+          {% if editor == 'LIBREOFFICE' %}selected{% endif %}
+        >
+          LibreOffice
+        </option>
+
+        <option
+          value="ASK"
+          {% if editor == 'ASK' %}selected{% endif %}
+        >
+          Ask Every Time
+        </option>
+
+      </select>
+    </label>
+
+    <label>
+      Preferred Reporting Layout
+
+      <select name="preferred_layout">
+
+        {% set layout =
+          reporting_preferences.preferred_layout
+        %}
+
+        <option
+          value="50_50"
+          {% if layout == '50_50' %}selected{% endif %}
+        >
+          50 / 50
+        </option>
+
+        <option
+          value="70_30"
+          {% if layout == '70_30' %}selected{% endif %}
+        >
+          70% Viewer / 30% Editor
+        </option>
+
+        <option
+          value="30_70"
+          {% if layout == '30_70' %}selected{% endif %}
+        >
+          30% Viewer / 70% Editor
+        </option>
+
+        <option
+          value="FULL_EDITOR"
+          {% if layout == 'FULL_EDITOR' %}selected{% endif %}
+        >
+          Full Editor
+        </option>
+
+        <option
+          value="FULL_VIEWER"
+          {% if layout == 'FULL_VIEWER' %}selected{% endif %}
+        >
+          Full Viewer + Editor Panel
+        </option>
+
+        <option
+          value="DUAL_MONITOR"
+          {% if layout == 'DUAL_MONITOR' %}selected{% endif %}
+        >
+          Dual Monitor / Pop-out
+        </option>
+
+      </select>
+    </label>
+
+  </div>
+
+  <div style="margin-top:24px">
+
+    <button
+      type="submit"
+      class="btn primary"
+    >
+      {{ t('common.save','Save') }}
+    </button>
+
+  </div>
+
+</form>
+
+{% endblock %}

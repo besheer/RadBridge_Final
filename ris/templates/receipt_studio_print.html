@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="{{ui_lang}}" dir="{{ui_dir}}"><head><meta charset="utf-8">
+<title>Receipt {{receipt.receipt_no}}</title><link rel="stylesheet" href="{{url_for('static',filename='app.css')}}">
+<style>@media print{.no-print{display:none}body{background:#fff}.studio-receipt{box-shadow:none;border:0}} </style></head>
+<body><div class="studio-receipt receipt-size-{{layout.get('page','A5')|lower}}">
+{% if legal %}<header class="receipt-legal">
+{% if legal.logo_path %}<div class="receipt-logo">LOGO</div>{% endif %}
+<h2>{{legal.legal_name or company.name}}</h2>
+<p>{{legal.address}}</p><p>{{legal.phone1}} {% if legal.phone2 %}· {{legal.phone2}}{% endif %}</p>
+<p>{% if legal.commercial_register %}CR: {{legal.commercial_register}}{% endif %} {% if legal.tax_card %}· Tax Card: {{legal.tax_card}}{% endif %} {% if legal.tax_number %}· Tax No: {{legal.tax_number}}{% endif %}</p>
+</header>{% endif %}
+<h3>Receipt / إيصال استلام</h3>
+<div class="receipt-grid">
+<div><b>Receipt No.</b><span>{{receipt.receipt_no}}</span></div>
+<div><b>Date</b><span>{{receipt.created_at}}</span></div>
+<div><b>Patient</b><span>{{order.patient.name}}</span></div>
+<div><b>Patient ID</b><span>{{order.patient.patient_id}}</span></div>
+<div><b>Accession</b><span>{{order.accession}}</span></div>
+<div><b>Examination</b><span>{{order.procedure}}</span></div>
+<div><b>Amount</b><span>{{receipt.amount}}</span></div>
+<div><b>Payment Method</b><span>{{receipt.method}}</span></div>
+</div>
+{% if legal %}<div class="receipt-important-note">{{legal.receipt_note_ar if ui_lang=='ar' else legal.receipt_note_en}}</div>{% endif %}
+<footer><span>RIS Operations</span><span>•</span><span>{{receipt.created_by_user.full_name if receipt.created_by_user else ''}}</span></footer>
+</div><div class="no-print"><button onclick="window.print()" class="btn primary">Print / طباعة</button></div></body></html>

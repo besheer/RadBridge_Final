@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Strategy History — {{strategy.name}}
+{% endblock %}
+
+{% block subtitle %}
+Version history and rollback
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+<p>
+<a class="btn"
+href="{{url_for('admin_assignment_strategies')}}">
+Back to Strategies
+</a>
+</p>
+
+<table>
+
+<tr>
+<th>Version</th>
+<th>Changed At</th>
+<th>Changed By</th>
+<th>Note</th>
+<th>Snapshot</th>
+<th></th>
+</tr>
+
+{% for v in versions %}
+
+<tr>
+
+<td>
+<b>v{{v.version_no}}</b>
+</td>
+
+<td>
+{{v.changed_at}}
+</td>
+
+<td>
+{{v.changed_by or '-'}}
+</td>
+
+<td>
+{{v.change_note or '-'}}
+</td>
+
+<td>
+<details>
+<summary>View</summary>
+<pre style="white-space:pre-wrap">{{v.snapshot_json}}</pre>
+</details>
+</td>
+
+<td>
+
+{% if v.version_no != strategy.version_no %}
+
+<form method="post"
+action="{{url_for(
+'admin_assignment_strategy_rollback',
+strategy_id=strategy.id,
+version_id=v.id
+)}}"
+onsubmit="return confirm('Rollback to version {{v.version_no}}?');">
+
+<button class="btn btn-sm">
+Rollback
+</button>
+
+</form>
+
+{% else %}
+
+<span class="badge">
+Current
+</span>
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% else %}
+
+<tr>
+<td colspan="6">
+No saved versions.
+</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block page_title %}Finance Entries{% endblock %}
+{% block subtitle %}Expenses, maintenance, payroll, doctor fees, assets, liabilities and inventory purchases{% endblock %}
+{% block content %}
+<div class="grid2"><form method="post" class="panel"><h3>New Entry</h3><div class="form-grid">
+<div><label>Date</label><input type="date" name="entry_date"></div><div><label>Type</label><select name="entry_type">{% for t in types %}<option>{{t}}</option>{% endfor %}</select></div>
+<div><label>Category</label><input name="category"></div><div><label>Amount</label><input type="number" min="0" step=".01" name="amount" required></div>
+<div><label>Branch</label><select name="branch_id"><option value="">-</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select></div>
+<div><label>Device</label><select name="device_id"><option value="">-</option>{% for d in devices %}<option value="{{d.id}}">{{d.modality}} — {{d.name}}</option>{% endfor %}</select></div>
+<div><label>Doctor / Employee</label><select name="user_id"><option value="">-</option>{% for u in users %}<option value="{{u.id}}">{{u.full_name}}</option>{% endfor %}</select></div>
+<div><label>Consumable</label><select name="consumable_id"><option value="">-</option>{% for c in consumables %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}</select></div>
+<div><label>Qty</label><input type="number" min="0" step=".01" name="quantity"></div><div><label>Payment</label><select name="payment_method"><option>CASH</option><option>CARD</option><option>BANK</option><option>WALLET</option><option>CREDIT</option></select></div>
+<div><label>Reference</label><input name="reference_no" placeholder="Invoice / Accession / PO"></div><div class="wide"><label>Description</label><input name="description"></div><div class="wide"><label>Notes</label><textarea name="notes"></textarea></div>
+</div><button class="btn primary">Save Entry</button></form>
+<div class="panel"><h3>Usage</h3><p>Use DOCTOR_FEE with the case Accession in Reference for per-exam costing.</p><p>MAINTENANCE can be linked to a Device.</p><p>ASSET / LIABILITY / EQUITY feed the management balance sheet.</p></div></div>
+<div class="panel"><table><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Branch</th><th>Device</th><th>Amount</th><th>Status</th><th></th></tr>
+{% for e in rows %}<tr><td>{{e.entry_date}}</td><td>{{e.entry_type}}</td><td>{{e.category}}</td><td>{{e.description}}</td><td>{{e.branch.name if e.branch else ''}}</td><td>{{e.device.name if e.device else ''}}</td><td>{{e.amount}}</td><td>{{e.status}}</td><td>{% if e.status!='VOID' %}<form method="post" action="{{url_for('financial_entry_void',entry_id=e.id)}}"><input name="reason" required minlength="5" placeholder="Void reason"><button class="btn">Void</button></form>{% endif %}</td></tr>{% endfor %}
+</table></div>{% endblock %}

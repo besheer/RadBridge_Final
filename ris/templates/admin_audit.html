@@ -1,0 +1,2 @@
+{% extends "base.html" %}{% block page_title %}Audit Log{% endblock %}{% block subtitle %}Traceability for operational and administrative actions{% endblock %}
+{% block content %}<div class="panel"><table><thead><tr><th>Date</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th><th>IP</th></tr></thead><tbody>{% for r in rows %}<tr><td>{{r.created_at.strftime('%Y-%m-%d %H:%M:%S')}}</td><td>{{r.username}}</td><td>{{r.action}}</td><td>{{r.entity}} {{r.entity_id}}</td><td>{{r.details}}</td><td>{{r.ip}}</td></tr>{% endfor %}</tbody></table></div>{% endblock %}

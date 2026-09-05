@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block page_title %}QA & Architecture{% endblock %}
+{% block subtitle %}Regression readiness, workflow events and staging diagnostics{% endblock %}
+{% block content %}
+<div class="finance-kpis">
+{% for k,v in counts.items() %}<div class="kpi-card"><small>{{k}}</small><strong>{{v}}</strong></div>{% endfor %}
+</div>
+<div class="panel">
+<h3>Recent Event Outbox</h3>
+<table><tr><th>ID</th><th>Event</th><th>Entity</th><th>Status</th><th>Attempts</th><th>Created</th></tr>
+{% for e in recent %}<tr><td>{{e.id}}</td><td>{{e.event_type}}</td><td>{{e.entity_type}} {{e.entity_id}}</td><td>{{e.status}}</td><td>{{e.attempts}}</td><td>{{e.created_at}}</td></tr>{% endfor %}
+</table>
+</div>
+<div class="panel">
+<h3>Full Workflow QA</h3><pre>TEST_BASE_URL=http://127.0.0.1:18090 DICOM_HOST=127.0.0.1 DICOM_PORT=4242 ./ris-test-full-workflow.sh</pre><h3>Test Commands</h3>
+<pre>./ris-test-all.sh
+TEST_BASE_URL=http://127.0.0.1:8090 ./ris-test-all.sh
+docker compose -f docker-compose.staging.yml up -d --build</pre>
+</div>
+{% endblock %}

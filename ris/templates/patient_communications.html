@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block page_title %}Patient Communications / رسائل المريض{% endblock %}
+{% block content %}
+<div class="panel"><h3>{{patient.name}} · {{patient.patient_id}}</h3><p>{{patient.phone or ''}} · {{patient.email or ''}}</p></div>
+<div class="responsive-two-col">
+<form method="post" class="panel">
+<h3>Send Message / إرسال رسالة</h3>
+<label>Channel</label><select name="channel"><option>WHATSAPP</option><option>TELEGRAM</option><option>EMAIL</option></select>
+<label>Recipient</label><input name="recipient" placeholder="Mobile / Chat ID / Email">
+<label>Template</label><select name="template_code"><option value="">Custom</option>{% for t in templates %}<option value="{{t.code}}">{{t.name_ar if ui_lang=='ar' and t.name_ar else t.name_en}}</option>{% endfor %}</select>
+<label>Order</label><select name="order_id"><option value="">Patient level</option>{% for o in orders %}<option value="{{o.id}}">{{o.accession}} · {{o.procedure}}</option>{% endfor %}</select>
+<label>Subject</label><input name="subject">
+<label>Custom Body</label><textarea name="body" rows="5"></textarea>
+<button class="btn primary">Send / إرسال</button>
+</form>
+<div class="panel"><h3>Communication History</h3>
+<div class="responsive-table-wrap"><table><tr><th>Date</th><th>Channel</th><th>Recipient</th><th>Template</th><th>Status</th><th></th></tr>
+{% for r in rows %}<tr><td>{{r.created_at}}</td><td>{{r.channel}}</td><td>{{r.recipient}}</td><td>{{r.template_code}}</td><td><span class="status-pill status-{{r.status|lower}}">{{r.status}}</span>{% if r.error_text %}<small>{{r.error_text}}</small>{% endif %}</td><td>{% if r.status=='FAILED' %}<form method="post" action="{{url_for('communication_retry',comm_id=r.id)}}"><button class="btn small">Retry</button></form>{% endif %}</td></tr>{% endfor %}
+</table></div></div></div>
+{% endblock %}

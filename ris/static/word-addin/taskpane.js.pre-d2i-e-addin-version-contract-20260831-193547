@@ -1,0 +1,120 @@
+/* global Office, Word */
+let currentCase = null;
+
+function setStatus(message, kind='info') {
+  const el = document.getElementById('status');
+  el.textContent = message;
+  el.className = 'wa-status ' + kind;
+}
+
+function setBusy(busy) {
+  document.querySelectorAll('button').forEach(b => b.disabled = busy);
+}
+
+function extractAccession(text) {
+  const match = text.match(/RIS_ACCESSION\s*:\s*([A-Za-z0-9_-]+)/i);
+  return match ? match[1] : null;
+}
+
+async function readAccessionFromDocument() {
+  return Word.run(async context => {
+    const body = context.document.body;
+    body.load('text');
+    await context.sync();
+    return extractAccession(body.text || '');
+  });
+}
+
+function renderCase(data) {
+  currentCase = data;
+  document.getElementById('caseEmpty').hidden = true;
+  document.getElementById('caseCard').hidden = false;
+  document.getElementById('patientName').textContent = data.patient.name;
+  document.getElementById('patientId').textContent = data.patient.id;
+  document.getElementById('accession').textContent = data.accession;
+  document.getElementById('study').textContent = `${data.modality} · ${data.procedure}`;
+  document.getElementById('reportStatus').textContent = data.report.status;
+  document.getElementById('reportStatus').className = 'wa-badge ' + data.report.status.toLowerCase();
+  const locked = data.report.status === 'FINAL';
+  document.getElementById('saveDraft').disabled = locked;
+  document.getElementById('finalize').disabled = locked;
+}
+
+async function loadCase() {
+  setBusy(true); setStatus('Reading Accession Number from this document…');
+  try {
+    const accession = await readAccessionFromDocument();
+    if (!accession) throw new Error('RIS_ACCESSION was not found. Open the Word template from the RIS case.');
+    const res = await fetch(`/api/reporting/cases/${encodeURIComponent(accession)}`, { credentials:'include' });
+    if (!res.ok) throw new Error('Case not found in RIS.');
+    renderCase(await res.json());
+    setStatus('Case loaded and linked to RIS.', 'ok');
+  } catch (e) { setStatus(e.message || String(e), 'error'); }
+  finally { setBusy(false); }
+}
+
+function getWholeDocumentBlob() {
+  return new Promise((resolve, reject) => {
+    Office.context.document.getFileAsync(Office.FileType.Compressed, { sliceSize: 1024 * 1024 }, result => {
+      if (result.status !== Office.AsyncResultStatus.Succeeded) return reject(new Error(result.error.message));
+      const file = result.value;
+      const chunks = new Array(file.sliceCount);
+      let index = 0;
+      const next = () => {
+        if (index >= file.sliceCount) {
+          file.closeAsync();
+          return resolve(new Blob(chunks, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
+        }
+        file.getSliceAsync(index, sliceResult => {
+          if (sliceResult.status !== Office.AsyncResultStatus.Succeeded) {
+            file.closeAsync();
+            return reject(new Error(sliceResult.error.message));
+          }
+          chunks[index] = new Uint8Array(sliceResult.value.data);
+          index += 1; next();
+        });
+      };
+      next();
+    });
+  });
+}
+
+async function uploadCurrentDocument(action) {
+  if (!currentCase) await loadCase();
+  if (!currentCase) return;
+  if (currentCase.report.status === 'FINAL') return setStatus('This report is FINAL and locked.', 'error');
+  if (action === 'finalize' && !confirm('Finalize this report? The approved report will be locked.')) return;
+  setBusy(true); setStatus(action === 'finalize' ? 'Finalizing report…' : 'Saving draft…');
+  try {
+    const blob = await getWholeDocumentBlob();
+    const form = new FormData();
+    form.append('document', blob, `${currentCase.accession}.docx`);
+    const res = await fetch(`/api/reporting/cases/${encodeURIComponent(currentCase.accession)}/${action}`, { method:'POST', body:form, credentials:'include' });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'RIS rejected the report.');
+    const caseRes = await fetch(`/api/reporting/cases/${encodeURIComponent(currentCase.accession)}`, { credentials:'include' });
+    renderCase(await caseRes.json());
+    setStatus(action === 'finalize' ? 'Report finalized. DOCX/PDF saved in RIS.' : 'Draft saved in RIS.', 'ok');
+  } catch(e) { setStatus(e.message || String(e), 'error'); }
+  finally { setBusy(false); }
+}
+
+function openImages() {
+  if (!currentCase) return setStatus('Load the case first.', 'error');
+  window.open(currentCase.pacs_url, '_blank');
+}
+
+function openRis() {
+  if (!currentCase) return window.open('/', '_blank');
+  window.open(`/reports/${currentCase.id}`, '_blank');
+}
+
+Office.onReady(info => {
+  if (info.host !== Office.HostType.Word) return;
+  document.getElementById('loadCase').addEventListener('click', loadCase);
+  document.getElementById('saveDraft').addEventListener('click', () => uploadCurrentDocument('draft'));
+  document.getElementById('finalize').addEventListener('click', () => uploadCurrentDocument('finalize'));
+  document.getElementById('openImages').addEventListener('click', openImages);
+  document.getElementById('openRis').addEventListener('click', openRis);
+  loadCase();
+});

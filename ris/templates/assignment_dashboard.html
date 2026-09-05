@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block page_title %}Assignment Dashboard{% endblock %}{% block content %}
+<div class="metric-grid">{% for k,v in stats.items() %}<div class="metric-card"><b>{{v}}</b><span>{{k.replace('_',' ')|title}}</span></div>{% endfor %}</div>
+<div class="panel actions"><a class="btn primary" href="{{url_for('assignment_reports')}}">Detailed Report</a><a class="btn" href="{{url_for('assignment_report_csv')}}">Export CSV</a></div>
+<div class="table-wrap"><table><tr><th>Accession</th><th>Patient</th><th>Readiness</th><th>Assigned</th><th>Offers</th><th>Last Offer</th><th>TAT</th><th>Delay Owner</th></tr>
+{% for x in rows %}<tr><td>{{x.order.accession}}</td><td>{{x.order.patient.name}}</td><td>{{x.readiness.status if x.readiness else '-'}}</td><td>{{x.assignment.doctor_user_id if x.assignment else '-'}}</td><td>{{x.offer_attempts}}</td><td>{{x.last_offer_status}}</td><td>{{x.tat.total_min}} min</td><td>{{x.tat.owner}}</td></tr>{% endfor %}</table></div>{% endblock %}

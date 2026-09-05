@@ -1,0 +1,8 @@
+# Do not use these literal placeholder values in production.
+RADBRIDGE_ENV=production
+SESSION_COOKIE_SECURE=1
+SESSION_COOKIE_SAMESITE=Lax
+RADBRIDGE_TRUSTED_ORIGINS=https://ris.example.com
+RADBRIDGE_REPORTING_TOKEN=<generate-a-strong-random-token>
+SECRET_KEY=<existing-strong-production-secret>
+ORTHANC_PASSWORD=<existing-strong-orthanc-password>
