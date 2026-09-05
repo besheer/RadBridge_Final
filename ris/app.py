@@ -6065,6 +6065,49 @@ def order_study_thumbnail(order_id):
     if not content_type.startswith('image/'):
         abort(502)
 
+    # RB_PHASE15_BLANK_DICOM_THUMBNAIL_V1
+    # Tiny uniform synthetic DICOM images produce valid but invisible PNGs.
+    # Keep real clinical previews untouched and provide an explicit fallback
+    # only when Orthanc returns an effectively empty preview.
+    if len(response.content) <= 128:
+        accession = str(order.accession or 'DICOM').strip()
+        accession = (
+            accession
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('"', '&quot;')
+            .replace("'", '&apos;')
+        )
+        image_count = int(order.pacs_image_count or 0)
+
+        placeholder = f'''<svg xmlns="http://www.w3.org/2000/svg"
+          width="640" height="360" viewBox="0 0 640 360"
+          role="img" aria-label="DICOM preview unavailable">
+          <rect width="640" height="360" fill="#071722"/>
+          <rect x="24" y="24" width="592" height="312" rx="20"
+            fill="#0d2533" stroke="#2d6077" stroke-width="3"/>
+          <circle cx="320" cy="126" r="54"
+            fill="#123a4c" stroke="#59c3e8" stroke-width="5"/>
+          <path d="M288 126h64M320 94v64"
+            stroke="#8adcf5" stroke-width="9" stroke-linecap="round"/>
+          <text x="320" y="218" text-anchor="middle"
+            fill="#e6f6fc" font-family="Arial,sans-serif"
+            font-size="28" font-weight="700">DICOM image received</text>
+          <text x="320" y="258" text-anchor="middle"
+            fill="#8fc4d8" font-family="Arial,sans-serif"
+            font-size="20">{accession} · {image_count} image(s)</text>
+          <text x="320" y="294" text-anchor="middle"
+            fill="#6f9eb1" font-family="Arial,sans-serif"
+            font-size="17">Preview unavailable for synthetic pixels</text>
+        </svg>'''.encode('utf-8')
+
+        return placeholder, 200, {
+            'Content-Type': 'image/svg+xml; charset=utf-8',
+            'Cache-Control': 'private, max-age=60',
+            'X-Content-Type-Options': 'nosniff',
+        }
+
     return response.content, 200, {
         'Content-Type': content_type,
         'Cache-Control': 'private, max-age=60',
