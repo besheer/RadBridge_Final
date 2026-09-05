@@ -4038,6 +4038,24 @@ def case_pacs_url(order):
     return ohif_url_for_order(order)
 
 
+# RB_CLINICAL_IMAGE_ONLY_WORKSPACE_V1
+def clinical_image_only_url(order):
+    """OHIF study viewer without reporting identity or RIS report context."""
+    uid = ohif_study_uid(order)
+
+    if not uid:
+        return None
+
+    from urllib.parse import quote
+
+    return (
+        f'{OHIF_PUBLIC_URL}/viewer'
+        f'?StudyInstanceUIDs={quote(uid, safe="")}'
+    )
+
+
+
+
 def _safe_report_token(value):
     value=str(value or '').strip()
     value=re.sub(r'[^A-Za-z0-9_-]+','_',value)
@@ -5876,11 +5894,91 @@ def admin_notification_retry(notification_id):
     flash('Notification queued for retry.','success')
     return redirect(url_for('admin_notifications'))
 
+@app.get('/orders/<int:order_id>/study-thumbnail')
+@require_perm('orders.view')
+def order_study_thumbnail(order_id):
+    """Return a small PACS preview without exposing Orthanc credentials."""
+    order = Order.query.get_or_404(order_id)
+
+    if not order.pacs_study_id or int(order.pacs_image_count or 0) <= 0:
+        abort(404)
+
+    detail = _orthanc_study_detail(order.pacs_study_id)
+    instances = detail.get('Instances') or []
+
+    if not instances:
+        abort(404)
+
+    instance_id = str(instances[0]).strip()
+
+    if not instance_id:
+        abort(404)
+
+    try:
+        response = requests.get(
+            f'{PACS_ORTHANC_URL}/instances/{instance_id}/preview',
+            auth=_orthanc_auth(),
+            params={'quality': 70},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except Exception:
+        app.logger.exception(
+            'Study thumbnail failed for order %s instance %s',
+            order.id,
+            instance_id,
+        )
+        abort(502)
+
+    content_type = (
+        response.headers.get('Content-Type')
+        or 'image/jpeg'
+    ).split(';', 1)[0].strip().lower()
+
+    if not content_type.startswith('image/'):
+        abort(502)
+
+    return response.content, 200, {
+        'Content-Type': content_type,
+        'Cache-Control': 'private, max-age=60',
+        'X-Content-Type-Options': 'nosniff',
+    }
+
 @app.route('/technician')
 @require_perm('technician.worklist')
 def technician_worklist():
-    rows=Order.query.filter(Order.status.in_(['SCHEDULED','ARRIVED','IN_PROGRESS','MWL_ERROR'])).order_by(Order.scheduled.asc()).limit(300).all()
-    return render_template('technician.html',orders=rows)
+    rows = (
+        Order.query
+        .filter(Order.status.in_([
+            'SCHEDULED',
+            'ARRIVED',
+            'IN_PROGRESS',
+            'COMPLETED',
+            'IMAGES_RECEIVED',
+            'REPORTING',
+            'MWL_ERROR',
+        ]))
+        .order_by(Order.scheduled.desc())
+        .limit(300)
+        .all()
+    )
+
+    image_urls = {
+        order.id: clinical_image_only_url(order)
+        for order in rows
+    }
+
+    attachment_counts = {
+        order.id: _order_attachment_count(order)
+        for order in rows
+    }
+
+    return render_template(
+        'technician.html',
+        orders=rows,
+        image_urls=image_urls,
+        attachment_counts=attachment_counts,
+    )
 
 @app.route('/technician/<int:order_id>/status',methods=['POST'])
 @require_perm('orders.status')

@@ -1,148 +1,191 @@
 {% extends "base.html" %}
 
-{% block page_title %}Technician Worklist{% endblock %}
+{% block page_title %}Exam Operations{% endblock %}
 {% block subtitle %}
-Forward-only exam workflow — الفني يستطيع التقدم بالحالة فقط ولا يستطيع الرجوع للخلف
+Technician workspace · Start and complete examinations, review images, and document technical activity
 {% endblock %}
 
 {% block content %}
-{% if has_perm('inventory.view') %}<div class="actions inventory-workstation-actions"><a class="btn" href="{{url_for('inventory_stock')}}">📦 Branch Stock</a><a class="btn" href="{{url_for('inventory_transfers')}}">⇄ Transfers</a>{% if has_perm('inventory.reports') %}<a class="btn" href="{{url_for('inventory_consumption_report')}}">📊 Usage Report</a>{% endif %}</div>{% endif %}
+<style>
+.tech-summary,
+.tech-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:14px;
+}
+.tech-summary { margin-bottom:16px; }
+.tech-summary-card,
+.tech-case {
+  border:1px solid var(--border,#294052);
+  border-radius:14px;
+  background:var(--panel,#101d2d);
+}
+.tech-summary-card { padding:16px; }
+.tech-summary-card strong {
+  display:block;
+  font-size:26px;
+  margin-top:5px;
+}
+.tech-case { overflow:hidden; }
+.tech-thumb {
+  display:block;
+  width:100%;
+  height:150px;
+  object-fit:cover;
+  background:#071018;
+}
+.tech-thumb-empty {
+  height:150px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#071018;
+  color:#8fa4b7;
+}
+.tech-body { padding:14px; }
+.tech-title {
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+}
+.tech-meta {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:13px 0;
+  font-size:13px;
+}
+.tech-meta small {
+  display:block;
+  color:#8fa4b7;
+}
+.tech-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.tech-actions form { margin:0; }
+.tech-section-title {
+  margin:20px 0 10px;
+}
+</style>
 
-<form method="get" class="panel global-screen-filter"><div class="filter-grid">
-<input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
-<input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
-<input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
-<select name="priority"><option value="">Priority</option><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select>
-</div><div class="actions"><button class="btn small primary">Filter</button><a class="btn small" href="{{request.path}}">Clear</a></div></form>
-
-<div class="panel">
-
-<table>
-<thead>
-<tr>
-    <th>Time</th>
-    <th>Patient</th>
-    <th>Exam</th>
-    <th>Room / Device</th>
-    <th>Exam Status</th>
-    <th>PACS Images</th>
-    <th>PACS Status</th>
-    <th>Action</th>
-</tr>
-</thead>
-
-<tbody>
-
+{% set ns=namespace(waiting=0,active=0,finished=0,images=0) %}
 {% for o in orders %}
-
-{% set st=(o.exam_status or 'ORDERED')|upper %}
-
-<tr>
-
-<td>
-    {{ o.scheduled.strftime('%H:%M') if o.scheduled else '-' }}
-</td>
-
-<td>
-    <b>{{o.patient.name}}</b>
-    <small>{{o.patient.patient_id}}</small>
-</td>
-
-<td>
-    {{o.proc.name if o.proc else o.procedure}}
-</td>
-
-<td>
-    {{o.device.name if o.device else 'Routing required'}}
-</td>
-
-<td>
-    <span class="status-chip status-{{st|lower|replace('_','-')}}">
-        {{st}}
-    </span>
-</td>
-
-<td>
-    <b>{{o.pacs_image_count or 0}}</b>
-</td>
-
-<td>
-    <span class="pacs-chip pacs-{{(o.pacs_status or 'WAITING')|lower|replace('_','-')}}">
-        {{o.pacs_status or 'WAITING'}}
-    </span>
-</td>
-
-<td>
-
-{% if st == 'ORDERED' %}
-
-<form method="post"
-      action="{{url_for('order_exam_status',order_id=o.id)}}">
-
-    <input type="hidden"
-           name="status"
-           value="IN_PROGRESS">
-
-    <button class="btn primary">
-        ▶ Start Exam
-    </button>
-
-</form>
-
-{% elif st == 'IN_PROGRESS' %}
-
-<form method="post"
-      action="{{url_for('order_exam_status',order_id=o.id)}}">
-
-    <input type="hidden"
-           name="status"
-           value="EXAM_COMPLETED">
-
-    <button class="btn primary">
-        ✓ Complete Exam
-    </button>
-
-</form>
-
-{% elif st == 'EXAM_COMPLETED' %}
-
-<span class="status-chip status-exam-completed">
-    Exam Finished
-</span>
-
-{% elif st in ['REPORTING','VERIFIED','FINAL'] %}
-
-<span class="muted">
-    No technician action
-</span>
-
-{% else %}
-
-<span class="muted">
-    Waiting
-</span>
-
-{% endif %}
-{% if has_perm('pacs.transfer') and (o.pacs_image_count or 0) > 0 %}<a class="btn small" href="{{url_for('pacs_case_actions',order_id=o.id)}}">⇄ PACS Send / Resend</a>{% endif %}
-
-</td>
-
-</tr>
-
-{% else %}
-
-<tr>
-<td colspan="8" class="empty">
-    No active studies.
-</td>
-</tr>
-
+  {% set st=(o.exam_status or 'ORDERED')|upper %}
+  {% if st in ['BOOKED','ORDERED'] %}
+    {% set ns.waiting=ns.waiting+1 %}
+  {% elif st == 'IN_PROGRESS' %}
+    {% set ns.active=ns.active+1 %}
+  {% else %}
+    {% set ns.finished=ns.finished+1 %}
+  {% endif %}
+  {% if (o.pacs_image_count or 0) > 0 %}
+    {% set ns.images=ns.images+1 %}
+  {% endif %}
 {% endfor %}
 
-</tbody>
-</table>
-<div class="panel"><small>For resend to scanner/workstation/backup PACS, open the order and use PACS Actions. Destinations are controlled by Admin → DICOM Destinations.</small></div>
-
+<div class="tech-summary">
+  <div class="tech-summary-card">Waiting<strong>{{ns.waiting}}</strong></div>
+  <div class="tech-summary-card">In progress<strong>{{ns.active}}</strong></div>
+  <div class="tech-summary-card">Exam completed<strong>{{ns.finished}}</strong></div>
+  <div class="tech-summary-card">Images received<strong>{{ns.images}}</strong></div>
 </div>
 
+<form method="get" class="panel global-screen-filter">
+  <div class="filter-grid">
+    <input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
+    <input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
+    <input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
+    <select name="priority">
+      <option value="">Priority</option>
+      <option>ROUTINE</option>
+      <option>URGENT</option>
+      <option>STAT</option>
+    </select>
+  </div>
+  <div class="actions">
+    <button class="btn small primary">Filter</button>
+    <a class="btn small" href="{{request.path}}">Clear</a>
+  </div>
+</form>
+
+<h2 class="tech-section-title">Examination Worklist</h2>
+
+<div class="tech-grid">
+{% for o in orders %}
+  {% set st=(o.exam_status or 'ORDERED')|upper %}
+  <article class="tech-case">
+    {% if (o.pacs_image_count or 0) > 0 and o.pacs_study_id %}
+      <img
+        class="tech-thumb"
+        src="{{url_for('order_study_thumbnail',order_id=o.id)}}"
+        alt="Study thumbnail for {{o.accession}}"
+        loading="lazy"
+      >
+    {% else %}
+      <div class="tech-thumb-empty">No PACS image received</div>
+    {% endif %}
+
+    <div class="tech-body">
+      <div class="tech-title">
+        <div>
+          <strong>{{o.patient.name}}</strong>
+          <small>{{o.patient.patient_id}} · {{o.accession}}</small>
+        </div>
+        <span class="status-chip status-{{st|lower|replace('_','-')}}">
+          {{st}}
+        </span>
+      </div>
+
+      <div class="tech-meta">
+        <div><small>Exam</small>{{o.proc.name if o.proc else o.procedure}}</div>
+        <div><small>Room / Device</small>{{o.device.name if o.device else 'Routing required'}}</div>
+        <div><small>Scheduled</small>{{o.scheduled.strftime('%Y-%m-%d %H:%M') if o.scheduled else '-'}}</div>
+        <div><small>PACS</small>{{o.pacs_status or 'WAITING'}} · {{o.pacs_image_count or 0}} image(s)</div>
+      </div>
+
+      <div class="tech-actions">
+        {% if st in ['BOOKED','ORDERED'] %}
+          <form method="post" action="{{url_for('order_exam_status',order_id=o.id)}}">
+            <input type="hidden" name="status" value="IN_PROGRESS">
+            <button class="btn primary">▶ Start Exam</button>
+          </form>
+        {% elif st == 'IN_PROGRESS' %}
+          <form method="post" action="{{url_for('order_exam_status',order_id=o.id)}}">
+            <input type="hidden" name="status" value="EXAM_COMPLETED">
+            <button class="btn primary">✓ Complete Exam</button>
+          </form>
+        {% endif %}
+
+        {% if image_urls.get(o.id) %}
+          <a
+            class="btn"
+            href="{{image_urls.get(o.id)}}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >🖼 Open Images</a>
+        {% endif %}
+
+        <a class="btn" href="{{url_for('order_clinical_notes',order_id=o.id)}}">
+          📝 Notes
+        </a>
+
+        <a class="btn" href="{{url_for('order_attachments',order_id=o.id)}}">
+          📎 Attachments ({{attachment_counts.get(o.id,0)}})
+        </a>
+
+        {% if has_perm('pacs.transfer') and (o.pacs_image_count or 0) > 0 %}
+          <a class="btn" href="{{url_for('pacs_case_actions',order_id=o.id)}}">
+            ⇄ PACS Send / Resend
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </article>
+{% else %}
+  <div class="panel empty">No active or recently completed studies.</div>
+{% endfor %}
+</div>
 {% endblock %}
