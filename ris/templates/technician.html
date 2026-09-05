@@ -168,7 +168,7 @@ Technician workspace · Start and complete examinations, review images, and docu
           </form>
         {% endif %}
 
-        {% if image_urls.get(o.id) %}
+        {% if image_urls.get(o.id) and (o.pacs_image_count or 0) > 0 and o.pacs_study_id %}
           <a
             class="btn"
             href="{{image_urls.get(o.id)}}"

@@ -6223,6 +6223,19 @@ def technician_case_note(order_id):
 def technician_case_consume(order_id):
     order = Order.query.get_or_404(order_id)
 
+    exam_status = (order.exam_status or 'ORDERED').upper()
+
+    # RB_TECHNICIAN_CONSUME_DURING_EXAM_ONLY_V1
+    if exam_status != 'IN_PROGRESS':
+        flash(
+            'Start the examination before recording consumables.',
+            'danger',
+        )
+        return redirect(url_for(
+            'technician_case_workspace',
+            order_id=order.id,
+        ))
+
     try:
         item_id = int(request.form.get('item_id') or 0)
         qty = float(request.form.get('qty') or 0)
@@ -6361,7 +6374,22 @@ def order_exam_status(order_id):
     current=(order.exam_status or 'ORDERED').upper()
 
     role_code=(current_user().role.code if current_user() and current_user().role else '')
-    decision=can_transition(role_code,current,target,override=False)
+    # RB_TECHNICIAN_BOOKED_START_COMPAT_V1
+    # Start Exam maps the booking state to the technician's
+    # first permitted acquisition transition.
+    policy_current = (
+        'ORDERED'
+        if role_code == 'TECHNICIAN'
+        and current == 'BOOKED'
+        and target == 'IN_PROGRESS'
+        else current
+    )
+    decision=can_transition(
+        role_code,
+        policy_current,
+        target,
+        override=False,
+    )
     if not decision.allowed:
         flash(f'Invalid workflow transition: {current} → {target}. Reason: {decision.reason}.','danger')
         return redirect(request.referrer or url_for('technician_worklist'))

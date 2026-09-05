@@ -62,7 +62,7 @@ consumables, technical notes, attachments and case history
       {% endif %}
 
       <div class="tc-actions">
-        {% if image_url %}
+        {% if image_url and (order.pacs_image_count or 0) > 0 and order.pacs_study_id %}
           <a class="btn primary" href="{{image_url}}"
              target="_blank" rel="noopener noreferrer">🖼 Open Images</a>
         {% endif %}
@@ -126,7 +126,13 @@ consumables, technical notes, attachments and case history
         Record only materials actually consumed during this examination.
       </p>
 
-      {% if has_perm('consumables.use') and warehouse %}
+      {% if st != 'IN_PROGRESS' %}
+        <p class="muted">
+          Start the examination to enable consumable recording.
+        </p>
+      {% endif %}
+
+      {% if has_perm('consumables.use') and warehouse and st == 'IN_PROGRESS' %}
         <form method="post"
               action="{{url_for('technician_case_consume',order_id=order.id)}}">
           <div class="tc-form-grid">
