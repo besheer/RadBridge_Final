@@ -6114,6 +6114,158 @@ def order_study_thumbnail(order_id):
         'X-Content-Type-Options': 'nosniff',
     }
 
+
+# RB_UNIFIED_TECHNICIAN_CASE_WORKSPACE_V1
+@app.get('/technician/<int:order_id>')
+@require_perm('technician.worklist')
+def technician_case_workspace(order_id):
+    order = Order.query.get_or_404(order_id)
+    warehouse = default_warehouse_for_order(order)
+
+    notes = (
+        ClinicalNote.query
+        .filter_by(order_id=order.id)
+        .order_by(ClinicalNote.created_at.desc())
+        .limit(30)
+        .all()
+    )
+    attachments = (
+        Attachment.query
+        .filter_by(order_id=order.id)
+        .order_by(Attachment.created_at.desc())
+        .limit(30)
+        .all()
+    )
+    usages = (
+        OrderConsumableUsage.query
+        .filter_by(order_id=order.id)
+        .order_by(OrderConsumableUsage.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    timeline = (
+        AuditLog.query
+        .filter_by(entity='order', entity_id=str(order.id))
+        .order_by(AuditLog.created_at.desc())
+        .limit(40)
+        .all()
+    )
+
+    inventory_rows = []
+    if warehouse:
+        for item in (
+            InventoryItem.query
+            .filter_by(active=True)
+            .order_by(InventoryItem.name.asc())
+            .all()
+        ):
+            available = inventory_available_qty(
+                warehouse.id,
+                item.id,
+            )
+            if available > 0:
+                inventory_rows.append({
+                    'item': item,
+                    'available': available,
+                })
+
+    return render_template(
+        'technician_case.html',
+        order=order,
+        image_url=clinical_image_only_url(order),
+        warehouse=warehouse,
+        inventory_rows=inventory_rows,
+        notes=notes,
+        attachments=attachments,
+        usages=usages,
+        timeline=timeline,
+        consumable_cost=order_consumable_cost(order),
+    )
+
+
+@app.post('/technician/<int:order_id>/note')
+@require_perm('technician.worklist')
+def technician_case_note(order_id):
+    order = Order.query.get_or_404(order_id)
+    text = (request.form.get('text') or '').strip()
+
+    if not text:
+        flash('Technical note cannot be empty.', 'danger')
+        return redirect(url_for(
+            'technician_case_workspace',
+            order_id=order.id,
+        ))
+
+    db.session.add(ClinicalNote(
+        order_id=order.id,
+        author_user_id=current_user().id,
+        note_type='TECHNICAL',
+        visibility='CLINICAL_TEAM',
+        text=text,
+    ))
+    audit(
+        'TECHNICIAN_NOTE_ADDED',
+        'order',
+        order.id,
+        'Technical clinical-team note added',
+    )
+    db.session.commit()
+    flash('Technical note saved.', 'success')
+
+    return redirect(url_for(
+        'technician_case_workspace',
+        order_id=order.id,
+    ))
+
+
+@app.post('/technician/<int:order_id>/consume')
+@require_perm('consumables.use')
+def technician_case_consume(order_id):
+    order = Order.query.get_or_404(order_id)
+
+    try:
+        item_id = int(request.form.get('item_id') or 0)
+        qty = float(request.form.get('qty') or 0)
+    except (TypeError, ValueError):
+        flash('Invalid consumable or quantity.', 'danger')
+        return redirect(url_for(
+            'technician_case_workspace',
+            order_id=order.id,
+        ))
+
+    item = InventoryItem.query.get_or_404(item_id)
+    warehouse = default_warehouse_for_order(order)
+    reason = (request.form.get('reason') or '').strip()
+
+    try:
+        consume_inventory(
+            order,
+            item,
+            qty,
+            usage_type='USED',
+            source='MANUAL',
+            reason=reason,
+            warehouse=warehouse,
+            user=current_user(),
+        )
+        audit(
+            'TECHNICIAN_CONSUMABLE_USED',
+            'order',
+            order.id,
+            f'item={item.code}; qty={qty:g}; unit={item.unit}',
+        )
+        db.session.commit()
+        flash('Actual consumable usage recorded.', 'success')
+    except Exception as exc:
+        db.session.rollback()
+        flash(str(exc), 'danger')
+
+    return redirect(url_for(
+        'technician_case_workspace',
+        order_id=order.id,
+    ))
+
+
 @app.route('/technician')
 @require_perm('technician.worklist')
 def technician_worklist():

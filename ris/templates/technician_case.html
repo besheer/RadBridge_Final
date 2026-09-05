@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block page_title %}Technician Case Workspace{% endblock %}
+{% block subtitle %}
+Start and complete the examination, open images, record actual
+consumables, technical notes, attachments and case history
+{% endblock %}
+
+{% block content %}
+<style>
+.tc-grid{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(390px,1.4fr);gap:16px;align-items:start}
+.tc-grid .panel{margin:0 0 16px}
+.tc-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start}
+.tc-head h2{margin:5px 0}
+.tc-preview{width:100%;height:250px;object-fit:cover;border-radius:12px;background:#071018;border:1px solid var(--border,#294052)}
+.tc-empty-image{height:250px;display:grid;place-items:center;text-align:center;border-radius:12px;background:#071018;color:#91a4b7}
+.tc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tc-actions form{margin:0}
+.tc-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:14px}
+.tc-step{padding:9px 5px;text-align:center;border:1px solid var(--border,#294052);border-radius:9px;color:var(--muted,#8fa4b7);font-size:12px}
+.tc-step.current{color:#fff;background:#1d4ed8;border-color:#60a5fa}
+.tc-facts{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tc-fact{padding:11px;border:1px solid var(--border,#294052);border-radius:10px}
+.tc-fact small,.tc-entry small{display:block;color:var(--muted,#8fa4b7);margin-bottom:3px}
+.tc-form-grid{display:grid;grid-template-columns:minmax(180px,2fr) minmax(90px,.7fr);gap:8px}
+.tc-entry{padding:10px 0;border-bottom:1px solid var(--border,#294052)}
+.tc-entry:last-child{border-bottom:0}
+.tc-table{overflow:auto}
+@media(max-width:950px){.tc-grid{grid-template-columns:1fr}}
+@media(max-width:620px){.tc-facts,.tc-steps,.tc-form-grid{grid-template-columns:1fr}}
+</style>
+
+{% set st=(order.exam_status or 'ORDERED')|upper %}
+
+<section class="panel">
+  <div class="tc-head">
+    <div>
+      <a href="{{url_for('technician_worklist')}}">← Examination Worklist</a>
+      <h2>{{order.patient.name}}</h2>
+      <div>{{order.patient.patient_id}} · <b>{{order.accession}}</b></div>
+    </div>
+    <span class="status-chip status-{{st|lower|replace('_','-')}}">{{st}}</span>
+  </div>
+
+  <div class="tc-steps">
+    <div class="tc-step {% if st in ['BOOKED','ORDERED'] %}current{% endif %}">1 · Waiting</div>
+    <div class="tc-step {% if st == 'IN_PROGRESS' %}current{% endif %}">2 · In Progress</div>
+    <div class="tc-step {% if st == 'EXAM_COMPLETED' %}current{% endif %}">3 · Completed</div>
+    <div class="tc-step {% if st in ['REPORTING','VERIFIED','FINAL'] %}current{% endif %}">4 · Images Ready</div>
+  </div>
+</section>
+
+<div class="tc-grid">
+  <aside>
+    <section class="panel">
+      {% if (order.pacs_image_count or 0)>0 and order.pacs_study_id %}
+        <img class="tc-preview"
+             src="{{url_for('order_study_thumbnail',order_id=order.id)}}"
+             alt="Study preview for {{order.accession}}">
+      {% else %}
+        <div class="tc-empty-image">No PACS image received</div>
+      {% endif %}
+
+      <div class="tc-actions">
+        {% if image_url %}
+          <a class="btn primary" href="{{image_url}}"
+             target="_blank" rel="noopener noreferrer">🖼 Open Images</a>
+        {% endif %}
+
+        {% if st in ['BOOKED','ORDERED'] %}
+          <form method="post" action="{{url_for('order_exam_status',order_id=order.id)}}">
+            <input type="hidden" name="status" value="IN_PROGRESS">
+            <button class="btn primary">▶ Start Exam</button>
+          </form>
+        {% elif st == 'IN_PROGRESS' %}
+          <form method="post" action="{{url_for('order_exam_status',order_id=order.id)}}">
+            <input type="hidden" name="status" value="EXAM_COMPLETED">
+            <button class="btn primary">✓ Complete Exam</button>
+          </form>
+        {% else %}
+          <span class="muted">No pending examination action</span>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>Patient & Examination</h3>
+      <div class="tc-facts">
+        <div class="tc-fact"><small>Examination</small>{{order.proc.name if order.proc else order.procedure}}</div>
+        <div class="tc-fact"><small>Priority</small>{{order.priority or 'ROUTINE'}}</div>
+        <div class="tc-fact"><small>Room / Device</small>{{order.device.name if order.device else 'Routing required'}}</div>
+        <div class="tc-fact"><small>Scheduled</small>{{order.scheduled.strftime('%Y-%m-%d %H:%M') if order.scheduled else '-'}}</div>
+        <div class="tc-fact"><small>PACS</small>{{order.pacs_status or 'WAITING'}}</div>
+        <div class="tc-fact"><small>Images</small>{{order.pacs_image_count or 0}}</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>Attachments</h3>
+      {% for attachment in attachments %}
+        <div class="tc-entry">
+          <a href="{{url_for('attachment_preview',attachment_id=attachment.id)}}"
+             target="_blank" rel="noopener noreferrer">
+            📎 {{attachment.original_name}}
+          </a>
+          <small>{{attachment.category}} · {{attachment.created_at.strftime('%Y-%m-%d %H:%M') if attachment.created_at else ''}}</small>
+        </div>
+      {% else %}
+        <p class="muted">No attachments for this examination.</p>
+      {% endfor %}
+
+      {% if has_perm('attachments.upload') %}
+        <div class="tc-actions">
+          <a class="btn" href="{{url_for('order_attachments',order_id=order.id)}}">
+            ＋ Upload Attachment
+          </a>
+        </div>
+      {% endif %}
+    </section>
+  </aside>
+
+  <main>
+    <section class="panel">
+      <h3>Actual Consumables Used</h3>
+      <p class="muted">
+        Record only materials actually consumed during this examination.
+      </p>
+
+      {% if has_perm('consumables.use') and warehouse %}
+        <form method="post"
+              action="{{url_for('technician_case_consume',order_id=order.id)}}">
+          <div class="tc-form-grid">
+            <select name="item_id" required>
+              <option value="">Select consumable</option>
+              {% for row in inventory_rows %}
+                <option value="{{row.item.id}}">
+                  {{row.item.name}} — {{row.available}} {{row.item.unit}} available
+                </option>
+              {% endfor %}
+            </select>
+            <input type="number" name="qty" min="0.01" step="0.01"
+                   placeholder="Quantity" required>
+          </div>
+          <input name="reason" maxlength="500"
+                 placeholder="Usage note or acquisition reason (optional)">
+          <button class="btn primary">＋ Record Usage</button>
+        </form>
+      {% elif not warehouse %}
+        <p class="notice warning">No active branch warehouse is configured.</p>
+      {% endif %}
+
+      <div class="tc-table">
+        <table>
+          <thead>
+            <tr><th>Item</th><th>Quantity</th><th>Type</th><th>Time</th></tr>
+          </thead>
+          <tbody>
+          {% for usage in usages %}
+            <tr>
+              <td>{{usage.item.name}}</td>
+              <td>{{usage.qty}} {{usage.item.unit}}</td>
+              <td>{{usage.usage_type}}</td>
+              <td>{{usage.created_at.strftime('%Y-%m-%d %H:%M') if usage.created_at else '-'}}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="empty">No actual consumables recorded.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p><b>Recorded cost:</b> {{'%.2f'|format(consumable_cost)}} EGP</p>
+    </section>
+
+    <section class="panel">
+      <h3>Technical Note</h3>
+      <form method="post"
+            action="{{url_for('technician_case_note',order_id=order.id)}}">
+        <textarea name="text" rows="4" maxlength="4000" required
+          placeholder="Patient cooperation, positioning, acquisition issue, repeat reason or technical observation"></textarea>
+        <button class="btn primary">📝 Save Technical Note</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h3>Clinical History & Notes</h3>
+      {% for note in notes %}
+        <div class="tc-entry">
+          <b>{{note.note_type}}</b>
+          <small>
+            {{note.author.full_name if note.author else 'System'}} ·
+            {{note.created_at.strftime('%Y-%m-%d %H:%M') if note.created_at else ''}}
+          </small>
+          <div>{{note.text}}</div>
+        </div>
+      {% else %}
+        <p class="muted">No clinical history or notes recorded.</p>
+      {% endfor %}
+    </section>
+
+    <section class="panel">
+      <h3>Case Timeline</h3>
+      {% for event in timeline %}
+        <div class="tc-entry">
+          <b>{{event.action|replace('_',' ')}}</b>
+          <small>{{event.created_at.strftime('%Y-%m-%d %H:%M') if event.created_at else ''}}</small>
+          {% if event.details %}<div>{{event.details}}</div>{% endif %}
+        </div>
+      {% else %}
+        <p class="muted">No workflow history available.</p>
+      {% endfor %}
+    </section>
+  </main>
+</div>
+{% endblock %}

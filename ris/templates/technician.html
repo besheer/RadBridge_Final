@@ -151,6 +151,11 @@ Technician workspace · Start and complete examinations, review images, and docu
       </div>
 
       <div class="tech-actions">
+          <a class="btn primary"
+             href="{{url_for('technician_case_workspace',order_id=o.id)}}">
+            🧰 Open Case Workspace
+          </a>
+
         {% if st in ['BOOKED','ORDERED'] %}
           <form method="post" action="{{url_for('order_exam_status',order_id=o.id)}}">
             <input type="hidden" name="status" value="IN_PROGRESS">
