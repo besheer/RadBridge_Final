@@ -4748,14 +4748,76 @@ def logout():
 @app.route('/')
 @login_required
 def dashboard():
-    today=date.today(); all_orders=Order.query.all()
-    stats={'patients':Patient.query.count(),'orders':len(all_orders),
-           'today':sum(1 for o in all_orders if o.scheduled.date()==today),
-           'final':sum(1 for o in all_orders if o.status=='FINAL'),
-           'mwl_errors':sum(1 for o in all_orders if o.status in ('MWL_ERROR','ROUTING_ERROR')),
-           'revenue':round(sum(float(o.paid_amount or 0) for o in all_orders),2)}
-    recent=Order.query.order_by(Order.id.desc()).limit(15).all()
-    return render_template('dashboard.html',stats=stats,recent=recent)
+    today = date.today()
+    all_orders = Order.query.all()
+
+    def scheduled_today(order):
+        return bool(
+            order.scheduled
+            and order.scheduled.date() == today
+        )
+
+    stats = {
+        'patients': Patient.query.count(),
+        'orders': len(all_orders),
+        'today': sum(
+            1 for order in all_orders
+            if scheduled_today(order)
+        ),
+        'waiting': sum(
+            1 for order in all_orders
+            if (order.exam_status or 'ORDERED').upper()
+            in ('BOOKED', 'ORDERED')
+            and order.status not in ('FINAL', 'CANCELLED')
+        ),
+        'in_progress': sum(
+            1 for order in all_orders
+            if (order.exam_status or '').upper() == 'IN_PROGRESS'
+        ),
+        'completed': sum(
+            1 for order in all_orders
+            if (order.exam_status or '').upper() == 'EXAM_COMPLETED'
+        ),
+        'images_received': sum(
+            1 for order in all_orders
+            if int(order.pacs_image_count or 0) > 0
+        ),
+        'reporting': sum(
+            1 for order in all_orders
+            if order.status == 'REPORTING'
+        ),
+        'final': sum(
+            1 for order in all_orders
+            if order.status == 'FINAL'
+        ),
+        'unassigned': sum(
+            1 for order in all_orders
+            if not order.assigned_doctor_id
+            and int(order.pacs_image_count or 0) > 0
+            and order.status not in ('FINAL', 'CANCELLED')
+        ),
+        'mwl_errors': sum(
+            1 for order in all_orders
+            if order.status in ('MWL_ERROR', 'ROUTING_ERROR')
+        ),
+        'revenue': round(
+            sum(float(order.paid_amount or 0) for order in all_orders),
+            2,
+        ),
+    }
+
+    recent = (
+        Order.query
+        .order_by(Order.id.desc())
+        .limit(12)
+        .all()
+    )
+
+    return render_template(
+        'dashboard.html',
+        stats=stats,
+        recent=recent,
+    )
 
 @app.route('/patients')
 @require_perm('patients.view')
