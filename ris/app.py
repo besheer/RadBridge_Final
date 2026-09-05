@@ -5753,12 +5753,47 @@ def add_payment(order_id):
 @app.route('/nursing')
 @require_perm('nursing.worklist')
 def nursing_worklist():
-    rows=[]
-    for o in Order.query.filter(Order.status.notin_(['FINAL','CANCELLED'])).order_by(Order.scheduled.asc()).limit(300):
-        defaults=ProcedureConsumable.query.filter_by(procedure_id=o.procedure_id).count() if o.procedure_id else 0
-        if defaults or (o.proc and o.proc.contrast):
-            rows.append((o,defaults,NursingConsumableEntry.query.filter_by(order_id=o.id,confirmed=True).count()))
-    return render_template('nursing.html',rows=rows)
+    orders = (
+        Order.query
+        .filter(Order.status.notin_(['FINAL', 'CANCELLED']))
+        .order_by(Order.scheduled.desc())
+        .limit(300)
+        .all()
+    )
+
+    rows = []
+
+    for order in orders:
+        defaults = (
+            ProcedureConsumable.query
+            .filter_by(procedure_id=order.procedure_id)
+            .count()
+            if order.procedure_id
+            else 0
+        )
+        confirmed = (
+            NursingConsumableEntry.query
+            .filter_by(order_id=order.id, confirmed=True)
+            .count()
+        )
+        rows.append((order, defaults, confirmed))
+
+    image_urls = {
+        order.id: clinical_image_only_url(order)
+        for order in orders
+    }
+
+    attachment_counts = {
+        order.id: _order_attachment_count(order)
+        for order in orders
+    }
+
+    return render_template(
+        'nursing.html',
+        rows=rows,
+        image_urls=image_urls,
+        attachment_counts=attachment_counts,
+    )
 
 @app.route('/nursing/<int:order_id>',methods=['GET','POST'])
 @require_perm('consumables.use')
@@ -5794,8 +5829,28 @@ def nursing_case(order_id):
         for item in InventoryItem.query.filter_by(active=True).order_by(InventoryItem.name).all():
             inventory_items.append({'id':item.id,'name':item.name,'code':item.code,'unit':item.unit,
                                     'available':inventory_available_qty(warehouse.id,item.id)})
-    return render_template('nursing_case.html',order=order,defaults=defaults,entries=entries,
-                           inv_wh=warehouse,inventory_items=inventory_items)
+    return render_template(
+        'nursing_case.html',
+        order=order,
+        defaults=defaults,
+        entries=entries,
+        inv_wh=warehouse,
+        inventory_items=inventory_items,
+        image_url=clinical_image_only_url(order),
+        attachments=(
+            Attachment.query
+            .filter_by(order_id=order.id)
+            .order_by(Attachment.created_at.desc())
+            .all()
+        ),
+        clinical_notes=(
+            ClinicalNote.query
+            .filter_by(order_id=order.id)
+            .order_by(ClinicalNote.created_at.desc())
+            .limit(10)
+            .all()
+        ),
+    )
 
 @app.post('/nursing/<int:order_id>/correct')
 @require_perm('consumables.correct')

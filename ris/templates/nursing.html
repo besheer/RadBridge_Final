@@ -1,9 +1,127 @@
-{% extends "base.html" %}{% block page_title %}Nursing Queue / قائمة التمريض{% endblock %}{% block content %}
-{% if has_perm('inventory.view') %}<div class="actions inventory-workstation-actions"><a class="btn" href="{{url_for('inventory_stock')}}">📦 Branch Stock</a><a class="btn" href="{{url_for('inventory_transfers')}}">⇄ Transfers</a>{% if has_perm('inventory.reports') %}<a class="btn" href="{{url_for('inventory_consumption_report')}}">📊 Usage Report</a>{% endif %}</div>{% endif %}
+{% extends "base.html" %}
 
-<form method="get" class="panel global-screen-filter"><div class="filter-grid">
-<input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
-<input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
-<input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
-<select name="priority"><option value="">Priority</option><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select>
-</div><div class="actions"><button class="btn small primary">Filter</button><a class="btn small" href="{{request.path}}">Clear</a></div></form><div class="panel"><table><tr><th>Time</th><th>Patient</th><th>Exam</th><th>Defaults</th><th>Status</th><th></th></tr>{% for o,d,c in rows %}<tr><td>{{o.scheduled}}</td><td>{{o.patient.name}}</td><td>{{o.proc.name if o.proc else o.procedure}}</td><td>{{d}}</td><td>{{"Confirmed" if c else "Pending"}}</td><td><a class="btn primary" href="{{url_for("nursing_case",order_id=o.id)}}">Open</a></td></tr>{% endfor %}</table></div>{% endblock %}
+{% block page_title %}Nursing & Patient Preparation{% endblock %}
+{% block subtitle %}
+Clinical preparation, history, attachments and consumables · No report access
+{% endblock %}
+
+{% block content %}
+<style>
+.nurse-summary,.nurse-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:14px;
+}
+.nurse-summary { margin-bottom:16px; }
+.nurse-stat,.nurse-card {
+  border:1px solid var(--border,#294052);
+  border-radius:14px;
+  background:var(--panel,#101d2d);
+}
+.nurse-stat { padding:16px; }
+.nurse-stat strong { display:block;font-size:26px;margin-top:5px; }
+.nurse-card { overflow:hidden; }
+.nurse-thumb {
+  width:100%;height:145px;object-fit:cover;display:block;background:#071018;
+}
+.nurse-thumb-empty {
+  height:145px;display:flex;align-items:center;justify-content:center;
+  background:#071018;color:#8fa4b7;
+}
+.nurse-body { padding:14px; }
+.nurse-head { display:flex;justify-content:space-between;gap:10px; }
+.nurse-meta {
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+  margin:12px 0;font-size:13px;
+}
+.nurse-meta small { display:block;color:#8fa4b7; }
+.nurse-actions { display:flex;flex-wrap:wrap;gap:8px; }
+</style>
+
+{% set ns=namespace(total=0,pending=0,confirmed=0,images=0) %}
+{% for o,d,c in rows %}
+  {% set ns.total=ns.total+1 %}
+  {% if c %}{% set ns.confirmed=ns.confirmed+1 %}
+  {% else %}{% set ns.pending=ns.pending+1 %}{% endif %}
+  {% if (o.pacs_image_count or 0)>0 %}{% set ns.images=ns.images+1 %}{% endif %}
+{% endfor %}
+
+<div class="nurse-summary">
+  <div class="nurse-stat">Open cases<strong>{{ns.total}}</strong></div>
+  <div class="nurse-stat">Preparation pending<strong>{{ns.pending}}</strong></div>
+  <div class="nurse-stat">Consumables confirmed<strong>{{ns.confirmed}}</strong></div>
+  <div class="nurse-stat">Images received<strong>{{ns.images}}</strong></div>
+</div>
+
+<form method="get" class="panel global-screen-filter">
+  <div class="filter-grid">
+    <input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
+    <input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
+    <input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
+    <select name="priority">
+      <option value="">Priority</option>
+      <option>ROUTINE</option><option>URGENT</option><option>STAT</option>
+    </select>
+  </div>
+  <div class="actions">
+    <button class="btn small primary">Filter</button>
+    <a class="btn small" href="{{request.path}}">Clear</a>
+  </div>
+</form>
+
+<h2>Patient Preparation Queue</h2>
+
+<div class="nurse-grid">
+{% for o,d,c in rows %}
+  {% set st=(o.exam_status or 'ORDERED')|upper %}
+  <article class="nurse-card">
+    {% if (o.pacs_image_count or 0)>0 and o.pacs_study_id %}
+      <img class="nurse-thumb"
+           src="{{url_for('order_study_thumbnail',order_id=o.id)}}"
+           alt="Study thumbnail for {{o.accession}}"
+           loading="lazy">
+    {% else %}
+      <div class="nurse-thumb-empty">No PACS image received</div>
+    {% endif %}
+
+    <div class="nurse-body">
+      <div class="nurse-head">
+        <div>
+          <strong>{{o.patient.name}}</strong>
+          <small>{{o.patient.patient_id}} · {{o.accession}}</small>
+        </div>
+        <span class="status-chip status-{{st|lower|replace('_','-')}}">{{st}}</span>
+      </div>
+
+      <div class="nurse-meta">
+        <div><small>Exam</small>{{o.proc.name if o.proc else o.procedure}}</div>
+        <div><small>Priority</small>{{o.priority or 'ROUTINE'}}</div>
+        <div><small>Consumables</small>{{'Confirmed' if c else 'Pending'}} · {{d}} default</div>
+        <div><small>PACS</small>{{o.pacs_status or 'WAITING'}} · {{o.pacs_image_count or 0}} image(s)</div>
+      </div>
+
+      <div class="nurse-actions">
+        <a class="btn primary" href="{{url_for('nursing_case',order_id=o.id)}}">
+          Open Preparation
+        </a>
+
+        {% if image_urls.get(o.id) %}
+          <a class="btn" href="{{image_urls.get(o.id)}}"
+             target="_blank" rel="noopener noreferrer">🖼 Open Images</a>
+        {% endif %}
+
+        <a class="btn" href="{{url_for('order_clinical_notes',order_id=o.id)}}">
+          📝 History & Notes
+        </a>
+
+        <a class="btn" href="{{url_for('order_attachments',order_id=o.id)}}">
+          📎 Attachments ({{attachment_counts.get(o.id,0)}})
+        </a>
+      </div>
+    </div>
+  </article>
+{% else %}
+  <div class="panel empty">No open nursing cases.</div>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,60 +1,186 @@
-{% extends "base.html" %}{% block page_title %}Nursing — {{order.patient.name}}
-{% endblock %}{% block subtitle %}Default quantities are suggested per exam; nursing confirms actual use{% endblock %}{% block content %}
-<div id="nursing-extra-consumables-v52721" class="panel" style="margin-top:16px">
-  <div class="section-title">Extra Consumables / مستهلكات إضافية</div>
-  {% set inv_wh=default_warehouse_for_order(order) %}
-  <p class="muted">Branch Warehouse:
-    <b>{{inv_wh.name if inv_wh else 'Not configured'}}</b>
-  </p>
+{% extends "base.html" %}
 
-  {% if inv_wh and has_perm('inventory.add_extra_consumable') %}
-  <form method="post" action="{{url_for('order_consumables',order_id=order.id)}}" class="grid3">
-    <input type="hidden" name="action" value="EXTRA">
-    <select name="item_id" required id="nursingExtraItem">
-      <option value="">Select extra consumable</option>
-      {% for i in InventoryItem.query.filter_by(active=True).order_by(InventoryItem.name).all() %}
-      <option value="{{i.id}}" data-stock="{{inventory_available_qty(inv_wh.id,i.id)}}" data-unit="{{i.unit}}">
-        {{i.name}} — Available {{inventory_available_qty(inv_wh.id,i.id)}} {{i.unit}}
-      </option>
+{% block page_title %}Nursing — {{order.patient.name}}{% endblock %}
+{% block subtitle %}
+Patient preparation, clinical history, attachments and actual consumables
+{% endblock %}
+
+{% block content %}
+<style>
+.nursing-case-grid {
+  display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,2fr);
+  gap:16px;align-items:start;
+}
+.nursing-preview {
+  width:100%;max-height:260px;object-fit:cover;
+  border-radius:10px;background:#071018;
+}
+.nursing-actions { display:flex;flex-wrap:wrap;gap:8px;margin-top:12px; }
+@media(max-width:900px){.nursing-case-grid{grid-template-columns:1fr}}
+</style>
+
+<div class="nursing-case-grid">
+  <aside>
+    <div class="panel">
+      {% if (order.pacs_image_count or 0)>0 and order.pacs_study_id %}
+        <img class="nursing-preview"
+             src="{{url_for('order_study_thumbnail',order_id=order.id)}}"
+             alt="Study thumbnail"
+             loading="lazy">
+      {% else %}
+        <div class="empty">No PACS image received</div>
+      {% endif %}
+
+      <h3>{{order.patient.name}}</h3>
+      <p>{{order.patient.patient_id}} · <b>{{order.accession}}</b></p>
+      <p>{{order.proc.name if order.proc else order.procedure}}</p>
+      <p>
+        Exam: <b>{{order.exam_status or 'ORDERED'}}</b><br>
+        PACS: <b>{{order.pacs_status or 'WAITING'}}</b>
+        · {{order.pacs_image_count or 0}} image(s)
+      </p>
+
+      <div class="nursing-actions">
+        {% if image_url %}
+          <a class="btn primary" href="{{image_url}}"
+             target="_blank" rel="noopener noreferrer">🖼 Open Images</a>
+        {% endif %}
+        <a class="btn" href="{{url_for('order_clinical_notes',order_id=order.id)}}">
+          📝 Add History / Note
+        </a>
+        <a class="btn" href="{{url_for('order_attachments',order_id=order.id)}}">
+          📎 All Attachments
+        </a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Recent Clinical Notes</h3>
+      {% for note in clinical_notes %}
+        <div style="padding:9px 0;border-bottom:1px solid var(--border,#294052)">
+          <b>{{note.note_type}}</b>
+          <small>{{note.created_at}}</small>
+          <div>{{note.text}}</div>
+        </div>
+      {% else %}
+        <p class="muted">No clinical history or notes recorded.</p>
       {% endfor %}
-    </select>
-    <input name="qty" type="number" min="0.0001" step="0.0001" value="1" required>
-    <input name="reason" required placeholder="Reason for extra consumable">
-    <button class="btn primary">＋ Add Extra Consumable</button>
-  </form>
-  {% endif %}
+    </div>
 
-  {% if inv_wh and (has_perm('inventory.waste') or has_perm('inventory.return')) %}
-  <details style="margin-top:12px">
-    <summary>Waste / Return</summary>
-    <form method="post" action="{{url_for('order_consumables',order_id=order.id)}}" class="grid3" style="margin-top:10px">
-      <select name="item_id" required>
-        <option value="">Select consumable</option>
-        {% for i in InventoryItem.query.filter_by(active=True).order_by(InventoryItem.name).all() %}
-        <option value="{{i.id}}">{{i.name}} — Available {{inventory_available_qty(inv_wh.id,i.id)}} {{i.unit}}</option>
+    <div class="panel">
+      <h3>Attachments</h3>
+
+      {% for attachment in attachments %}
+        <p>
+          <a href="{{url_for('attachment_preview',attachment_id=attachment.id)}}"
+             target="_blank" rel="noopener noreferrer">
+            {{attachment.original_name}}
+          </a>
+        </p>
+      {% else %}
+        <p class="muted">No attachments.</p>
+      {% endfor %}
+
+      {% if has_perm('attachments.upload') %}
+        <form method="post"
+              action="{{url_for('attachment_upload')}}"
+              enctype="multipart/form-data">
+          <input type="hidden" name="patient_id" value="{{order.patient_id}}">
+          <input type="hidden" name="order_id" value="{{order.id}}">
+          <input type="hidden" name="category" value="CLINICAL">
+          <input type="file" name="files" multiple required>
+          <input name="notes" placeholder="Attachment note">
+          <button class="btn">＋ Upload</button>
+        </form>
+      {% endif %}
+    </div>
+  </aside>
+
+  <main>
+    {% set any_confirmed =
+      entries and (entries.values()|selectattr('confirmed')|list|length > 0)
+    %}
+
+    <div class="panel">
+      <h3>Actual Consumables</h3>
+      <p class="muted">
+        Suggested quantities come from the examination protocol.
+        Confirm only the quantities actually used.
+      </p>
+
+      {% if not any_confirmed %}
+        <form method="post">
+          <table>
+            <tr><th>Item</th><th>Default</th><th>Actual</th></tr>
+            {% for item in defaults %}
+              <tr>
+                <td>{{item.consumable.name}}</td>
+                <td>{{item.qty}} {{item.consumable.unit}}</td>
+                <td>
+                  <input type="number" min="0" step=".01"
+                         name="qty_{{item.consumable_id}}"
+                         value="{{item.qty}}">
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="empty">No default consumables.</td></tr>
+            {% endfor %}
+          </table>
+          <button class="btn primary">Confirm Actual Consumables</button>
+        </form>
+      {% else %}
+        <table>
+          <tr><th>Item</th><th>Default</th><th>Actual</th></tr>
+          {% for item in defaults %}
+            {% set entry=entries.get(item.consumable_id) %}
+            <tr>
+              <td>{{item.consumable.name}}</td>
+              <td>{{item.qty}}</td>
+              <td>{{entry.actual_qty if entry else 0}}</td>
+            </tr>
+          {% endfor %}
+        </table>
+        <p><b>Locked after confirmation.</b></p>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <h3>Additional Consumables & Inventory</h3>
+      <p>Branch warehouse: <b>{{inv_wh.name if inv_wh else 'Not configured'}}</b></p>
+
+      <div class="nursing-actions">
+        {% if has_perm('inventory.view') %}
+          <a class="btn primary"
+             href="{{url_for('order_consumables',order_id=order.id)}}">
+            📦 Full Case Consumables
+          </a>
+        {% endif %}
+        {% if has_perm('inventory.view') %}
+          <a class="btn"
+             href="{{url_for('inventory_stock',warehouse_id=inv_wh.id if inv_wh else '')}}">
+            🏬 Branch Stock
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if any_confirmed and has_perm('consumables.correct') %}
+      <form method="post"
+            action="{{url_for('nursing_consumable_correct',order_id=order.id)}}"
+            class="panel">
+        <h3>Supervisor Correction</h3>
+        {% for item in defaults %}
+          {% set entry=entries.get(item.consumable_id) %}
+          <label>{{item.consumable.name}}</label>
+          <input type="number" min="0" step=".01"
+                 name="qty_{{item.consumable_id}}"
+                 value="{{entry.actual_qty if entry else item.qty}}">
         {% endfor %}
-      </select>
-      <input name="qty" type="number" min="0.0001" step="0.0001" value="1" required>
-      <select name="action">
-        {% if has_perm('inventory.waste') %}<option value="WASTE">Waste</option>{% endif %}
-        {% if has_perm('inventory.return') %}<option value="RETURN">Return to Stock</option>{% endif %}
-      </select>
-      <input name="reason" required placeholder="Reason is required">
-      <button class="btn">Save Movement</button>
-    </form>
-  </details>
-  {% endif %}
-
-  {% if has_perm('inventory.view') %}
-  <div class="actions" style="margin-top:12px">
-    <a class="btn small" href="{{url_for('order_consumables',order_id=order.id)}}">📦 Full Case Consumables</a>
-    <a class="btn small" href="{{url_for('inventory_stock',warehouse_id=inv_wh.id if inv_wh else '')}}">🏬 Branch Stock</a>
-  </div>
-  {% endif %}
+        <label>Documented reason</label>
+        <input name="reason" minlength="5" required>
+        <button class="btn">Save Audited Correction</button>
+      </form>
+    {% endif %}
+  </main>
 </div>
-
-
-{% set any_confirmed = entries and (entries.values()|selectattr('confirmed')|list|length > 0) %}
-<div class="panel"><h3>{{order.proc.name if order.proc else order.procedure}}</h3><p>Accession: <b>{{order.accession}}</b></p></div>
-{% if not any_confirmed %}<form method="post" class="panel"><h3>Confirm Actual Consumables</h3><table><tr><th>Item</th><th>Default</th><th>Actual</th></tr>{% for x in defaults %}<tr><td>{{x.consumable.name}}</td><td>{{x.qty}} {{x.consumable.unit}}</td><td><input type="number" min="0" step=".01" name="qty_{{x.consumable_id}}" value="{{x.qty}}"></td></tr>{% endfor %}</table><button class="btn primary">Confirm Actual Consumables</button></form>
-{% else %}<div class="panel"><h3>Confirmed Consumables</h3><table><tr><th>Item</th><th>Default</th><th>Actual</th></tr>{% for x in defaults %}{% set n=entries.get(x.consumable_id) %}<tr><td>{{x.consumable.name}}</td><td>{{x.qty}}</td><td>{{n.actual_qty if n else 0}}</td></tr>{% endfor %}</table><p><b>Locked after confirmation.</b> A supervisor correction requires permission and a reason.</p></div>{% if has_perm('consumables.correct') %}<form method="post" action="{{url_for('nursing_consumable_correct',order_id=order.id)}}" class="panel"><h3>Supervisor Correction</h3>{% for x in defaults %}{% set n=entries.get(x.consumable_id) %}<label>{{x.consumable.name}}</label><input type="number" min="0" step=".01" name="qty_{{x.consumable_id}}" value="{{n.actual_qty if n else x.qty}}">{% endfor %}<label>Reason</label><input name="reason" minlength="5" required placeholder="Why is this correction required?"><button class="btn">Save Audited Correction</button></form>{% endif %}{% endif %}{% endblock %}
+{% endblock %}
