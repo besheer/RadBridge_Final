@@ -169,6 +169,7 @@ export default function RadBridgeReportingPanel() {
         reportApiUrl('/lease/release'),
         {
           method: 'POST',
+          keepalive: true,
           credentials: 'omit',
           headers: headers(true, true, token),
           body: JSON.stringify({
@@ -186,6 +187,56 @@ export default function RadBridgeReportingPanel() {
       setLeaseExpiresAt('');
     }
   }
+
+  // RB_DEDICATED_WINDOW_LEASE_RELEASE_V1
+  // Release the lease when the dedicated browser window is closed.
+  useEffect(() => {
+    if (!dedicatedOnlyOfficeWindow) {
+      return;
+    }
+
+    const releaseLeaseOnPageHide = () => {
+      const token = leaseTokenRef.current;
+
+      if (!orderId || !token) {
+        return;
+      }
+
+      leaseTokenRef.current = '';
+
+      void fetch(
+        reportApiUrl('/lease/release'),
+        {
+          method: 'POST',
+          keepalive: true,
+          credentials: 'omit',
+          headers: headers(true, true, token),
+          body: JSON.stringify({
+            lease_token: token,
+          }),
+        }
+      ).catch(() => {
+        // Server-side expiry remains the safe fallback.
+      });
+    };
+
+    window.addEventListener(
+      'pagehide',
+      releaseLeaseOnPageHide
+    );
+
+    return () => {
+      window.removeEventListener(
+        'pagehide',
+        releaseLeaseOnPageHide
+      );
+    };
+  }, [
+    dedicatedOnlyOfficeWindow,
+    orderId,
+    studyInstanceUID,
+    identity,
+  ]);
 
   function openOnlyOfficeWindow() {
     setError('');
