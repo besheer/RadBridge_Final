@@ -572,6 +572,9 @@ export default function OnlyOfficeReportEditor({
             {reportStatus} · Version {baseVersionNo}
           </span>
 
+          {/* RB_FINAL_ONLYOFFICE_TOOLBAR_READONLY_V1 */}
+          {reportStatus !== 'FINAL' && (
+            <>
           <button
             type="button"
             disabled={
@@ -643,6 +646,8 @@ export default function OnlyOfficeReportEditor({
           >
             🔒 Finalize
           </button>
+            </>
+          )}
 
           <button
             type="button"
