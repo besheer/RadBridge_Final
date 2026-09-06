@@ -23184,8 +23184,8 @@ def api_ohif_onlyoffice_config(order_id):
     )
 
     document_url = (
-        f'https://radviewer.radbridges.com'
-        f'/radbridge-api/api/ohif/report/{order.id}/onlyoffice/document'
+        f'{ONLYOFFICE_RIS_INTERNAL_URL}'
+        f'/api/ohif/report/{order.id}/onlyoffice/document'
         f'?token={quote(doc_token)}'
     )
 
