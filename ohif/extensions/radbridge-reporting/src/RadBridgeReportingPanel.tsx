@@ -37,11 +37,19 @@ export default function RadBridgeReportingPanel() {
     params.get('radbridgeReportWindow') === 'ONLYOFFICE';
 
   const onlyOfficeAutoOpenRef = useRef(false);
+  // RB_ONLYOFFICE_WINDOW_REFERENCE_V1
+  const onlyOfficeWindowRef = useRef<Window | null>(null);
 
   const orderId =
     params.get('radbridgeOrderId') ||
     params.get('orderId') ||
     '';
+
+  const safeOrderId =
+    orderId.replace(/[^a-zA-Z0-9_-]/g, '-');
+
+  const dedicatedOnlyOfficeWindowName =
+    `radbridge-onlyoffice-${safeOrderId}`;
 
   const identity =
     params.get('radbridgeIdentity') ||
@@ -238,8 +246,26 @@ export default function RadBridgeReportingPanel() {
     identity,
   ]);
 
+  // MultiMonitorService may replace window.name during OHIF startup.
+  // Restore the reporting name so subsequent opens reuse this window.
+  useEffect(() => {
+    if (dedicatedOnlyOfficeWindow) {
+      window.name = dedicatedOnlyOfficeWindowName;
+    }
+  }, [
+    dedicatedOnlyOfficeWindow,
+    dedicatedOnlyOfficeWindowName,
+  ]);
+
   function openOnlyOfficeWindow() {
     setError('');
+
+    const trackedWindow = onlyOfficeWindowRef.current;
+
+    if (trackedWindow && !trackedWindow.closed) {
+      trackedWindow.focus();
+      return;
+    }
 
     const editorUrl = new URL(window.location.href);
     editorUrl.searchParams.set(
@@ -247,15 +273,9 @@ export default function RadBridgeReportingPanel() {
       'ONLYOFFICE'
     );
 
-    const safeOrderId =
-      orderId.replace(/[^a-zA-Z0-9_-]/g, '-');
-
-    const editorWindowName =
-      `radbridge-onlyoffice-${safeOrderId}`;
-
     const editorWindow = window.open(
       '',
-      editorWindowName,
+      dedicatedOnlyOfficeWindowName,
       'popup=yes,width=1400,height=900,resizable=yes,scrollbars=yes'
     );
 
@@ -265,6 +285,8 @@ export default function RadBridgeReportingPanel() {
       );
       return;
     }
+
+    onlyOfficeWindowRef.current = editorWindow;
 
     let matchingEditorWindow = false;
 
