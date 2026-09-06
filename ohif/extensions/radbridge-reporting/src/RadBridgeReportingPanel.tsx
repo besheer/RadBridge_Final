@@ -20,6 +20,9 @@ export default function RadBridgeReportingPanel() {
   // RadBridge report edit lease.
   // The backend requires a valid lease for every clinical write.
   const [leaseToken, setLeaseToken] = useState('');
+  // RB_REPORT_LEASE_TOKEN_REF_V1
+  // Keep the active token available to async close handlers.
+  const leaseTokenRef = useRef('');
   const [leaseExpiresAt, setLeaseExpiresAt] = useState('');
   const [leaseEditorType, setLeaseEditorType] = useState('BROWSER');
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
@@ -94,7 +97,8 @@ export default function RadBridgeReportingPanel() {
       h['X-RadBridge-Doctor-Identity'] = identity;
     }
 
-    const activeLeaseToken = tokenOverride || leaseToken;
+    const activeLeaseToken =
+      tokenOverride || leaseTokenRef.current || leaseToken;
 
     if (includeLease && activeLeaseToken) {
       h['X-RadBridge-Report-Lease'] = activeLeaseToken;
@@ -111,7 +115,8 @@ export default function RadBridgeReportingPanel() {
       throw new Error('Order ID is missing.');
     }
 
-    const token = tokenOverride || leaseToken;
+    const token =
+      tokenOverride || leaseTokenRef.current || leaseToken;
 
     const response = await fetch(
       reportApiUrl('/lease/acquire'),
@@ -143,6 +148,7 @@ export default function RadBridgeReportingPanel() {
       throw new Error('REPORT_LEASE_TOKEN_MISSING');
     }
 
+    leaseTokenRef.current = newToken;
     setLeaseToken(newToken);
     setLeaseExpiresAt(String(payload?.expires_at || ''));
     setLeaseEditorType(editorType);
@@ -151,7 +157,8 @@ export default function RadBridgeReportingPanel() {
   }
 
   async function releaseReportLease(tokenOverride = '') {
-    const token = tokenOverride || leaseToken;
+    const token =
+      tokenOverride || leaseTokenRef.current || leaseToken;
 
     if (!orderId || !token) {
       return;
@@ -173,7 +180,8 @@ export default function RadBridgeReportingPanel() {
       // Lease expiry is a safe fallback if explicit release fails.
     }
 
-    if (token === leaseToken) {
+    if (leaseTokenRef.current === token) {
+      leaseTokenRef.current = '';
       setLeaseToken('');
       setLeaseExpiresAt('');
     }
@@ -285,7 +293,7 @@ export default function RadBridgeReportingPanel() {
   async function closeReportEditor(
     editorType: 'ONLYOFFICE' | 'BROWSER'
   ) {
-    const token = leaseToken;
+    const token = leaseTokenRef.current || leaseToken;
 
     if (editorType === 'ONLYOFFICE') {
       setOnlyOfficeEditorOpen(false);
