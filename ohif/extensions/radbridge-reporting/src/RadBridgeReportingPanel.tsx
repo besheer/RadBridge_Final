@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import EmbeddedReportEditor from './EmbeddedReportEditor';
 import OnlyOfficeReportEditor from './OnlyOfficeReportEditor';
 
@@ -28,6 +28,12 @@ export default function RadBridgeReportingPanel() {
     () => new URLSearchParams(window.location.search),
     []
   );
+
+  // RB_ONLYOFFICE_DEDICATED_WINDOW_V1
+  const dedicatedOnlyOfficeWindow =
+    params.get('radbridgeReportWindow') === 'ONLYOFFICE';
+
+  const onlyOfficeAutoOpenRef = useRef(false);
 
   const orderId =
     params.get('radbridgeOrderId') ||
@@ -173,10 +179,76 @@ export default function RadBridgeReportingPanel() {
     }
   }
 
+  function openOnlyOfficeWindow() {
+    setError('');
+
+    const editorUrl = new URL(window.location.href);
+    editorUrl.searchParams.set(
+      'radbridgeReportWindow',
+      'ONLYOFFICE'
+    );
+
+    const safeOrderId =
+      orderId.replace(/[^a-zA-Z0-9_-]/g, '-');
+
+    const editorWindowName =
+      `radbridge-onlyoffice-${safeOrderId}`;
+
+    const editorWindow = window.open(
+      '',
+      editorWindowName,
+      'popup=yes,width=1400,height=900,resizable=yes,scrollbars=yes'
+    );
+
+    if (!editorWindow) {
+      setError(
+        'The report window was blocked. Allow pop-ups for RadBridge and try again.'
+      );
+      return;
+    }
+
+    let matchingEditorWindow = false;
+
+    try {
+      const activeUrl =
+        new URL(editorWindow.location.href);
+
+      const activeOrderId =
+        activeUrl.searchParams.get('radbridgeOrderId') ||
+        activeUrl.searchParams.get('orderId') ||
+        '';
+
+      matchingEditorWindow =
+        activeUrl.searchParams.get(
+          'radbridgeReportWindow'
+        ) === 'ONLYOFFICE' &&
+        activeOrderId === orderId;
+    } catch {
+      matchingEditorWindow = false;
+    }
+
+    if (!matchingEditorWindow) {
+      editorWindow.location.href =
+        editorUrl.toString();
+    }
+
+    editorWindow.focus();
+  }
+
   async function openReportEditor(
     editorType: 'ONLYOFFICE' | 'BROWSER'
   ) {
     if (!orderId) {
+      return;
+    }
+
+    // The parent OHIF viewer keeps the diagnostic images visible.
+    // The dedicated window owns the editor and its report lease.
+    if (
+      editorType === 'ONLYOFFICE' &&
+      !dedicatedOnlyOfficeWindow
+    ) {
+      openOnlyOfficeWindow();
       return;
     }
 
@@ -223,6 +295,13 @@ export default function RadBridgeReportingPanel() {
 
     if (token) {
       await releaseReportLease(token);
+    }
+
+    if (
+      editorType === 'ONLYOFFICE' &&
+      dedicatedOnlyOfficeWindow
+    ) {
+      window.close();
     }
   }
 
@@ -366,6 +445,28 @@ export default function RadBridgeReportingPanel() {
       }
 
       applyData(d);
+
+      if (
+        dedicatedOnlyOfficeWindow &&
+        !onlyOfficeAutoOpenRef.current
+      ) {
+        onlyOfficeAutoOpenRef.current = true;
+
+        const loadedStatus =
+          String(
+            d?.report?.status || 'DRAFT'
+          ).toUpperCase();
+
+        if (
+          loadedStatus === 'VERIFIED' ||
+          loadedStatus === 'FINAL'
+        ) {
+          setOnlyOfficeEditorOpen(true);
+        } else {
+          await acquireReportLease('ONLYOFFICE');
+          setOnlyOfficeEditorOpen(true);
+        }
+      }
     } catch (e: any) {
       setError(e?.message || String(e));
     } finally {
@@ -895,8 +996,8 @@ export default function RadBridgeReportingPanel() {
           onClick={() => openReportEditor('ONLYOFFICE')}
         >
           {locked
-            ? `📄 View ${status} in ONLYOFFICE`
-            : '📄 Open ONLYOFFICE'}
+            ? `📄 View ${status} in New Window`
+            : '📄 Open ONLYOFFICE in New Window'}
         </button>
 
         <button
