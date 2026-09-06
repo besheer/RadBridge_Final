@@ -1,8 +1,18 @@
-navigator.serviceWorker.getRegistrations().then(function (registrations) {
-  for (let registration of registrations) {
-    registration.unregister();
-  }
-});
+// RB_SERVICE_WORKER_CAPABILITY_GUARD_V1
+if (
+  typeof navigator !== 'undefined' &&
+  navigator.serviceWorker &&
+  typeof navigator.serviceWorker.getRegistrations === 'function'
+) {
+  navigator.serviceWorker.getRegistrations()
+    .then(function (registrations) {
+      return Promise.all(
+        registrations.map(registration => registration.unregister())
+      );
+    }).catch(function () {
+      console.warn('Service worker cleanup could not complete.');
+    });
+}
 
 // https://developers.google.com/web/tools/workbox/modules/workbox-window
 // All major browsers that support service worker also support native JavaScript

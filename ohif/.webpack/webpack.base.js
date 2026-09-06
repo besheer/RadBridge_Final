@@ -98,6 +98,15 @@ module.exports = (env, argv, { SRC_DIR, ENTRY }) => {
     module: {
       noParse: [/(dicomicc)/],
       rules: [
+        {
+          // RB_ONNX_NODE_PARSER_GUARD_V1
+          // Preserve ONNX runtime checks for browser vs Node globals.
+          test: /\.[cm]?js$/,
+          include: /[\\/]onnxruntime-web[\\/]/,
+          parser: {
+            node: false,
+          },
+        },
         ...(isProdBuild
           ? []
           : [
