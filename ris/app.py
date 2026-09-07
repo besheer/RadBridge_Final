@@ -20676,12 +20676,15 @@ def resolve_storage_target(storage_type='PACS', branch_id=None, company_code='',
     candidates=[x for x in rows if rank(x)[0]<9]
     return sorted(candidates,key=rank)[0] if candidates else None
 
-@app.get('/api/storage/resolve')
-@require_perm('storage.targets.view')
-def api_storage_resolve():
-    row=resolve_storage_target(request.args.get('type') or 'PACS',request.args.get('branch_id',type=int),request.args.get('company_code') or '',request.args.get('role') or 'PRIMARY')
-    if not row:return jsonify({'ok':False,'error':'NO_STORAGE_TARGET'}),404
-    return jsonify({'ok':True,'id':row.id,'code':row.code,'path':row.path,'protocol':row.protocol,'role':row.role,'health':row.health_status,'branch_id':row.branch_id,'company_code':row.company_code})
+# RB_STORAGE_BLUEPRINT_V1
+from storage_routes import register_storage_routes
+
+# Preserve the app module's callable and late lookup of the resolver.
+api_storage_resolve = register_storage_routes(
+    app,
+    require_perm,
+    lambda *args, **kwargs: resolve_storage_target(*args, **kwargs),
+)
 
 def refresh_storage_health(row):
     """Refresh capacity/writability for a mounted target without changing data."""
