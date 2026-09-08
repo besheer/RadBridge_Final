@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <div><label>{{'الجنسية' if ui_lang=='ar' else 'Nationality'}}</label><input name="new_nationality" value="{{fd.get('new_nationality','')}}"></div>
 <div><label>{{'نوع الهوية' if ui_lang=='ar' else 'ID Type'}}</label><select name="new_id_type"><option>NATIONAL_ID</option><option>PASSPORT</option><option>OTHER</option></select></div>
 <div><label>{{'رقم هوية أخرى' if ui_lang=='ar' else 'Other ID'}}</label><input name="new_other_id" value="{{fd.get('new_other_id','')}}"></div>
-<div><label>DOB</label><input type="date" name="new_dob" value="{{fd.get('new_dob','')}}"></div>
+{% set age_dob_form=fd %}{% set age_dob_prefix='new_' %}{% include '_patient_age_dob_fields.html' %}
 <div><label>Sex</label><select name="new_sex"><option></option><option value="M">Male</option><option value="F">Female</option></select></div>
 <div><label>Email</label><input name="new_email" value="{{fd.get('new_email','')}}"></div>
 <div><label>{{'العنوان' if ui_lang=='ar' else 'Address'}}</label><input name="new_address" value="{{fd.get('new_address','')}}"></div>

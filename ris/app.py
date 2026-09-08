@@ -42,6 +42,7 @@ import os, smtplib, secrets, io, json, re, csv, tempfile, hashlib
 from datetime import datetime, timedelta, date
 from functools import wraps
 from workflow_engine import can_transition, normalize_state
+from patient_demographics import resolve_patient_dob
 import uuid
 from flask import Flask, request, redirect, url_for, render_template, flash, send_file, jsonify, session, abort, Response
 from flask_sqlalchemy import SQLAlchemy
@@ -285,6 +286,7 @@ class Patient(db.Model):
     patient_id = db.Column(db.String(40), unique=True, nullable=False)
     name = db.Column(db.String(120), nullable=False)
     dob = db.Column(db.String(8))
+    dob_estimated = db.Column(db.Boolean, default=False, nullable=False)
     sex = db.Column(db.String(1))
     phone = db.Column(db.String(30))
     national_id = db.Column(db.String(30))
@@ -4427,20 +4429,15 @@ def _rb_registration_v2_worklist_name(form):
     return '^'.join(x for x in _rb_registration_v2_name_parts(form) if x).strip('^')
 
 def _rb_registration_v2_dob(form):
-    raw=(form.get('new_dob') or '').strip()
-    if not raw:return ''
-    try: parsed=datetime.strptime(raw,'%Y-%m-%d').date()
-    except Exception: raise ValueError('Invalid patient date of birth.')
-    if parsed>datetime.now().date():
-        raise ValueError('Patient date of birth cannot be in the future.')
-    return parsed.strftime('%Y%m%d')
+    return resolve_patient_dob(form, prefix='new_').dob
 
 def _rb_registration_v2_create_patient(form,audit_action='PATIENT_CREATE_FROM_CALENDAR'):
     parts=_rb_registration_v2_name_parts(form)
     if not parts[0]: raise ValueError('First name is required.')
     if not any(parts[1:]): raise ValueError('Enter at least one additional patient name.')
     name=_rb_registration_v2_patient_name(form)
-    dob=_rb_registration_v2_dob(form)
+    dob_resolution=resolve_patient_dob(form, prefix='new_')
+    dob=dob_resolution.dob
     phone=(form.get('new_phone') or '').strip()
     national=(form.get('new_national_id') or '').strip()
     duplicates=find_duplicate_patients(name,dob,phone,national)
@@ -4449,6 +4446,7 @@ def _rb_registration_v2_create_patient(form,audit_action='PATIENT_CREATE_FROM_CA
         raise ValueError(f'Possible duplicate patient: {d.patient_id} — {d.name}. Use the existing patient or review the duplicate.')
     patient=Patient(
         patient_id='TMP'+secrets.token_hex(8),name=name,dob=dob,
+        dob_estimated=dob_resolution.estimated,
         sex=(form.get('new_sex') or '').strip(),phone=phone,national_id=national,
         address=(form.get('new_address') or '').strip(),
         worklist_name=_rb_registration_v2_worklist_name(form))
@@ -4835,14 +4833,24 @@ def new_patient():
 
     if request.method=='POST':
         name=request.form['name'].strip()
-        dob=request.form.get('dob','').replace('-','')
+        try:
+            dob_resolution=resolve_patient_dob(request.form, prefix='')
+        except ValueError as exc:
+            flash(str(exc), 'danger')
+            return render_template(
+                'patient_form.html',
+                duplicates=[],
+                form_data=request.form,
+            ), 422
+        dob=dob_resolution.dob
         phone=request.form.get('phone','').strip()
         national_id=request.form.get('national_id','').strip()
         duplicates=find_duplicate_patients(name,dob,phone,national_id)
         if duplicates and request.form.get('confirm_duplicate')!='1':
             return render_template('patient_form.html',duplicates=duplicates,form_data=request.form),409
         p=Patient(patient_id='TMP'+secrets.token_hex(8),name=name,
-                  dob=dob,sex=request.form.get('sex',''),
+                  dob=dob,dob_estimated=dob_resolution.estimated,
+                  sex=request.form.get('sex',''),
                   phone=phone,national_id=national_id,
                   address=request.form.get('address','').strip(),
                   email=request.form.get('email','').strip(),
@@ -4908,7 +4916,17 @@ def new_order():
             if not name:
                 return registration_validation_error('Patient name is required.',request.form)
 
-            dob=(request.form.get('new_dob') or '').replace('-','')
+            try:
+                dob_resolution=resolve_patient_dob(
+                    request.form,
+                    prefix='new_',
+                )
+            except ValueError as exc:
+                return registration_validation_error(
+                    str(exc),
+                    request.form,
+                )
+            dob=dob_resolution.dob
             duplicates=find_duplicate_patients(name,dob,phone,national_id)
 
             if duplicates and request.form.get('confirm_duplicate')!='1':
@@ -4924,6 +4942,7 @@ def new_order():
                 patient_id='TMP'+secrets.token_hex(8),
                 name=name,
                 dob=dob,
+                dob_estimated=dob_resolution.estimated,
                 sex=(request.form.get('new_sex') or '').strip(),
                 phone=phone,
                 national_id=national_id,
@@ -15962,7 +15981,12 @@ def migrate_existing_schema():
     tables=set(inspector.get_table_names())
     if 'patient' in tables:
         cols={c['name'] for c in inspector.get_columns('patient')}
-        additions={'national_id':'VARCHAR(30)','address':'VARCHAR(255)','created_at':'TIMESTAMP'}
+        additions={
+          'national_id':'VARCHAR(30)',
+          'address':'VARCHAR(255)',
+          'created_at':'TIMESTAMP',
+          'dob_estimated':'BOOLEAN DEFAULT FALSE NOT NULL'
+        }
         for col,typ in additions.items():
             if col not in cols:
                 db.session.execute(text(f'ALTER TABLE patient ADD COLUMN {col} {typ}'))

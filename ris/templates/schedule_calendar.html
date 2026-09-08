@@ -411,8 +411,7 @@
  <div><label>Father / Middle</label><input name="new_middle_name"></div>
  <div><label>Third Name</label><input name="new_third_name"></div>
  <div><label>Fourth Name</label><input name="new_fourth_name"></div>
- <div><label>Date of Birth</label><input type="date" name="new_dob" id="dob"></div>
- <div><label>Age</label><input id="age" readonly></div>
+ {% set age_dob_form={} %}{% set age_dob_prefix='new_' %}{% include '_patient_age_dob_fields.html' %}
  <div><label>Sex</label><select name="new_sex"><option value=""></option><option value="M">Male</option><option value="F">Female</option></select></div>
  <div><label>Mobile</label><input name="new_phone"></div>
  <div><label>National ID</label><input name="new_national_id"></div>
@@ -490,7 +489,6 @@ function closeWs(){if(dirty&&!confirm('Discard unsaved changes?'))return;overlay
 document.getElementById('closeWs').onclick=closeWs;document.getElementById('cancelWs').onclick=closeWs;document.getElementById('addExam').onclick=()=>{addExam();dirty=true};document.getElementById('addDoc').onclick=()=>{addDoc();dirty=true};
 document.querySelectorAll('.rb-tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.rb-tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.rb-panel').forEach(x=>x.classList.toggle('active',x.dataset.panel===b.dataset.tab))});
 const psearch=document.getElementById('patientSearch'),pitems=[...document.querySelectorAll('.rb-result')];psearch.oninput=()=>{const q=psearch.value.toLowerCase().trim();pitems.forEach(x=>x.hidden=q&&!x.dataset.q.includes(q))};pitems.forEach(x=>x.onclick=()=>{document.getElementById('patientId').value=x.dataset.id;const t=x.querySelector('b').textContent;document.getElementById('selectedPatient').textContent=t;document.getElementById('selectedPatient').classList.remove('rb-hidden');document.getElementById('sPatient').textContent=t;dirty=true});
-const dob=document.getElementById('dob');dob.max=new Date().toISOString().slice(0,10);dob.onchange=()=>{if(!dob.value){document.getElementById('age').value='';return}const d=new Date(dob.value),n=new Date();let a=n.getFullYear()-d.getFullYear(),m=n.getMonth()-d.getMonth();if(m<0||(m===0&&n.getDate()<d.getDate()))a--;document.getElementById('age').value=Math.max(0,a)};
 function namePreview(){const vals=['new_first_name','new_middle_name','new_third_name','new_fourth_name'].map(k=>(form.elements[k]?.value||'').trim()).filter(Boolean);document.getElementById('nameView').textContent=vals.join(' ')||'—';document.getElementById('dicomView').textContent=vals.join('^')||'—';if(modeInput.value==='new')document.getElementById('sPatient').textContent=vals.join(' ')||'New Patient'}
 ['new_first_name','new_middle_name','new_third_name','new_fourth_name'].forEach(k=>form.elements[k].oninput=()=>{namePreview();dirty=true});
 function setField(k,v){const e=form.elements[k];if(!e||v===undefined||v===null||v==='')return;e.value=String(v);e.dispatchEvent(new Event('input'));e.dispatchEvent(new Event('change'))}
