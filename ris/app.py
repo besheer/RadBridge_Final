@@ -8503,11 +8503,64 @@ def booking_control_reason(branch,procedure,device,start_at,end_at):
         BookingBlock.end_at > start_at
     ).all()
     for b in rows:
+        # Staff availability belongs to assignment/worklist scheduling.
+        # It must never block creation of the patient's appointment.
+        if (b.block_type or '').upper() in ('DOCTOR','TECHNICIAN'):
+            continue
         if b.branch_id and b.branch_id!=branch.id:continue
         if b.device_id and b.device_id!=device.id:continue
         if b.procedure_id and b.procedure_id!=procedure.id:continue
         return b.reason_text or b.reason_code
     return ''
+
+
+def validate_booking_block_scope(
+    *,block_type,branch_id=None,device_id=None,procedure_id=None,
+    user_id=None,start_at=None,end_at=None
+):
+    block_type=str(block_type or 'OTHER').strip().upper()
+    allowed={'DEVICE','PROCEDURE','BRANCH','DOCTOR','TECHNICIAN','OTHER'}
+    if block_type not in allowed:
+        return 'Invalid booking block type.'
+    if not start_at or not end_at:
+        return 'Start and end date/time are required.'
+    if end_at<=start_at:
+        return 'End date/time must be after start date/time.'
+    required={
+        'DEVICE':(device_id,'Select a device for a device block.'),
+        'PROCEDURE':(procedure_id,'Select a procedure for a procedure block.'),
+        'BRANCH':(branch_id,'Select a branch for a branch block.'),
+        'DOCTOR':(user_id,'Select a doctor for a doctor availability block.'),
+        'TECHNICIAN':(user_id,'Select a technician for a technician availability block.'),
+    }
+    value_and_message=required.get(block_type)
+    if value_and_message and not value_and_message[0]:
+        return value_and_message[1]
+    if block_type=='OTHER' and not any(
+        (branch_id,device_id,procedure_id,user_id)
+    ):
+        return 'Select at least one scope for an Other block.'
+    return ''
+
+
+def acquire_booking_slot_lock(device_id,start_at):
+    """Serialize booking checks for one device/day on PostgreSQL.
+
+    The lock lives only for the current transaction. The second concurrent
+    request waits, then repeats the overlap check after the first commits.
+    SQLite test runs intentionally use a no-op because they are single-process
+    contract tests and do not support PostgreSQL advisory locks.
+    """
+    if not device_id or not start_at:
+        return
+    bind=db.session.get_bind()
+    if bind.dialect.name!='postgresql':
+        return
+    lock_name=f'radbridge-booking:{int(device_id)}:{start_at:%Y-%m-%d}'
+    db.session.execute(
+        text('SELECT pg_advisory_xact_lock(hashtextextended(:name,0))'),
+        {'name':lock_name},
+    )
 
 
 DEFAULT_UI_DICTIONARY=[
@@ -12284,6 +12337,7 @@ def schedule_book():
         for proc in procedures:
             duration=max(5,int(proc.duration_min or 20))
             if not waiting:
+                acquire_booking_slot_lock(device.id,cursor)
                 reason=booking_restriction_reason(branch,proc,device,cursor,duration)
                 if reason:raise ValueError(f'{proc.name}: {reason}')
             duplicate=Appointment.query.filter_by(patient_id=patient.id,procedure_id=proc.id,scheduled=cursor).filter(Appointment.status!='CANCELLED').first()
@@ -12445,6 +12499,7 @@ def appointment_reschedule(appointment_id):
     device=Device.query.get_or_404(device_id)
     if device.branch_id!=a.branch_id or device.modality.upper()!=a.procedure.modality.upper():
         return jsonify({'ok':False,'error':'Device/branch/modality mismatch'}),400
+    acquire_booking_slot_lock(device.id,new_time)
     conflict=appointment_overlap(device.id,new_time,a.duration_min or a.procedure.duration_min,exclude_id=a.id)
     if conflict:return jsonify({'ok':False,'error':f'Conflicts with appointment #{conflict.id}'}),409
     old=a.scheduled
@@ -12738,9 +12793,39 @@ def admin_booking_control():
             end_at=datetime.fromisoformat(request.form.get('end_at') or '')
         except Exception:
             flash('Invalid date.','danger');return redirect(url_for('admin_booking_control'))
-        row=BookingBlock(block_type=(request.form.get('block_type') or 'OTHER').upper(),branch_id=request.form.get('branch_id',type=int),device_id=request.form.get('device_id',type=int),procedure_id=request.form.get('procedure_id',type=int),user_id=request.form.get('user_id',type=int),start_at=start_at,end_at=end_at,reason_code=(request.form.get('reason_code') or 'OTHER').upper(),reason_text=(request.form.get('reason_text') or '').strip(),active=True,created_by=current_user().id)
+        block_type=(request.form.get('block_type') or 'OTHER').upper()
+        branch_id=request.form.get('branch_id',type=int)
+        device_id=request.form.get('device_id',type=int)
+        procedure_id=request.form.get('procedure_id',type=int)
+        user_id=request.form.get('user_id',type=int)
+        validation_error=validate_booking_block_scope(
+            block_type=block_type,branch_id=branch_id,device_id=device_id,
+            procedure_id=procedure_id,user_id=user_id,
+            start_at=start_at,end_at=end_at,
+        )
+        if validation_error:
+            flash(validation_error,'danger');return redirect(url_for('admin_booking_control'))
+        target_user=User.query.get(user_id) if user_id else None
+        target_role=(target_user.role.code if target_user and target_user.role else '').upper()
+        if block_type=='DOCTOR' and target_role not in ('DOCTOR','RADIOLOGIST'):
+            flash('The selected user is not a doctor/radiologist.','danger');return redirect(url_for('admin_booking_control'))
+        if block_type=='TECHNICIAN' and target_role!='TECHNICIAN':
+            flash('The selected user is not a technician.','danger');return redirect(url_for('admin_booking_control'))
+        row=BookingBlock(block_type=block_type,branch_id=branch_id,device_id=device_id,procedure_id=procedure_id,user_id=user_id,start_at=start_at,end_at=end_at,reason_code=(request.form.get('reason_code') or 'OTHER').upper(),reason_text=(request.form.get('reason_text') or '').strip(),active=True,created_by=current_user().id)
         db.session.add(row);db.session.commit();return redirect(url_for('admin_booking_control'))
     return render_template('admin_booking_control.html',rows=BookingBlock.query.order_by(BookingBlock.start_at.desc()).limit(500).all(),branches=Branch.query.order_by(Branch.name).all(),devices=Device.query.order_by(Device.modality,Device.name).all(),procedures=Procedure.query.order_by(Procedure.modality,Procedure.name).all(),users=User.query.filter_by(active=True).order_by(User.full_name).all(),reason_codes=BOOKING_BLOCK_REASONS)
+
+
+@app.post('/admin/booking-control/<int:block_id>/deactivate')
+@require_perm('devices.manage')
+def admin_booking_control_deactivate(block_id):
+    row=BookingBlock.query.get_or_404(block_id)
+    if row.active:
+        row.active=False
+        audit('BOOKING_BLOCK_DEACTIVATE','booking_block',row.id,row.reason_text or row.reason_code)
+        db.session.commit()
+        flash('Booking block deactivated.','success')
+    return redirect(url_for('admin_booking_control'))
 
 
 @app.post('/ui/language')
