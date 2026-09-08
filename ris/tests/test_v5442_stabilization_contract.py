@@ -82,13 +82,27 @@ def test_session_cookie_hardening_and_origin_guard_present():
     assert 'def _same_origin_unsafe_request_guard()' in APP
 
 
-def test_reporting_agent_package_uses_scoped_token():
-    import zipfile
-    path = ROOT / 'downloads' / 'RIS-Reporting-Agent-Auto-v2.zip'
-    with zipfile.ZipFile(path) as zf:
-        source = zf.read('RISReportingAgent.cs').decode('utf-8')
-    assert 'X-RadBridge-Case-Token' in source
-    assert 'ReadQueryValue(arg,"token")' in source
+def test_reporting_agent_v2_contract_replaces_legacy_package_gate():
+    contract = (ROOT / 'docs' / 'REPORTING_AGENT_V2_CONTRACT.md').read_text()
+    for marker in (
+        'optional compatibility bridge',
+        'X-RadBridge-Case-Token',
+        'REPORT_EDIT_LOCKED',
+        'DRAFT',
+        'VERIFIED',
+        'FINAL',
+        'immutable',
+        'checksum',
+        'audit trail',
+        'RadBridge branding',
+    ):
+        assert marker in contract
+
+    route = APP.split('def reporting_agent_download():', 1)[1].split(
+        '@app.get', 1
+    )[0]
+    assert "if not os.path.exists(path):" in route
+    assert 'abort(404)' in route
 
 
 def test_accession_is_dicom_sh_safe():

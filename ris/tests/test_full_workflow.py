@@ -7,21 +7,36 @@ def _role_user(m, code):
     if not role:
         pytest.skip(f"Role {code} not seeded")
     user=m.User.query.join(m.Role).filter(m.Role.code==code,m.User.active.is_(True)).first()
-    if not user:
-        pytest.skip(f"No active user for role {code}")
-    return user
+    if user:
+        return user,False
+    user=m.User(
+        username=f"test-{code.lower().replace('_','-')}",
+        full_name=f"Test {role.name}",
+        password_hash="test-session-only",
+        role_id=role.id,
+        active=True,
+    )
+    m.db.session.add(user)
+    m.db.session.commit()
+    return user,True
 
-def test_01_reception_patient_order_flow(app_ctx):
+def test_01_reception_patient_order_flow(app_ctx,monkeypatch):
     m=app_ctx
-    admin=_role_user(m,"SUPER_ADMIN")
-    with m.app.test_client() as c:
-        with c.session_transaction() as sess:
-            sess["uid"]=admin.id
+    admin,created=_role_user(m,"SUPER_ADMIN")
+    monkeypatch.setattr(m,"orthanc_ok",lambda:False)
+    try:
+        with m.app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["uid"]=admin.id
 
-        # Basic pages
-        assert c.get("/patients").status_code in (200,302)
-        assert c.get("/patients/new").status_code in (200,302)
-        assert c.get("/orders").status_code in (200,302)
+            # Basic registration and order pages.
+            assert c.get("/patients").status_code in (200,302)
+            assert c.get("/patients/new").status_code in (200,302)
+            assert c.get("/orders").status_code in (200,302)
+    finally:
+        if created:
+            m.db.session.delete(admin)
+            m.db.session.commit()
 
 def test_02_technician_forward_only_engine(app_ctx):
     from workflow_engine import can_transition

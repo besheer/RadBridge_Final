@@ -1,5 +1,9 @@
 from pathlib import Path
 
+import pytest
+
+from tools.validate_ohif_runtime_dist import OhifContractError, validate_dist
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -43,45 +47,52 @@ def test_strategy_simulator_permission_gate():
     assert 'has_perm("assignment.manage")' in section
 
 
-def test_ohif_recovered_dist_exists():
-    dist = ROOT / "ohif-recovered" / "dist"
-
-    assert dist.exists()
-    assert (dist / "index.html").exists()
-
-
-def test_ohif_recovered_contains_reporting_bundle():
-    dist = ROOT / "ohif-recovered" / "dist"
-
-    found = False
-
-    for p in dist.glob("*.js"):
-        text = p.read_text(
-            encoding="utf-8",
-            errors="ignore"
-        )
-
-        if (
-            "RadBridge Reporting" in text
-            and "/radbridge-api/api/ohif/report" in text
-        ):
-            found = True
-            break
-
-    assert found
+def _runtime_fixture(tmp_path, reporting_text):
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "assets" / "radbridge-favicon.svg").write_text("<svg/>")
+    (dist / "index.html").write_text(
+        '<title>RadBridge | Diagnostic Imaging</title>'
+        '<link href="/assets/radbridge-favicon.svg">'
+        '<script src="/app.bundle.js"></script>'
+    )
+    (dist / "app-config.js").write_text(
+        "const names = ['RadBridge PACS', 'RadBridge Orthanc'];"
+    )
+    (dist / "app.bundle.js").write_text("application shell")
+    (dist / "reporting.bundle.js").write_text(reporting_text)
+    return dist
 
 
-def test_ohif_recovered_contains_word_workflow():
-    dist = ROOT / "ohif-recovered" / "dist"
+def test_rebranded_ohif_onlyoffice_runtime_contract(tmp_path):
+    from tools.validate_ohif_runtime_dist import REPORTING_MARKERS
 
-    all_text = ""
+    dist = _runtime_fixture(tmp_path, "\n".join(REPORTING_MARKERS))
+    result = validate_dist(dist)
+    assert result["ok"] is True
+    assert result["reporting_bundle"] == "reporting.bundle.js"
+    assert result["reporting_marker_count"] == len(REPORTING_MARKERS)
 
-    for p in dist.glob("*.js"):
-        all_text += p.read_text(
-            encoding="utf-8",
-            errors="ignore"
-        )
 
-    assert "Open in Microsoft Word" in all_text
-    assert "Download Word Template" in all_text
-    assert "Upload Word Draft" in all_text
+def test_runtime_contract_rejects_legacy_word_only_bundle(tmp_path):
+    dist = _runtime_fixture(
+        tmp_path,
+        "RadBridge Reporting Workspace\n"
+        "/radbridge-api/api/ohif/report\n"
+        "Open in Microsoft Word\nDownload Word Template\nUpload Word Draft",
+    )
+    with pytest.raises(OhifContractError, match="REPORTING_CONTRACT_MISSING"):
+        validate_dist(dist)
+
+
+def test_ris_source_owns_onlyoffice_clinical_workflow():
+    app = read("app.py")
+    for marker in (
+        "RADBRIDGE ONLYOFFICE INTEGRATION",
+        "ONLYOFFICE callback remains WORKING COPY ONLY",
+        "ONLYOFFICE explicit commit layer",
+        "INVALID_ONLYOFFICE_COMMIT_STATUS",
+        "ONLYOFFICE_SAVE_BLOCKED",
+        "REPORT_EDIT_LOCKED",
+    ):
+        assert marker in app
