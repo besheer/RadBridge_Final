@@ -11079,7 +11079,7 @@ def assignment_strategy_max_attempts(strategy, policy=None):
 
 
 
-def assignment_readiness_decision(order):
+def assignment_readiness_decision(order,refresh_stale=True):
     '''
     Evaluate case readiness using the matching AssignmentStrategy.
 
@@ -11094,10 +11094,16 @@ def assignment_readiness_decision(order):
 
     row=CaseReadiness.query.filter_by(order_id=order.id).first()
 
-    if not row or not row.checked_at or (
+    if refresh_stale and (not row or not row.checked_at or (
         datetime.utcnow()-row.checked_at
-    ).total_seconds()>300:
+    ).total_seconds()>300):
         row=evaluate_case_readiness(order)
+
+    if not row:
+        return {
+            'allowed':False,'action':'BLOCK','blockers':['READINESS_NOT_CHECKED'],
+            'warnings':[],'coordinator':[],'strategy':None,'readiness':None
+        }
 
     strategy=assignment_strategy_for_order(order)
 
@@ -15628,6 +15634,19 @@ def assign_case(order_id):
     doctor_user_id=request.form.get('doctor_user_id',type=int)
     mode=request.form.get('mode','manual')
 
+    readiness_decision=assignment_readiness_decision(order)
+    if not readiness_decision['allowed']:
+        reasons=(readiness_decision.get('blockers') or
+                 readiness_decision.get('coordinator') or
+                 ['CASE_NOT_READY'])
+        flash(
+            'Assignment blocked: '+
+            ', '.join(str(x).replace('_',' ') for x in reasons)+
+            '. Resolve the readiness items first.',
+            'warning'
+        )
+        return redirect(request.referrer or url_for('unassigned_cases'))
+
     if mode=='auto':
         offer,status=offer_next_doctor(order,created_by=current_user().id if current_user() else None)
         if offer:
@@ -15690,10 +15709,36 @@ def take_case(order_id):
 @app.route('/assignment/unassigned')
 @require_perm('reports.view')
 def unassigned_cases():
-    rows=Order.query.filter(
+    branch_id=request.args.get('branch_id',type=int)
+    specialty=(request.args.get('specialty') or '').strip()
+    modality=(request.args.get('modality') or '').strip().upper()
+    priority=(request.args.get('priority') or '').strip().upper()
+    readiness_filter=(request.args.get('readiness') or '').strip().upper()
+    sla_filter=(request.args.get('sla') or '').strip().upper()
+    search=(request.args.get('q') or '').strip()
+
+    query=Order.query.join(Patient).filter(
         Order.assigned_doctor_id.is_(None),
         Order.status.notin_(['FINAL','CANCELLED'])
-    ).order_by(
+    )
+    if branch_id:
+        query=query.filter(Order.branch_id==branch_id)
+    if modality:
+        query=query.filter(db.func.upper(Order.modality)==modality)
+    if priority:
+        query=query.filter(db.func.upper(Order.priority)==priority)
+    if specialty:
+        query=query.outerjoin(Procedure,Order.procedure_id==Procedure.id).filter(
+            Procedure.category==specialty
+        )
+    if search:
+        like=f'%{search}%'
+        query=query.filter(or_(
+            Patient.name.ilike(like),Patient.patient_id.ilike(like),
+            Order.accession.ilike(like),Order.procedure.ilike(like)
+        ))
+
+    orders=query.order_by(
         db.case(
             (Order.priority=='STAT',0),
             (Order.priority=='URGENT',1),
@@ -15702,8 +15747,99 @@ def unassigned_cases():
         Order.scheduled.asc()
     ).limit(500).all()
 
+    readiness_by_order={
+        row.order_id:row for row in CaseReadiness.query.filter(
+            CaseReadiness.order_id.in_([o.id for o in orders])
+        ).all()
+    } if orders else {}
+    policies=TATPolicy.query.filter_by(active=True).all()
+    now=datetime.utcnow()
+    rows=[]
+    for order in orders:
+        readiness=readiness_by_order.get(order.id)
+        snapshot=unassigned_case_snapshot(order,readiness,policies,now)
+        if readiness_filter and snapshot['readiness_status']!=readiness_filter:
+            continue
+        if sla_filter and snapshot['sla']['status']!=sla_filter:
+            continue
+        rows.append(snapshot)
+
     doctors=assignable_doctors()
-    return render_template('unassigned_cases.html',rows=rows,doctors=doctors)
+    return render_template(
+        'unassigned_cases.html',rows=rows,doctors=doctors,
+        branches=Branch.query.filter_by(active=True).order_by(Branch.name).all(),
+        specialties=[x[0] for x in db.session.query(Procedure.category).filter(
+            Procedure.active.is_(True),Procedure.category!=''
+        ).distinct().order_by(Procedure.category).all()],
+        modalities=[x[0] for x in db.session.query(Order.modality).filter(
+            Order.modality.isnot(None),Order.modality!=''
+        ).distinct().order_by(Order.modality).all()],
+        filters={
+            'branch_id':branch_id,'specialty':specialty,'modality':modality,
+            'priority':priority,'readiness':readiness_filter,
+            'sla':sla_filter,'q':search,
+        }
+    )
+
+
+def unassigned_case_snapshot(order,readiness,policies,now=None):
+    """Build a read-only queue row without refreshing PACS or changing data."""
+    now=now or datetime.utcnow()
+    priority=str(order.priority or 'ROUTINE').upper()
+    modality=str(order.modality or '').upper()
+    policy=next((p for p in policies if str(p.priority or '').upper()==priority
+                 and str(p.modality or '*').upper()==modality),None)
+    if not policy:
+        policy=next((p for p in policies if str(p.priority or '').upper()==priority
+                     and str(p.modality or '*').upper()=='*'),None)
+    started=getattr(order,'created_at',None) or getattr(order,'scheduled',None)
+    waiting_minutes=max(0,int((now-started).total_seconds()/60)) if started else 0
+    target=int(policy.ready_to_assign_min or 0) if policy else 0
+    percent=round((waiting_minutes/target)*100,1) if target else 0
+    if not target:
+        sla_status='NOT_CONFIGURED'
+    elif waiting_minutes>target:
+        sla_status='OVERDUE'
+    elif percent>=80:
+        sla_status='NEAR_SLA'
+    else:
+        sla_status='ON_TIME'
+    wait_hours,wait_minutes=divmod(waiting_minutes,60)
+    waiting_label=(f'{wait_hours}h {wait_minutes}m' if wait_hours
+                   else f'{wait_minutes}m')
+
+    flags=[]
+    if readiness:
+        flag_fields=(
+            ('missing_pacs','MISSING_PACS','PACS study missing','PACS غير موجود'),
+            ('incomplete_images','MISSING_IMAGES','Missing Images','صور ناقصة'),
+            ('missing_series','MISSING_SERIES','Required Series Missing','سلاسل مطلوبة ناقصة'),
+            ('missing_documents','MISSING_DOCUMENTS','Missing Documents','مستندات ناقصة'),
+            ('missing_attachments','MISSING_ATTACHMENTS','Missing Attachments','مرفقات ناقصة'),
+            ('missing_notes','NOTES_REQUIRED','Notes Required','ملاحظات مطلوبة'),
+            ('missing_history','HISTORY_REQUIRED','History Required','تاريخ مرضي مطلوب'),
+        )
+        for field,code,label,label_ar in flag_fields:
+            if bool(getattr(readiness,field,False)):
+                flags.append({'code':code,'label':label,'label_ar':label_ar})
+
+    readiness_status=str(getattr(readiness,'status','NOT_CHECKED') or 'NOT_CHECKED').upper()
+    decision=assignment_readiness_decision(order,refresh_stale=False)
+    assignable=bool(decision['allowed'])
+    if not flags and readiness_status not in ('READY','WARNING'):
+        flags.append({
+            'code':'READINESS_'+readiness_status,
+            'label':readiness_status.replace('_',' ').title(),
+            'label_ar':'الجاهزية: '+readiness_status.replace('_',' '),
+        })
+    return {
+        'order':order,'readiness':readiness,'readiness_status':readiness_status,
+        'assignable':assignable,'flags':flags,'waiting_minutes':waiting_minutes,
+        'waiting_label':waiting_label,
+        'sla':{'status':sla_status,'target_minutes':target,'percent':percent},
+        'specialty':getattr(getattr(order,'proc',None),'category','') or '',
+        'decision':decision,
+    }
 
 
 # ---------------- Admin ----------------

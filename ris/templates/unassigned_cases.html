@@ -1,40 +1,59 @@
 {% extends "base.html" %}
 {% from "_action_guidance.html" import action_info %}
-{% block page_title %}Unassigned Cases{% endblock %}
-{% block subtitle %}Cases waiting for manual or automatic doctor assignment{% endblock %}
+{% block page_title %}{{'الحالات غير المعيّنة' if ui_lang=='ar' else 'Unassigned Cases'}}{% endblock %}
+{% block subtitle %}{{'مراجعة الجاهزية ووقت الانتظار ثم تعيين الطبيب من مكان واحد' if ui_lang=='ar' else 'Review readiness and waiting time, then assign the doctor from one place'}}{% endblock %}
 {% block content %}
-<div class="panel">
-<table>
-<thead><tr><th>Priority</th><th>Patient</th><th>Accession</th><th>Exam</th><th>Modality</th><th>Actions</th></tr></thead>
-<tbody>
-{% for o in rows %}
-<tr>
-<td><span class="badge">{{o.priority or 'ROUTINE'}}</span></td>
-<td><b>{{o.patient.name}}</b><small>{{o.patient.patient_id}}</small></td>
-<td>{{o.accession}}</td>
-<td>{{o.proc.name if o.proc else o.procedure}}</td>
-<td>{{o.modality}}</td>
-<td>
-  {% if has_perm('assignment.manage') %}
-  <form method="post" action="{{url_for('assign_case',order_id=o.id)}}" class="actions">
-    <select name="doctor_user_id">
-      <option value="">Choose doctor</option>
-      {% for d in doctors %}<option value="{{d.id}}">{{d.full_name or d.username}}</option>{% endfor %}
-    </select>
-    <button class="btn" name="mode" value="manual">Assign</button>
-    {{ action_info('التعيين اليدوي' if ui_lang=='ar' else 'Manual Assignment','يُسند الحالة إلى الطبيب المحدد.' if ui_lang=='ar' else 'Assigns the case to the selected doctor.','استخدمه بعد تأكيد المنسق للطبيب المسؤول.' if ui_lang=='ar' else 'Use when a coordinator has confirmed the responsible doctor.','اختر طبيبًا نشطًا ومصرحًا له.' if ui_lang=='ar' else 'Select an active authorized doctor.','ينشئ تعيينًا نشطًا واحدًا عبر خدمة التعيين المحمية.' if ui_lang=='ar' else 'Creates one active assignment through the protected assignment service.','لا تستخدمه لتجاوز جاهزية الحالة أو تعيين نشط.' if ui_lang=='ar' else 'Do not use to bypass readiness or an active assignment.',ui_lang) }}
-    <button class="btn primary" name="mode" value="auto">Auto Assign</button>
-    {{ action_info('التعيين التلقائي' if ui_lang=='ar' else 'Auto Assignment','يشغّل سياسة التعيين المضبوطة لهذه الحالة.' if ui_lang=='ar' else 'Runs the configured assignment policy for this case.','استخدمه بعد تحديث جاهزية الحالة وتوفر الأطباء.' if ui_lang=='ar' else 'Use after case readiness and doctor availability are current.','يجب أن تحقق الحالة الاستراتيجية النشطة وبوابات الأمان.' if ui_lang=='ar' else 'The case must satisfy the active strategy and safety gates.','قد يعيّن طبيبًا أو ينشئ عرضًا أو يوجّه الحالة إلى القائمة المفتوحة.' if ui_lang=='ar' else 'May assign, create an offer, or route to Open Pool according to policy.','لا يتجاوز أبدًا تعيينًا نشطًا قائمًا.' if ui_lang=='ar' else 'It never overrides an existing active assignment.',ui_lang) }}
+<section class="rb-assignment-queue">
+  <form method="get" class="panel rb-assignment-filters" aria-label="{{'فلاتر الحالات' if ui_lang=='ar' else 'Case filters'}}">
+    <div class="rb-filter-head">
+      <div><h2>{{'قائمة التعيين' if ui_lang=='ar' else 'Assignment Queue'}}</h2><p>{{rows|length}} {{'حالة مطابقة' if ui_lang=='ar' else 'matching cases'}}</p></div>
+      <div class="rb-saved-filters" aria-label="{{'فلاتر جاهزة' if ui_lang=='ar' else 'Quick filters'}}">
+        <a href="{{url_for('unassigned_cases')}}">{{'الكل' if ui_lang=='ar' else 'All'}}</a>
+        <a href="{{url_for('unassigned_cases',readiness='READY')}}">{{'جاهزة' if ui_lang=='ar' else 'Ready'}}</a>
+        <a href="{{url_for('unassigned_cases',readiness='BLOCKED')}}">{{'محجوبة' if ui_lang=='ar' else 'Blocked'}}</a>
+        <a href="{{url_for('unassigned_cases',sla='OVERDUE')}}">{{'متأخرة' if ui_lang=='ar' else 'Overdue'}}</a>
+      </div>
+    </div>
+    <div class="rb-assignment-filter-grid">
+      <label class="rb-filter-search"><span>{{'بحث' if ui_lang=='ar' else 'Search'}}</span><input name="q" value="{{filters.q}}" placeholder="{{'المريض، الرقم، Accession أو الفحص' if ui_lang=='ar' else 'Patient, ID, accession or exam'}}"></label>
+      <label><span>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</span><select name="branch_id"><option value="">{{'كل الفروع' if ui_lang=='ar' else 'All branches'}}</option>{% for branch in branches %}<option value="{{branch.id}}" {% if filters.branch_id==branch.id %}selected{% endif %}>{{branch.name}}</option>{% endfor %}</select></label>
+      <label><span>{{'التخصص' if ui_lang=='ar' else 'Specialty'}}</span><select name="specialty"><option value="">{{'كل التخصصات' if ui_lang=='ar' else 'All specialties'}}</option>{% for item in specialties %}<option value="{{item}}" {% if filters.specialty==item %}selected{% endif %}>{{item}}</option>{% endfor %}</select></label>
+      <label><span>Modality</span><select name="modality"><option value="">{{'الكل' if ui_lang=='ar' else 'All'}}</option>{% for item in modalities %}<option value="{{item}}" {% if filters.modality==item %}selected{% endif %}>{{item}}</option>{% endfor %}</select></label>
+      <label><span>{{'الأولوية' if ui_lang=='ar' else 'Priority'}}</span><select name="priority"><option value="">{{'الكل' if ui_lang=='ar' else 'All'}}</option>{% for item in ['STAT','URGENT','VIP','ROUTINE'] %}<option value="{{item}}" {% if filters.priority==item %}selected{% endif %}>{{item}}</option>{% endfor %}</select></label>
+      <label><span>{{'الجاهزية' if ui_lang=='ar' else 'Readiness'}}</span><select name="readiness"><option value="">{{'الكل' if ui_lang=='ar' else 'All'}}</option>{% for item in ['READY','WARNING','BLOCKED','NOT_CHECKED','RETURNED_TO_TECH','DOCTOR_HOLD'] %}<option value="{{item}}" {% if filters.readiness==item %}selected{% endif %}>{{item.replace('_',' ')}}</option>{% endfor %}</select></label>
+      <label><span>SLA</span><select name="sla"><option value="">{{'الكل' if ui_lang=='ar' else 'All'}}</option>{% for item in ['ON_TIME','NEAR_SLA','OVERDUE','NOT_CONFIGURED'] %}<option value="{{item}}" {% if filters.sla==item %}selected{% endif %}>{{item.replace('_',' ')}}</option>{% endfor %}</select></label>
+      <div class="rb-filter-actions"><button class="btn primary" type="submit">{{'تطبيق' if ui_lang=='ar' else 'Apply'}}</button><a class="btn" href="{{url_for('unassigned_cases')}}">{{'مسح' if ui_lang=='ar' else 'Clear'}}</a></div>
+    </div>
   </form>
-  {% else %}
-  <span class="muted">Coordinator assignment required</span>
-  {% endif %}
-</td>
-</tr>
-{% else %}
-<tr><td colspan="6" class="empty">No unassigned cases</td></tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
+
+  <div class="rb-assignment-list">
+    {% for item in rows %}{% set o=item.order %}
+    <article class="panel rb-assignment-case {{'is-blocked' if not item.assignable else 'is-ready'}}">
+      <div class="rb-case-priority"><span class="rb-priority rb-priority-{{(o.priority or 'ROUTINE')|lower}}">{{o.priority or 'ROUTINE'}}</span><small>{{item.specialty or o.modality}}</small></div>
+      <div class="rb-case-identity"><a href="{{url_for('order_detail',order_id=o.id)}}"><strong>{{o.patient.name}}</strong></a><span>{{o.patient.patient_id}} · {{o.accession}}</span></div>
+      <div class="rb-case-exam"><strong>{{o.proc.name if o.proc else o.procedure}}</strong><span>{{o.modality}} · {{o.branch.name if o.branch else '—'}} · {{o.scheduled.strftime('%d/%m/%Y %H:%M') if o.scheduled else '—'}}</span></div>
+      <div class="rb-case-timing"><span class="rb-sla rb-sla-{{item.sla.status|lower}}">{{item.sla.status.replace('_',' ')}}</span><small>{{'انتظار' if ui_lang=='ar' else 'Waiting'}} {{item.waiting_label}}{% if item.sla.target_minutes %} · {{'الهدف' if ui_lang=='ar' else 'target'}} {{item.sla.target_minutes}}m{% endif %}</small></div>
+      <div class="rb-case-readiness"><span class="rb-readiness rb-readiness-{{item.readiness_status|lower}}">{{item.readiness_status.replace('_',' ')}}</span><div class="rb-readiness-flags">{% for flag in item.flags %}<span class="rb-case-flag">{{flag.label_ar if ui_lang=='ar' else flag.label}}</span>{% else %}<span class="rb-case-flag is-ok">{{'لا توجد نواقص' if ui_lang=='ar' else 'No missing items'}}</span>{% endfor %}</div></div>
+      <button class="btn primary rb-manage-assignment" type="button" popovertarget="assignment-panel-{{o.id}}">{{'إدارة التعيين' if ui_lang=='ar' else 'Manage Assignment'}}</button>
+
+      <aside popover id="assignment-panel-{{o.id}}" class="rb-assignment-drawer" dir="{{'rtl' if ui_lang=='ar' else 'ltr'}}">
+        <header><div><small>{{o.accession}}</small><h2>{{o.patient.name}}</h2><p>{{o.proc.name if o.proc else o.procedure}}</p></div><button type="button" class="rb-drawer-close" popovertarget="assignment-panel-{{o.id}}" popovertargetaction="hide" aria-label="{{'إغلاق' if ui_lang=='ar' else 'Close'}}">×</button></header>
+        <div class="rb-drawer-status"><span class="rb-readiness rb-readiness-{{item.readiness_status|lower}}">{{item.readiness_status.replace('_',' ')}}</span><span class="rb-sla rb-sla-{{item.sla.status|lower}}">SLA · {{item.sla.status.replace('_',' ')}}</span></div>
+        {% if not item.assignable %}
+        <section class="rb-assignment-blocked"><h3>{{'التعيين متوقف مؤقتًا' if ui_lang=='ar' else 'Assignment is temporarily blocked'}}</h3><p>{{'أكمل عناصر الجاهزية التالية، ثم أعد فحص الحالة.' if ui_lang=='ar' else 'Resolve these readiness items, then recheck the case.'}}</p><ul>{% for flag in item.flags %}<li>{{flag.label_ar if ui_lang=='ar' else flag.label}}</li>{% endfor %}{% for reason in item.decision.blockers %}<li>{{reason.replace('_',' ')}}</li>{% endfor %}{% for reason in item.decision.coordinator %}<li>{{reason.replace('_',' ')}}</li>{% endfor %}</ul>{% if has_perm('orders.view') %}<a class="btn primary" href="{{url_for('case_exception_resolver',order_id=o.id)}}">{{'فتح شاشة الحل' if ui_lang=='ar' else 'Open Resolution'}}</a>{% endif %}</section>
+        {% elif has_perm('assignment.manage') %}
+        <section class="rb-assignment-method">
+          <div class="rb-method-title"><h3>{{'التعيين اليدوي' if ui_lang=='ar' else 'Manual Assignment'}}</h3>{{ action_info('التعيين اليدوي' if ui_lang=='ar' else 'Manual Assignment','يُسند الحالة إلى الطبيب المحدد.' if ui_lang=='ar' else 'Assigns the case to the selected doctor.','استخدمه بعد تأكيد المنسق للطبيب المسؤول.' if ui_lang=='ar' else 'Use when a coordinator has confirmed the responsible doctor.','اختر طبيبًا نشطًا ومصرحًا له.' if ui_lang=='ar' else 'Select an active authorized doctor.','ينشئ تعيينًا نشطًا واحدًا عبر خدمة التعيين المحمية.' if ui_lang=='ar' else 'Creates one active assignment through the protected assignment service.','لا تستخدمه لتجاوز جاهزية الحالة أو تعيين نشط.' if ui_lang=='ar' else 'Do not use to bypass readiness or an active assignment.',ui_lang) }}</div>
+          <form method="post" action="{{url_for('assign_case',order_id=o.id)}}"><label>{{'الطبيب' if ui_lang=='ar' else 'Doctor'}}<select name="doctor_user_id" required><option value="">{{'اختر الطبيب' if ui_lang=='ar' else 'Choose doctor'}}</option>{% for d in doctors %}<option value="{{d.id}}">{{d.full_name or d.username}}</option>{% endfor %}</select></label><label>{{'ملاحظة اختيارية' if ui_lang=='ar' else 'Optional note'}}<textarea name="notes" rows="2"></textarea></label><button class="btn primary" name="mode" value="manual">{{'تعيين الطبيب' if ui_lang=='ar' else 'Assign Doctor'}}</button></form>
+        </section>
+        <section class="rb-assignment-method">
+          <div class="rb-method-title"><h3>{{'التعيين التلقائي' if ui_lang=='ar' else 'Auto Assignment'}}</h3>{{ action_info('التعيين التلقائي' if ui_lang=='ar' else 'Auto Assignment','يشغّل سياسة التعيين المضبوطة لهذه الحالة.' if ui_lang=='ar' else 'Runs the configured assignment policy for this case.','استخدمه بعد تحديث جاهزية الحالة وتوفر الأطباء.' if ui_lang=='ar' else 'Use after case readiness and doctor availability are current.','يجب أن تحقق الحالة الاستراتيجية النشطة وبوابات الأمان.' if ui_lang=='ar' else 'The case must satisfy the active strategy and safety gates.','قد يعيّن طبيبًا أو ينشئ عرضًا أو يوجّه الحالة إلى القائمة المفتوحة.' if ui_lang=='ar' else 'May assign, create an offer, or route to Open Pool according to policy.','لا يتجاوز أبدًا تعيينًا نشطًا قائمًا.' if ui_lang=='ar' else 'It never overrides an existing active assignment.',ui_lang) }}</div>
+          <form method="post" action="{{url_for('assign_case',order_id=o.id)}}"><p>{{'يختار النظام الطبيب المناسب طبقًا للتخصص والتوفر وحجم العمل.' if ui_lang=='ar' else 'The system selects an eligible doctor using specialty, availability and workload.'}}</p><button class="btn primary" name="mode" value="auto">{{'تشغيل التعيين التلقائي' if ui_lang=='ar' else 'Run Auto Assignment'}}</button></form>
+        </section>
+        {% else %}<p class="rb-drawer-notice">{{'يلزم منسق لديه صلاحية إدارة التعيين.' if ui_lang=='ar' else 'A coordinator with assignment permission is required.'}}</p>{% endif %}
+      </aside>
+    </article>
+    {% else %}<div class="panel empty rb-assignment-empty">{{'لا توجد حالات مطابقة للفلاتر الحالية.' if ui_lang=='ar' else 'No cases match the current filters.'}}</div>{% endfor %}
+  </div>
+</section>
 {% endblock %}
