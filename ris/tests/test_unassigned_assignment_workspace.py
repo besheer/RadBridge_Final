@@ -107,6 +107,7 @@ def test_unassigned_workspace_is_compact_responsive_and_theme_safe():
     ):
         assert marker in template
     assert template.count("rb-manage-assignment") == 1
+    assert "reason!='LEGACY_READINESS'" in template
     assert "R8_UNASSIGNED_ASSIGNMENT_WORKSPACE_V1" in css
     assert "var(--rb-card" in css
     assert "var(--rb-text-main" in css
