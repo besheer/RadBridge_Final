@@ -112,6 +112,32 @@
   color:var(--rb-text-main,var(--text));
 }
 
+.rb-appt a{
+  color:inherit;
+  text-decoration:none;
+}
+
+.rb-cell.rb-occupied{
+  background:color-mix(in srgb,var(--primary) 8%,var(--rb-card,var(--panel)));
+}
+
+.rb-occupied-tail{
+  min-height:35px;
+  border-radius:7px;
+  background:repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 7px,
+    color-mix(in srgb,var(--primary) 12%,transparent) 7px,
+    color-mix(in srgb,var(--primary) 12%,transparent) 14px
+  );
+  color:var(--rb-text-muted,var(--muted));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:11px;
+}
+
 .rb-overlay[hidden]{
   display:none!important;
 }
@@ -387,9 +413,15 @@
  {% for slot in slots %}
   <div class="rb-time">{{slot.strftime('%H:%M')}}</div>
   {% for d in devices %}
-   {% set ns=namespace(rows=[]) %}{% for a in appointments %}{% if a.device_id==d.id and a.scheduled.strftime('%H:%M')==slot.strftime('%H:%M') %}{% set ns.rows=ns.rows+[a] %}{% endif %}{% endfor %}
-   <div class="rb-cell" data-device="{{d.id}}" data-branch="{{d.branch_id}}" data-name="{{d.name}}" data-modality="{{d.modality}}" data-dt="{{slot.strftime('%Y-%m-%dT%H:%M')}}">
-    {% for a in ns.rows %}<div class="rb-appt"><b>{{a.patient.name}}</b><div>{{a.procedure.name}} · {{a.duration_min or 20}}m · {{a.status}}</div></div>{% else %}<button class="rb-add" type="button">+</button>{% endfor %}
+   {% set cell=calendar_cells.get(d.id ~ '|' ~ slot.isoformat()) %}
+   <div class="rb-cell{% if cell and cell.occupied %} rb-occupied{% endif %}" data-device="{{d.id}}" data-branch="{{d.branch_id}}" data-name="{{d.name}}" data-modality="{{d.modality}}" data-dt="{{slot.strftime('%Y-%m-%dT%H:%M')}}">
+    {% if cell and cell.starts %}
+      {% for a in cell.starts %}<div class="rb-appt">{% if a.order_id %}<a href="{{url_for('order_detail',order_id=a.order_id)}}">{% endif %}<b>{{a.patient.name}}</b><div>{{a.procedure.name}} · {{a.duration_min or 20}}m · {{a.status}}</div>{% if a.order_id %}</a>{% endif %}</div>{% endfor %}
+    {% elif cell and cell.occupied %}
+      <div class="rb-occupied-tail">{{'محجوز' if ui_lang=='ar' else 'Occupied'}}</div>
+    {% else %}
+      <button class="rb-add" type="button">+</button>
+    {% endif %}
    </div>
   {% endfor %}
  {% endfor %}

@@ -1788,6 +1788,12 @@ class Appointment(db.Model):
     branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'), nullable=False)
     procedure_id = db.Column(db.Integer, db.ForeignKey('procedure.id'), nullable=False)
     device_id = db.Column(db.Integer, db.ForeignKey('device.id'))
+    order_id = db.Column(
+        db.Integer,
+        db.ForeignKey('order.id'),
+        unique=True,
+        index=True,
+    )
     scheduled = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.String(30), default='BOOKED')
     source = db.Column(db.String(40), default='CALL_CENTER')
@@ -1804,6 +1810,11 @@ class Appointment(db.Model):
     branch = db.relationship('Branch')
     procedure = db.relationship('Procedure')
     device = db.relationship('Device', foreign_keys=[device_id])
+    order = db.relationship(
+        'Order',
+        back_populates='appointment',
+        foreign_keys=[order_id],
+    )
 
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1816,6 +1827,12 @@ class Order(db.Model):
     status = db.Column(db.String(30), default='REGISTERED')
     patient = db.relationship('Patient')
     report = db.relationship('Report', backref='order', uselist=False, cascade='all,delete-orphan')
+    appointment = db.relationship(
+        'Appointment',
+        back_populates='order',
+        uselist=False,
+        foreign_keys='Appointment.order_id',
+    )
 
     procedure_id = db.Column(db.Integer, db.ForeignKey('procedure.id'))
     branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'))
@@ -11876,7 +11893,8 @@ def schedule_calendar():
 
     q=Appointment.query.filter(
         Appointment.scheduled>=start,
-        Appointment.scheduled<end
+        Appointment.scheduled<end,
+        Appointment.status.notin_(['CANCELLED','NO_SHOW'])
     )
     if branch_id:
         q=q.filter(Appointment.branch_id==branch_id)
@@ -11895,6 +11913,8 @@ def schedule_calendar():
         slots.append(cur)
         cur+=timedelta(minutes=15)
 
+    calendar_cells=build_calendar_cells(appointments,slots)
+
     return render_template(
         'schedule_calendar.html',
         selected=selected,
@@ -11902,6 +11922,7 @@ def schedule_calendar():
         next_day=selected+timedelta(days=1),
         slots=slots,
         appointments=appointments,
+        calendar_cells=calendar_cells,
         branches=Branch.query.filter_by(active=True).order_by(Branch.name).all(),
         devices=devices,
         all_devices=Device.query.filter_by(active=True).order_by(Device.modality,Device.name).all(),
@@ -11914,6 +11935,37 @@ def schedule_calendar():
         branch_id=branch_id,
         selected_device_id=selected_device_id,
     )
+
+
+def build_calendar_cells(appointments,slots,slot_minutes=15):
+    """Return display and occupancy data for every device/time cell."""
+    cells={}
+    for appointment in appointments:
+        if not appointment.device_id:
+            continue
+        if (appointment.status or '').upper() in ('CANCELLED','NO_SHOW'):
+            continue
+        duration=max(
+            5,
+            int(
+                appointment.duration_min
+                or (
+                    appointment.procedure.duration_min
+                    if appointment.procedure else 20
+                )
+                or 20
+            ),
+        )
+        appointment_end=appointment.scheduled+timedelta(minutes=duration)
+        for slot in slots:
+            slot_end=slot+timedelta(minutes=slot_minutes)
+            if appointment.scheduled>=slot_end or appointment_end<=slot:
+                continue
+            key=f'{int(appointment.device_id)}|{slot.isoformat()}'
+            cell=cells.setdefault(key,{'starts':[],'occupied':True})
+            if slot<=appointment.scheduled<slot_end:
+                cell['starts'].append(appointment)
+    return cells
 
 
 
@@ -12208,6 +12260,7 @@ def schedule_unified_submit():
             for p in procs:
                 duration=max(5,int(p.duration_min or 20))
                 if not waiting:
+                    acquire_booking_slot_lock(device.id,cursor)
                     reason=booking_restriction_reason(branch,p,device,cursor,duration)
                     if reason: raise ValueError(f'{p.name}: {reason}')
                 dup=Appointment.query.filter_by(
@@ -12238,6 +12291,7 @@ def schedule_unified_submit():
 
         for p in procs:
             duration=max(5,int(p.duration_min or 20))
+            acquire_booking_slot_lock(device.id,cursor)
             reason=booking_restriction_reason(branch,p,device,cursor,duration)
             if reason: raise ValueError(f'{p.name}: {reason}')
             gross,effective,patient_share,company_share,_=price_order(p,contract)
@@ -12252,6 +12306,22 @@ def schedule_unified_submit():
                 created_by=current_user().id,priority=priority
             )
             db.session.add(o); db.session.flush()
+            a=Appointment(
+                patient_id=patient.id,
+                branch_id=branch.id,
+                procedure_id=p.id,
+                device_id=device.id,
+                order_id=o.id,
+                scheduled=cursor,
+                status='REGISTERED',
+                source='FULL_REGISTRATION_WORKSPACE',
+                duration_min=duration,
+                priority=priority,
+                waiting_list=False,
+                notes=(request.form.get('notes') or '').strip(),
+                created_by=current_user().id,
+            )
+            db.session.add(a); db.session.flush(); appts.append(a)
             _rb_v5462_insurance(o,contract,request.form)
             _rb_v5462_notes(o,request.form)
             ensure_journey(o,'REGISTERED')
