@@ -17889,11 +17889,24 @@ def case_exception_resolver():
         and str(selected.status or '').upper() not in ('FINAL','CANCELLED')
         and str(getattr(report,'status','') or '').upper() not in ('VERIFIED','FINAL')
     )
+    can_reconcile=has_perm('pacs.reconcile') and selected_editable
+    can_add_history=selected_editable and any(has_perm(permission) for permission in (
+        'orders.create','nursing.worklist','reports.coordinate','pacs.reconcile'))
+    can_refresh=selected_editable and any(has_perm(permission) for permission in (
+        'orders.status','nursing.worklist','reports.coordinate','assignment.manage',
+        'pacs.reconcile'))
+    can_override=selected_editable and has_perm('pacs.reconcile') and has_perm('workflow.override')
     return render_template(
         'case_exception_resolver.html',q=q,results=results,selected=selected,
         readiness=readiness,rule=rule,series=series,details=details,
         aliases=aliases,events=events,report=report,overrides=overrides,
-        can_resolve=has_perm('pacs.reconcile') and selected_editable,
+        can_resolve=can_reconcile,can_reconcile=can_reconcile,
+        can_map_series=can_reconcile and bool(rule) and bool(series),
+        can_add_history=can_add_history,can_refresh=can_refresh,
+        can_override=can_override,
+        can_manage_quality_rules=has_perm('users.view'),
+        can_view_resolution_history=has_perm('audit.view') or has_perm('pacs.reconcile'),
+        focus_mode=bool(selected),
         selected_editable=selected_editable,queue=queue,
         queue_total=queue_total,queue_page=page,queue_pages=queue_pages,
         branches=branches,modalities=modalities,status_filter=status_filter,
@@ -17954,9 +17967,26 @@ def case_exception_series_map_deactivate(order_id,alias_id):
     return redirect(url_for('case_exception_resolver',order_id=order_id))
 
 
+def case_exception_history_allowed():
+    return any(has_perm(permission) for permission in (
+        'orders.create','nursing.worklist','reports.coordinate','pacs.reconcile'))
+
+
+def case_exception_refresh_allowed():
+    return any(has_perm(permission) for permission in (
+        'orders.status','nursing.worklist','reports.coordinate','assignment.manage',
+        'pacs.reconcile'))
+
+
+def case_exception_override_allowed():
+    return has_perm('pacs.reconcile') and has_perm('workflow.override')
+
+
 @app.post('/orders/<int:order_id>/exceptions/history')
-@require_perm('pacs.reconcile')
+@require_perm('orders.view')
 def case_exception_history_add(order_id):
+    if not case_exception_history_allowed():
+        abort(403)
     from case_exception_resolution_service import (
         CaseExceptionResolutionError,
         atomic_add_clinical_history,
@@ -17984,6 +18014,8 @@ def case_exception_history_add(order_id):
 @app.post('/orders/<int:order_id>/exceptions/image-minimum')
 @require_perm('pacs.reconcile')
 def case_exception_image_minimum(order_id):
+    if not case_exception_override_allowed():
+        abort(403)
     from case_exception_resolution_service import atomic_image_minimum_override
     try:
         atomic_image_minimum_override(
@@ -18011,6 +18043,8 @@ def case_exception_image_minimum(order_id):
 @app.post('/orders/<int:order_id>/exceptions/image-minimum/<int:override_id>/deactivate')
 @require_perm('pacs.reconcile')
 def case_exception_image_minimum_deactivate(order_id,override_id):
+    if not case_exception_override_allowed():
+        abort(403)
     from case_exception_resolution_service import atomic_deactivate_readiness_override
     try:
         atomic_deactivate_readiness_override(
@@ -18029,8 +18063,10 @@ def case_exception_image_minimum_deactivate(order_id,override_id):
 
 
 @app.post('/orders/<int:order_id>/exceptions/refresh')
-@require_perm('pacs.reconcile')
+@require_perm('orders.view')
 def case_exception_refresh(order_id):
+    if not case_exception_refresh_allowed():
+        abort(403)
     order=Order.query.get_or_404(order_id)
     report=Report.query.filter_by(order_id=order.id).order_by(Report.id.desc()).first()
     if str(order.status or '').upper() in ('FINAL','CANCELLED') or str(getattr(report,'status','') or '').upper() in ('VERIFIED','FINAL'):

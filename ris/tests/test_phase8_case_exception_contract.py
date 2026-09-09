@@ -29,7 +29,8 @@ def test_service_owns_no_commit_and_protects_terminal_cases():
 def test_resolver_template_has_search_preview_and_audit_guidance():
     source = (ROOT / "templates" / "case_exception_resolver.html").read_text(encoding="utf-8")
     assert "Search RIS" in source
-    assert "Preview Before Apply" in source
+    assert "Resolution Steps" in source
+    assert "Back to Exception Queue" in source
     assert "Save Mapping & Re-evaluate" in source
     assert "Save Exception & Re-evaluate" in source
     assert "Resolution History" in source

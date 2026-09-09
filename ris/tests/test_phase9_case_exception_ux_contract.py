@@ -42,7 +42,8 @@ def test_phase9_template_has_queue_filters_and_safe_disable_actions():
         "Exception Queue",
         "Case locked — view only",
         "the Order or Report is terminal and Series Mapping cannot be changed",
-        "Unavailable; the Order or Report is terminal",
+        "Advanced PACS tools — authorized users only",
+        "Series Mapping is unavailable without PACS evidence",
     ):
         assert token in source
 
