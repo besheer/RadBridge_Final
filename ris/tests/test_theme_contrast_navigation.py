@@ -103,3 +103,20 @@ def test_management_kpis_follow_theme_instead_of_fixed_white_surface():
     assert ") :is(h1,h2,h3,h4,b,strong){color:var(--rb-text-main" in compatibility
     assert ") :is(p,span,small,label){color:var(--rb-text-muted" in compatibility
     assert _contrast("#f3f7fc", "#111b2e") >= 4.5
+
+
+def test_auto_dark_overlays_never_render_light_text_on_white():
+    marker = "RB_PHASE25D_GLOBAL_OVERLAY_THEME_V1"
+    assert marker in CSS
+    overlays = CSS.split(marker, 1)[1]
+    for selector in (
+        "body.theme-auto :is(.user-trigger,.user-dropdown,.confirm-dialog)",
+        "body.theme-auto .user-dropdown :is(strong,small,a)",
+        "body.theme-auto .user-dropdown>a:hover",
+        "body.theme-auto .user-dropdown>a.danger",
+        "body.theme-auto .dropdown-divider",
+    ):
+        assert selector in overlays
+    assert "background:var(--rb-card,#111b2e)" in overlays
+    assert "color:var(--rb-text-main,#f3f7fc)" in overlays
+    assert _contrast("#f3f7fc", "#111b2e") >= 4.5

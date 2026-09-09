@@ -2005,3 +2005,31 @@ body.theme-dark .ocr-page :is(.status-title,.section-heading h2,.field-top label
     color:var(--rb-text-main,#f3f7fc);
   }
 }
+
+/* RB_PHASE25D_GLOBAL_OVERLAY_THEME_V1
+   Overlay surfaces must follow Auto Dark just like the page beneath them. */
+body.theme-dark :is(.user-trigger,.user-dropdown,.confirm-dialog),
+body.theme-auto :is(.user-trigger,.user-dropdown,.confirm-dialog){
+  color:var(--rb-text-main,var(--text));
+  border-color:var(--rb-border,var(--line));
+}
+body.theme-dark .user-dropdown :is(strong,small,a),
+body.theme-auto .user-dropdown :is(strong,small,a){color:inherit;}
+body.theme-dark .user-dropdown>a.danger,
+body.theme-auto .user-dropdown>a.danger{color:#ff9b9b;}
+
+@media (prefers-color-scheme:dark){
+  body.theme-auto :is(.user-trigger,.user-dropdown,.confirm-dialog){
+    background:var(--rb-card,#111b2e);
+    color:var(--rb-text-main,#f3f7fc);
+    border-color:var(--rb-border,#263550);
+    box-shadow:0 18px 50px rgba(0,0,0,.42);
+  }
+  body.theme-auto .user-dropdown :is(strong,small,a){color:#f3f7fc;}
+  body.theme-auto .user-dropdown>a:hover{
+    background:var(--rb-hover,#1b2a42);
+    color:#ffffff;
+  }
+  body.theme-auto .user-dropdown>a.danger{color:#ff9b9b;}
+  body.theme-auto .dropdown-divider{background:var(--rb-border,#263550);}
+}
