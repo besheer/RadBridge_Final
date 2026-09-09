@@ -6368,7 +6368,6 @@ def technician_status(order_id):
     return redirect(url_for('technician_worklist'))
 
 
-@app.route('/reporting-agent/download')
 @login_required
 def reporting_agent_download():
     path=os.path.join(os.path.dirname(__file__),'downloads','RIS-Reporting-Agent-Auto-v2.zip')
@@ -6378,7 +6377,6 @@ def reporting_agent_download():
 
 
 
-@app.route('/api/reporting/health')
 def api_reporting_health():
     db_ok=True
     db_error=''
@@ -7405,14 +7403,12 @@ def require_reporting_api(write=False):
         return wrapped
     return deco
 
-@app.get('/word-addin/taskpane')
 def word_addin_taskpane():
     return render_template(
         'word_addin_taskpane.html'
     )
 
 
-@app.get('/word-addin/manifest.xml')
 def word_addin_manifest():
     return Response(
         render_template(
@@ -7423,7 +7419,6 @@ def word_addin_manifest():
     )
 
 
-@app.get('/word-addin/taskpane.js')
 def word_addin_taskpane_js():
     return app.send_static_file(
         'word-addin/taskpane.js'
@@ -21505,7 +21500,6 @@ def api_ohif_report_get(order_id):
     return jsonify(_ohif_report_json(order, report))
 
 
-@app.get('/api/ohif/reporting-agent/download')
 @require_ohif_token
 def api_ohif_reporting_agent_download():
     path = os.path.join(
@@ -23211,7 +23205,6 @@ def api_ohif_report_return(order_id):
     })
 
 
-@app.get('/api/ohif/reporting/health')
 def api_ohif_reporting_health():
     return jsonify({
         'ok': True,
@@ -27993,3 +27986,14 @@ def admin_ivr():
         "admin_ivr.html",
         extension_count=extension_count
     )
+
+
+# RB_REPORTING_SUPPORT_BLUEPRINT_V1
+# Register after every retained view implementation is defined.  This keeps
+# public URLs stable while moving their ownership out of the monolithic app.
+import sys as _reporting_support_sys
+from reporting_support_routes import register_reporting_support_routes
+
+reporting_support_blueprint = register_reporting_support_routes(
+    _reporting_support_sys.modules[__name__]
+)
