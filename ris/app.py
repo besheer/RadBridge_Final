@@ -5308,7 +5308,6 @@ def new_order():
 
 
 
-@app.get('/api/registration/procedures')
 @login_required
 def api_registration_procedures():
     branch_id=request.args.get('branch_id',type=int)
@@ -5320,7 +5319,6 @@ def api_registration_procedures():
         'modality':p.modality,'duration_min':p.duration_min,'base_price':p.base_price
     } for p in rows]})
 
-@app.route('/api/pricing')
 @login_required
 def api_pricing():
     proc=Procedure.query.get(request.args.get('procedure_id',type=int))
@@ -11849,7 +11847,6 @@ def rebuild_intake_summary(intake,commit=True):
     return summary,validation,match
 
 
-@app.route('/api/slots')
 @require_perm('appointments.manage')
 def api_slots():
     device=Device.query.get_or_404(request.args.get('device_id',type=int))
@@ -12721,7 +12718,6 @@ def admin_booking_availability_seed():
     flash(f'Default availability created for {added} branch/procedure combination(s).','success')
     return redirect(url_for('admin_booking_availability'))
 
-@app.get('/api/booking/procedures')
 @require_perm('appointments.view')
 def api_booking_procedures():
     branch_id=request.args.get('branch_id',type=int)
@@ -27995,5 +27991,15 @@ import sys as _reporting_support_sys
 from reporting_support_routes import register_reporting_support_routes
 
 reporting_support_blueprint = register_reporting_support_routes(
+    _reporting_support_sys.modules[__name__]
+)
+
+
+# RB_SCHEDULING_REFERENCE_BLUEPRINT_V1
+# Read-only scheduling lookup APIs keep their public URLs and authorization
+# wrappers while their HTTP ownership moves out of the monolithic application.
+from scheduling_reference_routes import register_scheduling_reference_routes
+
+scheduling_reference_blueprint = register_scheduling_reference_routes(
     _reporting_support_sys.modules[__name__]
 )
