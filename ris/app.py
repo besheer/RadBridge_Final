@@ -24999,7 +24999,6 @@ def _voice_api_unauthorized():
     ), 401
 
 
-@app.route("/api/voice/branches", methods=["GET"])
 def voice_api_branches():
     if not _voice_api_authorized():
         return _voice_api_unauthorized()
@@ -25045,7 +25044,6 @@ def voice_api_branches():
     )
 
 
-@app.route("/api/voice/procedures", methods=["GET"])
 def voice_api_procedures():
     if not _voice_api_authorized():
         return _voice_api_unauthorized()
@@ -25382,7 +25380,6 @@ def voice_api_inquiry():
     )
 
 
-@app.route("/api/voice/slots", methods=["GET"])
 def voice_api_slots():
     if not _voice_api_authorized():
         return _voice_api_unauthorized()
@@ -28024,6 +28021,20 @@ from staff_communications_reference_routes import (
 
 staff_communications_reference_blueprint = (
     register_staff_communications_reference_routes(
+        _reporting_support_sys.modules[__name__]
+    )
+)
+
+
+# RB_VOICE_SCHEDULING_REFERENCE_BLUEPRINT_V1
+# Token-protected, read-only branch, procedure and availability references keep
+# their public URLs while patient-data reads and all voice writes remain on app.
+from voice_scheduling_reference_routes import (
+    register_voice_scheduling_reference_routes,
+)
+
+voice_scheduling_reference_blueprint = (
+    register_voice_scheduling_reference_routes(
         _reporting_support_sys.modules[__name__]
     )
 )
