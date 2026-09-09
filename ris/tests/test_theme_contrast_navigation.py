@@ -63,3 +63,13 @@ def test_sidebar_group_controls_are_not_dimmed():
         "color:#9fc2ee",
     ):
         assert declaration in CSS
+
+
+def test_mixed_light_dark_surfaces_keep_text_visible():
+    assert "RB_PHASE25B_MIXED_SURFACE_CONTRAST_V1" in CSS
+    assert "body.theme-dark .app-header" in CSS
+    assert "body.theme-dark .lang-btn" in CSS
+    assert "body.theme-dark .studio-card" in CSS
+    assert ".sidebar .pacs-mini.online small" in CSS
+    assert _contrast("#b8c5d6", "#111b2e") >= 4.5
+    assert _contrast("#f3f7fc", "#162238") >= 4.5

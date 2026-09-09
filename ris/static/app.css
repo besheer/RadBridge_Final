@@ -1724,3 +1724,111 @@ button:disabled{
 @media(max-width:720px){
   .sidebar .nav-caption{font-size:12px;min-height:38px;}
 }
+
+/* RB_PHASE25B_MIXED_SURFACE_CONTRAST_V1
+   Fix controls and legacy cards that used a light surface inside dark mode. */
+body.theme-light .app-header,
+body.theme-auto .app-header{
+  background:rgba(244,247,251,.96);
+  color:#142033;
+  border-color:#dbe3ee;
+}
+body.theme-light .app-header .breadcrumb,
+body.theme-light .app-header .breadcrumb a,
+body.theme-light .app-header .page-subtitle,
+body.theme-auto .app-header .breadcrumb,
+body.theme-auto .app-header .breadcrumb a,
+body.theme-auto .app-header .page-subtitle{
+  color:#52627a;
+}
+
+body.theme-dark .app-header{
+  background:rgba(17,27,46,.97);
+  color:#f3f7fc;
+  border-color:#263550;
+}
+body.theme-dark .app-header .breadcrumb,
+body.theme-dark .app-header .breadcrumb a,
+body.theme-dark .app-header .page-subtitle{
+  color:#b8c5d6;
+}
+
+@media (prefers-color-scheme:dark){
+  body.theme-auto .app-header{
+    background:rgba(17,27,46,.97);
+    color:#f3f7fc;
+    border-color:#263550;
+  }
+  body.theme-auto .app-header .breadcrumb,
+  body.theme-auto .app-header .breadcrumb a,
+  body.theme-auto .app-header .page-subtitle{
+    color:#b8c5d6;
+  }
+}
+
+body.theme-light .lang-btn,
+body.theme-light .header-language-switch button{
+  background:#ffffff;
+  color:#142033;
+  border-color:#cbd5e1;
+}
+body.theme-dark .lang-btn,
+body.theme-dark .header-language-switch button{
+  background:#162238;
+  color:#f3f7fc;
+  border-color:#3a4a64;
+}
+@media (prefers-color-scheme:dark){
+  body.theme-auto .lang-btn,
+  body.theme-auto .header-language-switch button{
+    background:#162238;
+    color:#f3f7fc;
+    border-color:#3a4a64;
+  }
+}
+body.theme-light .lang-btn.active,
+body.theme-light .header-language-switch button.active,
+body.theme-dark .lang-btn.active,
+body.theme-dark .header-language-switch button.active,
+body.theme-auto .lang-btn.active,
+body.theme-auto .header-language-switch button.active{
+  background:#2563eb;
+  color:#ffffff;
+  border-color:#2563eb;
+}
+
+.sidebar .pacs-mini.online,
+.sidebar .pacs-mini.online strong,
+.sidebar .pacs-mini.online small{color:#6ee7a7;}
+.sidebar .pacs-mini.offline,
+.sidebar .pacs-mini.offline strong,
+.sidebar .pacs-mini.offline small{color:#ff9b9b;}
+
+body.theme-dark .studio-card{
+  background:var(--rb-card,#111b2e);
+  color:var(--rb-text-main,#f3f7fc);
+  border-color:var(--rb-border,#263550);
+}
+body.theme-dark .studio-card small{color:var(--rb-text-muted,#b8c5d6);}
+@media (prefers-color-scheme:dark){
+  body.theme-auto .studio-card{
+    background:var(--rb-card,#111b2e);
+    color:var(--rb-text-main,#f3f7fc);
+    border-color:var(--rb-border,#263550);
+  }
+  body.theme-auto .studio-card small{color:var(--rb-text-muted,#b8c5d6);}
+}
+.studio-card{
+  min-height:126px;
+  align-content:start;
+  transition:transform .15s ease,border-color .15s ease,background-color .15s ease,box-shadow .15s ease;
+}
+.studio-card>b{font-size:16px;line-height:1.3;}
+.studio-card>small{font-size:13px;line-height:1.45;}
+.studio-card:hover{
+  transform:translateY(-2px);
+  border-color:var(--primary);
+  background:var(--rb-hover,#f1f5f9);
+  box-shadow:0 10px 24px rgba(2,6,23,.12);
+}
+.studio-card:focus-visible{border-color:var(--primary);}
