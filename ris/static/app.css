@@ -1550,3 +1550,177 @@ body.theme-light .user-dropdown > a:hover {
 @media(max-width:1050px){.rb-assignment-case{grid-template-columns:90px 1fr 1.4fr 120px}.rb-case-readiness{grid-column:2/4}.rb-manage-assignment{grid-column:4;grid-row:2}.rb-assignment-filters{position:static}}
 @media(max-width:720px){.rb-filter-head{display:grid}.rb-assignment-filter-grid{grid-template-columns:1fr 1fr}.rb-filter-search{grid-column:1/-1}.rb-filter-actions{grid-column:1/-1}.rb-assignment-case{grid-template-columns:1fr 1fr}.rb-case-exam,.rb-case-readiness{grid-column:1/-1}.rb-manage-assignment{grid-column:1/-1;grid-row:auto}.rb-case-timing{text-align:end;justify-items:end}}
 @media(max-width:440px){.rb-assignment-filter-grid{grid-template-columns:1fr}.rb-assignment-filter-grid>*{grid-column:1!important}.rb-assignment-drawer{width:100vw;padding:16px}}
+
+/* RB_PHASE25_ACCESSIBLE_THEME_CONTRAST_V1
+   High-contrast navigation and semantic interactive states for light/dark UI. */
+body.theme-light,
+body.theme-auto{
+  --rb-text-main:#142033;
+  --rb-text-muted:#52627a;
+  --rb-text-subtle:#64748b;
+  --rb-primary-button:#2563eb;
+  --rb-primary-button-hover:#1d4ed8;
+  --rb-button-text:#ffffff;
+  --rb-focus-ring:rgba(37,99,235,.35);
+}
+
+body.theme-dark{
+  --text:#f3f7fc;
+  --muted:#b8c5d6;
+  --rb-text-main:#f3f7fc;
+  --rb-text-muted:#b8c5d6;
+  --rb-text-subtle:#a9b7ca;
+  --rb-primary-button:#2563eb;
+  --rb-primary-button-hover:#1d4ed8;
+  --rb-button-text:#ffffff;
+  --rb-focus-ring:rgba(125,178,255,.48);
+}
+
+@media (prefers-color-scheme:dark){
+  body.theme-auto{
+    --text:#f3f7fc;
+    --muted:#b8c5d6;
+    --rb-text-main:#f3f7fc;
+    --rb-text-muted:#b8c5d6;
+    --rb-text-subtle:#a9b7ca;
+    --rb-primary-button:#2563eb;
+    --rb-primary-button-hover:#1d4ed8;
+    --rb-button-text:#ffffff;
+    --rb-focus-ring:rgba(125,178,255,.48);
+  }
+}
+
+/* Sidebar group labels are controls, so they must read like controls. */
+.sidebar .nav-caption{
+  min-height:34px;
+  margin:5px 3px 2px;
+  padding:8px 10px;
+  border:1px solid transparent;
+  border-radius:8px;
+  color:#b7c6d9;
+  font-size:11px;
+  line-height:1.35;
+  letter-spacing:.065em;
+  opacity:1;
+}
+.sidebar .rb-nav-group>summary::after{
+  color:#9fc2ee;
+  opacity:1;
+  font-size:18px;
+  font-weight:800;
+}
+.sidebar .rb-nav-group>summary:hover,
+.sidebar .rb-nav-group[open]>summary{
+  color:#ffffff;
+  background:rgba(59,130,246,.14);
+  border-color:rgba(147,197,253,.2);
+}
+.sidebar .nav-link{color:#e5eef9;}
+.sidebar .nav-link:hover,
+.sidebar .nav-link:focus-visible{
+  color:#ffffff;
+  background:rgba(59,130,246,.2);
+}
+.sidebar .rb-nav-group>summary:focus-visible,
+.sidebar .nav-link:focus-visible{
+  outline:3px solid rgba(147,197,253,.72);
+  outline-offset:1px;
+}
+.sidebar .brand-copy small,
+.sidebar .workspace-card small,
+.sidebar .pacs-mini{color:#b7c6d9;}
+.sidebar .sidebar-menu-search input::placeholder,
+.sidebar .sidebar-search-icon{color:#aebed2;opacity:1;}
+
+/* Shared readable secondary copy. */
+body.theme-light .page-subtitle,
+body.theme-light .breadcrumb,
+body.theme-light .muted,
+body.theme-light small,
+body.theme-dark .page-subtitle,
+body.theme-dark .breadcrumb,
+body.theme-dark .muted,
+body.theme-dark small,
+body.theme-auto .page-subtitle,
+body.theme-auto .breadcrumb,
+body.theme-auto .muted,
+body.theme-auto small{
+  color:var(--rb-text-muted,var(--muted));
+}
+
+body.theme-light input::placeholder,
+body.theme-light textarea::placeholder,
+body.theme-dark input::placeholder,
+body.theme-dark textarea::placeholder,
+body.theme-auto input::placeholder,
+body.theme-auto textarea::placeholder{
+  color:var(--rb-text-subtle,var(--muted));
+  opacity:1;
+}
+
+/* Buttons remain distinct from cards and retain a visible keyboard state. */
+body.theme-light .btn.primary,
+body.theme-dark .btn.primary,
+body.theme-auto .btn.primary{
+  background:var(--rb-primary-button);
+  border-color:var(--rb-primary-button);
+  color:var(--rb-button-text);
+  box-shadow:0 1px 2px rgba(2,6,23,.2);
+}
+body.theme-light .btn.primary:hover,
+body.theme-dark .btn.primary:hover,
+body.theme-auto .btn.primary:hover{
+  background:var(--rb-primary-button-hover);
+  border-color:var(--rb-primary-button-hover);
+  color:#ffffff;
+}
+body.theme-dark .btn:not(.primary),
+body.theme-auto .btn:not(.primary){
+  background:var(--rb-surface-raised,var(--panel));
+  color:var(--rb-text-main,var(--text));
+  border-color:#3a4a64;
+}
+.btn:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible{
+  outline:3px solid var(--rb-focus-ring,rgba(37,99,235,.35));
+  outline-offset:2px;
+}
+.btn:disabled,
+button:disabled{
+  opacity:.62;
+  cursor:not-allowed;
+}
+
+/* Dashboard hierarchy: clear cards, secondary text and table scanning. */
+.rb-home-hero,
+.rb-kpi,
+.rb-module,
+.rb-recent{
+  color:var(--rb-text-main,var(--text));
+}
+.rb-kpi,
+.rb-module{
+  box-shadow:0 4px 14px rgba(2,6,23,.08);
+}
+.rb-section-head h2,
+.rb-module h3,
+.rb-recent h3{
+  color:var(--rb-text-main,var(--text));
+}
+.rb-dashboard-table tbody tr:hover{
+  background:var(--rb-hover,rgba(148,163,184,.08));
+}
+.rb-dashboard-table a{
+  color:var(--rb-text-main,var(--text));
+  text-decoration-thickness:1px;
+  text-underline-offset:3px;
+}
+.rb-dashboard-table a:hover{color:var(--primary);text-decoration:underline;}
+
+@media(max-width:720px){
+  .sidebar .nav-caption{font-size:12px;min-height:38px;}
+}

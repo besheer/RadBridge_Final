@@ -4,12 +4,12 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{% block title %}RIS Operations{% endblock %}</title>
 <link rel="stylesheet" href="{{url_for('static',filename='app.css')}}">
-<style id="rb-nav-v3-style">
+<style id="rb-nav-v4-style">
 .rb-nav-v3{display:flex;flex-direction:column;gap:3px}
 .rb-nav-group{border-radius:8px}
 .rb-nav-group>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;user-select:none}
 .rb-nav-group>summary::-webkit-details-marker{display:none}
-.rb-nav-group>summary::after{content:"›";font-size:16px;opacity:.55;transition:transform .15s ease}
+.rb-nav-group>summary::after{content:"›";font-size:16px;opacity:1;transition:transform .15s ease}
 .rb-nav-group[open]>summary::after{transform:rotate(90deg)}
 .rb-nav-group-links{display:flex;flex-direction:column;gap:1px;padding-bottom:3px}
 .rb-nav-group .nav-link{margin-left:3px;margin-right:3px}

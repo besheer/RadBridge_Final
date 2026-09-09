@@ -8,11 +8,11 @@
 .rb-home-hero {
   display:flex;justify-content:space-between;align-items:center;
   gap:18px;padding:20px;margin-bottom:18px;border-radius:16px;
-  border:1px solid var(--border,#294052);
-  background:linear-gradient(135deg,#10233a,#132f45);
+  border:1px solid var(--rb-border,var(--line));
+  background:linear-gradient(135deg,var(--rb-surface-raised,var(--panel)),var(--rb-surface-soft,var(--panel)));
 }
 .rb-home-hero h2 { margin:0 0 6px; }
-.rb-home-hero p { margin:0;color:#a9bdd0; }
+.rb-home-hero p { margin:0;color:var(--rb-text-muted,var(--muted)); }
 .rb-home-kpis,.rb-module-grid {
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
@@ -20,31 +20,34 @@
 }
 .rb-home-kpis { margin-bottom:22px; }
 .rb-kpi,.rb-module {
-  border:1px solid var(--border,#294052);
-  border-radius:14px;background:var(--panel,#101d2d);
+  border:1px solid var(--rb-border,var(--line));
+  border-radius:14px;background:var(--rb-card,var(--panel));
 }
 .rb-kpi { padding:16px; }
-.rb-kpi small { color:#91a8bc; }
+.rb-kpi small { color:var(--rb-text-muted,var(--muted)); }
 .rb-kpi strong { display:block;font-size:27px;margin-top:6px; }
 .rb-section { margin:24px 0; }
 .rb-section-head { margin-bottom:12px; }
 .rb-section-head h2 { margin:0 0 4px; }
-.rb-section-head p { margin:0;color:#91a8bc; }
+.rb-section-head p { margin:0;color:var(--rb-text-muted,var(--muted)); }
 .rb-module {
   min-height:145px;padding:17px;text-decoration:none;color:inherit;
   display:flex;flex-direction:column;justify-content:space-between;
-  transition:transform .15s ease,border-color .15s ease;
+  transition:transform .15s ease,border-color .15s ease,background-color .15s ease,box-shadow .15s ease;
 }
 .rb-module:hover {
   transform:translateY(-2px);
-  border-color:#4c91df;
+  border-color:var(--primary);
+  background:var(--rb-hover,var(--panel));
+  box-shadow:0 10px 24px rgba(2,6,23,.12);
 }
+.rb-module:focus-visible { outline:3px solid var(--rb-focus);outline-offset:2px;border-color:var(--primary); }
 .rb-module-icon { font-size:28px; }
 .rb-module h3 { margin:9px 0 5px; }
-.rb-module p { margin:0;color:#91a8bc;font-size:13px;line-height:1.45; }
+.rb-module p { margin:0;color:var(--rb-text-muted,var(--muted));font-size:13px;line-height:1.5; }
 .rb-module-count {
   align-self:flex-start;margin-top:12px;padding:4px 9px;
-  border-radius:999px;background:#193650;font-weight:700;font-size:12px;
+  border-radius:999px;background:var(--rb-info-bg,#dbeafe);color:var(--rb-info,#1d4ed8);font-weight:800;font-size:12px;
 }
 .rb-module-alert { border-color:#7f3d3d; }
 .rb-module-alert .rb-module-count { background:#5d2424;color:#ffd0d0; }
