@@ -26104,7 +26104,6 @@ def voice_intake_caller_history(intake_id):
 # RadBridge v5.41.1 - Authenticated Staff Telephony
 # ============================================================
 
-@app.route('/api/telephony/me')
 @login_required
 def telephony_me():
 
@@ -26128,7 +26127,6 @@ def telephony_me():
     )
 
 
-@app.route('/api/telephony/directory')
 @login_required
 def telephony_directory():
 
@@ -28001,5 +27999,15 @@ reporting_support_blueprint = register_reporting_support_routes(
 from scheduling_reference_routes import register_scheduling_reference_routes
 
 scheduling_reference_blueprint = register_scheduling_reference_routes(
+    _reporting_support_sys.modules[__name__]
+)
+
+
+# RB_TELEPHONY_REFERENCE_BLUEPRINT_V1
+# Authenticated, read-only staff identity and directory APIs retain their
+# public URLs while their HTTP ownership moves out of the monolithic app.
+from telephony_reference_routes import register_telephony_reference_routes
+
+telephony_reference_blueprint = register_telephony_reference_routes(
     _reporting_support_sys.modules[__name__]
 )
