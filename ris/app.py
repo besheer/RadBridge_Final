@@ -21170,7 +21170,6 @@ def storage_cloud_manager():
       configs=CloudBackupConfig.query.order_by(CloudBackupConfig.id.desc()).all(),
       runs=BackupRun.query.order_by(BackupRun.id.desc()).limit(100).all())
 
-@app.get('/api/ops/health')
 @login_required
 def api_ops_health():
     snap=workflow_command_snapshot()
@@ -23454,7 +23453,6 @@ def api_ohif_reporting_preferences(order_id):
 
 
 
-@app.get('/api/ohif/onlyoffice/health')
 def api_ohif_onlyoffice_health():
     result = {
         'ok': False,
@@ -28009,5 +28007,15 @@ scheduling_reference_blueprint = register_scheduling_reference_routes(
 from telephony_reference_routes import register_telephony_reference_routes
 
 telephony_reference_blueprint = register_telephony_reference_routes(
+    _reporting_support_sys.modules[__name__]
+)
+
+
+# RB_OPERATIONAL_HEALTH_BLUEPRINT_V1
+# Read-only operational and ONLYOFFICE health endpoints retain their public
+# URLs and existing authorization behavior outside the monolithic app router.
+from operational_health_routes import register_operational_health_routes
+
+operational_health_blueprint = register_operational_health_routes(
     _reporting_support_sys.modules[__name__]
 )
