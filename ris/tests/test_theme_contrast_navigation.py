@@ -73,3 +73,33 @@ def test_mixed_light_dark_surfaces_keep_text_visible():
     assert ".sidebar .pacs-mini.online small" in CSS
     assert _contrast("#b8c5d6", "#111b2e") >= 4.5
     assert _contrast("#f3f7fc", "#162238") >= 4.5
+
+
+def test_global_theme_compatibility_covers_authenticated_legacy_surfaces():
+    marker = "RB_PHASE25C_GLOBAL_THEME_COMPATIBILITY_V1"
+    assert marker in CSS
+    compatibility = CSS.split(marker, 1)[1]
+    legacy_surfaces = (
+        ".management-kpis>div",
+        ".exec-kpis>div",
+        ".ops-kpis>div",
+        ".ops-health-strip>div",
+        ".metric-card",
+        ".studio-shortcut-row",
+        ".studio-launcher-item",
+        ".si-card",
+        ".status-card",
+        ".ocr-card",
+        ".confirm-dialog",
+    )
+    for selector in legacy_surfaces:
+        assert compatibility.count(selector) >= 2
+
+
+def test_management_kpis_follow_theme_instead_of_fixed_white_surface():
+    compatibility = CSS.split("RB_PHASE25C_GLOBAL_THEME_COMPATIBILITY_V1", 1)[1]
+    assert ".management-kpis>div" in compatibility
+    assert "background:var(--rb-card,var(--panel))" in compatibility
+    assert ") :is(h1,h2,h3,h4,b,strong){color:var(--rb-text-main" in compatibility
+    assert ") :is(p,span,small,label){color:var(--rb-text-muted" in compatibility
+    assert _contrast("#f3f7fc", "#111b2e") >= 4.5

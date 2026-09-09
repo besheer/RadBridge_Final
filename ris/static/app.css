@@ -1832,3 +1832,176 @@ body.theme-dark .studio-card small{color:var(--rb-text-muted,#b8c5d6);}
   box-shadow:0 10px 24px rgba(2,6,23,.12);
 }
 .studio-card:focus-visible{border-color:var(--primary);}
+
+/* RB_PHASE25C_GLOBAL_THEME_COMPATIBILITY_V1
+   Global compatibility for authenticated legacy components that still declare
+   fixed white surfaces. Keep public, login and print layouts intentionally out
+   of this layer so their paper-like presentation is preserved. */
+:is(body.theme-light,body.theme-dark) :is(
+  .admin-tile,
+  .slot,
+  .workflow-legend span,
+  .slot-calendar,
+  .calendar-grid-wrap,
+  .booking-panel,
+  .booking-tab,
+  .device-lane,
+  .caller-card,
+  .role-quick-action-bar,
+  .quick-action-card,
+  .mobile-topbar,
+  .case-action-card,
+  .metric-card,
+  .document-type-card,
+  .case-action,
+  .clinical-tabs a,
+  .case-lifecycle,
+  .radiology-command-bar a,
+  .print-tile,
+  .studio-shortcut-row,
+  .studio-launcher-item,
+  .management-kpis>div,
+  .exec-kpis>div,
+  .donut>div,
+  .ops-kpis>div,
+  .ops-health-strip>div,
+  .si-card,
+  .status-card,
+  .ocr-card,
+  .confirm-dialog
+){
+  background:var(--rb-card,var(--panel));
+  color:var(--rb-text-main,var(--text));
+  border-color:var(--rb-border,var(--line));
+}
+
+:is(body.theme-light,body.theme-dark) :is(
+  .management-kpis,
+  .exec-kpis,
+  .ops-kpis,
+  .ops-health-strip,
+  .metric-card,
+  .status-card,
+  .ocr-card,
+  .si-card
+) :is(h1,h2,h3,h4,b,strong){color:var(--rb-text-main,var(--text));}
+
+:is(body.theme-light,body.theme-dark) :is(
+  .management-kpis,
+  .exec-kpis,
+  .ops-kpis,
+  .ops-health-strip,
+  .metric-card,
+  .status-card,
+  .ocr-card,
+  .si-card
+) :is(p,span,small,label){color:var(--rb-text-muted,var(--muted));}
+
+body.theme-dark :is(
+  .chat-message,
+  .journey-stage,
+  .tag,
+  .radiology-command-bar em,
+  .bar-track,
+  .upload-box,
+  .ocr-page .technical,
+  .ocr-page .technical summary,
+  .ocr-page .technical-body
+){
+  background:var(--rb-surface-soft,#172236);
+  color:var(--rb-text-main,#f3f7fc);
+  border-color:var(--rb-border,#263550);
+}
+body.theme-dark .chat-message.mine{background:var(--rb-info-bg,#12233e);}
+body.theme-dark .ocr-page :is(input,select,textarea){
+  background:var(--rb-surface-raised,#162238);
+  color:var(--rb-text-main,#f3f7fc);
+  border-color:var(--rb-border,#3a4a64);
+}
+body.theme-dark .ocr-page :is(.status-title,.section-heading h2,.field-top label){
+  color:var(--rb-text-main,#f3f7fc);
+}
+
+@media (prefers-color-scheme:dark){
+  body.theme-auto :is(
+    .admin-tile,
+    .slot,
+    .workflow-legend span,
+    .slot-calendar,
+    .calendar-grid-wrap,
+    .booking-panel,
+    .booking-tab,
+    .device-lane,
+    .caller-card,
+    .role-quick-action-bar,
+    .quick-action-card,
+    .mobile-topbar,
+    .case-action-card,
+    .metric-card,
+    .document-type-card,
+    .case-action,
+    .clinical-tabs a,
+    .case-lifecycle,
+    .radiology-command-bar a,
+    .print-tile,
+    .studio-shortcut-row,
+    .studio-launcher-item,
+    .management-kpis>div,
+    .exec-kpis>div,
+    .donut>div,
+    .ops-kpis>div,
+    .ops-health-strip>div,
+    .si-card,
+    .status-card,
+    .ocr-card,
+    .confirm-dialog
+  ){
+    background:var(--rb-card,#111b2e);
+    color:var(--rb-text-main,#f3f7fc);
+    border-color:var(--rb-border,#263550);
+  }
+  body.theme-auto :is(
+    .management-kpis,
+    .exec-kpis,
+    .ops-kpis,
+    .ops-health-strip,
+    .metric-card,
+    .status-card,
+    .ocr-card,
+    .si-card
+  ) :is(h1,h2,h3,h4,b,strong){color:var(--rb-text-main,#f3f7fc);}
+  body.theme-auto :is(
+    .management-kpis,
+    .exec-kpis,
+    .ops-kpis,
+    .ops-health-strip,
+    .metric-card,
+    .status-card,
+    .ocr-card,
+    .si-card
+  ) :is(p,span,small,label){color:var(--rb-text-muted,#b8c5d6);}
+  body.theme-auto :is(
+    .chat-message,
+    .journey-stage,
+    .tag,
+    .radiology-command-bar em,
+    .bar-track,
+    .upload-box,
+    .ocr-page .technical,
+    .ocr-page .technical summary,
+    .ocr-page .technical-body
+  ){
+    background:var(--rb-surface-soft,#172236);
+    color:var(--rb-text-main,#f3f7fc);
+    border-color:var(--rb-border,#263550);
+  }
+  body.theme-auto .chat-message.mine{background:var(--rb-info-bg,#12233e);}
+  body.theme-auto .ocr-page :is(input,select,textarea){
+    background:var(--rb-surface-raised,#162238);
+    color:var(--rb-text-main,#f3f7fc);
+    border-color:var(--rb-border,#3a4a64);
+  }
+  body.theme-auto .ocr-page :is(.status-title,.section-heading h2,.field-top label){
+    color:var(--rb-text-main,#f3f7fc);
+  }
+}
