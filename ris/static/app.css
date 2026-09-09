@@ -2033,3 +2033,170 @@ body.theme-auto .user-dropdown>a.danger{color:#ff9b9b;}
   body.theme-auto .user-dropdown>a.danger{color:#ff9b9b;}
   body.theme-auto .dropdown-divider{background:var(--rb-border,#263550);}
 }
+
+/* RB_PHASE25E_MULTI_LEVEL_THEME_PRESETS_V1
+   Additional glare and depth choices. The template also assigns the nearest
+   light/dark family class so every existing compatibility rule still applies. */
+body.theme-light-soft{
+  color-scheme:light;
+  --bg:#e9eff6;
+  --panel:#f8fafc;
+  --text:#1e2b3d;
+  --muted:#52627a;
+  --line:#cbd6e3;
+  --primary:#2563eb;
+  --rb-bg:#e9eff6;
+  --rb-card:#f8fafc;
+  --rb-border:#cbd6e3;
+  --rb-text-main:#1e2b3d;
+  --rb-text-muted:#52627a;
+  --rb-text-subtle:#5e6f87;
+  --rb-surface:#f8fafc;
+  --rb-surface-soft:#eef3f8;
+  --rb-surface-raised:#ffffff;
+  --rb-input:#ffffff;
+  --rb-hover:#e1e9f2;
+  --rb-table-line:#d6e0eb;
+  --rb-overlay:rgba(15,23,42,.42);
+}
+
+body.theme-dim{
+  color-scheme:dark;
+  --bg:#182231;
+  --panel:#223044;
+  --text:#f1f5f9;
+  --muted:#c0cad8;
+  --line:#3a4a5f;
+  --primary:#70a7ff;
+  --rb-bg:#182231;
+  --rb-card:#223044;
+  --rb-border:#3a4a5f;
+  --rb-text-main:#f1f5f9;
+  --rb-text-muted:#c0cad8;
+  --rb-text-subtle:#b1bdcd;
+  --rb-soft:#29384d;
+  --rb-line:#3a4a5f;
+  --rb-text:#f1f5f9;
+  --rb-muted:#c0cad8;
+  --rb-surface:#223044;
+  --rb-surface-soft:#29384d;
+  --rb-surface-raised:#2d3d53;
+  --rb-input:#1b2839;
+  --rb-hover:#304158;
+  --rb-table-line:#35465b;
+  --rb-overlay:rgba(3,7,18,.58);
+}
+
+body.theme-midnight{
+  color-scheme:dark;
+  --bg:#020617;
+  --panel:#07101f;
+  --text:#f8fafc;
+  --muted:#bdc7d5;
+  --line:#1d2a40;
+  --primary:#65a2ff;
+  --rb-bg:#020617;
+  --rb-card:#07101f;
+  --rb-border:#1d2a40;
+  --rb-text-main:#f8fafc;
+  --rb-text-muted:#bdc7d5;
+  --rb-text-subtle:#aebaca;
+  --rb-soft:#0c1729;
+  --rb-line:#1d2a40;
+  --rb-text:#f8fafc;
+  --rb-muted:#bdc7d5;
+  --rb-surface:#07101f;
+  --rb-surface-soft:#0c1729;
+  --rb-surface-raised:#101c30;
+  --rb-input:#081426;
+  --rb-hover:#132139;
+  --rb-table-line:#17253a;
+  --rb-overlay:rgba(0,0,0,.72);
+}
+
+:is(body.theme-light-soft,body.theme-dim,body.theme-midnight){
+  background:var(--bg);
+  color:var(--text);
+}
+:is(body.theme-light-soft,body.theme-dim,body.theme-midnight) :is(
+  .app-header,
+  .user-trigger,
+  .user-dropdown,
+  .confirm-dialog
+){
+  background:var(--rb-card);
+  color:var(--rb-text-main);
+  border-color:var(--rb-border);
+}
+:is(body.theme-light-soft,body.theme-dim,body.theme-midnight) .app-header{
+  box-shadow:0 1px 0 var(--rb-border);
+}
+:is(body.theme-light-soft,body.theme-dim,body.theme-midnight) .user-dropdown>a:hover{
+  background:var(--rb-hover);
+  color:var(--rb-text-main);
+}
+:is(body.theme-light-soft,body.theme-dim,body.theme-midnight) .dropdown-divider{
+  background:var(--rb-border);
+}
+
+/* RB_PHASE25F_ACCESSIBLE_COLOR_PALETTES_V1
+   Accent palettes affect navigation and primary actions only; clinical
+   success, warning and danger colors remain semantically stable. */
+body.accent-default{
+  --primary:#2563eb;
+  --rb-primary-button:#2563eb;
+  --rb-primary-button-hover:#1d4ed8;
+  --rb-focus:rgba(37,99,235,.22);
+  --rb-focus-ring:rgba(37,99,235,.42);
+}
+body.accent-teal{
+  --primary:#0f766e;
+  --rb-primary-button:#0f766e;
+  --rb-primary-button-hover:#115e59;
+  --rb-focus:rgba(13,148,136,.22);
+  --rb-focus-ring:rgba(13,148,136,.42);
+}
+body.accent-violet{
+  --primary:#6d28d9;
+  --rb-primary-button:#6d28d9;
+  --rb-primary-button-hover:#5b21b6;
+  --rb-focus:rgba(124,58,237,.22);
+  --rb-focus-ring:rgba(124,58,237,.42);
+}
+body.accent-green{
+  --primary:#15803d;
+  --rb-primary-button:#15803d;
+  --rb-primary-button-hover:#166534;
+  --rb-focus:rgba(22,163,74,.22);
+  --rb-focus-ring:rgba(22,163,74,.42);
+}
+body.accent-amber{
+  --primary:#b45309;
+  --rb-primary-button:#b45309;
+  --rb-primary-button-hover:#92400e;
+  --rb-focus:rgba(217,119,6,.24);
+  --rb-focus-ring:rgba(217,119,6,.44);
+}
+body.accent-rose{
+  --primary:#be123c;
+  --rb-primary-button:#be123c;
+  --rb-primary-button-hover:#9f1239;
+  --rb-focus:rgba(225,29,72,.22);
+  --rb-focus-ring:rgba(225,29,72,.42);
+}
+
+:is(body.theme-dark,body.theme-dim,body.theme-midnight).accent-default{--primary:#75a7ff;}
+:is(body.theme-dark,body.theme-dim,body.theme-midnight).accent-teal{--primary:#5eead4;}
+:is(body.theme-dark,body.theme-dim,body.theme-midnight).accent-violet{--primary:#c4b5fd;}
+:is(body.theme-dark,body.theme-dim,body.theme-midnight).accent-green{--primary:#86efac;}
+:is(body.theme-dark,body.theme-dim,body.theme-midnight).accent-amber{--primary:#fcd34d;}
+:is(body.theme-dark,body.theme-dim,body.theme-midnight).accent-rose{--primary:#fda4af;}
+
+@media (prefers-color-scheme:dark){
+  body.theme-auto.accent-default{--primary:#75a7ff;}
+  body.theme-auto.accent-teal{--primary:#5eead4;}
+  body.theme-auto.accent-violet{--primary:#c4b5fd;}
+  body.theme-auto.accent-green{--primary:#86efac;}
+  body.theme-auto.accent-amber{--primary:#fcd34d;}
+  body.theme-auto.accent-rose{--primary:#fda4af;}
+}

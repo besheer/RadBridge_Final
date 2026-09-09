@@ -12777,7 +12777,33 @@ def my_profile():
 
         if (
             requested_theme is not None
-            and requested_theme not in ('light','dark','auto')
+            and requested_theme not in (
+                'light-soft',
+                'light',
+                'dim',
+                'dark',
+                'midnight',
+                'auto',
+            )
+        ):
+            abort(400)
+
+        requested_accent = (
+            request.form.get('accent')
+            if 'accent' in request.form
+            else None
+        )
+
+        if (
+            requested_accent is not None
+            and requested_accent not in (
+                'default',
+                'teal',
+                'violet',
+                'green',
+                'amber',
+                'rose',
+            )
         ):
             abort(400)
 

@@ -5,6 +5,8 @@ ROOT = Path(__file__).resolve().parents[1]
 CSS = (ROOT / "static" / "app.css").read_text(encoding="utf-8")
 BASE = (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
 DASHBOARD = (ROOT / "templates" / "dashboard.html").read_text(encoding="utf-8")
+PROFILE = (ROOT / "templates" / "my_profile.html").read_text(encoding="utf-8")
+APP = (ROOT / "app.py").read_text(encoding="utf-8")
 
 
 def _relative_luminance(color):
@@ -120,3 +122,63 @@ def test_auto_dark_overlays_never_render_light_text_on_white():
     assert "background:var(--rb-card,#111b2e)" in overlays
     assert "color:var(--rb-text-main,#f3f7fc)" in overlays
     assert _contrast("#f3f7fc", "#111b2e") >= 4.5
+
+
+def test_multi_level_theme_presets_are_selectable_and_validated():
+    marker = "RB_PHASE25E_MULTI_LEVEL_THEME_PRESETS_V1"
+    assert marker in CSS
+    assert "['light-soft','light','dim','dark','midnight','auto']" in PROFILE
+    for value in ("'light-soft'", "'dim'", "'midnight'"):
+        assert value in APP
+    assert "selected_theme == 'light-soft'" in BASE
+    assert "selected_theme in ['dim','midnight']" in BASE
+
+
+def test_added_theme_palettes_keep_normal_text_at_wcag_aa():
+    combinations = (
+        ("#1e2b3d", "#f8fafc"),  # soft light
+        ("#52627a", "#f8fafc"),  # soft-light secondary
+        ("#f1f5f9", "#223044"),  # dim
+        ("#c0cad8", "#223044"),  # dim secondary
+        ("#f8fafc", "#07101f"),  # midnight
+        ("#bdc7d5", "#07101f"),  # midnight secondary
+    )
+    for foreground, background in combinations:
+        assert _contrast(foreground, background) >= 4.5
+
+    presets = CSS.split("RB_PHASE25E_MULTI_LEVEL_THEME_PRESETS_V1", 1)[1]
+    for selector in (
+        "body.theme-light-soft",
+        "body.theme-dim",
+        "body.theme-midnight",
+    ):
+        assert selector in presets
+
+
+def test_accessible_color_palettes_are_selectable_and_validated():
+    marker = "RB_PHASE25F_ACCESSIBLE_COLOR_PALETTES_V1"
+    assert marker in CSS
+    for value in ("default", "teal", "violet", "green", "amber", "rose"):
+        assert "accent-" + value in CSS
+        assert "('" + value + "'," in PROFILE
+        assert "'" + value + "'" in APP
+    assert "selected_accent = (user_profile.accent or 'default')" in BASE
+    assert "accent-{{selected_accent}}" in BASE
+    assert "Color Palette" in PROFILE
+
+
+def test_palette_primary_buttons_keep_white_text_at_wcag_aa():
+    button_backgrounds = (
+        "#2563eb",  # RadBridge Blue
+        "#0f766e",  # Clinical Teal
+        "#6d28d9",  # Violet
+        "#15803d",  # Emerald
+        "#b45309",  # Amber
+        "#be123c",  # Rose
+    )
+    for background in button_backgrounds:
+        assert _contrast("#ffffff", background) >= 4.5
+
+    palettes = CSS.split("RB_PHASE25F_ACCESSIBLE_COLOR_PALETTES_V1", 1)[1]
+    assert "clinical\n   success, warning and danger colors remain semantically stable" in palettes
+    assert "body.theme-auto.accent-teal" in palettes

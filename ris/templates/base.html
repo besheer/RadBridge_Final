@@ -16,7 +16,9 @@
 .sidebar{overflow-y:auto}
 </style>
 </head>
-<body class="{{ui_dir}} ui-lang-{{ui_lang}} {% if user_profile %}theme-{{user_profile.theme}} density-{{user_profile.density}} sidebar-{{user_profile.sidebar_mode}}{% endif %}">
+{% set selected_theme = user_profile.theme if user_profile else 'light' %}
+{% set selected_accent = (user_profile.accent or 'default') if user_profile else 'default' %}
+<body class="{{ui_dir}} ui-lang-{{ui_lang}} theme-{{selected_theme}}{% if selected_theme == 'light-soft' %} theme-light{% elif selected_theme in ['dim','midnight'] %} theme-dark{% endif %} accent-{{selected_accent}} {% if user_profile %}density-{{user_profile.density}} sidebar-{{user_profile.sidebar_mode}}{% endif %}">
 <div class="mobile-topbar mobile-only">
 <button class="icon-btn" id="mobileMenuOpen">☰</button>
 <strong>RIS</strong>

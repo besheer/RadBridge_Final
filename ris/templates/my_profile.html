@@ -60,15 +60,21 @@
     <label>
       Theme
       <select name="theme">
-        {% for x in ['light','dark','auto'] %}
+        {% for x in ['light-soft','light','dim','dark','midnight','auto'] %}
         <option
           value="{{ x }}"
           {% if profile.theme == x %}selected{% endif %}
         >
-          {% if x == 'light' %}
+          {% if x == 'light-soft' %}
+            Soft Light
+          {% elif x == 'light' %}
             Light
+          {% elif x == 'dim' %}
+            Dim
           {% elif x == 'dark' %}
             Dark
+          {% elif x == 'midnight' %}
+            Midnight
           {% else %}
             System / Auto
           {% endif %}
@@ -78,11 +84,24 @@
     </label>
 
     <label>
-      Accent
-      <input
-        name="accent"
-        value="{{ profile.accent or 'default' }}"
-      >
+      Color Palette
+      <select name="accent">
+        {% for value, label in [
+          ('default','RadBridge Blue'),
+          ('teal','Clinical Teal'),
+          ('violet','Violet'),
+          ('green','Emerald'),
+          ('amber','Amber'),
+          ('rose','Rose')
+        ] %}
+        <option
+          value="{{ value }}"
+          {% if (profile.accent or 'default') == value %}selected{% endif %}
+        >
+          {{ label }}
+        </option>
+        {% endfor %}
+      </select>
     </label>
 
     <label>
