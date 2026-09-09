@@ -27002,7 +27002,6 @@ def communications_dashboard():
     )
 
 
-@app.get("/api/staff/communications/queue")
 @login_required
 def staff_communications_queue():
 
@@ -27238,7 +27237,6 @@ def staff_communications_reject(request_id):
     )
 
 
-@app.get("/api/staff/chat/<int:request_id>/messages")
 @login_required
 def staff_chat_messages(request_id):
 
@@ -27779,10 +27777,6 @@ def public_contact_attachment_upload(request_id):
     )
 
 
-@app.get(
-    "/api/staff/communications/"
-    "<int:request_id>/attachments"
-)
 @login_required
 def staff_contact_attachments(request_id):
 
@@ -28018,4 +28012,18 @@ from operational_health_routes import register_operational_health_routes
 
 operational_health_blueprint = register_operational_health_routes(
     _reporting_support_sys.modules[__name__]
+)
+
+
+# RB_STAFF_COMMUNICATIONS_REFERENCE_BLUEPRINT_V1
+# Authenticated, role-gated staff communication reads retain their public URLs
+# while all claim, confirm, reject, message and upload writes remain on app.
+from staff_communications_reference_routes import (
+    register_staff_communications_reference_routes,
+)
+
+staff_communications_reference_blueprint = (
+    register_staff_communications_reference_routes(
+        _reporting_support_sys.modules[__name__]
+    )
 )
