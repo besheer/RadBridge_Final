@@ -5177,14 +5177,9 @@ def new_order():
         # This prevents an MWL/assignment from existing for an order that failed to commit.
         audit('EASY_REGISTRATION_CREATE','order',order.id,
               f'{order.accession} {proc.name} Branch={branch.name} Device={device.name}')
-        mwl_event=enqueue_event(
-            'ORDER_MWL_CREATE','order',order.id,
-            {'accession':order.accession,'device_id':device.id}
-        )
-        assignment_event=enqueue_event(
-            'ORDER_SMART_ASSIGNMENT','order',order.id,
-            {'accession':order.accession}
-        )
+        # RB_WORK_ORDER_GATE_V3
+        # Registration must not create an MWL event.
+        # MWL is created only by explicit Work Order conversion.
         try:
             db.session.commit()
         except Exception:
@@ -5198,83 +5193,14 @@ def new_order():
             raise
 
         order_id=order.id
-        mwl_event_id=mwl_event.id
-        assignment_event_id=assignment_event.id
 
-        # Best-effort immediate delivery after commit. Outbox rows preserve retry visibility.
-        try:
-            send_mwl(order)
-            order.status='SCHEDULED'
-            mwl_event.status='PROCESSED'
-            mwl_event.attempts=int(mwl_event.attempts or 0)+1
-            mwl_event.processed_at=datetime.utcnow()
-            mwl_event.last_error=''
-            db.session.commit()
-            flash(f'Visit {order.accession} created and sent to {device.name}.','success')
-        except Exception as mwl_exc:
-            db.session.rollback()
-            order=Order.query.get(order_id)
-            mwl_event=EventOutbox.query.get(mwl_event_id)
-            if order:
-                order.status='MWL_ERROR'
-            if mwl_event:
-                mwl_event.status='FAILED'
-                mwl_event.attempts=int(mwl_event.attempts or 0)+1
-                mwl_event.last_error=str(mwl_exc)[:2000]
-            db.session.commit()
-            app.logger.exception('MWL delivery failed after order commit %s',order_id)
-            flash(f'Visit saved but MWL send failed: {mwl_exc}','danger')
-
-        try:
-            order=Order.query.get(order_id)
-            offer,status=offer_next_doctor(
-                order,
-                created_by=current_user().id if current_user() else None
-            )
-            assignment_event=EventOutbox.query.get(assignment_event_id)
-            if assignment_event:
-                assignment_event.status='PROCESSED'
-                assignment_event.attempts=int(assignment_event.attempts or 0)+1
-                assignment_event.processed_at=datetime.utcnow()
-                assignment_event.last_error=''
-                db.session.commit()
-
-            if offer:
-                flash(
-                    f'Assignment offer sent to {offer.doctor.full_name or offer.doctor.username}.',
-                    'success'
-                )
-            elif status=='CASE_NOT_READY':
-                flash(
-                    'Order created. Assignment is waiting for readiness requirements.',
-                    'warning'
-                )
-            elif status=='NO_CANDIDATE':
-                flash(
-                    'Order created. No doctor currently matches the assignment rules.',
-                    'warning'
-                )
-            else:
-                flash(
-                    f'Order created. Assignment status: {status}.',
-                    'warning'
-                )
-        except Exception as assign_exc:
-            db.session.rollback()
-            assignment_event=EventOutbox.query.get(assignment_event_id)
-            if assignment_event:
-                assignment_event.status='FAILED'
-                assignment_event.attempts=int(assignment_event.attempts or 0)+1
-                assignment_event.last_error=str(assign_exc)[:2000]
-                db.session.commit()
-            app.logger.exception(
-                'Smart assignment failed after order commit %s',
-                order_id
-            )
-            flash(
-                f'Order created, but smart assignment was skipped: {assign_exc}',
-                'warning'
-            )
+        # RB_WORK_ORDER_GATE_V3
+        # Registration is complete, but the case intentionally remains
+        # REGISTERED until financial clearance and explicit Work Order conversion.
+        flash(
+            f'Visit {order.accession} registered. Complete financial clearance, then convert to Work Order.',
+            'success'
+        )
 
         return redirect(url_for(
             'order_detail',
@@ -5820,10 +5746,128 @@ def insurance_approval_update(order_id):
     return redirect(url_for('order_detail',order_id=order.id))
 
 
+# RB_WORK_ORDER_GATE_V4
+@app.post('/orders/<int:order_id>/convert-to-work-order')
+@require_perm('orders.create')
+def convert_to_work_order(order_id):
+    order=Order.query.get_or_404(order_id)
+
+    if (order.status or '').upper() != 'REGISTERED':
+        flash('Only REGISTERED orders can be converted to Work Orders.','warning')
+        return redirect(url_for('order_detail',order_id=order.id))
+
+    if order_balance(order) > 0.01:
+        flash('Full financial clearance is required before converting to Work Order.','danger')
+        return redirect(url_for('order_detail',order_id=order.id))
+
+    if not order.device_id or not (order.station_ae or '').strip():
+        flash('Device and Station AE are required before Work Order conversion.','danger')
+        return redirect(url_for('order_detail',order_id=order.id))
+
+    try:
+        mwl_event=enqueue_event(
+            'ORDER_MWL_CREATE',
+            'order',
+            order.id,
+            {
+                'accession':order.accession,
+                'device_id':order.device_id
+            }
+        )
+        order.status='MWL_PENDING'
+        audit(
+            'WORK_ORDER_MWL_PENDING',
+            'order',
+            order.id,
+            f'accession={order.accession}; station_ae={order.station_ae}'
+        )
+        db.session.commit()
+        mwl_event_id=mwl_event.id
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.exception(
+            'Work Order preparation failed order=%s',
+            order.id
+        )
+        flash(
+            f'Work Order preparation failed: {exc}',
+            'danger'
+        )
+        return redirect(url_for('order_detail',order_id=order.id))
+
+    try:
+        order=Order.query.get(order_id)
+        send_mwl(order)
+
+        mwl_event=EventOutbox.query.get(mwl_event_id)
+        order.status='SCHEDULED'
+        order.exam_status='ORDERED'
+
+        if mwl_event:
+            mwl_event.status='PROCESSED'
+            mwl_event.attempts=int(mwl_event.attempts or 0)+1
+            mwl_event.processed_at=datetime.utcnow()
+            mwl_event.last_error=''
+
+        audit(
+            'WORK_ORDER_CREATED',
+            'order',
+            order.id,
+            f'accession={order.accession}; station_ae={order.station_ae}'
+        )
+        db.session.commit()
+        flash('Work Order created and MWL sent successfully.','success')
+    except Exception as exc:
+        db.session.rollback()
+
+        order=Order.query.get(order_id)
+        mwl_event=EventOutbox.query.get(mwl_event_id)
+
+        if order:
+            order.status='MWL_ERROR'
+
+        if mwl_event:
+            mwl_event.status='FAILED'
+            mwl_event.attempts=int(mwl_event.attempts or 0)+1
+            mwl_event.last_error=str(exc)[:2000]
+
+        if order:
+            audit(
+                'WORK_ORDER_MWL_FAILED',
+                'order',
+                order.id,
+                str(exc)[:500]
+            )
+
+        db.session.commit()
+        app.logger.exception(
+            'Work Order MWL delivery failed order=%s',
+            order_id
+        )
+        flash(
+            'Work Order was not activated because MWL delivery failed.',
+            'danger'
+        )
+
+    return redirect(url_for('order_detail',order_id=order_id))
+
+
 @app.route('/orders/<int:order_id>/resend-mwl',methods=['POST'])
 @require_perm('devices.manage')
 def resend_mwl(order_id):
     order=Order.query.get_or_404(order_id)
+
+    # RB_WORK_ORDER_GATE_V3
+    # Administrative resend is only for a case that has already passed
+    # the Work Order gate. It must never activate a REGISTERED case.
+    current_status=(order.status or '').upper()
+    if current_status == 'REGISTERED':
+        flash('Convert this case to Work Order before sending MWL.','warning')
+        return redirect(url_for('order_detail',order_id=order.id))
+    if current_status == 'MWL_PENDING':
+        flash('MWL delivery is already pending for this Work Order.','warning')
+        return redirect(url_for('order_detail',order_id=order.id))
+
     device=route_device(order.branch_id,order.modality) if order.branch_id else None
     if device: order.device_id=device.id; order.station_ae=device.ae_title
     try:
@@ -12404,8 +12448,9 @@ def schedule_unified_submit():
                     order_id=o.id,consumable_id=pc.consumable_id,qty=pc.qty,
                     source='DEFAULT',created_by=current_user().id
                 ))
-            enqueue_event('ORDER_MWL_CREATE','order',o.id,{'accession':o.accession,'device_id':device.id})
-            enqueue_event('ORDER_SMART_ASSIGNMENT','order',o.id,{'accession':o.accession})
+            # RB_WORK_ORDER_GATE_V1
+            # Registration creates the clinical order only.
+            # MWL is created later by explicit Convert to Work Order.
             orders.append(o); cursor+=timedelta(minutes=duration)
 
         first=orders[0]
@@ -12415,14 +12460,10 @@ def schedule_unified_submit():
         audit('FULL_REGISTRATION_CREATE','order',first.id,f'patient={patient.id}; exams={len(orders)}')
         db.session.commit()
 
-        for o in orders:
-            try:
-                send_mwl(o); o.status='SCHEDULED'
-            except Exception as exc:
-                o.status='MWL_ERROR'
-                app.logger.warning('MWL failed after full registration order=%s: %s',o.id,exc)
-        db.session.commit()
-
+        # RB_WORK_ORDER_GATE_V1
+        # Do not create MWL during registration.
+        # Orders remain REGISTERED until an authorized employee
+        # explicitly converts them to Work Orders.
         flash(f'Registered {len(orders)} examination(s) for {patient.name}.','success')
         return _rb_calendar_redirect(scheduled,branch.id,device.id)
 
@@ -12601,7 +12642,10 @@ def appointment_action(appointment_id, action):
             procedure=proc.name,
             station_ae=device.ae_title,
             scheduled=a.scheduled,
-            status='ARRIVED',
+            # RB_WORK_ORDER_GATE_V2
+            # Check-in creates a registered clinical order only.
+            # MWL waits for explicit Work Order conversion.
+            status='REGISTERED',
             gross_price=gross,
             contract_price=contract_price,
             patient_share=patient_share,
@@ -12611,10 +12655,10 @@ def appointment_action(appointment_id, action):
         )
         db.session.add(order)
         db.session.flush()
-        try:
-            send_mwl(order)
-        except Exception as exc:
-            audit('MWL_SEND_ERROR','order',order.id,str(exc))
+
+        # RB_WORK_ORDER_GATE_V2
+        # Patient arrival is retained on the appointment,
+        # while MWL creation is deferred to Convert to Work Order.
         a.status='ARRIVED'
         a.checked_in_at=datetime.utcnow()
         audit('APPOINTMENT_CHECKIN','appointment',a.id,order.accession)

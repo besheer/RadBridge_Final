@@ -57,15 +57,25 @@ def test_page_title_contains_no_script():
     assert '<script' not in title_block
 
 
-def test_registration_commits_before_external_side_effects():
-    route = APP.split('def new_order():', 1)[1].split("@app.get('/api/registration/procedures')", 1)[0]
+def test_registration_commits_without_mwl_or_assignment_side_effects():
+    import ast
+
+    tree = ast.parse(APP)
+    node = next(
+        item
+        for item in tree.body
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and item.name == 'new_order'
+    )
+    route = ast.get_source_segment(APP, node) or ''
     commit_marker = "# Persist the complete RIS transaction before any external side effect."
     assert commit_marker in route
     section = route.split(commit_marker, 1)[1]
-    assert section.index('db.session.commit()') < section.index('send_mwl(order)')
-    assert section.index('db.session.commit()') < section.index('offer_next_doctor(')
-    assert "enqueue_event(\n            'ORDER_MWL_CREATE'" in section
-    assert "enqueue_event(\n            'ORDER_SMART_ASSIGNMENT'" in section
+    assert 'db.session.commit()' in section
+    assert 'send_mwl(order)' not in section
+    assert 'offer_next_doctor(' not in section
+    assert "enqueue_event(\n            'ORDER_MWL_CREATE'" not in section
+    assert "enqueue_event(\n            'ORDER_SMART_ASSIGNMENT'" not in section
 
 
 def test_failed_registration_commit_cleans_saved_attachments():

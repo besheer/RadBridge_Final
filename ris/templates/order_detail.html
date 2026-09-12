@@ -301,6 +301,36 @@
 </div>
 
 <div class="panel">
+  {% set work_order_due=effective_due|float %}
+  {% set work_order_paid=(order.paid_amount or 0)|float %}
+  {% set work_order_balance=work_order_due-work_order_paid %}
+
+  {# RB_WORK_ORDER_GATE_V2 #}
+  {% if order.status == 'REGISTERED' and has_perm('orders.create') %}
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-title">Work Order / أمر الشغل</div>
+
+    {% if work_order_balance <= 0.01 %}
+      <p>
+        Financial clearance complete. The case is ready to be converted
+        to a Work Order and sent to the modality MWL.
+      </p>
+
+      <form method="post"
+            action="{{ url_for('convert_to_work_order', order_id=order.id) }}">
+        <button class="btn primary" type="submit">
+          Convert to Work Order
+        </button>
+      </form>
+    {% else %}
+      <p>
+        Full financial clearance is required before this case can be
+        converted to a Work Order.
+      </p>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="section-title">Payment & Balance / التحصيل والبواقي</div>
   {% set gross_due=(order.patient_share or order.contract_price or order.gross_price or 0)|float %}
   {% set due=effective_due|float %}

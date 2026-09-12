@@ -99,7 +99,7 @@ def test_management_links_preserved():
 
     for endpoint in (
         "management_dashboard",
-        "analytics",
+        "analytics_reference.analytics",
         "executive_analytics",
         "referral_analytics",
         "assignment_reports",
