@@ -1,27 +1,77 @@
 {% extends "base.html" %}
-{% block page_title %}{{order.accession}} — {{order.patient.name}}
-<div class="panel">
-<h3>Exam Workflow</h3>
-<div class="workflow-strip">
-{% for st in ['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING','VERIFIED','FINAL'] %}
-<span class="status-chip status-{{st|lower|replace('_','-')}} {% if (order.exam_status or 'ORDERED')==st %}current{% endif %}">{{st}}</span>
-{% endfor %}
-</div>
-<p><b>PACS Images:</b> {{order.pacs_image_count or 0}} · <b>PACS:</b> {{order.pacs_status or 'WAITING'}}</p>
-{% if has_perm('users.view') %}
-<details><summary>Supervisor Override</summary>
-<form method="post" action="{{url_for('order_exam_status_override',order_id=order.id)}}" class="override-form">
-<select name="status">{% for st in ['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING','VERIFIED','FINAL'] %}<option value="{{st}}">{{st}}</option>{% endfor %}</select>
-<input name="reason" required minlength="5" placeholder="Required reason"><button class="btn">Apply Override</button>
-</form></details>
-{% endif %}
-</div>
-
-{% endblock %}
+{% block page_title %}{{order.accession}} — {{order.patient.name}}{% endblock %}
 {% block subtitle %}{{order.modality}} · {{order.proc.name_ar if ui_lang=='ar' and order.proc and order.proc.name_ar else (order.proc.name if order.proc else order.procedure)}} · {{order.status}}{% endblock %}
 
 {% block content %}
 <div class="rb-case-workspace rb-order-workspace">
+
+<div class="panel rb-order-workflow-overview">
+  <div class="section-title">
+    {{'حالة الفحص والخطوة التالية' if ui_lang=='ar' else 'Exam Status & Next Step'}}
+  </div>
+
+  {% set exam_state=(order.exam_status or 'ORDERED') %}
+  <div class="notice info">
+    {% if exam_state in ['BOOKED','ORDERED'] %}
+      {{'الخطوة التالية: بدء الفحص عند جاهزية المريض والجهاز.' if ui_lang=='ar'
+        else 'Next step: Start the examination when the patient and device are ready.'}}
+    {% elif exam_state=='IN_PROGRESS' %}
+      {{'الفحص قيد التنفيذ. أكمل الفحص ثم سجّل اكتماله.' if ui_lang=='ar'
+        else 'Examination in progress. Complete the exam and record completion.'}}
+    {% elif exam_state=='EXAM_COMPLETED' %}
+      {% if (order.pacs_image_count or 0) > 0 %}
+        {{'تم الفحص ووصلت الصور. الحالة جاهزة لمسار التقرير.' if ui_lang=='ar'
+          else 'Exam completed and PACS images are available. Proceed to reporting.'}}
+      {% else %}
+        {{'تم الفحص. في انتظار وصول الصور إلى PACS.' if ui_lang=='ar'
+          else 'Exam completed. Waiting for PACS images.'}}
+      {% endif %}
+    {% elif exam_state=='REPORTING' %}
+      {{'التقرير قيد الإعداد.' if ui_lang=='ar'
+        else 'Reporting is in progress.'}}
+    {% elif exam_state=='VERIFIED' %}
+      {{'تم التحقق من التقرير. راجع متطلبات الإنهاء.' if ui_lang=='ar'
+        else 'Report verified. Review finalization requirements.'}}
+    {% elif exam_state=='FINAL' %}
+      {{'الحالة مكتملة والتقرير نهائي.' if ui_lang=='ar'
+        else 'Case complete. Report is final.'}}
+    {% endif %}
+  </div>
+
+  <h3>Exam Workflow</h3>
+
+  <div class="workflow-strip">
+  {% for st in ['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING','VERIFIED','FINAL'] %}
+    <span class="status-chip status-{{st|lower|replace('_','-')}} {% if exam_state==st %}current{% endif %}">{{st}}</span>
+  {% endfor %}
+  </div>
+
+  <p>
+    <b>PACS Images:</b> {{order.pacs_image_count or 0}}
+    ·
+    <b>PACS:</b> {{order.pacs_status or 'WAITING'}}
+  </p>
+
+  {% if has_perm('users.view') %}
+  <details>
+    <summary>⚙ {{'إجراءات المشرف المتقدمة' if ui_lang=='ar' else 'Advanced Supervisor Actions'}}</summary>
+    <form method="post"
+          action="{{url_for('order_exam_status_override',order_id=order.id)}}"
+          class="override-form">
+      <select name="status">
+      {% for st in ['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING','VERIFIED','FINAL'] %}
+        <option value="{{st}}">{{st}}</option>
+      {% endfor %}
+      </select>
+      <input name="reason"
+             required
+             minlength="5"
+             placeholder="Required reason">
+      <button class="btn">Apply Override</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
 
 {% if request.args.get('created')=='1' %}
 <div class="panel rb-order-created-summary" id="post_save_summary"
@@ -292,8 +342,8 @@
 </div>
 </div>
 
-<div class="grid2 inventory-case-section rb-order-inventory">
-<div class="panel">
+<div class="grid2 inventory-case-section rb-order-lower-grid">
+<div class="panel rb-order-inventory">
   <div class="section-title">Consumables / المستهلكات</div>
   <p>Warehouse: <b>{{branch_warehouse.name if branch_warehouse else 'Not configured'}}</b></p>
   <p>Recorded Consumable Cost: <b>{{'%.2f'|format(consumable_cost or 0)}} EGP</b></p>
@@ -314,10 +364,8 @@
   </div>
   {% endif %}
 </div>
-</div>
 
-<div class="grid2 finance-doctor-section rb-order-doctor">
-<div class="panel">
+<div class="panel rb-order-doctor">
   <div class="section-title">Performing Doctor / الطبيب القائم بالفحص</div>
   <p><b>{{performing_doctor.full_name if performing_doctor else 'Not assigned'}}</b></p>
   <p>Calculated Share: <b>{{'%.2f'|format(performing_share or 0)}} EGP</b></p>
@@ -330,8 +378,7 @@
 </div>
 </div>
 
-<div class="grid2">
-<div class="panel">
+<div class="panel rb-order-delivery">
   <div class="section-title">Delivery / التسليم</div>
   <div class="pricing-preview">
     <div><small>Report</small><b>{{'Delivered' if order.report_delivered else 'Pending'}}</b></div>
@@ -354,10 +401,6 @@
   {% for d in delivery_events %}<tr><td>{{d.item_type}}</td><td>{{d.delivery_method}}</td><td>{{d.recipient_name}}</td><td>{{d.delivered_at}}</td></tr>{% endfor %}</table>
   {% endif %}
 </div>
-
-
-</div>
-
 
 
 </div>

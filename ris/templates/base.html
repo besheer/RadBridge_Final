@@ -173,7 +173,7 @@
 <a class="nav-link" href="{{url_for('studio_templates',template_type='REPORT')}}">📄 <span>{{"قوالب التقارير" if ui_lang=="ar" else "Report Templates"}}</span></a>
 <a class="nav-link" href="{{url_for('studio_shortcuts')}}">⭐ <span>{{"اختصارات الاستوديو" if ui_lang=="ar" else "Studio Shortcuts"}}</span></a>
 {% endif %}
-{% if has_perm("analytics.view") %}<a class="nav-link" href="{{url_for('analytics')}}">▥ <span>{{"التحليلات" if ui_lang=="ar" else "Analytics"}}</span></a>{% endif %}
+{% if has_perm("analytics.view") %}<a class="nav-link" href="{{url_for('analytics_reference.analytics')}}">▥ <span>{{"التحليلات" if ui_lang=="ar" else "Analytics"}}</span></a>{% endif %}
 {% if has_perm("analytics.executive.view") %}<a class="nav-link" href="{{url_for('executive_analytics')}}">📈 <span>{{"التحليلات التنفيذية" if ui_lang=="ar" else "Executive Analytics"}}</span></a>{% endif %}
 {% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('referral_analytics')}}">↗ <span>{{"تحليلات الإحالات" if ui_lang=="ar" else "Referral Analytics"}}</span></a>{% endif %}
 {% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('assignment_reports')}}">⇶ <span>{{"تقارير التوزيع" if ui_lang=="ar" else "Assignment Reports"}}</span></a>{% endif %}

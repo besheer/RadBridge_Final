@@ -5849,10 +5849,45 @@ def add_payment(order_id):
 @app.route('/nursing')
 @require_perm('nursing.worklist')
 def nursing_worklist():
+    # RB_ROLE_WORKLIST_FILTERS_V1
+    q = Order.query.filter(Order.status.notin_(['FINAL', 'CANCELLED']))
+
+    search = (request.args.get('q') or '').strip()
+    date_from = (request.args.get('date_from') or '').strip()
+    date_to = (request.args.get('date_to') or '').strip()
+    priority = (request.args.get('priority') or '').strip().upper()
+
+    if search:
+        like = f'%{search}%'
+        q = q.join(Patient).filter(db.or_(
+            Patient.name.ilike(like),
+            Patient.patient_id.ilike(like),
+            Patient.phone.ilike(like),
+            Patient.national_id.ilike(like),
+            Order.accession.ilike(like),
+            Order.procedure.ilike(like),
+            Order.modality.ilike(like),
+        ))
+
+    if priority:
+        q = q.filter(Order.priority == priority)
+
+    if date_from:
+        try:
+            start_day = datetime.strptime(date_from, '%Y-%m-%d')
+            q = q.filter(Order.scheduled >= start_day)
+        except ValueError:
+            pass
+
+    if date_to:
+        try:
+            end_day = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+            q = q.filter(Order.scheduled < end_day)
+        except ValueError:
+            pass
+
     orders = (
-        Order.query
-        .filter(Order.status.notin_(['FINAL', 'CANCELLED']))
-        .order_by(Order.scheduled.desc())
+        q.order_by(Order.scheduled.desc())
         .limit(300)
         .all()
     )
@@ -5889,6 +5924,8 @@ def nursing_worklist():
         rows=rows,
         image_urls=image_urls,
         attachment_counts=attachment_counts,
+        saved_views=_saved_views_for('NURSING'),
+        saved_view_page='NURSING',
     )
 
 @app.route('/nursing/<int:order_id>',methods=['GET','POST'])
@@ -6316,18 +6353,53 @@ def technician_case_consume(order_id):
 @app.route('/technician')
 @require_perm('technician.worklist')
 def technician_worklist():
+    # RB_ROLE_WORKLIST_FILTERS_V1
+    q = Order.query.filter(Order.status.in_([
+        'SCHEDULED',
+        'ARRIVED',
+        'IN_PROGRESS',
+        'COMPLETED',
+        'IMAGES_RECEIVED',
+        'REPORTING',
+        'MWL_ERROR',
+    ]))
+
+    search = (request.args.get('q') or '').strip()
+    date_from = (request.args.get('date_from') or '').strip()
+    date_to = (request.args.get('date_to') or '').strip()
+    priority = (request.args.get('priority') or '').strip().upper()
+
+    if search:
+        like = f'%{search}%'
+        q = q.join(Patient).filter(db.or_(
+            Patient.name.ilike(like),
+            Patient.patient_id.ilike(like),
+            Patient.phone.ilike(like),
+            Patient.national_id.ilike(like),
+            Order.accession.ilike(like),
+            Order.procedure.ilike(like),
+            Order.modality.ilike(like),
+        ))
+
+    if priority:
+        q = q.filter(Order.priority == priority)
+
+    if date_from:
+        try:
+            start_day = datetime.strptime(date_from, '%Y-%m-%d')
+            q = q.filter(Order.scheduled >= start_day)
+        except ValueError:
+            pass
+
+    if date_to:
+        try:
+            end_day = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+            q = q.filter(Order.scheduled < end_day)
+        except ValueError:
+            pass
+
     rows = (
-        Order.query
-        .filter(Order.status.in_([
-            'SCHEDULED',
-            'ARRIVED',
-            'IN_PROGRESS',
-            'COMPLETED',
-            'IMAGES_RECEIVED',
-            'REPORTING',
-            'MWL_ERROR',
-        ]))
-        .order_by(Order.scheduled.desc())
+        q.order_by(Order.scheduled.desc())
         .limit(300)
         .all()
     )
@@ -6347,6 +6419,8 @@ def technician_worklist():
         orders=rows,
         image_urls=image_urls,
         attachment_counts=attachment_counts,
+        saved_views=_saved_views_for('TECHNICIAN'),
+        saved_view_page='TECHNICIAN',
     )
 
 @app.route('/technician/<int:order_id>/status',methods=['POST'])
@@ -6539,6 +6613,8 @@ def doctor_workspace():
     open_allowed=sum(1 for x in rows if (not x.assigned_doctor_id) and doctor_can_take_open_case(current_user(),x)[0])
     return render_template(
       'doctor_workspace.html',
+        saved_views=_saved_views_for('DOCTOR'),
+        saved_view_page='DOCTOR',
       rows=rows,
       pacs_urls=pacs_urls,
       ohif_urls=ohif_urls,
@@ -12877,6 +12953,77 @@ def admin_dictionary():
         ))
     return render_template('admin_dictionary.html',rows=rows.order_by(DictionaryEntry.module,DictionaryEntry.key).all(),q=q)
 
+
+@app.get('/admin/booking-control-center')
+@require_perm('devices.manage')
+def admin_booking_control_center():
+    now=datetime.now()
+
+    devices=Device.query.order_by(Device.modality,Device.name).all()
+    active_devices=[d for d in devices if bool(getattr(d,'active',True))]
+    booking_enabled_devices=[
+        d for d in active_devices
+        if bool(getattr(d,'booking_enabled',True))
+    ]
+
+    active_device_blocks=DeviceBlock.query.filter(
+        DeviceBlock.start_at <= now,
+        DeviceBlock.end_at > now
+    ).all()
+
+    active_booking_blocks=BookingBlock.query.filter_by(active=True).filter(
+        BookingBlock.start_at <= now,
+        BookingBlock.end_at > now
+    ).all()
+
+    today_start=datetime.combine(now.date(),datetime.min.time())
+    tomorrow=today_start+timedelta(days=1)
+
+    appointments_today=Appointment.query.filter(
+        Appointment.scheduled >= today_start,
+        Appointment.scheduled < tomorrow,
+        Appointment.status.notin_(['CANCELLED','NO_SHOW'])
+    ).count()
+
+    device_rows=[]
+    active_device_block_ids={b.device_id for b in active_device_blocks if b.device_id}
+
+    for d in devices:
+        status=(getattr(d,'operational_status','ACTIVE') or 'ACTIVE').upper()
+        current_block=next(
+            (b for b in active_device_blocks if b.device_id==d.id),
+            None
+        )
+
+        device_rows.append({
+            'id':d.id,
+            'name':d.name,
+            'modality':d.modality,
+            'ae_title':d.ae_title,
+            'room':getattr(d,'room','') or '',
+            'branch':d.branch.name if getattr(d,'branch',None) else '',
+            'active':bool(getattr(d,'active',True)),
+            'booking_enabled':bool(getattr(d,'booking_enabled',True)),
+            'operational_status':status,
+            'workday_start':getattr(d,'workday_start','08:00') or '08:00',
+            'workday_end':getattr(d,'workday_end','22:00') or '22:00',
+            'blocked_now':d.id in active_device_block_ids,
+            'block_reason':current_block.reason if current_block else '',
+        })
+
+    return render_template(
+        'admin_booking_control_center.html',
+        now=now,
+        device_rows=device_rows,
+        total_devices=len(devices),
+        active_devices=len(active_devices),
+        booking_enabled_devices=len(booking_enabled_devices),
+        active_device_blocks=len(active_device_blocks),
+        active_booking_blocks=len(active_booking_blocks),
+        appointments_today=appointments_today,
+    )
+
+
 @app.route('/admin/booking-control',methods=['GET','POST'])
 @require_perm('devices.manage')
 def admin_booking_control():
@@ -13241,7 +13388,6 @@ def analytics_query():
     if contract_id: q=q.filter(Order.contract_id==contract_id)
     return q
 
-@app.route('/analytics')
 @require_perm('analytics.view')
 def analytics():
     q=analytics_query()
@@ -13334,7 +13480,6 @@ def analytics():
         contracts=Contract.query.order_by(Contract.name).all()
     )
 
-@app.route('/analytics/export.csv')
 @require_perm('export.view')
 def analytics_export_csv():
     rows=analytics_query().order_by(Order.scheduled.desc()).all()
@@ -19054,6 +19199,149 @@ def advanced_search():
       CaseAssignment=CaseAssignment,
       Report=Report
     )
+
+# ===== RADBRIDGE SAVED VIEWS V1 =====
+
+SAVED_VIEW_PAGES = {
+    'NURSING': 'nursing_worklist',
+    'TECHNICIAN': 'technician_worklist',
+    'DOCTOR': 'doctor_workspace',
+}
+
+SAVED_VIEW_FILTER_KEYS = {
+    'NURSING': {'q','date_from','date_to','priority'},
+    'TECHNICIAN': {'q','date_from','date_to','priority'},
+    'DOCTOR': {'q','status','modality'},
+}
+
+def _saved_view_page_or_404(page_key):
+    key=(page_key or '').strip().upper()
+    if key not in SAVED_VIEW_PAGES:
+        abort(404)
+    return key
+
+def _saved_view_filtered_data(page_key, source):
+    allowed=SAVED_VIEW_FILTER_KEYS.get(page_key,set())
+    return {
+        k:v for k,v in source.items()
+        if k in allowed and str(v).strip() != ''
+    }
+
+def _saved_views_for(page_key):
+    return (
+        SavedSearchFilter.query
+        .filter_by(
+            user_id=current_user().id,
+            page_key=page_key
+        )
+        .order_by(
+            SavedSearchFilter.is_default.desc(),
+            SavedSearchFilter.name
+        )
+        .all()
+    )
+
+@app.post('/saved-views/<page_key>/save')
+@login_required
+def saved_view_save(page_key):
+    page_key=_saved_view_page_or_404(page_key)
+    name=(request.form.get('view_name') or '').strip()
+    if not name:
+        abort(400)
+
+    data=_saved_view_filtered_data(page_key, request.form)
+
+    row=SavedSearchFilter(
+        user_id=current_user().id,
+        name=name,
+        page_key=page_key,
+        filter_json=json.dumps(data,ensure_ascii=False),
+        is_default=False
+    )
+    db.session.add(row)
+    db.session.commit()
+
+    return redirect(url_for(SAVED_VIEW_PAGES[page_key], **data))
+
+@app.get('/saved-views/<page_key>/<int:view_id>/apply')
+@login_required
+def saved_view_apply(page_key,view_id):
+    page_key=_saved_view_page_or_404(page_key)
+
+    row=SavedSearchFilter.query.filter_by(
+        id=view_id,
+        user_id=current_user().id,
+        page_key=page_key
+    ).first_or_404()
+
+    try:
+        data=json.loads(row.filter_json or '{}')
+    except Exception:
+        data={}
+
+    data=_saved_view_filtered_data(page_key,data)
+
+    return redirect(url_for(SAVED_VIEW_PAGES[page_key], **data))
+
+@app.post('/saved-views/<page_key>/<int:view_id>/default')
+@login_required
+def saved_view_set_default(page_key,view_id):
+    page_key=_saved_view_page_or_404(page_key)
+
+    row=SavedSearchFilter.query.filter_by(
+        id=view_id,
+        user_id=current_user().id,
+        page_key=page_key
+    ).first_or_404()
+
+    SavedSearchFilter.query.filter_by(
+        user_id=current_user().id,
+        page_key=page_key
+    ).update({'is_default':False})
+
+    row.is_default=True
+    db.session.commit()
+
+    return redirect(url_for(SAVED_VIEW_PAGES[page_key]))
+
+@app.post('/saved-views/<page_key>/<int:view_id>/rename')
+@login_required
+def saved_view_rename(page_key,view_id):
+    page_key=_saved_view_page_or_404(page_key)
+
+    row=SavedSearchFilter.query.filter_by(
+        id=view_id,
+        user_id=current_user().id,
+        page_key=page_key
+    ).first_or_404()
+
+    name=(request.form.get('view_name') or '').strip()
+    if not name:
+        abort(400)
+
+    row.name=name
+    db.session.commit()
+
+    return redirect(url_for(SAVED_VIEW_PAGES[page_key]))
+
+@app.post('/saved-views/<page_key>/<int:view_id>/delete')
+@login_required
+def saved_view_delete(page_key,view_id):
+    page_key=_saved_view_page_or_404(page_key)
+
+    row=SavedSearchFilter.query.filter_by(
+        id=view_id,
+        user_id=current_user().id,
+        page_key=page_key
+    ).first_or_404()
+
+    db.session.delete(row)
+    db.session.commit()
+
+    return redirect(url_for(SAVED_VIEW_PAGES[page_key]))
+
+# ===== END RADBRIDGE SAVED VIEWS V1 =====
+
 
 @app.post('/search/advanced/save')
 @login_required
@@ -28037,4 +28325,14 @@ voice_scheduling_reference_blueprint = (
     register_voice_scheduling_reference_routes(
         _reporting_support_sys.modules[__name__]
     )
+)
+
+
+# RB_ANALYTICS_REFERENCE_BLUEPRINT_V1
+# Permission-protected, read-only analytics views retain their public URLs
+# while financial writes, imports and patient-level files remain on app.
+from analytics_reference_routes import register_analytics_reference_routes
+
+analytics_reference_blueprint = register_analytics_reference_routes(
+    _reporting_support_sys.modules[__name__]
 )

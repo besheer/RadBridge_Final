@@ -117,6 +117,19 @@
   text-decoration:none;
 }
 
+.rb-cell.rb-outside-hours{
+  opacity:.48;
+  cursor:not-allowed;
+}
+
+.rb-cell.rb-outside-hours:hover{
+  background:var(--rb-card,var(--panel));
+}
+
+.rb-cell.rb-outside-hours .rb-add{
+  display:none;
+}
+
 .rb-cell.rb-occupied{
   background:color-mix(in srgb,var(--primary) 8%,var(--rb-card,var(--panel)));
 }
@@ -409,16 +422,22 @@
 
 <div class="rb-board-wrap"><div class="rb-board" style="--n:{{devices|length if devices else 1}}">
  <div class="rb-head rb-corner">Time</div>
- {% for d in devices %}<div class="rb-head"><b>{{d.name}}</b><div class="rb-small">{{d.modality}} · AE {{d.ae_title}}</div></div>{% endfor %}
+ {% for d in devices %}<div class="rb-head"><b>{{d.name}}</b><div class="rb-small">{{d.modality}} · AE {{d.ae_title}} · {{d.workday_start or '08:00'}}-{{d.workday_end or '22:00'}}</div></div>{% endfor %}
  {% for slot in slots %}
   <div class="rb-time">{{slot.strftime('%H:%M')}}</div>
   {% for d in devices %}
    {% set cell=calendar_cells.get(d.id ~ '|' ~ slot.isoformat()) %}
-   <div class="rb-cell{% if cell and cell.occupied %} rb-occupied{% endif %}" data-device="{{d.id}}" data-branch="{{d.branch_id}}" data-name="{{d.name}}" data-modality="{{d.modality}}" data-dt="{{slot.strftime('%Y-%m-%dT%H:%M')}}">
+   {% set slot_hm=slot.strftime('%H:%M') %}
+   {% set work_start=d.workday_start or '08:00' %}
+   {% set work_end=d.workday_end or '22:00' %}
+   {% set outside_hours=(slot_hm < work_start or slot_hm >= work_end) %}
+   <div class="rb-cell{% if cell and cell.occupied %} rb-occupied{% endif %}{% if outside_hours %} rb-outside-hours{% endif %}" data-device="{{d.id}}" data-branch="{{d.branch_id}}" data-name="{{d.name}}" data-modality="{{d.modality}}" data-work-start="{{work_start}}" data-work-end="{{work_end}}" data-dt="{{slot.strftime('%Y-%m-%dT%H:%M')}}" {% if outside_hours %}title="{{'خارج ساعات العمل' if ui_lang=='ar' else 'Outside working hours'}} · {{work_start}}-{{work_end}}"{% endif %}>
     {% if cell and cell.starts %}
       {% for a in cell.starts %}<div class="rb-appt">{% if a.order_id %}<a href="{{url_for('order_detail',order_id=a.order_id)}}">{% endif %}<b>{{a.patient.name}}</b><div>{{a.procedure.name}} · {{a.duration_min or 20}}m · {{a.status}}</div>{% if a.order_id %}</a>{% endif %}</div>{% endfor %}
     {% elif cell and cell.occupied %}
       <div class="rb-occupied-tail">{{'محجوز' if ui_lang=='ar' else 'Occupied'}}</div>
+    {% elif outside_hours %}
+      <div class="rb-occupied-tail">{{'خارج ساعات العمل' if ui_lang=='ar' else 'Closed'}}</div>
     {% else %}
       <button class="rb-add" type="button">+</button>
     {% endif %}
@@ -468,10 +487,10 @@
 <div style="margin-top:7px"><label>General Notes</label><textarea name="notes" rows="2"></textarea></div>
 </section>
 
-<aside class="rb-pane rb-summary-pane"><h3>Summary</h3><div class="rb-summary"><span>Patient</span><b id="sPatient">New Patient</b></div><div class="rb-summary"><span>Device</span><b id="sDevice">—</b></div><div class="rb-summary"><span>Start</span><b id="sStart">—</b></div><div class="rb-summary"><span>Exams</span><b id="sCount">0</b></div><div class="rb-summary"><span>Duration</span><b><span id="sDuration">0</span>m</b></div><div class="rb-summary"><span>OCR Docs</span><b id="sOcr">0</b></div><p class="rb-small">Book Only = appointment. Register & Save = orders + accessions + MWL + insurance + documents + clinical notes + first payment.</p></aside>
+<aside class="rb-pane rb-summary-pane"><h3>Summary</h3><div class="rb-summary"><span>Patient</span><b id="sPatient">New Patient</b></div><div class="rb-summary"><span>Device</span><b id="sDevice">—</b></div><div class="rb-summary"><span>Start</span><b id="sStart">—</b></div><div class="rb-summary"><span>Exams</span><b id="sCount">0</b></div><div class="rb-summary"><span>Duration</span><b><span id="sDuration">0</span>m</b></div><div class="rb-summary"><span>OCR Docs</span><b id="sOcr">0</b></div><div id="rbValidationGuide" class="notice" style="margin-top:10px" aria-live="polite"><b id="rbValidationTitle">Complete required information</b><div id="rbValidationItems" class="rb-small"></div></div><p class="rb-small">Book Only = appointment. Register & Save = orders + accessions + MWL + insurance + documents + clinical notes + first payment.</p></aside>
 </div>
 
-<div class="rb-ws-foot"><span class="rb-small">Optional missing data does not block. Duplicate/safety checks remain active.</span><div class="rb-actions"><button type="button" class="btn" id="cancelWs">Cancel</button><button type="submit" class="btn" data-action="BOOK">Book Only</button><button type="submit" class="btn primary" data-action="REGISTER">Register & Save</button></div></div>
+<div class="rb-ws-foot"><span class="rb-small">Optional missing data does not block. Duplicate/safety checks remain active.</span><div class="rb-actions"><button type="button" class="btn" id="cancelWs">Cancel</button><button type="submit" class="btn" data-action="BOOK" id="rbBookBtn">Book Only</button><button type="submit" class="btn primary" data-action="REGISTER" id="rbRegisterBtn">Register & Save</button></div></div>
 </form></div>
 
 <script>
@@ -511,22 +530,109 @@ if(mode==='ocr'){
     document.getElementById('ocrFile').focus();
 }
 }
-document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{setMode(b.dataset.mode);dirty=true});
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{setMode(b.dataset.mode);dirty=true;rbRegistrationValidation()});
 function recalc(){let n=0,m=0;examRows.querySelectorAll('select').forEach(s=>{if(s.value){n++;m+=Number(s.selectedOptions[0]?.dataset.duration||0)}});document.getElementById('sCount').textContent=n;document.getElementById('sDuration').textContent=m}
 function addExam(id){const row=document.createElement('div');row.className='rb-exam';const s=document.createElement('select');s.name='procedure_ids';s.required=true;const list=procedures.filter(p=>(p.modality||'').toUpperCase()===modality);s.innerHTML='<option value="">Choose examination...</option>'+list.map(p=>`<option value="${p.id}" data-duration="${p.duration}">${p.name} (${p.duration}m)</option>`).join('');if(id)s.value=String(id);const dur=document.createElement('span'),x=document.createElement('button');x.type='button';x.className='btn';x.textContent='×';function sync(){dur.textContent=(s.selectedOptions[0]?.dataset.duration||'—')+'m';recalc()}s.onchange=()=>{sync();dirty=true};x.onclick=()=>{if(examRows.children.length>1){row.remove();recalc()}};row.append(s,dur,x);examRows.append(row);sync()}
 function addDoc(){const row=document.createElement('div');row.className='rb-doc';row.innerHTML='<input type="file" name="attachment_files"><select name="attachment_categories"><option value="PRESCRIPTION">Prescription</option><option value="APPROVAL">Approval</option><option value="INSURANCE_CARD">Insurance Card</option><option value="IDENTITY">ID</option><option value="PREVIOUS_REPORT">Previous Report</option><option value="QUESTIONNAIRE">Questionnaire</option><option value="OTHER">Other</option></select><input name="attachment_notes" placeholder="Notes"><button type="button" class="btn">×</button>';row.querySelector('button').onclick=()=>row.remove();docRows.append(row)}
-function openWs(cell){const dt=cell.dataset.dt;modality=(cell.dataset.modality||'').toUpperCase();document.getElementById('fScheduled').value=dt;document.getElementById('fDevice').value=cell.dataset.device;document.getElementById('fBranch').value=cell.dataset.branch;document.getElementById('metaDevice').textContent=cell.dataset.name+' · '+modality;document.getElementById('metaDt').textContent=dt.replace('T',' ');document.getElementById('sDevice').textContent=cell.dataset.name;document.getElementById('sStart').textContent=dt.replace('T',' ');examRows.innerHTML='';docRows.innerHTML='';addExam();addDoc();setMode('new');dirty=false;overlay.hidden=false}
+function openWs(cell){const dt=cell.dataset.dt;modality=(cell.dataset.modality||'').toUpperCase();document.getElementById('fScheduled').value=dt;document.getElementById('fDevice').value=cell.dataset.device;document.getElementById('fBranch').value=cell.dataset.branch;document.getElementById('metaDevice').textContent=cell.dataset.name+' · '+modality;document.getElementById('metaDt').textContent=dt.replace('T',' ');document.getElementById('sDevice').textContent=cell.dataset.name;document.getElementById('sStart').textContent=dt.replace('T',' ');examRows.innerHTML='';docRows.innerHTML='';addExam();addDoc();setMode('new');dirty=false;overlay.hidden=false;rbRegistrationValidation()}
 document.querySelectorAll('.rb-add').forEach(b=>b.onclick=()=>openWs(b.closest('.rb-cell')));
 function closeWs(){if(dirty&&!confirm('Discard unsaved changes?'))return;overlay.hidden=true;dirty=false}
 document.getElementById('closeWs').onclick=closeWs;document.getElementById('cancelWs').onclick=closeWs;document.getElementById('addExam').onclick=()=>{addExam();dirty=true};document.getElementById('addDoc').onclick=()=>{addDoc();dirty=true};
 document.querySelectorAll('.rb-tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.rb-tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.rb-panel').forEach(x=>x.classList.toggle('active',x.dataset.panel===b.dataset.tab))});
-const psearch=document.getElementById('patientSearch'),pitems=[...document.querySelectorAll('.rb-result')];psearch.oninput=()=>{const q=psearch.value.toLowerCase().trim();pitems.forEach(x=>x.hidden=q&&!x.dataset.q.includes(q))};pitems.forEach(x=>x.onclick=()=>{document.getElementById('patientId').value=x.dataset.id;const t=x.querySelector('b').textContent;document.getElementById('selectedPatient').textContent=t;document.getElementById('selectedPatient').classList.remove('rb-hidden');document.getElementById('sPatient').textContent=t;dirty=true});
+const psearch=document.getElementById('patientSearch'),pitems=[...document.querySelectorAll('.rb-result')];psearch.oninput=()=>{const q=psearch.value.toLowerCase().trim();pitems.forEach(x=>x.hidden=q&&!x.dataset.q.includes(q))};pitems.forEach(x=>x.onclick=()=>{document.getElementById('patientId').value=x.dataset.id;const t=x.querySelector('b').textContent;document.getElementById('selectedPatient').textContent=t;document.getElementById('selectedPatient').classList.remove('rb-hidden');document.getElementById('sPatient').textContent=t;dirty=true;rbRegistrationValidation()});
 function namePreview(){const vals=['new_first_name','new_middle_name','new_third_name','new_fourth_name'].map(k=>(form.elements[k]?.value||'').trim()).filter(Boolean);document.getElementById('nameView').textContent=vals.join(' ')||'—';document.getElementById('dicomView').textContent=vals.join('^')||'—';if(modeInput.value==='new')document.getElementById('sPatient').textContent=vals.join(' ')||'New Patient'}
-['new_first_name','new_middle_name','new_third_name','new_fourth_name'].forEach(k=>form.elements[k].oninput=()=>{namePreview();dirty=true});
+
+function rbRegistrationValidation(){
+ const problems=[];
+ let first=null;
+ const mode=modeInput.value;
+
+ if(mode==='existing'){
+   const patientId=document.getElementById('patientId');
+   if(!patientId.value){
+     problems.push('Select an existing patient.');
+     first=document.getElementById('patientSearch');
+   }
+ }else{
+   const firstName=form.elements['new_first_name'];
+   const extraNames=[
+     form.elements['new_middle_name'],
+     form.elements['new_third_name'],
+     form.elements['new_fourth_name']
+   ];
+
+   if(!firstName.value.trim()){
+     problems.push('First name is required.');
+     first=first||firstName;
+   }
+
+   if(!extraNames.some(x=>x && x.value.trim())){
+     problems.push('Enter at least one additional patient name.');
+     first=first||form.elements['new_middle_name'];
+   }
+ }
+
+ const exams=[...examRows.querySelectorAll('select')];
+ if(!exams.some(x=>x.value)){
+   problems.push('Choose at least one examination.');
+   first=first||(exams[0]||document.getElementById('addExam'));
+ }
+
+ const guide=document.getElementById('rbValidationGuide');
+ const title=document.getElementById('rbValidationTitle');
+ const items=document.getElementById('rbValidationItems');
+ const register=document.getElementById('rbRegisterBtn');
+ const book=document.getElementById('rbBookBtn');
+
+ if(problems.length){
+   guide.classList.remove('success');
+   guide.classList.add('warning');
+   title.textContent=problems.length+' required item'+(problems.length===1?'':'s')+' remaining';
+   items.innerHTML=problems.map(x=>'• '+x).join('<br>');
+   register.disabled=true;
+   book.disabled=true;
+ }else{
+   guide.classList.remove('warning');
+   guide.classList.add('success');
+   title.textContent='Ready to register';
+   items.textContent='Required registration information is complete.';
+   register.disabled=false;
+   book.disabled=false;
+ }
+
+ return {ok:problems.length===0,first:first};
+}
+
+
+['new_first_name','new_middle_name','new_third_name','new_fourth_name'].forEach(k=>form.elements[k].oninput=()=>{namePreview();dirty=true;rbRegistrationValidation()});
 function setField(k,v){const e=form.elements[k];if(!e||v===undefined||v===null||v==='')return;e.value=String(v);e.dispatchEvent(new Event('input'));e.dispatchEvent(new Event('change'))}
 function pick(o,keys){for(const k of keys){if(o[k]!==undefined&&o[k]!==null&&o[k]!=='')return o[k]}return ''}
 document.getElementById('readOcr').onclick=async()=>{const file=document.getElementById('ocrFile').files[0];if(!file){alert('Choose a document first.');return}const st=document.getElementById('ocrStatus');st.textContent='Reading...';const fd=new FormData();fd.append('file',file);fd.append('document_type',document.getElementById('ocrType').value);if(document.getElementById('ocrIntake').value)fd.append('intake_id',document.getElementById('ocrIntake').value);try{const r=await fetch('{{url_for("schedule_ocr_preview")}}',{method:'POST',body:fd}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'OCR failed');document.getElementById('ocrIntake').value=d.intake_id;if(!ocrIds.includes(d.document_id))ocrIds.push(d.document_id);document.getElementById('ocrIds').value=ocrIds.join(',');document.getElementById('sOcr').textContent=ocrIds.length;st.textContent=d.warning||`Detected ${d.suggested_type} · ${Math.round((d.confidence||0)*100)}%`;const item=document.createElement('div');item.className='rb-ocr-item';item.innerHTML=`<b>${d.filename}</b><div class="rb-small">${d.suggested_type}</div><div class="rb-actions"><button class="btn accept" type="button">Accept suggestions</button><button class="btn ignore" type="button">Ignore</button></div>`;item.querySelector('.ignore').onclick=()=>{ocrIds=ocrIds.filter(x=>x!==d.document_id);document.getElementById('ocrIds').value=ocrIds.join(',');document.getElementById('sOcr').textContent=ocrIds.length;item.remove()};item.querySelector('.accept').onclick=()=>{const f=d.fields||{},type=(d.suggested_type||'').toUpperCase(),full=pick(f,['name','patient_name','full_name']);if(full){const parts=String(full).replace(/\^/g,' ').trim().split(/\s+/);setField('new_first_name',parts[0]||'');setField('new_middle_name',parts[1]||'');setField('new_third_name',parts[2]||'');setField('new_fourth_name',parts.slice(3).join(' '))}setField('new_dob',pick(f,['dob','date_of_birth','birth_date']));setField('new_phone',pick(f,['phone','mobile','mobile_number']));setField('new_national_id',pick(f,['national_id','national_id_number','id_number']));setField('new_address',pick(f,['address','patient_address']));setField('new_sex',pick(f,['sex','gender']));setField('member_no',pick(f,['member_no','membership_no','card_no','insurance_number']));setField('approval_no',pick(f,['approval_no','authorization_no']));if(d.contract_match)document.getElementById('contract').value=String(d.contract_match.id);if(type==='PRESCRIPTION'){(d.procedure_matches||[]).forEach(p=>{if((p.modality||'').toUpperCase()===modality&&!Array.from(examRows.querySelectorAll('select')).some(s=>s.value===String(p.id)))addExam(p.id)})}if(type==='PREVIOUS_REPORT'&&d.text)setField('clinical_history',d.text.slice(0,4000));if(type==='QUESTIONNAIRE'&&d.text)setField('questionnaire_note',d.text.slice(0,4000));setMode('new');namePreview();dirty=true;item.querySelector('.accept').disabled=true;item.querySelector('.accept').textContent='Accepted'};document.getElementById('ocrResults').append(item)}catch(e){st.textContent=e.message}};
-form.addEventListener('input',()=>dirty=true);form.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{document.getElementById('fAction').value=b.dataset.action;dirty=false});
+form.addEventListener('input',()=>{dirty=true;rbRegistrationValidation()});
+form.addEventListener('change',()=>rbRegistrationValidation());
+
+form.addEventListener('submit',function(e){
+ const action=document.getElementById('fAction').value;
+ if(action!=='REGISTER' && action!=='BOOK')return;
+ const state=rbRegistrationValidation();
+ if(!state.ok){
+   e.preventDefault();
+   dirty=true;
+   if(state.first){
+     state.first.focus();
+     if(state.first.scrollIntoView)state.first.scrollIntoView({behavior:'smooth',block:'center'});
+   }
+ }
+});
+
+form.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{
+ document.getElementById('fAction').value=b.dataset.action;
+ if(b.dataset.action==='REGISTER' || b.dataset.action==='BOOK'){
+   const state=rbRegistrationValidation();
+   if(!state.ok){dirty=true;return}
+ }
+ dirty=false
+});
 document.getElementById('calDate').onchange=e=>{const u=new URL(location.href);u.searchParams.set('date',e.target.value);location.href=u};
 const qs=new URLSearchParams(location.search);if(qs.get('open_registration')==='1'){const b=document.querySelector('.rb-add');if(b)openWs(b.closest('.rb-cell'))}
 })();

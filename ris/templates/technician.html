@@ -114,6 +114,54 @@ Technician workspace · Start and complete examinations, review images, and docu
     <a class="btn small" href="{{request.path}}">Clear</a>
   </div>
 </form>
+{% if saved_views is defined %}
+<div class="panel" style="margin-top:10px">
+  <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+
+    <strong>{{'عمليات البحث المحفوظة' if ui_lang=='ar' else 'Saved Views'}}</strong>
+
+    {% for v in saved_views %}
+      <a class="btn small"
+         href="{{url_for('saved_view_apply',page_key=saved_view_page,view_id=v.id)}}">
+         {% if v.is_default %}★ {% endif %}{{v.name}}
+      </a>
+
+      <form method="post"
+            action="{{url_for('saved_view_set_default',page_key=saved_view_page,view_id=v.id)}}"
+            style="display:inline">
+        <button class="btn small" title="Set default">☆</button>
+      </form>
+
+      <form method="post"
+            action="{{url_for('saved_view_delete',page_key=saved_view_page,view_id=v.id)}}"
+            style="display:inline"
+            onsubmit="return confirm('Delete saved view?')">
+        <button class="btn small">×</button>
+      </form>
+    {% endfor %}
+
+  </div>
+
+  <form method="post"
+        action="{{url_for('saved_view_save',page_key=saved_view_page)}}"
+        class="actions"
+        style="margin-top:10px">
+
+    <input name="view_name"
+           placeholder="{{'اسم البحث المحفوظ' if ui_lang=='ar' else 'Saved view name'}}"
+           required>
+
+    {% for k,v in request.args.items() %}
+      <input type="hidden" name="{{k}}" value="{{v}}">
+    {% endfor %}
+
+    <button class="btn small primary">
+      {{'حفظ الفلاتر الحالية' if ui_lang=='ar' else 'Save Current View'}}
+    </button>
+  </form>
+</div>
+{% endif %}
+
 
 <h2 class="tech-section-title">Examination Worklist</h2>
 
