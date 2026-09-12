@@ -190,7 +190,7 @@ AUTH = (ORTHANC_USER, ORTHANC_PASSWORD)
 ROLE_PERMS = {
     'SUPER_ADMIN': ['*'],
     'IT': ['dashboard.view','patients.view','orders.view','devices.manage','users.view','audit.view','pacs.view'],
-    'RECEPTION': ['dashboard.view','patients.view','patients.create','patients.edit','orders.view','orders.create','payments.create','attachments.view','attachments.upload','delivery.manage','finance.discount.request'],
+    'RECEPTION': ['dashboard.view','patients.view','patients.create','patients.edit','orders.view','orders.create','appointments.manage','payments.create','attachments.view','attachments.upload','delivery.manage','finance.discount.request'],
     'CALL_CENTER': ['dashboard.view','patients.view','patients.create','orders.view','appointments.manage'],
     'NURSING': ['dashboard.view','patients.view','orders.view','nursing.worklist','consumables.use','attachments.view','attachments.upload'],
     'TECHNICIAN': ['dashboard.view','patients.view','orders.view','technician.worklist','consumables.use','orders.status','attachments.view','pacs.transfer'],
