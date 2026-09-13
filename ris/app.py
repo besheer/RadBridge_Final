@@ -19630,6 +19630,7 @@ def assignment_dashboard():
 @require_perm('orders.view')
 def assignment_report_csv():
     import csv,io
+    from flask import make_response
     buf=io.StringIO()
     w=csv.writer(buf)
     w.writerow(['Accession','Patient','Modality','Procedure','Priority','Readiness','Assigned Doctor','Assignment Type','Offer Attempts','Last Offer','TAT Min','Delay Owner','Report Status'])

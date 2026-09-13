@@ -46,3 +46,12 @@ def test_resolution_rechecks_and_routes_correctly():
     assert "RETURNED_TO_PREVIOUS_DOCTOR" in body
     assert "OUTSIDE_SPECIALTY" in body
     assert "trigger='RETURN_RESOLVED'" in body
+
+
+def test_assignment_csv_imports_make_response_locally():
+    body = block(
+        "def assignment_report_csv():",
+        "def smart_intake_start():",
+    )
+    assert "from flask import make_response" in body
+    assert "make_response(buf.getvalue())" in body
