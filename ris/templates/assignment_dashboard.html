@@ -1,5 +1,98 @@
-{% extends "base.html" %}{% block page_title %}Assignment Dashboard{% endblock %}{% block content %}
-<div class="metric-grid">{% for k,v in stats.items() %}<div class="metric-card"><b>{{v}}</b><span>{{k.replace('_',' ')|title}}</span></div>{% endfor %}</div>
-<div class="panel actions"><a class="btn primary" href="{{url_for('assignment_reports')}}">Detailed Report</a><a class="btn" href="{{url_for('assignment_report_csv')}}">Export CSV</a></div>
-<div class="table-wrap"><table><tr><th>Accession</th><th>Patient</th><th>Readiness</th><th>Assigned</th><th>Offers</th><th>Last Offer</th><th>TAT</th><th>Delay Owner</th></tr>
-{% for x in rows %}<tr><td>{{x.order.accession}}</td><td>{{x.order.patient.name}}</td><td>{{x.readiness.status if x.readiness else '-'}}</td><td>{{x.assignment.doctor_user_id if x.assignment else '-'}}</td><td>{{x.offer_attempts}}</td><td>{{x.last_offer_status}}</td><td>{{x.tat.total_min}} min</td><td>{{x.tat.owner}}</td></tr>{% endfor %}</table></div>{% endblock %}
+{% extends "base.html" %}
+{% block page_title %}Assignment Process Dashboard{% endblock %}
+{% block content %}
+
+<div class="metric-grid">
+  {% for key,value in stats.items() %}
+  <div class="metric-card">
+    <b>{{value}}</b>
+    <span>{{key.replace('_',' ')|title}}</span>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="panel">
+  <form method="get" class="actions">
+    <label>
+      Process State
+      <select name="state">
+        {% for value,label in [
+          ('ALL','All Operations'),
+          ('READY_UNASSIGNED','Ready / Unassigned'),
+          ('PENDING_OFFER','Pending Offer'),
+          ('ASSIGNED','Assigned'),
+          ('RETURNED','Returned / Action Required'),
+          ('BLOCKED','Blocked'),
+          ('WAITING_READINESS','Waiting Readiness'),
+          ('OVERDUE','Overdue'),
+          ('FINALIZED','Finalized')
+        ] %}
+        <option value="{{value}}" {% if selected_state==value %}selected{% endif %}>
+          {{label}}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Current Owner
+      <select name="owner">
+        <option value="ALL">All Owners</option>
+        {% for value in owners %}
+        <option value="{{value}}" {% if selected_owner==value %}selected{% endif %}>
+          {{value}}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <button class="btn primary" type="submit">Apply Filters</button>
+    <a class="btn" href="{{url_for('assignment_dashboard')}}">Reset</a>
+    <a class="btn" href="{{url_for('returned_cases_queue')}}">Returned Cases</a>
+    <a class="btn" href="{{url_for('assignment_reports')}}">Detailed Report</a>
+    <a class="btn" href="{{url_for('assignment_report_csv')}}">Export CSV</a>
+  </form>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Accession</th>
+      <th>Patient</th>
+      <th>Process State</th>
+      <th>Current Owner</th>
+      <th>Readiness</th>
+      <th>Active Doctor</th>
+      <th>Offers</th>
+      <th>Return Reason</th>
+      <th>TAT</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for x in rows %}
+    <tr>
+      <td>{{x.order.accession}}</td>
+      <td>{{x.order.patient.name}}</td>
+      <td><span class="badge">{{x.process_state}}</span></td>
+      <td>{{x.process_owner or '-'}}</td>
+      <td>{{x.readiness.status if x.readiness else '-'}}</td>
+      <td>{{x.assignment.doctor_user_id if x.assignment else '-'}}</td>
+      <td>{{x.offer_attempts}} / {{x.last_offer_status or '-'}}</td>
+      <td>{{x.return_reason if x.return_open else '-'}}</td>
+      <td>{{x.tat.total_min}} min</td>
+      <td>
+        <a class="btn" href="{{url_for('order_detail',order_id=x.order.id)}}">Open</a>
+        {% if x.return_open %}
+        <a class="btn primary" href="{{url_for('returned_cases_queue')}}">Resolve Return</a>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="10">No cases match the selected filters.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

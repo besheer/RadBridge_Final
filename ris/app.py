@@ -10589,33 +10589,59 @@ def create_assignment_offer(order,doctor,attempt_no=1,created_by=None,strategy=N
     db.session.commit()
     return row
 
-def case_return_is_open(order_id):
-    # RB_UNIFIED_ASSIGNMENT_RETURN_FLAG_V1
-    latest_return = (
+def case_return_snapshot(order_id):
+    # RB_UNIFIED_ASSIGNMENT_DASHBOARD_STATE_V1
+    latest_return=(
         CaseWorkflowEvent.query
         .filter_by(order_id=order_id,event_type='RETURNED')
         .order_by(CaseWorkflowEvent.created_at.desc(),CaseWorkflowEvent.id.desc())
         .first()
     )
     if not latest_return:
-        return False
+        return {
+            'open':False,
+            'return_event':None,
+            'resolution_event':None,
+            'owner':'',
+            'reason':''
+        }
 
-    latest_ready = (
+    latest_resolution=(
         CaseWorkflowEvent.query
-        .filter_by(order_id=order_id,event_type='READY_FOR_REREVIEW')
-        .order_by(CaseWorkflowEvent.created_at.desc(),CaseWorkflowEvent.id.desc())
+        .filter(
+            CaseWorkflowEvent.order_id==order_id,
+            CaseWorkflowEvent.event_type.in_(
+                ['RESOLVED','READY_FOR_REREVIEW']
+            )
+        )
+        .order_by(
+            CaseWorkflowEvent.created_at.desc(),
+            CaseWorkflowEvent.id.desc()
+        )
         .first()
     )
-    if not latest_ready:
-        return True
 
-    return (
-        latest_ready.created_at < latest_return.created_at
-        or (
-            latest_ready.created_at == latest_return.created_at
-            and latest_ready.id < latest_return.id
+    resolved=bool(
+        latest_resolution and (
+            latest_resolution.created_at > latest_return.created_at
+            or (
+                latest_resolution.created_at == latest_return.created_at
+                and latest_resolution.id > latest_return.id
+            )
         )
     )
+
+    return {
+        'open':not resolved,
+        'return_event':latest_return,
+        'resolution_event':latest_resolution if resolved else None,
+        'owner':latest_return.owner_role or '',
+        'reason':latest_return.reason_code or ''
+    }
+
+
+def case_return_is_open(order_id):
+    return case_return_snapshot(order_id)['open']
 
 
 def offer_next_doctor(order,created_by=None):
@@ -11548,15 +11574,50 @@ def assignment_report_rows(limit=1000):
     orders=Order.query.order_by(Order.id.desc()).limit(limit).all()
     out=[]
     for o in orders:
-        ca=CaseAssignment.query.filter_by(order_id=o.id).order_by(CaseAssignment.assigned_at.desc()).first()
+        ca=(
+            CaseAssignment.query
+            .filter_by(order_id=o.id,active=True)
+            .order_by(CaseAssignment.assigned_at.desc(),CaseAssignment.id.desc())
+            .first()
+        )
         offers=AssignmentOffer.query.filter_by(order_id=o.id).order_by(AssignmentOffer.attempt_no).all()
         rd=CaseReadiness.query.filter_by(order_id=o.id).first()
         tat=case_delay_snapshot(o)
         rp=Report.query.filter_by(order_id=o.id).order_by(Report.id.desc()).first()
+        return_state=case_return_snapshot(o.id)
+        last_offer_status=offers[-1].status if offers else ''
+
+        if rp and str(rp.status or '').upper()=='FINAL':
+            process_state='FINALIZED'
+            process_owner='COMPLETE'
+        elif return_state['open']:
+            process_state='RETURNED'
+            process_owner=return_state['owner'] or tat['owner']
+        elif rd and rd.status=='BLOCKED':
+            process_state='BLOCKED'
+            process_owner=tat['owner']
+        elif last_offer_status=='PENDING':
+            process_state='PENDING_OFFER'
+            process_owner='ASSIGNMENT'
+        elif ca:
+            process_state='ASSIGNED'
+            process_owner='DOCTOR'
+        elif rd and rd.status=='READY':
+            process_state='READY_UNASSIGNED'
+            process_owner='ASSIGNMENT'
+        else:
+            process_state='WAITING_READINESS'
+            process_owner=tat['owner']
+
         out.append({
-          'order':o,'assignment':ca,'offers':offers,'readiness':rd,'tat':tat,'report':rp,
-          'offer_attempts':len(offers),
-          'last_offer_status':offers[-1].status if offers else ''
+          'order':o,'assignment':ca,'offers':offers,'readiness':rd,
+          'tat':tat,'report':rp,'offer_attempts':len(offers),
+          'last_offer_status':last_offer_status,
+          'process_state':process_state,
+          'process_owner':process_owner,
+          'return_open':return_state['open'],
+          'return_event':return_state['return_event'],
+          'return_reason':return_state['reason']
         })
     return out
 
@@ -18555,22 +18616,22 @@ def returned_cases_queue():
     ).limit(500).all()
 
     rows=[]
+    seen_orders=set()
 
     for ev in returned:
-        resolved=CaseWorkflowEvent.query.filter(
-            CaseWorkflowEvent.order_id==ev.order_id,
-            CaseWorkflowEvent.event_type.in_(
-                ['RESOLVED','READY_FOR_REREVIEW']
-            ),
-            CaseWorkflowEvent.created_at>=ev.created_at
-        ).order_by(
-            CaseWorkflowEvent.created_at.desc()
-        ).first()
+        if ev.order_id in seen_orders:
+            continue
 
-        if not resolved:
-            order=Order.query.get(ev.order_id)
-            if order:
-                rows.append((ev,order))
+        state=case_return_snapshot(ev.order_id)
+        latest=state['return_event']
+
+        if not state['open'] or not latest or latest.id!=ev.id:
+            continue
+
+        order=Order.query.get(ev.order_id)
+        if order:
+            rows.append((ev,order))
+            seen_orders.add(ev.order_id)
 
     return render_template(
         'returned_cases.html',
@@ -19614,17 +19675,51 @@ def assignment_reports():
 @app.get('/operations/assignment-dashboard')
 @require_perm('orders.view')
 def assignment_dashboard():
-    rows=assignment_report_rows()
+    all_rows=assignment_report_rows()
     stats={
-      'ready_unassigned':sum(1 for x in rows if x['readiness'] and x['readiness'].status=='READY' and not x['assignment']),
-      'pending_offers':sum(1 for x in rows if x['last_offer_status']=='PENDING'),
-      'timeouts':sum(1 for x in rows if x['last_offer_status']=='TIMEOUT'),
-      'returned':sum(1 for x in rows if any(e.event_type=='RETURNED' for e in CaseWorkflowEvent.query.filter_by(order_id=x['order'].id).all())),
-      'blocked':sum(1 for x in rows if x['readiness'] and x['readiness'].status=='BLOCKED'),
-      'overdue':sum(1 for x in rows if x['tat']['overdue']),
-      'finalized':sum(1 for x in rows if x['report'] and str(x['report'].status or '').upper()=='FINAL')
+      'ready_unassigned':sum(1 for x in all_rows if x['process_state']=='READY_UNASSIGNED'),
+      'pending_offers':sum(1 for x in all_rows if x['process_state']=='PENDING_OFFER'),
+      'assigned':sum(1 for x in all_rows if x['process_state']=='ASSIGNED'),
+      'returned':sum(1 for x in all_rows if x['return_open']),
+      'blocked':sum(1 for x in all_rows if x['process_state']=='BLOCKED'),
+      'overdue':sum(1 for x in all_rows if x['tat']['overdue']),
+      'finalized':sum(1 for x in all_rows if x['process_state']=='FINALIZED')
     }
-    return render_template('assignment_dashboard.html',rows=rows[:200],stats=stats)
+
+    state=(request.args.get('state') or 'ALL').strip().upper()
+    owner=(request.args.get('owner') or 'ALL').strip().upper()
+
+    allowed_states={
+      'ALL','READY_UNASSIGNED','PENDING_OFFER','ASSIGNED',
+      'RETURNED','BLOCKED','WAITING_READINESS','FINALIZED','OVERDUE'
+    }
+    if state not in allowed_states:
+        state='ALL'
+
+    rows=all_rows
+    if state=='OVERDUE':
+        rows=[x for x in rows if x['tat']['overdue']]
+    elif state!='ALL':
+        rows=[x for x in rows if x['process_state']==state]
+
+    owners=sorted({
+        str(x['process_owner'] or '').upper()
+        for x in all_rows if x['process_owner']
+    })
+    if owner!='ALL':
+        rows=[
+            x for x in rows
+            if str(x['process_owner'] or '').upper()==owner
+        ]
+
+    return render_template(
+        'assignment_dashboard.html',
+        rows=rows[:200],
+        stats=stats,
+        selected_state=state,
+        selected_owner=owner,
+        owners=owners
+    )
 
 @app.get('/operations/assignment-report.csv')
 @require_perm('orders.view')
