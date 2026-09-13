@@ -11587,12 +11587,15 @@ def assignment_report_rows(limit=1000):
         return_state=case_return_snapshot(o.id)
         last_offer_status=offers[-1].status if offers else ''
 
-        if rp and str(rp.status or '').upper()=='FINAL':
-            process_state='FINALIZED'
-            process_owner='COMPLETE'
-        elif return_state['open']:
+        # An open doctor return is active operational work even when an
+        # earlier report version is FINAL. It must remain visible to the
+        # branch/technician until READY_FOR_REREVIEW or RESOLVED.
+        if return_state['open']:
             process_state='RETURNED'
             process_owner=return_state['owner'] or tat['owner']
+        elif rp and str(rp.status or '').upper()=='FINAL':
+            process_state='FINALIZED'
+            process_owner='COMPLETE'
         elif rd and rd.status=='BLOCKED':
             process_state='BLOCKED'
             process_owner=tat['owner']

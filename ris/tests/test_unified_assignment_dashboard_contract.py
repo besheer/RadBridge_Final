@@ -58,3 +58,11 @@ def test_assignment_report_uses_unified_state():
         "url_for('returned_cases_queue')",
     ):
         assert marker in REPORT
+
+def test_open_return_has_priority_over_finalized_state():
+    body=APP.split('def assignment_report_rows(',1)[1].split(
+        'SMART_DOCUMENT_TYPES=',1
+    )[0]
+    assert body.index("if return_state['open']") < body.index(
+        "elif rp and str(rp.status or '').upper()=='FINAL'"
+    )
