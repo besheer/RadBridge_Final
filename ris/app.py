@@ -6558,6 +6558,25 @@ def order_exam_status(order_id):
     audit('EXAM_STATUS_FORWARD','order',order.id,f'{current}->{target}')
     enqueue_event('EXAM_STATUS_CHANGED','order',order.id,{'from':current,'to':target,'accession':order.accession})
     db.session.commit()
+
+    # RB_POST_EXAM_ASSIGNMENT_TRIGGER_V1
+    if target=='EXAM_COMPLETED':
+        try:
+            pacs_lookup_order(order)
+            evaluate_case_readiness(order)
+            db.session.commit()
+            coordinate_post_exam_assignment(
+                order,
+                created_by=current_user().id if current_user() else None,
+                trigger='END_EXAM'
+            )
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.warning(
+                'Post-exam assignment trigger failed order=%s: %s',
+                order.id,exc
+            )
+
     flash(f'Case moved to {target}.','success')
     return redirect(request.referrer or url_for('technician_worklist'))
 
@@ -6605,10 +6624,41 @@ def pacs_tracking():
 @require_perm('orders.view')
 def pacs_tracking_refresh():
     rows=Order.query.order_by(Order.scheduled.desc()).limit(300).all()
+    eligible_ids=[]
     for order in rows:
-        pacs_lookup_order(order)
+        result=pacs_lookup_order(order)
+        if (
+            (order.exam_status or '').upper()=='EXAM_COMPLETED'
+            and (result.get('status') or '').upper()=='IMAGES_COMPLETE'
+        ):
+            evaluate_case_readiness(order)
+            eligible_ids.append(order.id)
     db.session.commit()
-    return jsonify({'ok':True,'updated':len(rows)})
+
+    assignment_results={}
+    for order_id in eligible_ids:
+        try:
+            order=Order.query.get(order_id)
+            _offer,status=coordinate_post_exam_assignment(
+                order,
+                created_by=current_user().id if current_user() else None,
+                trigger='PACS_REFRESH'
+            )
+            assignment_results[str(order_id)]=status
+        except Exception as exc:
+            db.session.rollback()
+            assignment_results[str(order_id)]='ERROR'
+            app.logger.warning(
+                'PACS refresh assignment failed order=%s: %s',
+                order_id,exc
+            )
+
+    return jsonify({
+        'ok':True,
+        'updated':len(rows),
+        'assignment_results':assignment_results
+    })
+
 
 @app.route('/doctor')
 @require_perm('reports.view')
@@ -10539,6 +10589,35 @@ def create_assignment_offer(order,doctor,attempt_no=1,created_by=None,strategy=N
     db.session.commit()
     return row
 
+def case_return_is_open(order_id):
+    # RB_UNIFIED_ASSIGNMENT_RETURN_FLAG_V1
+    latest_return = (
+        CaseWorkflowEvent.query
+        .filter_by(order_id=order_id,event_type='RETURNED')
+        .order_by(CaseWorkflowEvent.created_at.desc(),CaseWorkflowEvent.id.desc())
+        .first()
+    )
+    if not latest_return:
+        return False
+
+    latest_ready = (
+        CaseWorkflowEvent.query
+        .filter_by(order_id=order_id,event_type='READY_FOR_REREVIEW')
+        .order_by(CaseWorkflowEvent.created_at.desc(),CaseWorkflowEvent.id.desc())
+        .first()
+    )
+    if not latest_ready:
+        return True
+
+    return (
+        latest_ready.created_at < latest_return.created_at
+        or (
+            latest_ready.created_at == latest_return.created_at
+            and latest_ready.id < latest_return.id
+        )
+    )
+
+
 def offer_next_doctor(order,created_by=None):
     """
     RadBridge v5.33 Smart Assignment Engine.
@@ -10556,6 +10635,34 @@ def offer_next_doctor(order,created_by=None):
       HYBRID
       MANUAL_ONLY
     """
+
+    # RB_UNIFIED_ASSIGNMENT_GUARD_V1
+    order = (
+        Order.query
+        .filter_by(id=order.id)
+        .with_for_update()
+        .first()
+    )
+
+    if not order:
+        return None, 'ORDER_NOT_FOUND'
+
+    if order.assigned_doctor_id:
+        return None, 'ALREADY_ASSIGNED'
+
+    if CaseAssignment.query.filter_by(order_id=order.id,active=True).first():
+        return None, 'ACTIVE_ASSIGNMENT_EXISTS'
+
+    if case_return_is_open(order.id):
+        return None, 'RETURNED_FOR_CORRECTION'
+
+    pending_offer = AssignmentOffer.query.filter_by(
+        order_id=order.id,
+        status='PENDING'
+    ).first()
+
+    if pending_offer:
+        return pending_offer, 'PENDING_OFFER_EXISTS'
 
     decision = assignment_readiness_decision(order)
 
@@ -10938,6 +11045,37 @@ def offer_next_doctor(order,created_by=None):
     db.session.commit()
 
     return offer, 'OFFERED'
+
+def coordinate_post_exam_assignment(order,created_by=None,trigger='POST_EXAM_READINESS'):
+    # RB_UNIFIED_ASSIGNMENT_COORDINATOR_V1
+    if not order:
+        return None, 'ORDER_NOT_FOUND'
+
+    order = Order.query.filter_by(id=order.id).with_for_update().first()
+    if not order:
+        return None, 'ORDER_NOT_FOUND'
+    if order.assigned_doctor_id:
+        return None, 'ALREADY_ASSIGNED'
+    if CaseAssignment.query.filter_by(order_id=order.id,active=True).first():
+        return None, 'ACTIVE_ASSIGNMENT_EXISTS'
+    if case_return_is_open(order.id):
+        return None, 'RETURNED_FOR_CORRECTION'
+    if (order.exam_status or '').upper()!='EXAM_COMPLETED':
+        return None, 'EXAM_NOT_COMPLETED'
+    if (order.pacs_status or '').upper()!='IMAGES_COMPLETE':
+        return None, 'IMAGES_NOT_COMPLETE'
+
+    pending = AssignmentOffer.query.filter_by(order_id=order.id,status='PENDING').first()
+    if pending:
+        return pending, 'PENDING_OFFER_EXISTS'
+
+    offer,status=offer_next_doctor(order,created_by=created_by)
+    app.logger.info(
+        'Unified assignment coordinator order=%s trigger=%s status=%s',
+        order.id,trigger,status
+    )
+    return offer,status
+
 
 def expire_assignment_offers():
     now=datetime.utcnow()
@@ -18326,8 +18464,20 @@ def return_case_to_workflow(order_id):
     note=(request.form.get('note') or '').strip()
     route=(rr.route_to if rr else 'SUPERVISOR')
     db.session.add(CaseWorkflowEvent(order_id=o.id,event_type='RETURNED',owner_role=route,reason_code=code,note=note,created_by=current_user().id))
+    now=datetime.utcnow()
     for a in CaseAssignment.query.filter_by(order_id=o.id,active=True).all():
-        a.active=False;a.unassigned_at=datetime.utcnow()
+        a.active=False
+        a.unassigned_at=now
+        a.notes=(f'Returned by doctor: {code}. {note}')[:500]
+
+    for offer in AssignmentOffer.query.filter_by(order_id=o.id,status='PENDING').all():
+        offer.status='CANCELLED'
+        offer.responded_at=now
+        offer.response_note=(f'Cancelled because case was returned: {code}')[:500]
+
+    o.assigned_doctor_id=None
+    if (o.status or '').upper() not in ('FINAL','CANCELLED'):
+        o.status='COMPLETED'
     create_ris_notification(o,'RETURNED_TO_TECH' if route=='TECHNICIAN' else 'CASE_RETURNED',
       'Case returned for correction',f'{code}: {note}','WARNING',route)
     audit(
@@ -18433,77 +18583,92 @@ def returned_cases_queue():
 def resolve_returned_case(event_id):
     ev=CaseWorkflowEvent.query.get_or_404(event_id)
     o=Order.query.get_or_404(ev.order_id)
-
     u=current_user()
     role=(u.role.code if u and u.role else '').upper()
 
     allowed_roles={
-        'TECHNICIAN',
-        'RECEPTION',
-        'FRONT_DESK',
-        'CASE_COORDINATOR',
-        'BRANCH_MANAGER',
-        'SUPER_ADMIN',
-        'ADMIN'
+        'TECHNICIAN','RECEPTION','FRONT_DESK','CASE_COORDINATOR',
+        'BRANCH_MANAGER','SUPER_ADMIN','ADMIN'
     }
-
     if role not in allowed_roles:
         abort(403)
-
     if u.branch_id and o.branch_id!=u.branch_id and role not in ('SUPER_ADMIN','ADMIN'):
         abort(403)
+    if ev.event_type!='RETURNED' or not case_return_is_open(o.id):
+        abort(409)
 
     note=(request.form.get('note') or '').strip()
+    pacs_lookup_order(o)
+    readiness=evaluate_case_readiness(o)
+    decision=assignment_readiness_decision(o,refresh_stale=False)
+    ready=bool(
+        decision.get('allowed')
+        and (o.exam_status or '').upper()=='EXAM_COMPLETED'
+        and (o.pacs_status or '').upper()=='IMAGES_COMPLETE'
+    )
 
-    db.session.add(
-        CaseWorkflowEvent(
-            order_id=o.id,
-            event_type='READY_FOR_REREVIEW',
-            owner_role='DOCTOR',
-            reason_code=ev.reason_code,
-            note=note or 'Requested action completed',
-            created_by=u.id
+    if not ready:
+        db.session.add(CaseWorkflowEvent(
+            order_id=o.id,event_type='RESOLUTION_RECHECK_FAILED',
+            owner_role=ev.owner_role,reason_code=ev.reason_code,
+            note=note or 'Required correction is still incomplete',created_by=u.id
+        ))
+        audit(
+            'RETURNED_CASE_RECHECK_BLOCKED','order',o.id,
+            f'readiness={getattr(readiness,"status","")}; reason={ev.reason_code}'
         )
-    )
+        db.session.commit()
+        flash('The case still has readiness blockers.','warning')
+        return redirect(url_for('returned_cases_queue'))
 
-    create_ris_notification(
-        o,
-        'READY_FOR_REREVIEW',
-        'Case ready for re-review',
-        f'{ev.reason_code}: {note}',
-        'INFO',
-        'RADIOLOGIST'
+    previous_assignment=(
+        CaseAssignment.query
+        .filter_by(order_id=o.id,active=False)
+        .order_by(CaseAssignment.unassigned_at.desc(),CaseAssignment.id.desc())
+        .first()
     )
+    previous_doctor_id=(previous_assignment.doctor_user_id if previous_assignment else None)
 
-    # Preserve the previous doctor as the preferred reviewer.
-    if o.assigned_doctor_id:
-        create_ris_notification(
-            o,
-            'READY_FOR_REREVIEW',
-            'Your returned case is ready for re-review',
-            f'{ev.reason_code}: {note}',
-            'INFO',
-            '',
-            user_id=o.assigned_doctor_id
+    db.session.add(CaseWorkflowEvent(
+        order_id=o.id,event_type='READY_FOR_REREVIEW',owner_role='ASSIGNMENT',
+        reason_code=ev.reason_code,note=note or 'Requested action completed',created_by=u.id
+    ))
+    db.session.commit()
+
+    assignment_status='READY_FOR_ASSIGNMENT'
+    if previous_doctor_id and ev.reason_code!='OUTSIDE_SPECIALTY':
+        try:
+            result=assign_case_atomically(
+                db=db,Order=Order,User=User,CaseAssignment=CaseAssignment,
+                Report=Report,AssignmentOffer=AssignmentOffer,
+                order_id=o.id,doctor_user_id=previous_doctor_id,
+                assigned_by=u.id,assignment_type='REREVIEW',require_unassigned=True
+            )
+            db.session.commit()
+            assignment_status='RETURNED_TO_PREVIOUS_DOCTOR'
+            create_ris_notification(
+                o,'READY_FOR_REREVIEW','Your returned case is ready for re-review',
+                f'{ev.reason_code}: {note}','INFO','',user_id=previous_doctor_id
+            )
+            db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.warning('Previous-doctor re-review failed order=%s: %s',o.id,exc)
+            _offer,assignment_status=coordinate_post_exam_assignment(
+                o,created_by=u.id,trigger='RETURN_RESOLVED_FALLBACK'
+            )
+    else:
+        _offer,assignment_status=coordinate_post_exam_assignment(
+            o,created_by=u.id,trigger='RETURN_RESOLVED'
         )
 
     audit(
-        'CASE_READY_FOR_REREVIEW',
-        'order',
-        o.id,
-        f'reason={ev.reason_code}; note={note}'
+        'CASE_READY_FOR_REREVIEW','order',o.id,
+        f'reason={ev.reason_code}; assignment_status={assignment_status}; note={note}'
     )
-
     db.session.commit()
-
-    flash(
-        'Case returned to the doctor for re-review.',
-        'success'
-    )
-
+    flash(f'Correction resolved; assignment status: {assignment_status}.','success')
     return redirect(url_for('returned_cases_queue'))
-
-
 
 
 @app.get('/reports-portal/<int:order_id>/download')
