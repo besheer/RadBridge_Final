@@ -18172,6 +18172,19 @@ def assignment_offer_respond(offer_id):
     else:
         abort(400)
     db.session.commit()
+
+    # RB_ASSIGNMENT_ACCEPT_TO_OHIF_V1
+    # Open the integrated image/reporting workspace only after the
+    # atomic acceptance and audit transaction has committed.
+    if action=='ACCEPT':
+        viewer_url=(
+            ohif_url_for_order(row.order)
+            or case_pacs_url(row.order)
+        )
+
+        if viewer_url:
+            return redirect(viewer_url)
+
     return redirect(url_for('my_assignment_offers'))
 
 @app.post('/orders/<int:order_id>/assignment-offer/start')
