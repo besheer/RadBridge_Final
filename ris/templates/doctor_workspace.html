@@ -144,4 +144,22 @@
 </tr>
 {% else %}<tr><td colspan="6" class="empty">No studies found</td></tr>{% endfor %}
 </tbody></table></div></div>
+
+<script id="rbDoctorPresenceHeartbeat">
+(() => {
+  const heartbeatUrl = {{ url_for('doctor_presence_heartbeat')|tojson }};
+  const heartbeat = () => fetch(heartbeatUrl, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'X-Requested-With': 'XMLHttpRequest'},
+    keepalive: true
+  }).catch(() => {});
+
+  heartbeat();
+  window.setInterval(heartbeat, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') heartbeat();
+  });
+})();
+</script>
 {% endblock %}

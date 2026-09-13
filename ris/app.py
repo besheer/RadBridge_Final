@@ -6660,6 +6660,23 @@ def pacs_tracking_refresh():
     })
 
 
+@app.post('/api/doctor/presence/heartbeat')
+@login_required
+def doctor_presence_heartbeat():
+    u=current_user()
+    role=(u.role.code if u and u.role else '').upper()
+    if role not in ('RADIOLOGIST','DOCTOR'):
+        abort(403)
+
+    row=doctor_availability(u)
+    row.last_seen_at=datetime.utcnow()
+    if row.state=='OFFLINE':
+        row.state='AVAILABLE'
+
+    db.session.commit()
+    return jsonify({'ok':True,'online':True,'state':row.state})
+
+
 @app.route('/doctor')
 @require_perm('reports.view')
 def doctor_workspace():
