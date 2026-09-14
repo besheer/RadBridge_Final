@@ -7,6 +7,7 @@
   const say = (en, arabic) => ar ? arabic : en;
   const offers = document.getElementById('rbWorkspaceOfferRows');
   const cases = document.getElementById('rbWorkspaceCaseRows');
+  const externalCases = document.getElementById('rbWorkspaceExternalCaseRows');
   const message = document.getElementById('rbWorkspaceMessage');
   const search = document.getElementById('rbWorkspaceSearch');
   let rows = [], loading = false, posting = false;
@@ -26,6 +27,7 @@
     const el = node('article', undefined, 'rb-case-card');
     const copy = node('div', undefined, 'rb-case-copy');
     copy.append(node('strong', c.accession + ' · ' + c.patient));
+    if (c.source === 'EXTERNAL') copy.append(node('small', say('External center: ', 'مركز خارجي: ') + c.center));
     copy.append(node('small', [c.modality, c.procedure, c.status, say('Images: ', 'الصور: ') + c.images].join(' · ')));
     el.append(copy);
     return el;
@@ -33,13 +35,19 @@
   function renderCases() {
     cases.replaceChildren();
     const term = search.value.toLocaleLowerCase();
-    const selected = rows.filter(c => [c.accession, c.patient, c.modality, c.procedure].join(' ').toLocaleLowerCase().includes(term));
-    selected.forEach(c => {
+    externalCases.replaceChildren();
+    const selected = rows.filter(c => [c.accession, c.patient, c.modality, c.procedure, c.center].join(' ').toLocaleLowerCase().includes(term));
+    function appendCases(target, source) {
+      const scoped = selected.filter(c => c.source === source);
+      scoped.forEach(c => {
       const el = card(c), link = node('a', say('Images & report', 'الصور والتقرير'), 'btn primary');
       link.href = openLink(c.open_url); link.target = '_blank'; link.rel = 'noopener';
-      el.append(link); cases.append(el);
-    });
-    if (!selected.length) cases.append(node('p', say('No assigned cases match.', 'لا توجد حالات معيّنة مطابقة.')));
+        el.append(link); target.append(el);
+      });
+      if (!scoped.length) target.append(node('p', say('No assigned cases match.', 'لا توجد حالات معيّنة مطابقة.')));
+    }
+    appendCases(cases, 'INTERNAL');
+    appendCases(externalCases, 'EXTERNAL');
   }
   async function refresh() {
     if (loading || posting) return;
@@ -63,7 +71,7 @@
       });
       if (!data.offers.length) offers.append(node('p', say('No pending offers.', 'لا توجد عروض معلّقة.')));
     } catch (_) {
-      offers.replaceChildren(); cases.replaceChildren(); rows = [];
+      offers.replaceChildren(); cases.replaceChildren(); externalCases.replaceChildren(); rows = [];
       message.textContent = say('Update failed. Check your login, then refresh.', 'تعذر التحديث. تحقق من تسجيل الدخول ثم حدّث الصفحة.');
     } finally { loading = false; }
   }

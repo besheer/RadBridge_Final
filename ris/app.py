@@ -2162,6 +2162,62 @@ class PacsStudyInbox(db.Model):
     order=db.relationship('Order',foreign_keys=[order_id])
 
 
+# External reporting is deliberately separated from normal RIS registration.
+# A received study cannot enter assignment until an administrator queues it.
+class ExternalReportingSetting(db.Model):
+    __tablename__='external_reporting_setting'
+    id=db.Column(db.Integer,primary_key=True)
+    enabled=db.Column(db.Boolean,nullable=False,default=False)
+    updated_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    updated_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow,onupdate=datetime.utcnow)
+
+
+class ExternalReportingCenter(db.Model):
+    __tablename__='external_reporting_center'
+    id=db.Column(db.Integer,primary_key=True)
+    code=db.Column(db.String(40),unique=True,nullable=False,index=True)
+    name=db.Column(db.String(160),nullable=False)
+    ae_title=db.Column(db.String(80),unique=True,nullable=False,index=True)
+    receiving_enabled=db.Column(db.Boolean,nullable=False,default=False)
+    assignment_enabled=db.Column(db.Boolean,nullable=False,default=False)
+    auto_queue=db.Column(db.Boolean,nullable=False,default=False)
+    default_priority=db.Column(db.String(20),nullable=False,default='ROUTINE')
+    required_documents=db.Column(db.Boolean,nullable=False,default=False)
+    active=db.Column(db.Boolean,nullable=False,default=True,index=True)
+    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
+    updated_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow,onupdate=datetime.utcnow)
+
+
+class ExternalCenterDoctor(db.Model):
+    __tablename__='external_center_doctor'
+    id=db.Column(db.Integer,primary_key=True)
+    center_id=db.Column(db.Integer,db.ForeignKey('external_reporting_center.id'),nullable=False,index=True)
+    doctor_user_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
+    active=db.Column(db.Boolean,nullable=False,default=True,index=True)
+    center=db.relationship('ExternalReportingCenter',foreign_keys=[center_id])
+    doctor=db.relationship('User',foreign_keys=[doctor_user_id])
+    __table_args__=(db.UniqueConstraint('center_id','doctor_user_id',name='uq_external_center_doctor'),)
+
+
+class ExternalIntakeCase(db.Model):
+    __tablename__='external_intake_case'
+    id=db.Column(db.Integer,primary_key=True)
+    center_id=db.Column(db.Integer,db.ForeignKey('external_reporting_center.id'),nullable=False,index=True)
+    inbox_id=db.Column(db.Integer,db.ForeignKey('pacs_study_inbox.id'),unique=True,nullable=False,index=True)
+    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),unique=True,index=True)
+    status=db.Column(db.String(30),nullable=False,default='RECEIVED',index=True)
+    # RECEIVED/HOLD/QUEUED/REJECTED
+    review_note=db.Column(db.String(500),nullable=False,default='')
+    reviewed_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    reviewed_at=db.Column(db.DateTime)
+    queued_at=db.Column(db.DateTime)
+    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow,index=True)
+    center=db.relationship('ExternalReportingCenter',foreign_keys=[center_id])
+    inbox=db.relationship('PacsStudyInbox',foreign_keys=[inbox_id])
+    order=db.relationship('Order',foreign_keys=[order_id])
+
+
 class DiscoveredDicomNode(db.Model):
     __tablename__='discovered_dicom_node'
     id=db.Column(db.Integer,primary_key=True)
@@ -3344,6 +3400,24 @@ def pacs_auto_intake_once(limit=200):
             else:
                 inbox.last_seen_at=datetime.utcnow()
                 inbox.image_count=int(tags.get('instances') or inbox.image_count or 0)
+
+            # Known external sources never enter the internal auto-match path.
+            # The master/center switches control capture, while disabled known
+            # sources remain blocked and visible in PACS inbox diagnostics.
+            external_center=ExternalReportingCenter.query.filter(
+                db.func.upper(ExternalReportingCenter.ae_title)==str(inbox.source_ae or '').strip().upper()
+            ).first()
+            if external_center:
+                setting=external_reporting_setting()
+                if setting.enabled and external_center.active and external_center.receiving_enabled:
+                    if not ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).first():
+                        db.session.add(ExternalIntakeCase(center_id=external_center.id,inbox_id=inbox.id,status='RECEIVED'))
+                    inbox.state='EXTERNAL_INTAKE'
+                    result['review_required']+=1
+                else:
+                    inbox.state='EXTERNAL_BLOCKED'
+                db.session.commit()
+                continue
 
             match=PacsStudyMatch.query.filter_by(orthanc_study_id=sid).first()
             if match:
@@ -6702,9 +6776,12 @@ def doctor_workspace_data():
     orders=Order.query.filter_by(assigned_doctor_id=u.id).order_by(Order.scheduled.desc()).limit(500).all()
     offers=AssignmentOffer.query.filter_by(doctor_user_id=u.id,status='PENDING').filter(AssignmentOffer.expires_at>now).order_by(AssignmentOffer.offered_at.desc()).limit(100).all()
     def case_data(o):
+        external=ExternalIntakeCase.query.filter_by(order_id=o.id).first()
         return {'id':o.id,'accession':o.accession,'patient':o.patient.name,
                 'procedure':o.procedure,'modality':o.modality,'status':o.status,
                 'images':int(o.pacs_image_count or 0),
+                'source':'EXTERNAL' if external else 'INTERNAL',
+                'center':external.center.name if external else '',
                 'open_url':url_for('doctor_workspace_open',order_id=o.id)}
     response=jsonify(ok=True,cases=[case_data(o) for o in orders],offers=[
         {'id':offer.id,'case':case_data(offer.order),'expires_at':offer.expires_at.isoformat()+'Z',
@@ -10539,10 +10616,28 @@ def assignment_timeout_for(order,policy):
 
 def assignment_candidate_users(order,policy):
     q=User.query.join(Role).filter(User.active.is_(True))
+    external_intake=ExternalIntakeCase.query.filter_by(order_id=order.id).first()
+    external_doctor_ids=None
+    if external_intake:
+        # Fail closed: external work is assignable only after the explicit
+        # queue decision and only to this center's active doctor pool.
+        if external_intake.status!='QUEUED' or not external_intake.center.assignment_enabled:
+            return []
+        external_doctor_ids={
+            row.doctor_user_id
+            for row in ExternalCenterDoctor.query.filter_by(
+                center_id=external_intake.center_id,
+                active=True
+            ).all()
+        }
+        if not external_doctor_ids:
+            return []
     candidates=[]
     for u in q.all():
         role_code=(u.role.code if u.role else '').upper()
         if role_code not in ('RADIOLOGIST','DOCTOR'):
+            continue
+        if external_doctor_ids is not None and u.id not in external_doctor_ids:
             continue
         prof=DoctorAssignmentProfile.query.filter_by(user_id=u.id).first()
         if prof:
@@ -21855,6 +21950,161 @@ def pacs_discovery():
     rows=DiscoveredDicomNode.query.order_by(DiscoveredDicomNode.last_seen_at.desc()).limit(500).all()
     branches=Branch.query.filter_by(active=True).order_by(Branch.name).all()
     return render_template('pacs_discovery.html',rows=rows,branches=branches)
+
+
+def external_reporting_setting():
+    row=ExternalReportingSetting.query.order_by(ExternalReportingSetting.id).first()
+    if not row:
+        row=ExternalReportingSetting(enabled=False)
+        db.session.add(row);db.session.flush()
+    return row
+
+
+def capture_external_pacs_studies():
+    """Mirror eligible PACS inbox rows into the isolated external intake.
+
+    This function never creates an Order, offer or assignment. An exact,
+    enabled source AE mapping is mandatory; unknown sources remain untouched.
+    """
+    setting=external_reporting_setting()
+    if not setting.enabled:
+        return 0
+    created=0
+    centers={
+        row.ae_title.strip().upper():row
+        for row in ExternalReportingCenter.query.filter_by(active=True,receiving_enabled=True).all()
+    }
+    for inbox in PacsStudyInbox.query.filter(PacsStudyInbox.order_id.is_(None)).all():
+        center=centers.get(str(inbox.source_ae or '').strip().upper())
+        if not center or ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).first():
+            continue
+        db.session.add(ExternalIntakeCase(center_id=center.id,inbox_id=inbox.id,status='RECEIVED'))
+        created+=1
+    return created
+
+
+def queue_external_intake(row,actor_user_id):
+    if row.status not in ('RECEIVED','HOLD'):
+        return None,'INTAKE_NOT_REVIEWABLE'
+    setting=external_reporting_setting()
+    center=row.center
+    inbox=row.inbox
+    if not setting.enabled:
+        return None,'EXTERNAL_REPORTING_DISABLED'
+    if not center.active or not center.receiving_enabled or not center.assignment_enabled:
+        return None,'CENTER_NOT_ENABLED'
+    pool=ExternalCenterDoctor.query.filter_by(center_id=center.id,active=True).count()
+    if pool<1:
+        return None,'DOCTOR_POOL_EMPTY'
+    if not inbox.study_instance_uid or not inbox.orthanc_study_id or int(inbox.image_count or 0)<1:
+        return None,'STUDY_NOT_READY'
+    if center.required_documents:
+        return None,'REQUIRED_DOCUMENTS_NOT_VERIFIED'
+
+    branch=Branch.query.filter_by(active=True).order_by(Branch.id).first()
+    if not branch:
+        return None,'ACTIVE_BRANCH_REQUIRED'
+    patient=Patient(
+        patient_id=f'EXT{center.id}I{row.id}',
+        name=((inbox.pacs_patient_name or '').replace('^',' ').strip() or 'External patient')[:120],
+        dob='',sex='',phone='',worklist_name=f'EXTERNAL:{center.code}'
+    )
+    db.session.add(patient);db.session.flush()
+    order=Order(
+        accession=f'E{center.id}I{row.id}',patient_id=patient.id,
+        modality=(inbox.modality or 'OT').split('\\')[0].strip().upper()[:8] or 'OT',
+        procedure=(inbox.study_description or 'External reporting study')[:120],
+        station_ae=(inbox.source_ae or '')[:40],scheduled=inbox.first_seen_at or datetime.utcnow(),
+        status='IMAGES_RECEIVED',branch_id=branch.id,priority=center.default_priority,
+        created_by=actor_user_id,created_at=datetime.utcnow(),exam_status='EXAM_COMPLETED',
+        exam_completed_at=datetime.utcnow(),pacs_image_count=int(inbox.image_count or 0),
+        pacs_status='IMAGES_COMPLETE',pacs_last_seen_at=inbox.last_seen_at or datetime.utcnow(),
+        pacs_last_change_at=inbox.last_seen_at or datetime.utcnow(),
+        pacs_study_id=inbox.orthanc_study_id,study_instance_uid=inbox.study_instance_uid
+    )
+    db.session.add(order);db.session.flush()
+    row.order_id=order.id;row.status='QUEUED';row.reviewed_by=actor_user_id
+    row.reviewed_at=datetime.utcnow();row.queued_at=row.reviewed_at
+    inbox.order_id=order.id;inbox.state='EXTERNAL_QUEUED'
+    db.session.add(AuditLog(
+        user_id=actor_user_id,username=current_user().username,
+        action='EXTERNAL_INTAKE_QUEUE',entity='external_intake_case',entity_id=str(row.id),
+        details=f'center={center.code};order={order.id};study={inbox.orthanc_study_id}',
+        ip=request.remote_addr or ''
+    ))
+    db.session.commit()
+    offer,status=offer_next_doctor(order,created_by=actor_user_id)
+    return offer,status
+
+
+@app.route('/admin/external-intake',methods=['GET','POST'])
+@require_perm('assignment.manage')
+def admin_external_intake():
+    setting=external_reporting_setting()
+    if request.method=='POST':
+        action=(request.form.get('action') or '').upper()
+        if action=='MASTER':
+            setting.enabled=request.form.get('enabled')=='1'
+            setting.updated_by=current_user().id
+            audit('EXTERNAL_REPORTING_MASTER','external_reporting_setting',setting.id,
+                  f'enabled={setting.enabled}')
+        elif action=='CENTER':
+            code=re.sub(r'[^A-Z0-9_-]','',(request.form.get('code') or '').upper())[:40]
+            ae=(request.form.get('ae_title') or '').strip().upper()[:80]
+            name=(request.form.get('name') or '').strip()[:160]
+            if not code or not ae or not name: abort(400)
+            center=ExternalReportingCenter.query.filter_by(code=code).first()
+            if not center:
+                center=ExternalReportingCenter(code=code,name=name,ae_title=ae,created_by=current_user().id)
+                db.session.add(center)
+            center.name=name;center.ae_title=ae
+            center.receiving_enabled=request.form.get('receiving_enabled')=='1'
+            center.assignment_enabled=request.form.get('assignment_enabled')=='1'
+            center.auto_queue=False # Phase one remains explicit-admin queue only.
+            center.required_documents=request.form.get('required_documents')=='1'
+            center.default_priority=(request.form.get('default_priority') or 'ROUTINE').upper()
+            center.active=request.form.get('active')=='1'
+            db.session.flush()
+            wanted={int(x) for x in request.form.getlist('doctor_ids') if x.isdigit()}
+            existing={x.doctor_user_id:x for x in ExternalCenterDoctor.query.filter_by(center_id=center.id).all()}
+            for doctor_id,item in existing.items(): item.active=doctor_id in wanted
+            for doctor_id in wanted-existing.keys():
+                db.session.add(ExternalCenterDoctor(center_id=center.id,doctor_user_id=doctor_id,active=True))
+            audit('EXTERNAL_CENTER_SAVE','external_reporting_center',center.id,
+                  f'code={code};receiving={center.receiving_enabled};assignment={center.assignment_enabled};pool={sorted(wanted)}')
+        elif action=='SYNC':
+            count=capture_external_pacs_studies()
+            audit('EXTERNAL_INTAKE_SYNC','external_intake_case','',f'created={count}')
+        else:
+            abort(400)
+        db.session.commit()
+        return redirect(url_for('admin_external_intake'))
+    doctors=User.query.join(Role).filter(User.active.is_(True),Role.code.in_(['RADIOLOGIST','DOCTOR'])).all()
+    centers=ExternalReportingCenter.query.order_by(ExternalReportingCenter.name).all()
+    pools={c.id:{x.doctor_user_id for x in ExternalCenterDoctor.query.filter_by(center_id=c.id,active=True)} for c in centers}
+    rows=ExternalIntakeCase.query.order_by(ExternalIntakeCase.created_at.desc()).limit(500).all()
+    return render_template('admin_external_intake.html',setting=setting,centers=centers,
+                           doctors=doctors,pools=pools,rows=rows)
+
+
+@app.post('/admin/external-intake/<int:intake_id>/decision')
+@require_perm('assignment.manage')
+def admin_external_intake_decision(intake_id):
+    row=ExternalIntakeCase.query.get_or_404(intake_id)
+    action=(request.form.get('action') or '').upper()
+    note=(request.form.get('note') or '').strip()[:500]
+    if action=='QUEUE':
+        _,status=queue_external_intake(row,current_user().id)
+        flash('External case queued.' if status in ('OFFERED','DIRECT_ASSIGNED') else f'Queue result: {status}',
+              'success' if status in ('OFFERED','DIRECT_ASSIGNED') else 'warning')
+        return redirect(url_for('admin_external_intake'))
+    if row.status not in ('RECEIVED','HOLD'): abort(409)
+    if action not in ('HOLD','REJECT'): abort(400)
+    row.status='HOLD' if action=='HOLD' else 'REJECTED'
+    row.review_note=note;row.reviewed_by=current_user().id;row.reviewed_at=datetime.utcnow()
+    audit('EXTERNAL_INTAKE_'+action,'external_intake_case',row.id,note)
+    db.session.commit()
+    return redirect(url_for('admin_external_intake'))
 
 @app.post('/admin/pacs/discovery/<int:node_id>/approve')
 @require_perm('pacs.discovery.manage')

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}External Reporting Intake{% endblock %}
+{% block content %}
+<h1>{{"استقبال التقارير الخارجية" if ui_lang=="ar" else "External Reporting Intake"}}</h1>
+<p>{{"الدراسات هنا منفصلة ولا تدخل قائمة الأطباء إلا بقرار إداري." if ui_lang=="ar" else "Studies remain isolated here until an administrator sends them to the assignment queue."}}</p>
+
+<form method="post" class="panel">
+  <input type="hidden" name="action" value="MASTER">
+  <label><input type="checkbox" name="enabled" value="1" {% if setting.enabled %}checked{% endif %}> {{"تشغيل استقبال التقارير الخارجية" if ui_lang=="ar" else "External reporting master switch"}}</label>
+  <button class="btn primary">{{"حفظ" if ui_lang=="ar" else "Save"}}</button>
+</form>
+
+<section class="panel">
+  <h2>{{"إضافة أو تعديل مركز" if ui_lang=="ar" else "Add or update center"}}</h2>
+  <form method="post" class="form-grid">
+    <input type="hidden" name="action" value="CENTER">
+    <label>Code<input name="code" required maxlength="40"></label>
+    <label>Name<input name="name" required maxlength="160"></label>
+    <label>AE Title<input name="ae_title" required maxlength="80"></label>
+    <label>Priority<select name="default_priority"><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select></label>
+    <label><input type="checkbox" name="active" value="1" checked> Active</label>
+    <label><input type="checkbox" name="receiving_enabled" value="1"> Receiving enabled</label>
+    <label><input type="checkbox" name="assignment_enabled" value="1"> Assignment enabled</label>
+    <label><input type="checkbox" name="required_documents" value="1"> Documents required</label>
+    <fieldset><legend>{{"مجموعة الأطباء" if ui_lang=="ar" else "Doctor pool"}}</legend>
+      {% for doctor in doctors %}<label><input type="checkbox" name="doctor_ids" value="{{doctor.id}}"> {{doctor.full_name or doctor.username}}</label>{% endfor %}
+    </fieldset>
+    <button class="btn primary">{{"حفظ المركز" if ui_lang=="ar" else "Save center"}}</button>
+  </form>
+</section>
+
+<section class="panel">
+  <form method="post"><input type="hidden" name="action" value="SYNC"><button class="btn">{{"فحص PACS للدراسات الخارجية" if ui_lang=="ar" else "Scan PACS inbox for external studies"}}</button></form>
+  <table><thead><tr><th>Center</th><th>AE</th><th>Patient</th><th>Study</th><th>Images</th><th>Status</th><th>Admin decision</th></tr></thead><tbody>
+  {% for row in rows %}<tr>
+    <td>{{row.center.name}}</td><td>{{row.inbox.source_ae}}</td><td>{{row.inbox.pacs_patient_name}}</td>
+    <td>{{row.inbox.modality}} · {{row.inbox.study_description}}</td><td>{{row.inbox.image_count}}</td><td>{{row.status}}</td>
+    <td>{% if row.status in ('RECEIVED','HOLD') %}<form method="post" action="{{url_for('admin_external_intake_decision',intake_id=row.id)}}">
+      <input name="note" maxlength="500" placeholder="Review note">
+      <button class="btn primary" name="action" value="QUEUE">Send to Queue</button>
+      <button class="btn" name="action" value="HOLD">Hold</button>
+      <button class="btn danger" name="action" value="REJECT">Reject</button>
+    </form>{% endif %}</td>
+  </tr>{% else %}<tr><td colspan="7">{{"لا توجد دراسات خارجية." if ui_lang=="ar" else "No external studies."}}</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+
+<section class="panel"><h2>{{"المراكز" if ui_lang=="ar" else "Centers"}}</h2>
+{% for center in centers %}<p><b>{{center.code}} · {{center.name}}</b> — {{center.ae_title}} — receiving={{center.receiving_enabled}} assignment={{center.assignment_enabled}} — doctors={{pools[center.id]|length}}</p>{% else %}<p>No centers configured.</p>{% endfor %}
+</section>
+{% endblock %}

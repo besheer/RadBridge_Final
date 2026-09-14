@@ -187,6 +187,7 @@
 {% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_assignment')}}">⇶ <span>{{"إعدادات التوزيع" if ui_lang=="ar" else "Assignment Setup"}}</span></a>{% endif %}
 {% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_assignment_offers')}}">◎ <span>{{"عروض التوزيع" if ui_lang=="ar" else "Assignment Offers"}}</span></a>{% endif %}
 {% if has_perm("assignment.manage") %}<a class="nav-link" href="{{url_for('admin_assignment_strategies')}}">🧠 <span>{{"استراتيجيات التوزيع" if ui_lang=="ar" else "Assignment Strategies"}}</span></a>{% endif %}
+{% if has_perm("assignment.manage") %}<a class="nav-link" href="{{url_for('admin_external_intake')}}">⇥ <span>{{"استقبال التقارير الخارجية" if ui_lang=="ar" else "External Reporting Intake"}}</span></a>{% endif %}
 {% if has_perm("assignment.manage") %}<a class="nav-link nav-link-featured" href="{{url_for('admin_assignment_strategy_simulate_ui')}}">🧪 <span>{{"محاكي استراتيجية التوزيع" if ui_lang=="ar" else "Strategy Simulator"}}</span></a>{% endif %}
 {% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_dictionary')}}">A↔ع <span>{{"قاموس النظام" if ui_lang=="ar" else "System Dictionary"}}</span></a>{% endif %}
 {% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_field_rules')}}">☷ <span>{{"قواعد الحقول" if ui_lang=="ar" else "Field Rules"}}</span></a>{% endif %}
