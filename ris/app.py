@@ -3932,6 +3932,10 @@ def verify_ohif_doctor_identity(token, order_id=None):
     if current_role != token_role:
         return None, "DOCTOR_IDENTITY_ROLE_CHANGED"
 
+    linked_order=db.session.get(Order,token_order_id)
+    if not doctor_case_access_allowed(user,linked_order):
+        return None, "DOCTOR_ASSIGNMENT_REQUIRED"
+
     return {
         "user": user,
         "payload": payload,
@@ -6680,59 +6684,77 @@ def doctor_presence_heartbeat():
 @app.route('/doctor')
 @require_perm('reports.view')
 def doctor_workspace():
-    q=Order.query
-    status=request.args.get('status','').strip().upper()
-    modality=request.args.get('modality','').strip().upper()
-    search=request.args.get('q','').strip()
+    # RB_DOCTOR_UNIFIED_WORKSPACE_V1: personal queue, never a global worklist.
+    if not doctor_workspace_user(current_user()):
+        abort(403)
+    return render_template('doctor_unified_workspace.html')
 
-    if status:
-        q=q.filter(Order.status==status)
-    else:
-        q=q.filter(Order.status.in_([
-            'ARRIVED','IN_PROGRESS','COMPLETED','IMAGES_RECEIVED','REPORTING','FINAL'
-        ]))
 
-    if modality:
-        q=q.filter(Order.modality==modality)
+@app.get('/api/doctor/workspace')
+@require_perm('reports.view')
+def doctor_workspace_data():
+    u=current_user()
+    if not doctor_workspace_user(u):
+        abort(403)
+    # Preserve the existing offer-page/popup expiry maintenance behavior.
+    expire_assignment_offers()
+    now=datetime.utcnow()
+    orders=Order.query.filter_by(assigned_doctor_id=u.id).order_by(Order.scheduled.desc()).limit(500).all()
+    offers=AssignmentOffer.query.filter_by(doctor_user_id=u.id,status='PENDING').filter(AssignmentOffer.expires_at>now).order_by(AssignmentOffer.offered_at.desc()).limit(100).all()
+    def case_data(o):
+        return {'id':o.id,'accession':o.accession,'patient':o.patient.name,
+                'procedure':o.procedure,'modality':o.modality,'status':o.status,
+                'images':int(o.pacs_image_count or 0),
+                'open_url':url_for('doctor_workspace_open',order_id=o.id)}
+    response=jsonify(ok=True,cases=[case_data(o) for o in orders],offers=[
+        {'id':offer.id,'case':case_data(offer.order),'expires_at':offer.expires_at.isoformat()+'Z',
+         'respond_url':url_for('assignment_offer_respond',offer_id=offer.id)} for offer in offers])
+    response.headers['Cache-Control']='no-store'
+    return response
 
-    if search:
-        like=f'%{search}%'
-        q=q.join(Patient).filter(db.or_(
-            Patient.name.ilike(like),
-            Patient.patient_id.ilike(like),
-            Order.accession.ilike(like)
-        ))
 
-    rows=q.order_by(Order.scheduled.desc()).limit(500).all()
+def doctor_workspace_user(user):
+    return bool(user and user.active and user.role and user.role.code.upper() in
+        ('RADIOLOGIST','DOCTOR','CONSULTANT','RADIOLOGY_CONSULTANT','SUPER_ADMIN','ADMIN'))
 
-    pacs_urls={
-        o.id:case_pacs_url(o)
-        for o in rows
-    }
 
-    # Direct OHIF study links.
-    # Uses the Orthanc internal Study ID already stored on the order
-    # and resolves it to the DICOM StudyInstanceUID.
-    ohif_urls={
-        o.id:ohif_url_for_order(o)
-        for o in rows
-        if o.pacs_study_id
-    }
+def doctor_case_access_allowed(user,order):
+    if not user or not user.active or not order:
+        return False
+    if not doctor_workspace_user(user):
+        return False
+    role=(user.role.code if user.role else '').upper()
+    if role in ('SUPER_ADMIN','ADMIN'):
+        return True
+    return order.assigned_doctor_id==user.id
 
-    snap=workflow_command_snapshot()
-    my_count=sum(1 for x in rows if x.assigned_doctor_id==current_user().id)
-    open_allowed=sum(1 for x in rows if (not x.assigned_doctor_id) and doctor_can_take_open_case(current_user(),x)[0])
-    return render_template(
-      'doctor_workspace.html',
-        saved_views=_saved_views_for('DOCTOR'),
-        saved_view_page='DOCTOR',
-      rows=rows,
-      pacs_urls=pacs_urls,
-      ohif_urls=ohif_urls,
-      doctors=assignable_doctors(),
-      system_health={'pacs':snap['pacs_online'],'studies_today':Order.query.filter(Order.scheduled>=datetime.combine(date.today(),datetime.min.time())).count(),
-      'my_queue':my_count,'open_allowed':open_allowed,'problems':len(snap['problems'])})
 
+@app.before_request
+def doctor_report_ownership_guard():
+    # Apply to legacy report URLs too, before get_report can create a record.
+    if not request.path.startswith('/reports/'):
+        return None
+    user=current_user()
+    role=(user.role.code if user and user.role else '').upper()
+    if role not in ('RADIOLOGIST','DOCTOR','CONSULTANT','RADIOLOGY_CONSULTANT'):
+        return None
+    order_id=(request.view_args or {}).get('order_id')
+    if order_id is not None and not doctor_case_access_allowed(user,db.session.get(Order,order_id)):
+        abort(403)
+
+
+@app.get('/doctor/cases/<int:order_id>/open')
+@require_perm('reports.view')
+def doctor_workspace_open(order_id):
+    order=Order.query.get_or_404(order_id)
+    if not doctor_case_access_allowed(current_user(),order):
+        abort(403)
+    viewer=ohif_url_for_order(order) if order.pacs_study_id else None
+    if not viewer:
+        return 'No linked imaging study is available. Return to the doctor workspace.',409
+    response=redirect(viewer)
+    response.headers['Cache-Control']='no-store'
+    return response
 
 
 @app.route('/reports')
@@ -6921,6 +6943,8 @@ def report_lease_release(order_id):
 @require_perm('reports.edit')
 def report_editor(order_id):
     order=Order.query.get_or_404(order_id)
+    if not doctor_case_access_allowed(current_user(),order):
+        abort(403)
     report=get_report(order)
 
     if request.method=='POST':
@@ -18104,11 +18128,22 @@ def assignment_availability_update():
 @app.post('/assignment/offers/<int:offer_id>/respond')
 @login_required
 def assignment_offer_respond(offer_id):
+    workspace=request.headers.get('X-RadBridge-Workspace')=='doctor'
+    if workspace and (not has_perm('reports.view') or not doctor_workspace_user(current_user())):
+        abort(403)
+    if workspace and (request.form.get('action') or '').upper() not in ('ACCEPT','BUSY','REJECT'):
+        return jsonify(ok=False,error='INVALID_ACTION'),400
+    if workspace:
+        owned_offer=AssignmentOffer.query.get_or_404(offer_id)
+        if owned_offer.doctor_user_id!=current_user().id:
+            abort(403)
     expire_assignment_offers()
     row=AssignmentOffer.query.get_or_404(offer_id)
     if row.doctor_user_id!=current_user().id and not has_perm('*'):
         abort(403)
     if row.status!='PENDING':
+        if workspace:
+            return jsonify(ok=False,error='OFFER_NO_LONGER_PENDING'),409
         flash('Offer is no longer pending.','warning')
         return redirect(url_for('my_assignment_offers'))
     action=(request.form.get('action') or '').upper()
@@ -18117,6 +18152,8 @@ def assignment_offer_respond(offer_id):
     if now>row.expires_at:
         row.status='TIMEOUT';row.responded_at=now;db.session.commit()
         offer_next_doctor(row.order,created_by=current_user().id)
+        if workspace:
+            return jsonify(ok=False,error='OFFER_EXPIRED'),409
         return redirect(url_for('my_assignment_offers'))
     if action=='ACCEPT':
         from case_assignment_service import accept_offer_atomically
@@ -18137,6 +18174,8 @@ def assignment_offer_respond(offer_id):
         except Exception as exc:
             db.session.rollback()
             code=getattr(exc,'code',type(exc).__name__)
+            if workspace:
+                return jsonify(ok=False,error='ACCEPT_BLOCKED'),409
             flash('Offer cannot be accepted: '+str(code).replace('_',' ')+'.','warning')
             return redirect(url_for('my_assignment_offers'))
 
@@ -18172,6 +18211,10 @@ def assignment_offer_respond(offer_id):
     else:
         abort(400)
     db.session.commit()
+
+    if workspace:
+        return jsonify(ok=True,action=action,order_id=row.order_id,
+            open_url=url_for('doctor_workspace_open',order_id=row.order_id) if action=='ACCEPT' else None)
 
     # RB_ASSIGNMENT_ACCEPT_TO_OHIF_V1
     # Open the integrated image/reporting workspace only after the

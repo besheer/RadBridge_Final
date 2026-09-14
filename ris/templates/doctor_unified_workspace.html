@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block page_title %}{{'مساحة عمل الطبيب' if ui_lang=='ar' else 'Doctor Workspace'}}{% endblock %}
+{% block content %}
+<main id="rbUnifiedDoctorWorkspace" data-api="{{url_for('doctor_workspace_data')}}"
+ data-heartbeat="{{url_for('doctor_presence_heartbeat') if me and me.role and me.role.code.upper() in ('RADIOLOGIST','DOCTOR') else ''}}" data-ar="{{'yes' if ui_lang=='ar' else 'no'}}">
+  <p>{{'العروض وحالاتي في صفحة واحدة. الصور والتقرير في نافذة العمل.' if ui_lang=='ar' else 'Offers and my cases in one page. Images and reporting open in the reading window.'}}</p>
+  <p id="rbWorkspaceMessage" role="status" aria-live="polite"></p>
+  <button type="button" class="btn" id="rbWorkspaceRefresh">{{'تحديث' if ui_lang=='ar' else 'Refresh'}}</button>
+  <section class="panel" id="rbWorkspaceOffers" aria-labelledby="rbOffersTitle">
+    <h2 id="rbOffersTitle">{{'عروض جديدة' if ui_lang=='ar' else 'New offers'}}</h2>
+    <div id="rbWorkspaceOfferRows"></div>
+  </section>
+  <section class="panel" aria-labelledby="rbCasesTitle">
+    <h2 id="rbCasesTitle">{{'حالاتي' if ui_lang=='ar' else 'My cases'}}</h2>
+    <label>{{'بحث في حالاتي' if ui_lang=='ar' else 'Search my cases'}}
+      <input type="search" id="rbWorkspaceSearch" autocomplete="off">
+    </label>
+    <div id="rbWorkspaceCaseRows"></div>
+  </section>
+  <noscript>{{'يلزم تفعيل JavaScript لهذه الصفحة.' if ui_lang=='ar' else 'JavaScript is required for this workspace.'}}</noscript>
+</main>
+<style>
+#rbUnifiedDoctorWorkspace .rb-case-card{padding:14px 0;border-bottom:1px solid #8885;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+#rbUnifiedDoctorWorkspace .rb-case-copy{flex:1;min-width:180px}
+#rbUnifiedDoctorWorkspace .rb-case-copy small{display:block}
+#rbUnifiedDoctorWorkspace .actions{display:flex;gap:8px;flex-wrap:wrap}
+#rbWorkspaceMessage a{margin-inline-start:12px}
+</style>
+<script src="{{url_for('static',filename='doctor-workspace.js')}}" defer></script>
+{% endblock %}

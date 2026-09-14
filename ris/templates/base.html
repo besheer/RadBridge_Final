@@ -469,7 +469,7 @@ function rbStartOfferCountdown(expiresAt){
   );
 }
 
-async function rbCheckAssignmentOffer(){try{const r=await fetch('/api/assignment/offers/pending',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();if(!d.pending)return;document.getElementById('rbOfferSummary').innerHTML='<b>'+d.accession+'</b><br>'+d.modality+' · '+d.procedure+'<br>Priority: '+d.priority+'<br>Images: '+d.images+'<br>Expires: '+(d.expires_at||'-');document.getElementById('rbOfferViewer').href=d.viewer_url;
+async function rbCheckAssignmentOffer(){if(document.getElementById('rbUnifiedDoctorWorkspace')){return;}try{const r=await fetch('/api/assignment/offers/pending',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();if(!d.pending)return;document.getElementById('rbOfferSummary').innerHTML='<b>'+d.accession+'</b><br>'+d.modality+' · '+d.procedure+'<br>Priority: '+d.priority+'<br>Images: '+d.images+'<br>Expires: '+(d.expires_at||'-');document.getElementById('rbOfferViewer').href=d.viewer_url;
 
 rbStartOfferCountdown(d.expires_at);document.getElementById('rbOfferForm').action=d.respond_url;document.getElementById('rbAssignmentOfferModal').style.display='flex'}catch(e){}}setTimeout(rbCheckAssignmentOffer,1500);setInterval(rbCheckAssignmentOffer,20000);</script>
 
