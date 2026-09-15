@@ -12,6 +12,8 @@ def unique(prefix):
 @pytest.fixture
 def external_setup(app_ctx,monkeypatch):
     m=app_ctx
+    # External capture tests must never depend on or scan a real PACS.
+    monkeypatch.setattr(m,'_orthanc_recent_studies',lambda limit:[])
     admin_role=m.Role.query.filter_by(code='SUPER_ADMIN').first()
     doctor_role=m.Role.query.filter_by(code='RADIOLOGIST').first()
     tech_role=m.Role.query.filter_by(code='TECHNICIAN').first()
@@ -66,6 +68,55 @@ def test_unknown_ae_is_not_captured(external_setup):
     m.db.session.add(inbox);m.db.session.commit()
     m.capture_external_pacs_studies();m.db.session.commit()
     assert m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).first() is None
+
+
+def test_study_tags_extended_uses_remote_aet_not_scanner_station(external_setup,
+                                                                 monkeypatch):
+    m,*_=external_setup
+    monkeypatch.setattr(m,'_orthanc_study_detail',lambda study_id:{
+        'ID':study_id,'Series':['series-1'],
+        'MainDicomTags':{'StudyInstanceUID':'1.2.3'}
+    })
+    monkeypatch.setattr(m,'_orthanc_series_detail',lambda series_id:{
+        'Instances':['instance-1']
+    })
+    monkeypatch.setattr(m,'_orthanc_instance_remote_aet',
+                        lambda instance_id:'WEASIS_CENTER1')
+    tags=m._study_tags_extended({
+        'ID':'study-1',
+        'MainDicomTags':{'StationName':'HITACHI'},
+        'PatientMainDicomTags':{}
+    })
+    assert tags['source_ae']=='WEASIS_CENTER1'
+
+
+def test_external_scan_discovers_known_remote_aet_without_internal_intake(
+        external_setup,monkeypatch):
+    m,_,_,_,_,_,center,fixture_inbox=external_setup
+    m.db.session.delete(fixture_inbox);m.db.session.commit()
+    sid=unique('direct-external-study')
+    tags={
+        'study_id':sid,'study_instance_uid':'1.2.840.'+str(uuid.uuid4().int),
+        'patient_id':'20250305-23','patient_name':'External^MR',
+        'accession':'','modality':'MR','study_description':'Brain',
+        'source_ae':center.ae_title,'instances':215,'study_date':'20250305'
+    }
+    monkeypatch.setattr(m,'_orthanc_recent_studies',lambda limit:[{'ID':sid}])
+    monkeypatch.setattr(m,'_study_tags_extended',lambda study:tags)
+    before=(m.Patient.query.count(),m.Order.query.count(),
+            m.AssignmentOffer.query.count(),m.CaseAssignment.query.count())
+    # Other eligible rows may already exist in the shared test database. The
+    # contract is that this exact Orthanc study is captured once and remains
+    # isolated, not that the whole scan can only discover one study.
+    assert m.capture_external_pacs_studies()>=1
+    m.db.session.commit()
+    inbox=m.PacsStudyInbox.query.filter_by(orthanc_study_id=sid).one()
+    intake=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
+    assert inbox.source_ae==center.ae_title
+    assert inbox.image_count==215 and inbox.order_id is None
+    assert intake.center_id==center.id and intake.status=='RECEIVED'
+    assert (m.Patient.query.count(),m.Order.query.count(),
+            m.AssignmentOffer.query.count(),m.CaseAssignment.query.count())==before
 
 
 def test_known_external_ae_never_enters_internal_auto_match(external_setup,monkeypatch):

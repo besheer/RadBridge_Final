@@ -3345,10 +3345,21 @@ def _study_tags_extended(st):
     mt=st.get('MainDicomTags') or {}
     detail=_orthanc_study_detail(tags['study_id']) if tags.get('study_id') else {}
     dmt=detail.get('MainDicomTags') or {}
+    source_ae=''
+    if detail:
+        for series_id in detail.get('Series',[]):
+            series=_orthanc_series_detail(series_id)
+            instances=series.get('Instances') or []
+            if instances:
+                source_ae=_orthanc_instance_remote_aet(instances[0])
+                if source_ae:
+                    break
     tags.update({
       'study_instance_uid':str(mt.get('StudyInstanceUID') or dmt.get('StudyInstanceUID') or ''),
       'study_description':str(mt.get('StudyDescription') or dmt.get('StudyDescription') or ''),
-      'source_ae':str(mt.get('StationName') or mt.get('InstitutionName') or ''),
+      # RemoteAET is authoritative for routing. StationName and InstitutionName
+      # describe the acquisition device/site and must not select an intake center.
+      'source_ae':str(source_ae or mt.get('StationName') or mt.get('InstitutionName') or ''),
     })
     if detail:
         tags['instances']=sum(len((_orthanc_series_detail(x).get('Instances') or [])) for x in detail.get('Series',[]))
@@ -3359,6 +3370,20 @@ def _orthanc_series_detail(series_id):
         r=requests.get(f'{PACS_ORTHANC_URL}/series/{series_id}',auth=_orthanc_auth(),timeout=10)
         r.raise_for_status();return r.json() or {}
     except Exception:return {}
+
+def _orthanc_instance_remote_aet(instance_id):
+    """Return the sending AE recorded by Orthanc for one received instance."""
+    try:
+        r=requests.get(
+            f'{PACS_ORTHANC_URL}/instances/{instance_id}/metadata',
+            auth=_orthanc_auth(),params={'expand':'true'},timeout=10
+        )
+        r.raise_for_status();metadata=r.json() or {}
+        return str(
+            metadata.get('RemoteAET') or metadata.get('RemoteAet') or ''
+        ).strip().upper()
+    except Exception:
+        return ''
 
 def _parse_dicom_date(value):
     value=str(value or '').strip()
@@ -21995,6 +22020,46 @@ def capture_external_pacs_studies():
         row.ae_title.strip().upper():row
         for row in ExternalReportingCenter.query.filter_by(active=True,receiving_enabled=True).all()
     }
+    # RB_EXTERNAL_INTAKE_REMOTE_AET_DISCOVERY_V1
+    # Scan Orthanc here instead of requiring the internal auto-intake job to
+    # populate PacsStudyInbox first. Only exact known external AEs are mirrored;
+    # unknown sources remain untouched and no Patient/Order is ever created.
+    for study in _orthanc_recent_studies(500):
+        tags=_study_tags_extended(study)
+        study_id=str(tags.get('study_id') or '').strip()
+        source_ae=str(tags.get('source_ae') or '').strip().upper()
+        center=centers.get(source_ae)
+        if not study_id or not center:
+            continue
+        inbox=PacsStudyInbox.query.filter_by(orthanc_study_id=study_id).first()
+        if not inbox:
+            inbox=PacsStudyInbox(
+                orthanc_study_id=study_id,
+                study_instance_uid=(tags.get('study_instance_uid') or None),
+                pacs_patient_id=tags.get('patient_id',''),
+                pacs_patient_name=tags.get('patient_name',''),
+                accession=tags.get('accession',''),
+                modality=tags.get('modality',''),
+                study_description=tags.get('study_description',''),
+                source_ae=source_ae,
+                image_count=int(tags.get('instances') or 0),
+                state='EXTERNAL_INTAKE'
+            )
+            db.session.add(inbox);db.session.flush()
+        else:
+            inbox.source_ae=source_ae
+            inbox.last_seen_at=datetime.utcnow()
+            inbox.image_count=int(tags.get('instances') or inbox.image_count or 0)
+        if inbox.order_id is not None:
+            continue
+        if not ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).first():
+            db.session.add(ExternalIntakeCase(
+                center_id=center.id,inbox_id=inbox.id,status='RECEIVED'
+            ))
+            created+=1
+        inbox.state='EXTERNAL_INTAKE'
+
+    # Preserve capture of eligible inbox rows created by older discovery jobs.
     for inbox in PacsStudyInbox.query.filter(PacsStudyInbox.order_id.is_(None)).all():
         center=centers.get(str(inbox.source_ae or '').strip().upper())
         if not center or ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).first():
