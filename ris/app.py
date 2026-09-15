@@ -2209,6 +2209,27 @@ class ExternalIntakeCase(db.Model):
     status=db.Column(db.String(30),nullable=False,default='RECEIVED',index=True)
     # RECEIVED/HOLD/QUEUED/REJECTED
     review_note=db.Column(db.String(500),nullable=False,default='')
+    expected_patient_id=db.Column(db.String(80),nullable=False,default='')
+    expected_patient_name=db.Column(db.String(180),nullable=False,default='')
+    expected_dob=db.Column(db.String(8),nullable=False,default='')
+    expected_sex=db.Column(db.String(1),nullable=False,default='')
+    expected_accession=db.Column(db.String(120),nullable=False,default='')
+    dicom_patient_id=db.Column(db.String(80),nullable=False,default='')
+    dicom_patient_name=db.Column(db.String(180),nullable=False,default='')
+    dicom_dob=db.Column(db.String(8),nullable=False,default='')
+    dicom_sex=db.Column(db.String(1),nullable=False,default='')
+    dicom_accession=db.Column(db.String(120),nullable=False,default='')
+    demographic_status=db.Column(db.String(30),nullable=False,default='NOT_CHECKED',index=True)
+    demographic_score=db.Column(db.Float,nullable=False,default=0)
+    demographic_checks_json=db.Column(db.Text,nullable=False,default='[]')
+    demographic_facts_sha256=db.Column(db.String(64),nullable=False,default='')
+    demographic_verified_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    demographic_verified_at=db.Column(db.DateTime)
+    demographic_override_approved=db.Column(db.Boolean,nullable=False,default=False)
+    demographic_override_reason=db.Column(db.String(500),nullable=False,default='')
+    demographic_override_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    demographic_override_at=db.Column(db.DateTime)
+    demographic_override_facts_sha256=db.Column(db.String(64),nullable=False,default='')
     reviewed_by=db.Column(db.Integer,db.ForeignKey('user.id'))
     reviewed_at=db.Column(db.DateTime)
     queued_at=db.Column(db.DateTime)
@@ -21983,6 +22004,117 @@ def capture_external_pacs_studies():
     return created
 
 
+def external_intake_dicom_demographics(row):
+    """Read the authoritative patient/study identity from linked Orthanc data."""
+    study_id=str(row.inbox.orthanc_study_id or '').strip()
+    if not study_id:
+        return {},'ORTHANC_STUDY_ID_MISSING'
+    try:
+        response=requests.get(
+            f'{PACS_ORTHANC_URL}/studies/{study_id}',
+            auth=_orthanc_auth(),timeout=15
+        )
+        response.raise_for_status()
+        study=response.json() or {}
+        patient=study.get('PatientMainDicomTags') or {}
+        tags=study.get('MainDicomTags') or {}
+        return {
+            'patient_id':str(patient.get('PatientID') or '').strip(),
+            'patient_name':str(patient.get('PatientName') or '').strip(),
+            'dob':normalize_date(patient.get('PatientBirthDate')),
+            'sex':str(patient.get('PatientSex') or '').strip().upper()[:1],
+            'accession':str(tags.get('AccessionNumber') or row.inbox.accession or '').strip(),
+        },''
+    except Exception as exc:
+        return {},'ORTHANC_DEMOGRAPHICS_FAILED: '+str(exc)[:300]
+
+
+def external_intake_demographic_verification(row,persist=False,actor_user_id=None):
+    """Fail-closed comparison of referral identity against live DICOM identity."""
+    dicom,error=external_intake_dicom_demographics(row)
+    expected={
+        'patient_id':str(row.expected_patient_id or '').strip(),
+        'patient_name':str(row.expected_patient_name or '').strip(),
+        'dob':normalize_date(row.expected_dob),
+        'sex':str(row.expected_sex or '').strip().upper()[:1],
+        'accession':str(row.expected_accession or '').strip(),
+    }
+    normalizers={
+        'patient_id':lambda value:str(value or '').strip().upper(),
+        'patient_name':lambda value:normalize_person_name(value),
+        'dob':lambda value:normalize_date(value),
+        'sex':lambda value:str(value or '').strip().upper()[:1],
+        'accession':lambda value:str(value or '').strip().upper(),
+    }
+    labels={
+        'patient_id':'Patient ID','patient_name':'Patient Name','dob':'DOB',
+        'sex':'Sex','accession':'Accession'
+    }
+    critical={'patient_id','dob','accession'}
+    checks=[]
+    matches=0
+    comparable=0
+    hard_mismatch=False
+    review_required=bool(error)
+    for key in ('patient_id','patient_name','dob','sex','accession'):
+        left=normalizers[key](expected.get(key))
+        right=normalizers[key](dicom.get(key))
+        if not left or not right:
+            state='MISSING'
+            review_required=True
+        elif left==right:
+            state='MATCH'
+            matches+=1
+            comparable+=1
+        else:
+            state='MISMATCH'
+            comparable+=1
+            if key in critical:
+                hard_mismatch=True
+            else:
+                review_required=True
+        checks.append({
+            'field':labels[key],'expected':expected.get(key) or '',
+            'dicom':dicom.get(key) or '','status':state,'critical':key in critical
+        })
+    if hard_mismatch:
+        status='BLOCKED'
+    elif review_required:
+        status='REVIEW_REQUIRED'
+    else:
+        status='MATCHED'
+    score=round((matches/comparable)*100,2) if comparable else 0.0
+    facts={
+        'expected':expected,'dicom':dicom,'checks':checks,'source_error':error
+    }
+    facts_sha256=hashlib.sha256(
+        json.dumps(facts,sort_keys=True,ensure_ascii=False).encode('utf-8')
+    ).hexdigest()
+    result={
+        'status':status,'score':score,'checks':checks,'facts_sha256':facts_sha256,
+        'source_error':error,'expected':expected,'dicom':dicom
+    }
+    if persist:
+        row.dicom_patient_id=dicom.get('patient_id') or ''
+        row.dicom_patient_name=dicom.get('patient_name') or ''
+        row.dicom_dob=dicom.get('dob') or ''
+        row.dicom_sex=dicom.get('sex') or ''
+        row.dicom_accession=dicom.get('accession') or ''
+        row.demographic_status=status
+        row.demographic_score=score
+        row.demographic_checks_json=json.dumps(checks,ensure_ascii=False)
+        row.demographic_facts_sha256=facts_sha256
+        row.demographic_verified_by=actor_user_id
+        row.demographic_verified_at=datetime.utcnow()
+        if row.demographic_override_facts_sha256!=facts_sha256:
+            row.demographic_override_approved=False
+            row.demographic_override_reason=''
+            row.demographic_override_by=None
+            row.demographic_override_at=None
+            row.demographic_override_facts_sha256=''
+    return result
+
+
 def queue_external_intake(row,actor_user_id):
     if row.status not in ('RECEIVED','HOLD'):
         return None,'INTAKE_NOT_REVIEWABLE'
@@ -21998,6 +22130,17 @@ def queue_external_intake(row,actor_user_id):
         return None,'DOCTOR_POOL_EMPTY'
     if not inbox.study_instance_uid or not inbox.orthanc_study_id or int(inbox.image_count or 0)<1:
         return None,'STUDY_NOT_READY'
+    verification=external_intake_demographic_verification(row)
+    if verification['status']=='BLOCKED':
+        return None,'DEMOGRAPHICS_BLOCKED'
+    if verification['status']=='REVIEW_REQUIRED' and not (
+        not verification['source_error'] and
+        row.demographic_override_approved and
+        row.demographic_override_facts_sha256==verification['facts_sha256']
+    ):
+        return None,'DEMOGRAPHICS_REVIEW_REQUIRED'
+    if verification['status'] not in ('MATCHED','REVIEW_REQUIRED'):
+        return None,'DEMOGRAPHICS_NOT_VERIFIED'
     if center.required_documents:
         return None,'REQUIRED_DOCUMENTS_NOT_VERIFIED'
 
@@ -22083,8 +22226,13 @@ def admin_external_intake():
     centers=ExternalReportingCenter.query.order_by(ExternalReportingCenter.name).all()
     pools={c.id:{x.doctor_user_id for x in ExternalCenterDoctor.query.filter_by(center_id=c.id,active=True)} for c in centers}
     rows=ExternalIntakeCase.query.order_by(ExternalIntakeCase.created_at.desc()).limit(500).all()
+    demographic_checks={}
+    for row in rows:
+        try: demographic_checks[row.id]=json.loads(row.demographic_checks_json or '[]')
+        except Exception: demographic_checks[row.id]=[]
     return render_template('admin_external_intake.html',setting=setting,centers=centers,
-                           doctors=doctors,pools=pools,rows=rows)
+                           doctors=doctors,pools=pools,rows=rows,
+                           demographic_checks=demographic_checks)
 
 
 @app.post('/admin/external-intake/<int:intake_id>/decision')
@@ -22093,6 +22241,40 @@ def admin_external_intake_decision(intake_id):
     row=ExternalIntakeCase.query.get_or_404(intake_id)
     action=(request.form.get('action') or '').upper()
     note=(request.form.get('note') or '').strip()[:500]
+    if action=='VERIFY':
+        row.expected_patient_id=(request.form.get('expected_patient_id') or '').strip()[:80]
+        row.expected_patient_name=(request.form.get('expected_patient_name') or '').strip()[:180]
+        row.expected_dob=normalize_date(request.form.get('expected_dob'))
+        row.expected_sex=(request.form.get('expected_sex') or '').strip().upper()[:1]
+        row.expected_accession=(request.form.get('expected_accession') or '').strip()[:120]
+        if not (row.expected_patient_id and row.expected_patient_name and
+                row.expected_dob and row.expected_accession):
+            abort(400)
+        result=external_intake_demographic_verification(
+            row,persist=True,actor_user_id=current_user().id
+        )
+        audit('EXTERNAL_DEMOGRAPHICS_VERIFY','external_intake_case',row.id,
+              f"status={result['status']};score={result['score']};facts={result['facts_sha256']}")
+        db.session.commit()
+        flash('Demographic verification: '+result['status'],
+              'success' if result['status']=='MATCHED' else 'warning')
+        return redirect(url_for('admin_external_intake'))
+    if action=='APPROVE_REVIEW':
+        result=external_intake_demographic_verification(row,persist=True,
+                                                        actor_user_id=current_user().id)
+        if result['status']!='REVIEW_REQUIRED': abort(409)
+        if result['source_error']: abort(409)
+        if not note: abort(400)
+        row.demographic_override_approved=True
+        row.demographic_override_reason=note
+        row.demographic_override_by=current_user().id
+        row.demographic_override_at=datetime.utcnow()
+        row.demographic_override_facts_sha256=result['facts_sha256']
+        audit('EXTERNAL_DEMOGRAPHICS_APPROVE_REVIEW','external_intake_case',row.id,
+              f"reason={note};facts={result['facts_sha256']}")
+        db.session.commit()
+        flash('Demographic review approved for the current DICOM facts.','success')
+        return redirect(url_for('admin_external_intake'))
     if action=='QUEUE':
         _,status=queue_external_intake(row,current_user().id)
         flash('External case queued.' if status in ('OFFERED','DIRECT_ASSIGNED') else f'Queue result: {status}',

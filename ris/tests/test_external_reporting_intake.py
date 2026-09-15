@@ -10,7 +10,7 @@ def unique(prefix):
 
 
 @pytest.fixture
-def external_setup(app_ctx):
+def external_setup(app_ctx,monkeypatch):
     m=app_ctx
     admin_role=m.Role.query.filter_by(code='SUPER_ADMIN').first()
     doctor_role=m.Role.query.filter_by(code='RADIOLOGIST').first()
@@ -30,12 +30,24 @@ def external_setup(app_ctx):
     m.db.session.add(m.ExternalCenterDoctor(center_id=center.id,doctor_user_id=doctor.id,active=True))
     inbox=m.PacsStudyInbox(orthanc_study_id=unique('study'),study_instance_uid='1.2.826.'+str(uuid.uuid4().int),pacs_patient_id='REMOTE-1',pacs_patient_name='External^Patient',accession=unique('remote'),modality='DX',study_description='External chest',source_ae=center.ae_title,image_count=2,state='REVIEW_REQUIRED')
     m.db.session.add(inbox);m.db.session.commit()
+    monkeypatch.setattr(m,'external_intake_dicom_demographics',lambda row:({
+        'patient_id':'REMOTE-1','patient_name':'External^Patient',
+        'dob':'19900102','sex':'F','accession':inbox.accession
+    },''))
     return m,admin,doctor,other,tech,setting,center,inbox
 
 
 def login(client,user):
     with client.session_transaction() as session:
         session['uid']=user.id
+
+
+def set_matching_referral(row):
+    row.expected_patient_id='REMOTE-1'
+    row.expected_patient_name='External Patient'
+    row.expected_dob='19900102'
+    row.expected_sex='F'
+    row.expected_accession=row.inbox.accession
 
 
 def test_capture_isolated_and_does_not_create_order_offer_or_assignment(external_setup):
@@ -101,6 +113,7 @@ def test_admin_queue_creates_external_order_only_after_decision(external_setup,m
     monkeypatch.setattr(m,'offer_next_doctor',lambda order,created_by=None:(None,'OFFERED'))
     client=m.app.test_client();login(client,admin)
     row=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
+    set_matching_referral(row);m.db.session.commit()
     response=client.post(f'/admin/external-intake/{row.id}/decision',data={'action':'QUEUE'})
     assert response.status_code==302
     m.db.session.expire_all();row=m.ExternalIntakeCase.query.get(row.id)
@@ -166,3 +179,102 @@ def test_doctor_feed_labels_external_case_separately(external_setup):
     payload=client.get('/api/doctor/workspace').get_json()
     item=next(x for x in payload['cases'] if x['id']==order.id)
     assert item['source']=='EXTERNAL' and item['center']==center.name
+
+
+def test_queue_is_blocked_until_demographics_are_verified(external_setup,monkeypatch):
+    m,admin,_,_,_,_,_,inbox=external_setup
+    m.capture_external_pacs_studies();m.db.session.commit()
+    monkeypatch.setattr(m,'offer_next_doctor',lambda *args,**kwargs:(None,'OFFERED'))
+    row=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
+    client=m.app.test_client();login(client,admin)
+    response=client.post(f'/admin/external-intake/{row.id}/decision',data={'action':'QUEUE'})
+    assert response.status_code==302
+    m.db.session.expire_all();row=m.ExternalIntakeCase.query.get(row.id)
+    assert row.status=='RECEIVED' and row.order_id is None
+
+
+def test_matched_demographics_allow_queue(external_setup,monkeypatch):
+    m,admin,_,_,_,_,_,inbox=external_setup
+    m.capture_external_pacs_studies();m.db.session.commit()
+    monkeypatch.setattr(m,'offer_next_doctor',lambda *args,**kwargs:(None,'OFFERED'))
+    row=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
+    client=m.app.test_client();login(client,admin)
+    response=client.post(f'/admin/external-intake/{row.id}/decision',data={
+        'action':'VERIFY','expected_patient_id':'REMOTE-1',
+        'expected_patient_name':'External Patient','expected_dob':'19900102',
+        'expected_sex':'F','expected_accession':inbox.accession
+    })
+    assert response.status_code==302
+    m.db.session.expire_all();row=m.ExternalIntakeCase.query.get(row.id)
+    assert row.demographic_status=='MATCHED' and row.demographic_score==100
+    assert client.post(f'/admin/external-intake/{row.id}/decision',data={'action':'QUEUE'}).status_code==302
+    m.db.session.expire_all();row=m.ExternalIntakeCase.query.get(row.id)
+    assert row.status=='QUEUED' and row.order_id is not None
+
+
+@pytest.mark.parametrize('field,value',[
+    ('expected_patient_id','WRONG-ID'),
+    ('expected_dob','19881231'),
+    ('expected_accession','WRONG-ACCESSION'),
+])
+def test_critical_demographic_mismatch_blocks_queue(external_setup,field,value):
+    m,admin,_,_,_,_,_,inbox=external_setup
+    m.capture_external_pacs_studies();m.db.session.commit()
+    row=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
+    set_matching_referral(row);setattr(row,field,value)
+    result=m.external_intake_demographic_verification(row,persist=True,
+                                                      actor_user_id=admin.id)
+    m.db.session.commit()
+    assert result['status']=='BLOCKED'
+    client=m.app.test_client();login(client,admin)
+    assert client.post(f'/admin/external-intake/{row.id}/decision',
+                       data={'action':'QUEUE'}).status_code==302
+    m.db.session.expire_all();row=m.ExternalIntakeCase.query.get(row.id)
+    assert row.status=='RECEIVED' and row.order_id is None
+
+
+def test_review_required_needs_reasoned_current_facts_approval(external_setup,monkeypatch):
+    m,admin,_,_,_,_,_,inbox=external_setup
+    m.capture_external_pacs_studies();m.db.session.commit()
+    row=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
+    set_matching_referral(row)
+    monkeypatch.setattr(m,'external_intake_dicom_demographics',lambda item:({
+        'patient_id':'REMOTE-1','patient_name':'External^Patient',
+        'dob':'','sex':'F','accession':inbox.accession
+    },''))
+    result=m.external_intake_demographic_verification(row,persist=True,
+                                                      actor_user_id=admin.id)
+    m.db.session.commit()
+    assert result['status']=='REVIEW_REQUIRED'
+    client=m.app.test_client();login(client,admin)
+    assert client.post(f'/admin/external-intake/{row.id}/decision',data={
+        'action':'APPROVE_REVIEW','note':'Referral document confirms DOB'
+    }).status_code==302
+    m.db.session.expire_all();row=m.ExternalIntakeCase.query.get(row.id)
+    assert row.demographic_override_approved is True
+    assert row.demographic_override_facts_sha256==row.demographic_facts_sha256
+    monkeypatch.setattr(m,'offer_next_doctor',lambda *args,**kwargs:(None,'OFFERED'))
+    assert client.post(f'/admin/external-intake/{row.id}/decision',
+                       data={'action':'QUEUE'}).status_code==302
+    assert m.ExternalIntakeCase.query.get(row.id).status=='QUEUED'
+
+
+def test_review_approval_is_invalidated_when_dicom_facts_change(external_setup,monkeypatch):
+    m,admin,_,_,_,_,_,inbox=external_setup
+    m.capture_external_pacs_studies();m.db.session.commit()
+    row=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
+    set_matching_referral(row)
+    dicom={'patient_id':'REMOTE-1','patient_name':'External^Patient',
+           'dob':'','sex':'F','accession':inbox.accession}
+    monkeypatch.setattr(m,'external_intake_dicom_demographics',lambda item:(dict(dicom),''))
+    m.external_intake_demographic_verification(row,persist=True,actor_user_id=admin.id)
+    m.db.session.commit()
+    client=m.app.test_client();login(client,admin)
+    assert client.post(f'/admin/external-intake/{row.id}/decision',data={
+        'action':'APPROVE_REVIEW','note':'Referral confirms missing DICOM DOB'
+    }).status_code==302
+    dicom['patient_name']='Different^Name'
+    assert client.post(f'/admin/external-intake/{row.id}/decision',
+                       data={'action':'QUEUE'}).status_code==302
+    m.db.session.expire_all();row=m.ExternalIntakeCase.query.get(row.id)
+    assert row.status=='RECEIVED' and row.order_id is None

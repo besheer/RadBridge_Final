@@ -31,17 +31,41 @@
 
 <section class="panel">
   <form method="post"><input type="hidden" name="action" value="SYNC"><button class="btn">{{"فحص PACS للدراسات الخارجية" if ui_lang=="ar" else "Scan PACS inbox for external studies"}}</button></form>
-  <table><thead><tr><th>Center</th><th>AE</th><th>Patient</th><th>Study</th><th>Images</th><th>Status</th><th>Admin decision</th></tr></thead><tbody>
+  <table><thead><tr><th>Center / study</th><th>DICOM identity</th><th>Referral identity and verification</th><th>Admin decision</th></tr></thead><tbody>
   {% for row in rows %}<tr>
-    <td>{{row.center.name}}</td><td>{{row.inbox.source_ae}}</td><td>{{row.inbox.pacs_patient_name}}</td>
-    <td>{{row.inbox.modality}} · {{row.inbox.study_description}}</td><td>{{row.inbox.image_count}}</td><td>{{row.status}}</td>
-    <td>{% if row.status in ('RECEIVED','HOLD') %}<form method="post" action="{{url_for('admin_external_intake_decision',intake_id=row.id)}}">
-      <input name="note" maxlength="500" placeholder="Review note">
-      <button class="btn primary" name="action" value="QUEUE">Send to Queue</button>
-      <button class="btn" name="action" value="HOLD">Hold</button>
-      <button class="btn danger" name="action" value="REJECT">Reject</button>
-    </form>{% endif %}</td>
-  </tr>{% else %}<tr><td colspan="7">{{"لا توجد دراسات خارجية." if ui_lang=="ar" else "No external studies."}}</td></tr>{% endfor %}
+    <td><b>{{row.center.name}}</b><br>{{row.inbox.source_ae}}<br>{{row.inbox.modality}} · {{row.inbox.study_description}}<br>Images: {{row.inbox.image_count}}<br>Intake: {{row.status}}</td>
+    <td>Patient ID: {{row.dicom_patient_id or row.inbox.pacs_patient_id or '-'}}<br>Name: {{row.dicom_patient_name or row.inbox.pacs_patient_name or '-'}}<br>DOB: {{row.dicom_dob or '-'}}<br>Sex: {{row.dicom_sex or '-'}}<br>Accession: {{row.dicom_accession or row.inbox.accession or '-'}}</td>
+    <td>
+      {% if row.status in ('RECEIVED','HOLD') %}
+      <form method="post" action="{{url_for('admin_external_intake_decision',intake_id=row.id)}}">
+        <input name="expected_patient_id" value="{{row.expected_patient_id}}" required maxlength="80" placeholder="Referral Patient ID">
+        <input name="expected_patient_name" value="{{row.expected_patient_name}}" required maxlength="180" placeholder="Referral patient name">
+        <input name="expected_dob" value="{{row.expected_dob}}" required maxlength="8" pattern="[0-9]{8}" placeholder="DOB YYYYMMDD">
+        <select name="expected_sex"><option value="">Sex</option><option value="M" {% if row.expected_sex=='M' %}selected{% endif %}>M</option><option value="F" {% if row.expected_sex=='F' %}selected{% endif %}>F</option><option value="O" {% if row.expected_sex=='O' %}selected{% endif %}>O</option></select>
+        <input name="expected_accession" value="{{row.expected_accession}}" required maxlength="120" placeholder="Referral accession">
+        <button class="btn" name="action" value="VERIFY">Verify demographics</button>
+      </form>
+      {% endif %}
+      <p><b>Demographics: {{row.demographic_status}}</b> · Score {{'%.0f'|format(row.demographic_score or 0)}}%</p>
+      {% for check in demographic_checks.get(row.id,[]) %}<small>{{check.field}}: {{check.status}}{% if check.critical %} · critical{% endif %}</small><br>{% endfor %}
+      {% if row.demographic_status=='REVIEW_REQUIRED' and not row.demographic_override_approved and row.status in ('RECEIVED','HOLD') %}
+      <form method="post" action="{{url_for('admin_external_intake_decision',intake_id=row.id)}}">
+        <input name="note" required maxlength="500" placeholder="Mandatory approval reason">
+        <button class="btn" name="action" value="APPROVE_REVIEW">Approve review</button>
+      </form>
+      {% elif row.demographic_override_approved %}<small>Review approved: {{row.demographic_override_reason}}</small>{% endif %}
+    </td>
+    <td>{% if row.status in ('RECEIVED','HOLD') %}
+      {% if row.demographic_status=='MATCHED' or (row.demographic_status=='REVIEW_REQUIRED' and row.demographic_override_approved) %}
+      <form method="post" action="{{url_for('admin_external_intake_decision',intake_id=row.id)}}"><button class="btn primary" name="action" value="QUEUE">Send to Queue</button></form>
+      {% else %}<p>Queue blocked until demographics are verified.</p>{% endif %}
+      <form method="post" action="{{url_for('admin_external_intake_decision',intake_id=row.id)}}">
+        <input name="note" maxlength="500" placeholder="Review note">
+        <button class="btn" name="action" value="HOLD">Hold</button>
+        <button class="btn danger" name="action" value="REJECT">Reject</button>
+      </form>
+    {% endif %}</td>
+  </tr>{% else %}<tr><td colspan="4">{{"لا توجد دراسات خارجية." if ui_lang=="ar" else "No external studies."}}</td></tr>{% endfor %}
   </tbody></table>
 </section>
 
