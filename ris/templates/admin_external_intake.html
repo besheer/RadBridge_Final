@@ -22,6 +22,9 @@
     <label><input type="checkbox" name="receiving_enabled" value="1"> Receiving enabled</label>
     <label><input type="checkbox" name="assignment_enabled" value="1"> Assignment enabled</label>
     <label><input type="checkbox" name="required_documents" value="1"> Documents required</label>
+    <label><input type="checkbox" name="billing_enabled" value="1"> Billing enabled</label>
+    <label>{{"عقد / جهة دفع المركز" if ui_lang=="ar" else "Center billing contract"}}<select name="billing_contract_id"><option value="">--</option>{% for contract in contracts %}<option value="{{contract.id}}">{{contract.code}} · {{contract.name}}</option>{% endfor %}</select></label>
+    <label>{{"سعر التقرير الافتراضي" if ui_lang=="ar" else "Default report fee"}}<input type="number" name="default_report_fee" min="0" step="0.01" value="0"></label>
     <fieldset><legend>{{"مجموعة الأطباء" if ui_lang=="ar" else "Doctor pool"}}</legend>
       {% for doctor in doctors %}<label><input type="checkbox" name="doctor_ids" value="{{doctor.id}}"> {{doctor.full_name or doctor.username}}</label>{% endfor %}
     </fieldset>
@@ -37,6 +40,7 @@
     <td>Patient ID: {{row.dicom_patient_id or row.inbox.pacs_patient_id or '-'}}<br>Name: {{row.dicom_patient_name or row.inbox.pacs_patient_name or '-'}}<br>DOB: {{row.dicom_dob or '-'}}<br>Sex: {{row.dicom_sex or '-'}}<br>Accession: {{row.dicom_accession or row.inbox.accession or '-'}}</td>
     <td>
       {% if row.status in ('RECEIVED','HOLD') %}
+      <small>{{"تم ملء البيانات المتاحة من DICOM تلقائياً؛ راجعها مقابل طلب التحويل قبل الاعتماد." if ui_lang=="ar" else "Available values were prefilled from DICOM; verify them against the referral before approval."}}</small>
       <form method="post" action="{{url_for('admin_external_intake_decision',intake_id=row.id)}}">
         <input name="expected_patient_id" value="{{row.expected_patient_id}}" required maxlength="80" placeholder="Referral Patient ID">
         <input name="expected_patient_name" value="{{row.expected_patient_name}}" required maxlength="180" placeholder="Referral patient name">
@@ -54,6 +58,16 @@
         <button class="btn" name="action" value="APPROVE_REVIEW">Approve review</button>
       </form>
       {% elif row.demographic_override_approved %}<small>Review approved: {{row.demographic_override_reason}}</small>{% endif %}
+      {% if row.status in ('RECEIVED','HOLD') %}
+      <form method="post" enctype="multipart/form-data" action="{{url_for('admin_external_intake_attachment_upload',intake_id=row.id)}}">
+        <select name="category"><option value="REFERRAL">Referral</option><option value="APPROVAL">Approval</option><option value="CLINICAL">Clinical</option><option value="IDENTITY">Identity</option><option value="OTHER">Other</option></select>
+        <input type="file" name="files" multiple required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.odt,.dcm,.dicom,.zip">
+        <input name="notes" maxlength="500" placeholder="Document notes">
+        <button class="btn">{{"رفع المستند" if ui_lang=="ar" else "Upload document"}}</button>
+      </form>
+      {% endif %}
+      <p><b>{{"المستندات" if ui_lang=="ar" else "Documents"}}: {{intake_attachments.get(row.id,[])|length}}</b></p>
+      {% for item in intake_attachments.get(row.id,[]) %}<small><a href="{{url_for('attachment_download',attachment_id=item.id)}}">{{item.category}} · {{item.original_name}}</a></small><br>{% endfor %}
     </td>
     <td>{% if row.status in ('RECEIVED','HOLD') %}
       {% if row.demographic_status=='MATCHED' or (row.demographic_status=='REVIEW_REQUIRED' and row.demographic_override_approved) %}
@@ -70,6 +84,6 @@
 </section>
 
 <section class="panel"><h2>{{"المراكز" if ui_lang=="ar" else "Centers"}}</h2>
-{% for center in centers %}<p><b>{{center.code}} · {{center.name}}</b> — {{center.ae_title}} — receiving={{center.receiving_enabled}} assignment={{center.assignment_enabled}} — doctors={{pools[center.id]|length}}</p>{% else %}<p>No centers configured.</p>{% endfor %}
+{% for center in centers %}<p><b>{{center.code}} · {{center.name}}</b> — {{center.ae_title}} — receiving={{center.receiving_enabled}} assignment={{center.assignment_enabled}} — documents={{center.required_documents}} — billing={{center.billing_enabled}}{% if center.billing_enabled %} · contract={{center.billing_contract.name if center.billing_contract else '-'}} · fee={{'%.2f'|format(center.default_report_fee or 0)}}{% endif %} — doctors={{pools[center.id]|length}}</p>{% else %}<p>No centers configured.</p>{% endfor %}
 </section>
 {% endblock %}

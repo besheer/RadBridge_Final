@@ -1,4 +1,5 @@
 from datetime import datetime
+import io
 import json
 import uuid
 
@@ -60,6 +61,30 @@ def test_capture_isolated_and_does_not_create_order_offer_or_assignment(external
     row=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
     assert row.center_id==center.id and row.status=='RECEIVED' and row.order_id is None
     assert (m.Order.query.count(),m.AssignmentOffer.query.count(),m.CaseAssignment.query.count())==before
+
+
+def test_capture_autofills_empty_referral_fields_without_claiming_verification(external_setup):
+    m,_,_,_,_,_,center,inbox=external_setup
+    inbox.accession='';inbox.pacs_patient_id='REMOTE-77'
+    inbox.pacs_patient_name='Auto^Filled';m.db.session.commit()
+    assert m.capture_external_pacs_studies()==1
+    m.db.session.commit()
+    row=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
+    assert row.expected_patient_id=='REMOTE-77'
+    assert row.expected_patient_name=='Auto Filled'
+    assert row.expected_accession==f'EXT-{center.code}-{row.id}'
+    assert row.demographic_status=='NOT_CHECKED'
+
+
+def test_capture_autofill_never_overwrites_admin_values(external_setup):
+    m,_,_,_,_,_,_,inbox=external_setup
+    m.capture_external_pacs_studies();m.db.session.commit()
+    row=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
+    row.expected_patient_name='Reviewed Name'
+    row.expected_accession='REFERRAL-123';m.db.session.commit()
+    m.capture_external_pacs_studies();m.db.session.commit()
+    assert row.expected_patient_name=='Reviewed Name'
+    assert row.expected_accession=='REFERRAL-123'
 
 
 def test_unknown_ae_is_not_captured(external_setup):
@@ -169,10 +194,69 @@ def test_admin_queue_creates_external_order_only_after_decision(external_setup,m
     assert response.status_code==302
     m.db.session.expire_all();row=m.ExternalIntakeCase.query.get(row.id)
     assert row.status=='QUEUED' and row.order_id
-    assert row.order.accession==f'E{center.id}I{row.id}'
+    assert row.order.accession==f'EXT-{center.code}-{row.id}'
+    assert row.order.patient.patient_id.startswith(f'EXT-{center.code}-REMOTE-1-')
+    assert row.order.patient.name=='External Patient'
+    assert row.order.patient.dob=='19900102' and row.order.patient.sex=='F'
+    assert row.order.procedure==f'External - {center.name} - External chest'
     assert row.order.pacs_study_id==inbox.orthanc_study_id
     assert row.order.pacs_status=='IMAGES_COMPLETE'
     assert m.AuditLog.query.filter_by(action='EXTERNAL_INTAKE_QUEUE',entity_id=str(row.id)).count()==1
+
+
+def test_center_billing_creates_company_receivable_not_patient_charge(external_setup,
+                                                                       monkeypatch):
+    m,admin,_,_,_,_,center,inbox=external_setup
+    contract=m.Contract(code=unique('EXTCON').upper(),name='External Center Contract',
+                        patient_share_percent=0,active=True)
+    m.db.session.add(contract);m.db.session.flush()
+    center.billing_enabled=True;center.billing_contract_id=contract.id
+    center.default_report_fee=275.50
+    m.capture_external_pacs_studies();m.db.session.commit()
+    row=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
+    set_matching_referral(row);m.db.session.commit()
+    monkeypatch.setattr(m,'offer_next_doctor',lambda *args,**kwargs:(None,'OFFERED'))
+    client=m.app.test_client();login(client,admin)
+    assert client.post(f'/admin/external-intake/{row.id}/decision',
+                       data={'action':'QUEUE'}).status_code==302
+    m.db.session.expire_all();row=m.ExternalIntakeCase.query.get(row.id)
+    order=row.order
+    assert order.contract_id==contract.id
+    assert order.gross_price==275.50 and order.contract_price==275.50
+    assert order.patient_share==0 and order.company_share==275.50
+    assert order.paid_amount==0 and m.order_balance(order)==275.50
+
+
+def test_required_document_upload_moves_to_created_order(external_setup,monkeypatch,
+                                                          tmp_path):
+    m,admin,_,_,_,_,center,inbox=external_setup
+    center.required_documents=True
+    m.capture_external_pacs_studies();m.db.session.commit()
+    row=m.ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).one()
+    set_matching_referral(row);m.db.session.commit()
+    monkeypatch.setattr(m,'ATTACHMENT_DIR',str(tmp_path))
+    monkeypatch.setattr(m,'offer_next_doctor',lambda *args,**kwargs:(None,'OFFERED'))
+    client=m.app.test_client();login(client,admin)
+    assert client.post(f'/admin/external-intake/{row.id}/decision',
+                       data={'action':'QUEUE'}).status_code==302
+    assert m.ExternalIntakeCase.query.get(row.id).order_id is None
+    response=client.post(
+        f'/admin/external-intake/{row.id}/attachments',
+        data={'category':'APPROVAL','notes':'Center approval',
+              'files':(io.BytesIO(b'approval'), 'approval.pdf')},
+        content_type='multipart/form-data'
+    )
+    assert response.status_code==302
+    attachment=m.Attachment.query.filter_by(external_intake_id=row.id).one()
+    assert attachment.category=='APPROVAL' and attachment.order_id is None
+    assert client.post(f'/admin/external-intake/{row.id}/decision',
+                       data={'action':'QUEUE'}).status_code==302
+    m.db.session.expire_all();row=m.ExternalIntakeCase.query.get(row.id)
+    attachment=m.Attachment.query.get(attachment.id)
+    assert row.order_id is not None
+    assert attachment.external_intake_id==row.id
+    assert attachment.patient_id==row.order.patient_id
+    assert attachment.order_id==row.order_id
 
 
 def test_external_order_candidates_are_limited_to_center_pool(external_setup):
@@ -204,7 +288,10 @@ def test_external_admin_page_permission_and_direct_url_denial(external_setup):
     client=m.app.test_client()
     assert client.get('/admin/external-intake').status_code==302
     login(client,tech);assert client.get('/admin/external-intake').status_code==403
-    login(client,admin);assert client.get('/admin/external-intake').status_code==200
+    login(client,admin)
+    response=client.get('/admin/external-intake')
+    assert response.status_code==200
+    assert b'prefilled from DICOM' in response.data
 
 
 def test_hold_and_reject_never_create_order(external_setup):

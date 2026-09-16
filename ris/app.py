@@ -1716,6 +1716,7 @@ class Attachment(db.Model):
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'))
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
     appointment_id = db.Column(db.Integer, db.ForeignKey('appointment.id'))
+    external_intake_id = db.Column(db.Integer, db.ForeignKey('external_intake_case.id'), index=True)
     category = db.Column(db.String(60), nullable=False, default='OTHER')
     original_name = db.Column(db.String(255), nullable=False)
     stored_path = db.Column(db.String(500), nullable=False)
@@ -1726,6 +1727,7 @@ class Attachment(db.Model):
     patient = db.relationship('Patient', foreign_keys=[patient_id])
     order = db.relationship('Order', foreign_keys=[order_id])
     appointment = db.relationship('Appointment', foreign_keys=[appointment_id])
+    external_intake = db.relationship('ExternalIntakeCase', foreign_keys=[external_intake_id])
 
 
 class DeviceSchedule(db.Model):
@@ -2183,10 +2185,14 @@ class ExternalReportingCenter(db.Model):
     auto_queue=db.Column(db.Boolean,nullable=False,default=False)
     default_priority=db.Column(db.String(20),nullable=False,default='ROUTINE')
     required_documents=db.Column(db.Boolean,nullable=False,default=False)
+    billing_enabled=db.Column(db.Boolean,nullable=False,default=False)
+    billing_contract_id=db.Column(db.Integer,db.ForeignKey('contract.id'),index=True)
+    default_report_fee=db.Column(db.Float,nullable=False,default=0)
     active=db.Column(db.Boolean,nullable=False,default=True,index=True)
     created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
     created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
     updated_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow,onupdate=datetime.utcnow)
+    billing_contract=db.relationship('Contract',foreign_keys=[billing_contract_id])
 
 
 class ExternalCenterDoctor(db.Model):
@@ -3215,7 +3221,9 @@ def _study_tags(st):
       'study_date':str(mt.get('StudyDate','') or ''),
       'modality':str(mt.get('ModalitiesInStudy') or mt.get('Modality') or ''),
       'patient_id':str(pt.get('PatientID','') or ''),'patient_name':str(pt.get('PatientName','') or ''),
-      'dob':str(pt.get('PatientBirthDate','') or ''),'instances':len(st.get('Instances') or [])}
+      'dob':str(pt.get('PatientBirthDate','') or ''),
+      'sex':str(pt.get('PatientSex','') or '').strip().upper()[:1],
+      'instances':len(st.get('Instances') or [])}
 
 
 def strict_pacs_demographic_match(tags):
@@ -22006,6 +22014,48 @@ def external_reporting_setting():
     return row
 
 
+def _external_intake_generated_accession(row):
+    """Return a stable local reference without pretending it came from DICOM."""
+    center_code=(re.sub(r'[^A-Z0-9_-]','',str(row.center.code or '').upper()) or 'CENTER')[:20]
+    return f'EXT-{center_code}-{row.id}'[:40]
+
+
+def _external_intake_local_patient_id(row):
+    """Create a unique RIS identity while preserving the external ID separately."""
+    center_code=(re.sub(r'[^A-Z0-9_-]','',str(row.center.code or '').upper()) or 'CENTER')[:12]
+    external_id=(
+        str(row.expected_patient_id or '').strip()
+        or str(row.dicom_patient_id or '').strip()
+        or str(row.inbox.pacs_patient_id or '').strip()
+        or 'UNKNOWN'
+    )
+    external_id=re.sub(r'[^A-Z0-9_-]','-',external_id.upper()).strip('-') or 'UNKNOWN'
+    suffix=f'-{row.id}'
+    prefix=f'EXT-{center_code}-'
+    available=max(1,40-len(prefix)-len(suffix))
+    return (prefix+external_id[:available]+suffix)[:40]
+
+
+def external_intake_autofill(row,tags=None):
+    """Prefill empty referral fields but never mark them independently verified."""
+    # RB_EXTERNAL_INTAKE_AUTOFILL_V1
+    tags=tags or {}
+    inbox=row.inbox
+    proposed={
+        'expected_patient_id':str(tags.get('patient_id') or inbox.pacs_patient_id or '').strip(),
+        'expected_patient_name':str(tags.get('patient_name') or inbox.pacs_patient_name or '').replace('^',' ').strip(),
+        'expected_dob':normalize_date(tags.get('dob')),
+        'expected_sex':str(tags.get('sex') or '').strip().upper()[:1],
+        'expected_accession':str(tags.get('accession') or inbox.accession or '').strip(),
+    }
+    if not proposed['expected_accession']:
+        proposed['expected_accession']=_external_intake_generated_accession(row)
+    for field,value in proposed.items():
+        if not str(getattr(row,field) or '').strip() and value:
+            setattr(row,field,value)
+    return proposed
+
+
 def capture_external_pacs_studies():
     """Mirror eligible PACS inbox rows into the isolated external intake.
 
@@ -22052,11 +22102,14 @@ def capture_external_pacs_studies():
             inbox.image_count=int(tags.get('instances') or inbox.image_count or 0)
         if inbox.order_id is not None:
             continue
-        if not ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).first():
-            db.session.add(ExternalIntakeCase(
+        intake=ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).first()
+        if not intake:
+            intake=ExternalIntakeCase(
                 center_id=center.id,inbox_id=inbox.id,status='RECEIVED'
-            ))
+            )
+            db.session.add(intake);db.session.flush()
             created+=1
+        external_intake_autofill(intake,tags)
         inbox.state='EXTERNAL_INTAKE'
 
     # Preserve capture of eligible inbox rows created by older discovery jobs.
@@ -22064,7 +22117,9 @@ def capture_external_pacs_studies():
         center=centers.get(str(inbox.source_ae or '').strip().upper())
         if not center or ExternalIntakeCase.query.filter_by(inbox_id=inbox.id).first():
             continue
-        db.session.add(ExternalIntakeCase(center_id=center.id,inbox_id=inbox.id,status='RECEIVED'))
+        intake=ExternalIntakeCase(center_id=center.id,inbox_id=inbox.id,status='RECEIVED')
+        db.session.add(intake);db.session.flush()
+        external_intake_autofill(intake)
         created+=1
     return created
 
@@ -22206,24 +22261,39 @@ def queue_external_intake(row,actor_user_id):
         return None,'DEMOGRAPHICS_REVIEW_REQUIRED'
     if verification['status'] not in ('MATCHED','REVIEW_REQUIRED'):
         return None,'DEMOGRAPHICS_NOT_VERIFIED'
-    if center.required_documents:
-        return None,'REQUIRED_DOCUMENTS_NOT_VERIFIED'
+    intake_attachments=Attachment.query.filter_by(external_intake_id=row.id).all()
+    if center.required_documents and not intake_attachments:
+        return None,'REQUIRED_DOCUMENTS_MISSING'
+    if center.billing_enabled and not center.billing_contract_id:
+        return None,'CENTER_BILLING_CONTRACT_REQUIRED'
 
     branch=Branch.query.filter_by(active=True).order_by(Branch.id).first()
     if not branch:
         return None,'ACTIVE_BRANCH_REQUIRED'
     patient=Patient(
-        patient_id=f'EXT{center.id}I{row.id}',
-        name=((inbox.pacs_patient_name or '').replace('^',' ').strip() or 'External patient')[:120],
-        dob='',sex='',phone='',worklist_name=f'EXTERNAL:{center.code}'
+        patient_id=_external_intake_local_patient_id(row),
+        name=(str(row.expected_patient_name or '').strip()
+              or (inbox.pacs_patient_name or '').replace('^',' ').strip()
+              or 'External patient')[:120],
+        dob=normalize_date(row.expected_dob),sex=(row.expected_sex or '')[:1],phone='',
+        worklist_name=f'EXTERNAL:{center.code}:{center.name}'[:180]
     )
     db.session.add(patient);db.session.flush()
+    local_accession=_external_intake_generated_accession(row)
+    description=(
+        f'External - {center.name} - '
+        f'{inbox.study_description or "Reporting study"}'
+    )[:120]
+    report_fee=max(0.0,float(center.default_report_fee or 0)) if center.billing_enabled else 0.0
     order=Order(
-        accession=f'E{center.id}I{row.id}',patient_id=patient.id,
+        accession=local_accession,patient_id=patient.id,
         modality=(inbox.modality or 'OT').split('\\')[0].strip().upper()[:8] or 'OT',
-        procedure=(inbox.study_description or 'External reporting study')[:120],
+        procedure=description,
         station_ae=(inbox.source_ae or '')[:40],scheduled=inbox.first_seen_at or datetime.utcnow(),
         status='IMAGES_RECEIVED',branch_id=branch.id,priority=center.default_priority,
+        contract_id=(center.billing_contract_id if center.billing_enabled else None),
+        gross_price=report_fee,contract_price=report_fee,
+        patient_share=0,company_share=report_fee,paid_amount=0,
         created_by=actor_user_id,created_at=datetime.utcnow(),exam_status='EXAM_COMPLETED',
         exam_completed_at=datetime.utcnow(),pacs_image_count=int(inbox.image_count or 0),
         pacs_status='IMAGES_COMPLETE',pacs_last_seen_at=inbox.last_seen_at or datetime.utcnow(),
@@ -22231,13 +22301,17 @@ def queue_external_intake(row,actor_user_id):
         pacs_study_id=inbox.orthanc_study_id,study_instance_uid=inbox.study_instance_uid
     )
     db.session.add(order);db.session.flush()
+    for attachment in intake_attachments:
+        attachment.patient_id=patient.id
+        attachment.order_id=order.id
     row.order_id=order.id;row.status='QUEUED';row.reviewed_by=actor_user_id
     row.reviewed_at=datetime.utcnow();row.queued_at=row.reviewed_at
     inbox.order_id=order.id;inbox.state='EXTERNAL_QUEUED'
     db.session.add(AuditLog(
         user_id=actor_user_id,username=current_user().username,
         action='EXTERNAL_INTAKE_QUEUE',entity='external_intake_case',entity_id=str(row.id),
-        details=f'center={center.code};order={order.id};study={inbox.orthanc_study_id}',
+        details=(f'center={center.code};order={order.id};study={inbox.orthanc_study_id};'
+                 f'billing={center.billing_enabled};fee={report_fee};documents={len(intake_attachments)}'),
         ip=request.remote_addr or ''
     ))
     db.session.commit()
@@ -22270,6 +22344,15 @@ def admin_external_intake():
             center.assignment_enabled=request.form.get('assignment_enabled')=='1'
             center.auto_queue=False # Phase one remains explicit-admin queue only.
             center.required_documents=request.form.get('required_documents')=='1'
+            center.billing_enabled=request.form.get('billing_enabled')=='1'
+            center.billing_contract_id=request.form.get('billing_contract_id',type=int) or None
+            try:
+                center.default_report_fee=max(0.0,float(request.form.get('default_report_fee') or 0))
+            except (TypeError,ValueError):
+                abort(400)
+            if center.billing_enabled:
+                contract=Contract.query.filter_by(id=center.billing_contract_id,active=True).first()
+                if not contract: abort(400)
             center.default_priority=(request.form.get('default_priority') or 'ROUTINE').upper()
             center.active=request.form.get('active')=='1'
             db.session.flush()
@@ -22279,7 +22362,9 @@ def admin_external_intake():
             for doctor_id in wanted-existing.keys():
                 db.session.add(ExternalCenterDoctor(center_id=center.id,doctor_user_id=doctor_id,active=True))
             audit('EXTERNAL_CENTER_SAVE','external_reporting_center',center.id,
-                  f'code={code};receiving={center.receiving_enabled};assignment={center.assignment_enabled};pool={sorted(wanted)}')
+                  f'code={code};receiving={center.receiving_enabled};assignment={center.assignment_enabled};'
+                  f'billing={center.billing_enabled};contract={center.billing_contract_id};'
+                  f'fee={center.default_report_fee};pool={sorted(wanted)}')
         elif action=='SYNC':
             count=capture_external_pacs_studies()
             audit('EXTERNAL_INTAKE_SYNC','external_intake_case','',f'created={count}')
@@ -22297,7 +22382,51 @@ def admin_external_intake():
         except Exception: demographic_checks[row.id]=[]
     return render_template('admin_external_intake.html',setting=setting,centers=centers,
                            doctors=doctors,pools=pools,rows=rows,
-                           demographic_checks=demographic_checks)
+                           demographic_checks=demographic_checks,
+                           contracts=Contract.query.filter_by(active=True).order_by(Contract.name).all(),
+                           intake_attachments={row.id:Attachment.query.filter_by(
+                               external_intake_id=row.id).order_by(Attachment.created_at.desc()).all()
+                               for row in rows})
+
+
+@app.post('/admin/external-intake/<int:intake_id>/attachments')
+@require_perm('assignment.manage')
+def admin_external_intake_attachment_upload(intake_id):
+    row=ExternalIntakeCase.query.get_or_404(intake_id)
+    if row.status not in ('RECEIVED','HOLD'): abort(409)
+    files=[item for item in request.files.getlist('files') if item and item.filename]
+    if not files:
+        flash('Choose one or more referral or approval documents.','danger')
+        return redirect(url_for('admin_external_intake'))
+    category=(request.form.get('category') or 'REFERRAL').strip().upper()
+    if category not in ('REFERRAL','APPROVAL','CLINICAL','IDENTITY','OTHER'): abort(400)
+    notes=(request.form.get('notes') or '').strip()[:500]
+    folder=os.path.join(ATTACHMENT_DIR,'external-intake',str(row.id))
+    os.makedirs(folder,exist_ok=True)
+    allowed_exts=('.pdf','.jpg','.jpeg','.png','.doc','.docx','.odt','.dcm','.dicom','.zip')
+    saved=0
+    for uploaded in files:
+        ext=os.path.splitext(uploaded.filename)[1].lower()
+        if ext not in allowed_exts:
+            continue
+        stored_name=generated_attachment_filename(row.id,category,uploaded.filename)
+        path=os.path.join(folder,stored_name)
+        uploaded.save(path)
+        db.session.add(Attachment(
+            external_intake_id=row.id,category=category,
+            original_name=uploaded.filename[:255],stored_path=path,
+            mime_type=(uploaded.mimetype or '')[:120],notes=notes,
+            uploaded_by=current_user().id
+        ))
+        saved+=1
+    if saved<1:
+        flash('No supported documents were uploaded.','danger')
+        return redirect(url_for('admin_external_intake'))
+    audit('EXTERNAL_INTAKE_ATTACHMENT_UPLOAD','external_intake_case',row.id,
+          f'category={category};count={saved}')
+    db.session.commit()
+    flash(f'{saved} external intake document(s) uploaded.','success')
+    return redirect(url_for('admin_external_intake'))
 
 
 @app.post('/admin/external-intake/<int:intake_id>/decision')
