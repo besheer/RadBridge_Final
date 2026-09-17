@@ -14939,8 +14939,8 @@ def command_center_events_stream():
 
             if not view:
                 yield (
-                    'event: error\\n'
-                    'data: {"error":"EVENT_API_NOT_FOUND"}\\n\\n'
+                    'event: error\n'
+                    'data: {"error":"EVENT_API_NOT_FOUND"}\n\n'
                 )
                 time.sleep(5)
                 continue
@@ -14983,16 +14983,16 @@ def command_center_events_stream():
                 )
 
                 yield (
-                    f'id: {key}\\n'
-                    f'event: workflow_event\\n'
-                    f'data: {payload}\\n\\n'
+                    f'id: {key}\n'
+                    f'event: workflow_event\n'
+                    f'data: {payload}\n\n'
                 )
 
             last_keys=current_keys
 
             yield (
-                'event: heartbeat\\n'
-                'data: {"status":"alive"}\\n\\n'
+                'event: heartbeat\n'
+                'data: {"status":"alive"}\n\n'
             )
 
             time.sleep(2)
