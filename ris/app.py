@@ -14910,6 +14910,105 @@ def admin_qa():
 # ============================================================
 
 # RB_LIVE_COMMAND_CENTER_UI_V1
+
+# ============================================================
+# RB_LIVE_COMMAND_CENTER_SSE_V1
+# Read-only Server-Sent Events transport for Command Center.
+# It reuses the normalized event API and never writes clinical
+# workflow state.
+# ============================================================
+
+@app.get('/api/command-center/events/stream')
+@require_perm('audit.view')
+def command_center_events_stream():
+
+    from flask import Response, stream_with_context
+    import inspect
+    import time
+
+    @stream_with_context
+    def generate():
+
+        last_keys=set()
+
+        while True:
+
+            view=app.view_functions.get(
+                'command_center_events'
+            )
+
+            if not view:
+                yield (
+                    'event: error\\n'
+                    'data: {"error":"EVENT_API_NOT_FOUND"}\\n\\n'
+                )
+                time.sleep(5)
+                continue
+
+            raw=inspect.unwrap(view)
+
+            with app.test_request_context(
+                '/api/command-center/events?limit=100'
+            ):
+                rv=raw()
+                response=(
+                    rv[0]
+                    if isinstance(rv,tuple)
+                    else rv
+                )
+                data=response.get_json() or {}
+
+            events=data.get('events') or []
+
+            current_keys=set()
+
+            for event in reversed(events):
+
+                key=str(
+                    event.get('event_key') or ''
+                )
+
+                if not key:
+                    continue
+
+                current_keys.add(key)
+
+                if key in last_keys:
+                    continue
+
+                payload=json.dumps(
+                    event,
+                    ensure_ascii=False,
+                    default=str
+                )
+
+                yield (
+                    f'id: {key}\\n'
+                    f'event: workflow_event\\n'
+                    f'data: {payload}\\n\\n'
+                )
+
+            last_keys=current_keys
+
+            yield (
+                'event: heartbeat\\n'
+                'data: {"status":"alive"}\\n\\n'
+            )
+
+            time.sleep(2)
+
+    response=Response(
+        generate(),
+        mimetype='text/event-stream'
+    )
+
+    response.headers['Cache-Control']='no-cache'
+    response.headers['X-Accel-Buffering']='no'
+    response.headers['Connection']='keep-alive'
+
+    return response
+
+
 @app.route('/operations/live-command-center')
 @require_perm('audit.view')
 def live_command_center():
