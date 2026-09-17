@@ -15278,6 +15278,366 @@ def api_command_center_case_graph_v3(order_id):
     })
 
 
+
+# ============================================================
+# RB_COMMAND_CENTER_MONITORING_CONTROL_V1
+# Persistent multi-worker runtime control.
+#
+# OFF:
+#   No SSE monitoring loop.
+#
+# NORMAL:
+#   Low-frequency SSE refresh.
+#
+# LIVE:
+#   Real-time SSE refresh.
+#
+# Storage is intentionally outside the application image.
+# A persistent bind mount is required before writes are enabled.
+# ============================================================
+
+def _command_center_control_defaults():
+    return {
+        'schema': 'radbridge.command_center.control.v1',
+        'mode': 'LIVE',
+        'normal_interval_seconds': 15,
+        'live_interval_seconds': 2,
+        'updated_at': None,
+        'updated_by': '',
+        'storage_configured': bool(
+            os.environ.get(
+                'RADBRIDGE_COMMAND_CENTER_CONTROL_FILE'
+            )
+        ),
+    }
+
+
+def _command_center_control_path():
+    return str(
+        os.environ.get(
+            'RADBRIDGE_COMMAND_CENTER_CONTROL_FILE'
+        )
+        or ''
+    ).strip()
+
+
+def command_center_control_state():
+
+    state = _command_center_control_defaults()
+
+    path = _command_center_control_path()
+
+    if not path:
+        return state
+
+    try:
+        with open(
+            path,
+            'r',
+            encoding='utf-8'
+        ) as handle:
+            stored = json.load(handle)
+
+        if not isinstance(stored, dict):
+            return state
+
+        mode = str(
+            stored.get('mode')
+            or state['mode']
+        ).upper()
+
+        if mode not in (
+            'OFF',
+            'NORMAL',
+            'LIVE'
+        ):
+            mode = state['mode']
+
+        try:
+            normal_interval = int(
+                stored.get(
+                    'normal_interval_seconds',
+                    state['normal_interval_seconds']
+                )
+            )
+        except Exception:
+            normal_interval = \
+                state['normal_interval_seconds']
+
+        try:
+            live_interval = int(
+                stored.get(
+                    'live_interval_seconds',
+                    state['live_interval_seconds']
+                )
+            )
+        except Exception:
+            live_interval = \
+                state['live_interval_seconds']
+
+        state.update({
+            'mode': mode,
+            'normal_interval_seconds': max(
+                5,
+                min(normal_interval, 120)
+            ),
+            'live_interval_seconds': max(
+                1,
+                min(live_interval, 10)
+            ),
+            'updated_at': stored.get(
+                'updated_at'
+            ),
+            'updated_by': str(
+                stored.get('updated_by')
+                or ''
+            ),
+            'storage_configured': True,
+        })
+
+    except FileNotFoundError:
+        pass
+
+    except Exception:
+        app.logger.exception(
+            'COMMAND_CENTER_CONTROL_READ_FAILED'
+        )
+
+    return state
+
+
+def _command_center_write_control_state(
+    mode,
+    normal_interval_seconds=None,
+    live_interval_seconds=None,
+    updated_by=''
+):
+
+    path = _command_center_control_path()
+
+    if not path:
+        return (
+            False,
+            'CONTROL_STORAGE_NOT_CONFIGURED'
+        )
+
+    mode = str(
+        mode or ''
+    ).upper()
+
+    if mode not in (
+        'OFF',
+        'NORMAL',
+        'LIVE'
+    ):
+        return (
+            False,
+            'INVALID_MONITORING_MODE'
+        )
+
+    current = command_center_control_state()
+
+    try:
+        normal_interval = int(
+            normal_interval_seconds
+            if normal_interval_seconds is not None
+            else current[
+                'normal_interval_seconds'
+            ]
+        )
+
+        live_interval = int(
+            live_interval_seconds
+            if live_interval_seconds is not None
+            else current[
+                'live_interval_seconds'
+            ]
+        )
+
+    except Exception:
+        return (
+            False,
+            'INVALID_INTERVAL'
+        )
+
+    normal_interval = max(
+        5,
+        min(normal_interval, 120)
+    )
+
+    live_interval = max(
+        1,
+        min(live_interval, 10)
+    )
+
+    directory = os.path.dirname(path)
+
+    try:
+        if directory:
+            os.makedirs(
+                directory,
+                exist_ok=True
+            )
+
+        payload = {
+            'schema':
+                'radbridge.command_center.control.v1',
+
+            'mode':
+                mode,
+
+            'normal_interval_seconds':
+                normal_interval,
+
+            'live_interval_seconds':
+                live_interval,
+
+            'updated_at':
+                datetime.utcnow().isoformat()
+                + 'Z',
+
+            'updated_by':
+                str(updated_by or ''),
+        }
+
+        temp_path = (
+            path
+            + '.tmp.'
+            + str(os.getpid())
+        )
+
+        with open(
+            temp_path,
+            'w',
+            encoding='utf-8'
+        ) as handle:
+            json.dump(
+                payload,
+                handle,
+                ensure_ascii=False,
+                sort_keys=True
+            )
+
+            handle.flush()
+            os.fsync(
+                handle.fileno()
+            )
+
+        os.replace(
+            temp_path,
+            path
+        )
+
+        return (
+            True,
+            payload
+        )
+
+    except Exception:
+        app.logger.exception(
+            'COMMAND_CENTER_CONTROL_WRITE_FAILED'
+        )
+
+        return (
+            False,
+            'CONTROL_WRITE_FAILED'
+        )
+
+
+@app.get('/api/command-center/control')
+@require_perm('audit.view')
+def api_command_center_control_get():
+
+    return jsonify(
+        command_center_control_state()
+    )
+
+
+@app.post('/api/command-center/control')
+@login_required
+def api_command_center_control_set():
+
+    user = current_user()
+
+    role_code = (
+        user.role.code.upper()
+        if (
+            user
+            and user.role
+            and user.role.code
+        )
+        else ''
+    )
+
+    if role_code not in (
+        'SUPER_ADMIN',
+        'ADMIN'
+    ):
+        abort(403)
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    ok, result = \
+        _command_center_write_control_state(
+            mode=data.get('mode'),
+            normal_interval_seconds=data.get(
+                'normal_interval_seconds'
+            ),
+            live_interval_seconds=data.get(
+                'live_interval_seconds'
+            ),
+            updated_by=(
+                user.username
+                if user
+                else ''
+            ),
+        )
+
+    if not ok:
+        status = (
+            503
+            if result
+            == 'CONTROL_STORAGE_NOT_CONFIGURED'
+            else 400
+        )
+
+        return jsonify({
+            'ok': False,
+            'error': result,
+        }), status
+
+    audit(
+        'COMMAND_CENTER_MODE_CHANGED',
+        'system',
+        'command-center',
+        (
+            'mode='
+            + str(result.get('mode'))
+            + '; normal_interval='
+            + str(
+                result.get(
+                    'normal_interval_seconds'
+                )
+            )
+            + '; live_interval='
+            + str(
+                result.get(
+                    'live_interval_seconds'
+                )
+            )
+        )
+    )
+
+    db.session.commit()
+
+    return jsonify({
+        'ok': True,
+        'control': result,
+    })
+
+
 # RB_LIVE_COMMAND_CENTER_SSE_V1
 # Read-only Server-Sent Events transport for Command Center.
 # It reuses the normalized event API and never writes clinical
@@ -15292,12 +15652,51 @@ def command_center_events_stream():
     import inspect
     import time
 
+    initial_control = command_center_control_state()
+
+    if initial_control.get('mode') == 'OFF':
+        return Response(
+            status=204
+        )
+
     @stream_with_context
     def generate():
 
         last_keys=set()
 
         while True:
+
+            control = command_center_control_state()
+
+            monitoring_mode = str(
+                control.get('mode')
+                or 'LIVE'
+            ).upper()
+
+            if monitoring_mode == 'OFF':
+
+                yield (
+                    'event: monitoring_state\n'
+                    'data: {"mode":"OFF"}\n\n'
+                )
+
+                return
+
+            interval_seconds = (
+                int(
+                    control.get(
+                        'normal_interval_seconds'
+                    )
+                    or 15
+                )
+                if monitoring_mode == 'NORMAL'
+                else int(
+                    control.get(
+                        'live_interval_seconds'
+                    )
+                    or 2
+                )
+            )
 
             view=app.view_functions.get(
                 'command_center_events'
@@ -15356,12 +15755,24 @@ def command_center_events_stream():
 
             last_keys=current_keys
 
-            yield (
-                'event: heartbeat\n'
-                'data: {"status":"alive"}\n\n'
+            heartbeat_payload = json.dumps(
+                {
+                    'status': 'alive',
+                    'mode': monitoring_mode,
+                    'interval_seconds':
+                        interval_seconds,
+                },
+                separators=(',', ':')
             )
 
-            time.sleep(2)
+            yield (
+                'event: heartbeat\n'
+                f'data: {heartbeat_payload}\n\n'
+            )
+
+            time.sleep(
+                interval_seconds
+            )
 
     response=Response(
         generate(),
