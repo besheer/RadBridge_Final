@@ -950,6 +950,17 @@
                 escapeHtml(type) +
             '</div>';
 
+        row.dataset.orderId = order;
+
+        if (order !== '-') {
+            row.style.cursor = 'pointer';
+
+            row.addEventListener(
+                'click',
+                () => focusOrder(order)
+            );
+        }
+
         txList.prepend(row);
 
         while (txList.children.length > 20) {
@@ -964,6 +975,118 @@
             .replaceAll('>', '&gt;')
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#039;');
+    }
+
+
+    // RB_LCC_CASE_AWARE_V2
+    const caseState = new Map();
+    let focusedOrderId = null;
+
+    function rememberEvent(event) {
+        if (
+            event.order_id === null ||
+            event.order_id === undefined
+        ) {
+            return;
+        }
+
+        const orderId = String(event.order_id);
+        const stage = String(
+            event.stage || ''
+        ).toUpperCase();
+
+        if (!stage) {
+            return;
+        }
+
+        if (!caseState.has(orderId)) {
+            caseState.set(
+                orderId,
+                new Map()
+            );
+        }
+
+        caseState.get(orderId).set(
+            stage,
+            event
+        );
+    }
+
+    function resetGraph() {
+        document.querySelectorAll(
+            '.rb-node[data-stage]'
+        ).forEach(node => {
+            node.classList.remove(
+                'rb-running',
+                'rb-success',
+                'rb-failed',
+                'rb-blocked',
+                'rb-event-pulse'
+            );
+
+            const state =
+                node.querySelector(
+                    '.rb-node-state'
+                );
+
+            if (state) {
+                state.textContent = 'Waiting';
+            }
+        });
+
+        document.querySelectorAll(
+            '.rb-edge'
+        ).forEach(edge => {
+            edge.classList.remove(
+                'rb-live'
+            );
+        });
+    }
+
+    function renderFocusedCase() {
+        resetGraph();
+
+        if (
+            !focusedOrderId ||
+            !caseState.has(focusedOrderId)
+        ) {
+            return;
+        }
+
+        const stages =
+            caseState.get(focusedOrderId);
+
+        stageOrder.forEach(stage => {
+            const event = stages.get(stage);
+
+            if (event) {
+                updateNode(event);
+            }
+        });
+    }
+
+    function focusOrder(orderId) {
+        if (
+            orderId === null ||
+            orderId === undefined
+        ) {
+            return;
+        }
+
+        focusedOrderId = String(orderId);
+
+        const title =
+            document.querySelector(
+                '.rb-flow-title'
+            );
+
+        if (title) {
+            title.textContent =
+                'Live Clinical Workflow — Order '
+                + focusedOrderId;
+        }
+
+        renderFocusedCase();
     }
 
     const source = new EventSource(
@@ -986,7 +1109,20 @@
             try {
                 const event = JSON.parse(message.data);
 
-                updateNode(event);
+                rememberEvent(event);
+
+                if (focusedOrderId === null) {
+                    focusOrder(event.order_id);
+                }
+
+                if (
+                    event.order_id !== null &&
+                    String(event.order_id)
+                    === focusedOrderId
+                ) {
+                    updateNode(event);
+                }
+
                 addTransaction(event);
             } catch (error) {
                 console.error(
