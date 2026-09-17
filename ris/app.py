@@ -14902,6 +14902,211 @@ def admin_qa():
     recent=EventOutbox.query.order_by(EventOutbox.id.desc()).limit(100).all()
     return render_template('admin_qa.html',counts=counts,recent=recent)
 
+
+# ============================================================
+# RadBridge Live Command Center
+# Read-only observability API.
+# RB_LIVE_COMMAND_CENTER_SNAPSHOT_V1
+# ============================================================
+
+@app.route('/api/command-center/snapshot')
+@require_perm('audit.view')
+def command_center_snapshot():
+    """
+    Read-only monitoring snapshot.
+
+    This endpoint must not become part of the clinical workflow.
+    It reads existing RadBridge operational state only.
+    """
+
+    def grouped_counts(model, column):
+        rows = (
+            db.session.query(
+                column,
+                db.func.count(model.id)
+            )
+            .group_by(column)
+            .all()
+        )
+
+        return {
+            str(value or 'UNKNOWN').upper(): int(count or 0)
+            for value, count in rows
+        }
+
+    # --------------------------------------------------------
+    # Orders / Exam
+    # --------------------------------------------------------
+
+    order_status = grouped_counts(
+        Order,
+        Order.status
+    )
+
+    exam_status = grouped_counts(
+        Order,
+        Order.exam_status
+    )
+
+    pacs_status = grouped_counts(
+        Order,
+        Order.pacs_status
+    )
+
+    # --------------------------------------------------------
+    # PACS / Matching
+    # --------------------------------------------------------
+
+    pacs_inbox_state = grouped_counts(
+        PacsStudyInbox,
+        PacsStudyInbox.state
+    )
+
+    unmatched_studies = (
+        PacsStudyInbox.query
+        .filter(PacsStudyInbox.order_id.is_(None))
+        .count()
+    )
+
+    current_matches = (
+        PacsStudyMatch.query
+        .filter(PacsStudyMatch.is_current.is_(True))
+        .count()
+    )
+
+    # --------------------------------------------------------
+    # Case Readiness
+    # --------------------------------------------------------
+
+    readiness_status = grouped_counts(
+        CaseReadiness,
+        CaseReadiness.status
+    )
+
+    readiness_blockers = {
+        'MISSING_PACS': (
+            CaseReadiness.query
+            .filter(CaseReadiness.missing_pacs.is_(True))
+            .count()
+        ),
+        'INCOMPLETE_IMAGES': (
+            CaseReadiness.query
+            .filter(CaseReadiness.incomplete_images.is_(True))
+            .count()
+        ),
+        'MISSING_SERIES': (
+            CaseReadiness.query
+            .filter(CaseReadiness.missing_series.is_(True))
+            .count()
+        ),
+        'MISSING_HISTORY': (
+            CaseReadiness.query
+            .filter(CaseReadiness.missing_history.is_(True))
+            .count()
+        ),
+        'MISSING_ATTACHMENTS': (
+            CaseReadiness.query
+            .filter(CaseReadiness.missing_attachments.is_(True))
+            .count()
+        ),
+        'MISSING_DOCUMENTS': (
+            CaseReadiness.query
+            .filter(CaseReadiness.missing_documents.is_(True))
+            .count()
+        ),
+    }
+
+    # --------------------------------------------------------
+    # Assignment
+    # --------------------------------------------------------
+
+    assignment_offers = grouped_counts(
+        AssignmentOffer,
+        AssignmentOffer.status
+    )
+
+    active_assignments = (
+        CaseAssignment.query
+        .filter(CaseAssignment.active.is_(True))
+        .count()
+    )
+
+    ready_unassigned = (
+        db.session.query(Order.id)
+        .join(
+            CaseReadiness,
+            CaseReadiness.order_id == Order.id
+        )
+        .outerjoin(
+            CaseAssignment,
+            db.and_(
+                CaseAssignment.order_id == Order.id,
+                CaseAssignment.active.is_(True)
+            )
+        )
+        .filter(
+            Order.exam_status == 'EXAM_COMPLETED',
+            Order.pacs_status == 'IMAGES_COMPLETE',
+            CaseAssignment.id.is_(None)
+        )
+        .count()
+    )
+
+    # --------------------------------------------------------
+    # Reporting
+    # --------------------------------------------------------
+
+    report_status = grouped_counts(
+        Report,
+        Report.status
+    )
+
+    # --------------------------------------------------------
+    # Event / Error visibility
+    # --------------------------------------------------------
+
+    outbox_status = grouped_counts(
+        EventOutbox,
+        EventOutbox.status
+    )
+
+    return jsonify({
+        'schema': 'radbridge.command_center.snapshot.v1',
+        'generated_at': datetime.utcnow().isoformat() + 'Z',
+
+        'orders': {
+            'status': order_status,
+            'exam_status': exam_status,
+        },
+
+        'pacs': {
+            'order_pacs_status': pacs_status,
+            'inbox_state': pacs_inbox_state,
+            'unmatched_studies': int(unmatched_studies),
+            'current_matches': int(current_matches),
+        },
+
+        'readiness': {
+            'status': readiness_status,
+            'blockers': readiness_blockers,
+        },
+
+        'assignment': {
+            'offer_status': assignment_offers,
+            'active_assignments': int(active_assignments),
+            'ready_unassigned': int(ready_unassigned),
+        },
+
+        'reporting': {
+            'status': report_status,
+        },
+
+        'events': {
+            'outbox_status': outbox_status,
+        },
+    })
+
+
 @app.route('/accounting/financial-center')
 @require_perm('financial.view')
 def financial_center():
