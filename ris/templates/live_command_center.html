@@ -475,4 +475,556 @@
 })();
 </script>
 
+
+<!-- RB_LCC_N8N_GRAPH_V1 -->
+<style>
+.rb-live-flow {
+    margin-top: 22px;
+    border: 1px solid rgba(148,163,184,.18);
+    border-radius: 18px;
+    background:
+        radial-gradient(circle at 20% 0%,
+            rgba(37,99,235,.10), transparent 34%),
+        #08111f;
+    padding: 20px;
+    overflow: hidden;
+}
+
+.rb-flow-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.rb-flow-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.rb-stream-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.rb-stream-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #64748b;
+}
+
+.rb-stream-state.connected .rb-stream-dot {
+    background: #22c55e;
+    box-shadow: 0 0 12px rgba(34,197,94,.8);
+}
+
+.rb-workflow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 1160px;
+    padding: 16px 4px 22px;
+    overflow-x: auto;
+}
+
+.rb-node {
+    position: relative;
+    flex: 0 0 118px;
+    min-height: 92px;
+    border: 1px solid #334155;
+    border-radius: 13px;
+    background: #111c2e;
+    padding: 13px 10px;
+    text-align: center;
+    transition:
+        transform .18s ease,
+        border-color .18s ease,
+        box-shadow .18s ease,
+        background .18s ease;
+}
+
+.rb-node-icon {
+    width: 31px;
+    height: 31px;
+    margin: 0 auto 8px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    background: #1e293b;
+    color: #cbd5e1;
+    font-weight: 800;
+    font-size: 12px;
+}
+
+.rb-node-name {
+    color: #e2e8f0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .02em;
+}
+
+.rb-node-state {
+    margin-top: 5px;
+    color: #64748b;
+    font-size: 10px;
+    min-height: 14px;
+}
+
+.rb-edge {
+    position: relative;
+    flex: 0 0 28px;
+    height: 2px;
+    background: #334155;
+    overflow: visible;
+}
+
+.rb-edge::after {
+    content: "";
+    position: absolute;
+    right: -1px;
+    top: -3px;
+    border-left: 6px solid #475569;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+}
+
+.rb-node.rb-running {
+    border-color: #38bdf8;
+    background: #0c2538;
+    box-shadow: 0 0 20px rgba(56,189,248,.22);
+    transform: translateY(-2px);
+}
+
+.rb-node.rb-success {
+    border-color: #22c55e;
+    background: #0c251d;
+}
+
+.rb-node.rb-failed,
+.rb-node.rb-blocked {
+    border-color: #ef4444;
+    background: #2a1218;
+    box-shadow: 0 0 18px rgba(239,68,68,.18);
+}
+
+.rb-node.rb-event-pulse {
+    animation: rbNodePulse .75s ease;
+}
+
+@keyframes rbNodePulse {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.07); }
+    100% { transform: scale(1); }
+}
+
+.rb-edge.rb-live {
+    background: #38bdf8;
+}
+
+.rb-edge.rb-live::before {
+    content: "";
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    top: -3px;
+    left: 0;
+    border-radius: 50%;
+    background: #7dd3fc;
+    box-shadow: 0 0 10px rgba(125,211,252,.9);
+    animation: rbTransactionMove 1.15s linear infinite;
+}
+
+.rb-edge.rb-live::after {
+    border-left-color: #38bdf8;
+}
+
+@keyframes rbTransactionMove {
+    from { left: 0; }
+    to   { left: calc(100% - 5px); }
+}
+
+.rb-transactions {
+    border-top: 1px solid rgba(148,163,184,.14);
+    padding-top: 15px;
+}
+
+.rb-transactions-title {
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 9px;
+}
+
+.rb-transaction-list {
+    display: grid;
+    gap: 6px;
+    max-height: 190px;
+    overflow-y: auto;
+}
+
+.rb-tx {
+    display: grid;
+    grid-template-columns: 78px 100px 90px 1fr;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 9px;
+    background: rgba(15,23,42,.78);
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.rb-tx-stage {
+    color: #e2e8f0;
+    font-weight: 700;
+}
+
+.rb-tx-status {
+    font-weight: 700;
+}
+
+.rb-tx-status.success { color: #4ade80; }
+.rb-tx-status.failed,
+.rb-tx-status.blocked { color: #f87171; }
+.rb-tx-status.running,
+.rb-tx-status.requested { color: #38bdf8; }
+
+.rb-tx-detail {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 900px) {
+    .rb-live-flow {
+        padding: 14px;
+    }
+
+    .rb-tx {
+        grid-template-columns: 65px 80px 80px 1fr;
+    }
+}
+</style>
+
+<section class="rb-live-flow" id="rb-live-flow">
+    <div class="rb-flow-head">
+        <div class="rb-flow-title">
+            Live Clinical Workflow
+        </div>
+
+        <div class="rb-stream-state" id="rb-stream-state">
+            <span class="rb-stream-dot"></span>
+            <span id="rb-stream-label">Connecting...</span>
+        </div>
+    </div>
+
+    <div class="rb-workflow" id="rb-workflow">
+
+        <div class="rb-node" data-stage="MWL">
+            <div class="rb-node-icon">MWL</div>
+            <div class="rb-node-name">Worklist</div>
+            <div class="rb-node-state">Waiting</div>
+        </div>
+
+        <div class="rb-edge"></div>
+
+        <div class="rb-node" data-stage="EXAM">
+            <div class="rb-node-icon">EX</div>
+            <div class="rb-node-name">Exam</div>
+            <div class="rb-node-state">Waiting</div>
+        </div>
+
+        <div class="rb-edge"></div>
+
+        <div class="rb-node" data-stage="PACS">
+            <div class="rb-node-icon">PX</div>
+            <div class="rb-node-name">PACS</div>
+            <div class="rb-node-state">Waiting</div>
+        </div>
+
+        <div class="rb-edge"></div>
+
+        <div class="rb-node" data-stage="MATCHING">
+            <div class="rb-node-icon">MT</div>
+            <div class="rb-node-name">Matching</div>
+            <div class="rb-node-state">Waiting</div>
+        </div>
+
+        <div class="rb-edge"></div>
+
+        <div class="rb-node" data-stage="READINESS">
+            <div class="rb-node-icon">RD</div>
+            <div class="rb-node-name">Case Ready</div>
+            <div class="rb-node-state">Waiting</div>
+        </div>
+
+        <div class="rb-edge"></div>
+
+        <div class="rb-node" data-stage="ASSIGNMENT">
+            <div class="rb-node-icon">AS</div>
+            <div class="rb-node-name">Assignment</div>
+            <div class="rb-node-state">Waiting</div>
+        </div>
+
+        <div class="rb-edge"></div>
+
+        <div class="rb-node" data-stage="REPORTING">
+            <div class="rb-node-icon">RP</div>
+            <div class="rb-node-name">Reporting</div>
+            <div class="rb-node-state">Waiting</div>
+        </div>
+
+        <div class="rb-edge"></div>
+
+        <div class="rb-node" data-stage="FINAL">
+            <div class="rb-node-icon">OK</div>
+            <div class="rb-node-name">Final</div>
+            <div class="rb-node-state">Waiting</div>
+        </div>
+
+    </div>
+
+    <div class="rb-transactions">
+        <div class="rb-transactions-title">
+            Live Transactions
+        </div>
+
+        <div
+            class="rb-transaction-list"
+            id="rb-transaction-list"
+        ></div>
+    </div>
+</section>
+
+<script>
+(() => {
+    const marker = 'RB_LCC_N8N_GRAPH_V1';
+
+    const stageOrder = [
+        'MWL',
+        'EXAM',
+        'PACS',
+        'MATCHING',
+        'READINESS',
+        'ASSIGNMENT',
+        'REPORTING',
+        'FINAL'
+    ];
+
+    const nodeFor = stage =>
+        document.querySelector(
+            '.rb-node[data-stage="' + stage + '"]'
+        );
+
+    const stateBox =
+        document.getElementById('rb-stream-state');
+
+    const stateLabel =
+        document.getElementById('rb-stream-label');
+
+    const txList =
+        document.getElementById('rb-transaction-list');
+
+    function normalizeStatus(status) {
+        return String(status || 'INFO').toUpperCase();
+    }
+
+    function nodeClass(status) {
+        if (
+            status === 'FAILED' ||
+            status === 'ERROR'
+        ) {
+            return 'rb-failed';
+        }
+
+        if (status === 'BLOCKED') {
+            return 'rb-blocked';
+        }
+
+        if (
+            status === 'SUCCESS' ||
+            status === 'FINAL'
+        ) {
+            return 'rb-success';
+        }
+
+        return 'rb-running';
+    }
+
+    function updateNode(event) {
+        const stage =
+            String(event.stage || '').toUpperCase();
+
+        const node = nodeFor(stage);
+
+        if (!node) {
+            return;
+        }
+
+        const status = normalizeStatus(event.status);
+
+        node.classList.remove(
+            'rb-running',
+            'rb-success',
+            'rb-failed',
+            'rb-blocked',
+            'rb-event-pulse'
+        );
+
+        node.classList.add(nodeClass(status));
+
+        const state =
+            node.querySelector('.rb-node-state');
+
+        if (state) {
+            state.textContent = status;
+        }
+
+        void node.offsetWidth;
+        node.classList.add('rb-event-pulse');
+
+        const index = stageOrder.indexOf(stage);
+
+        if (index > 0) {
+            const previousNode =
+                nodeFor(stageOrder[index - 1]);
+
+            if (previousNode) {
+                const edge =
+                    previousNode.nextElementSibling;
+
+                if (
+                    edge &&
+                    edge.classList.contains('rb-edge')
+                ) {
+                    edge.classList.add('rb-live');
+
+                    setTimeout(
+                        () => edge.classList.remove('rb-live'),
+                        3500
+                    );
+                }
+            }
+        }
+    }
+
+    function addTransaction(event) {
+        if (!txList) {
+            return;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'rb-tx';
+
+        const stage =
+            String(event.stage || 'UNKNOWN');
+
+        const status =
+            normalizeStatus(event.status);
+
+        const order =
+            event.order_id == null
+                ? '-'
+                : String(event.order_id);
+
+        const type =
+            String(event.event_type || 'EVENT');
+
+        row.innerHTML =
+            '<div>Order ' + escapeHtml(order) + '</div>' +
+            '<div class="rb-tx-stage">' +
+                escapeHtml(stage) +
+            '</div>' +
+            '<div class="rb-tx-status ' +
+                escapeHtml(status.toLowerCase()) +
+            '">' +
+                escapeHtml(status) +
+            '</div>' +
+            '<div class="rb-tx-detail">' +
+                escapeHtml(type) +
+            '</div>';
+
+        txList.prepend(row);
+
+        while (txList.children.length > 20) {
+            txList.removeChild(txList.lastChild);
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    const source = new EventSource(
+        '/api/command-center/events/stream'
+    );
+
+    source.onopen = () => {
+        if (stateBox) {
+            stateBox.classList.add('connected');
+        }
+
+        if (stateLabel) {
+            stateLabel.textContent = 'Live SSE';
+        }
+    };
+
+    source.addEventListener(
+        'workflow_event',
+        message => {
+            try {
+                const event = JSON.parse(message.data);
+
+                updateNode(event);
+                addTransaction(event);
+            } catch (error) {
+                console.error(
+                    'Command Center event parse error',
+                    error
+                );
+            }
+        }
+    );
+
+    source.addEventListener(
+        'heartbeat',
+        () => {
+            if (stateBox) {
+                stateBox.classList.add('connected');
+            }
+
+            if (stateLabel) {
+                stateLabel.textContent = 'Live SSE';
+            }
+        }
+    );
+
+    source.onerror = () => {
+        if (stateBox) {
+            stateBox.classList.remove('connected');
+        }
+
+        if (stateLabel) {
+            stateLabel.textContent = 'Reconnecting...';
+        }
+    };
+
+    window.addEventListener(
+        'beforeunload',
+        () => source.close()
+    );
+})();
+</script>
+
 {% endblock %}
