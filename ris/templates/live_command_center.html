@@ -644,6 +644,225 @@
     border-left-color: #38bdf8;
 }
 
+
+.rb-v3-shell{
+    margin-top:18px;
+    border:1px solid rgba(148,163,184,.16);
+    border-radius:14px;
+    background:rgba(2,6,23,.72);
+    overflow:hidden;
+}
+
+.rb-v3-head{
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    padding:16px 18px;
+    border-bottom:1px solid rgba(148,163,184,.12);
+}
+
+.rb-v3-kicker,
+.rb-v3-drawer-kicker{
+    font-size:10px;
+    letter-spacing:.12em;
+    color:#64748b;
+    font-weight:800;
+}
+
+.rb-v3-title{
+    margin-top:3px;
+    color:#e2e8f0;
+    font-weight:800;
+    font-size:15px;
+}
+
+.rb-v3-case-meta{
+    color:#94a3b8;
+    font-size:11px;
+    text-align:right;
+}
+
+.rb-v3-canvas{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 280px;
+    min-height:380px;
+}
+
+.rb-v3-main{
+    padding:22px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    overflow-x:auto;
+}
+
+.rb-v3-node{
+    min-width:116px;
+    min-height:92px;
+    border:1px solid rgba(148,163,184,.22);
+    border-radius:12px;
+    background:#0f172a;
+    color:#e2e8f0;
+    padding:12px;
+    text-align:left;
+    cursor:pointer;
+}
+
+.rb-v3-node span{
+    display:block;
+    font-size:11px;
+    color:#94a3b8;
+}
+
+.rb-v3-node strong{
+    display:block;
+    margin-top:8px;
+    font-size:12px;
+}
+
+.rb-v3-node small{
+    display:block;
+    margin-top:6px;
+    color:#64748b;
+    font-size:9px;
+    max-width:110px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+.rb-v3-link{
+    flex:0 0 22px;
+    height:2px;
+    background:#334155;
+}
+
+.rb-v3-branch{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+    align-items:stretch;
+}
+
+.rb-v3-secondary{
+    min-height:78px;
+}
+
+.rb-v3-exception{
+    border:1px dashed #a16207;
+    border-radius:8px;
+    background:rgba(161,98,7,.12);
+    color:#fbbf24;
+    font-size:9px;
+    padding:6px;
+    cursor:pointer;
+}
+
+.rb-v3-blockers{
+    display:grid;
+    gap:4px;
+}
+
+.rb-v3-blocker{
+    border:1px solid rgba(239,68,68,.35);
+    background:rgba(127,29,29,.18);
+    color:#fca5a5;
+    border-radius:7px;
+    padding:5px 7px;
+    font-size:9px;
+    cursor:pointer;
+}
+
+.rb-v3-mini-flow{
+    display:flex;
+    gap:4px;
+    flex-wrap:wrap;
+    max-width:145px;
+}
+
+.rb-v3-mini-flow span{
+    font-size:8px;
+    padding:3px 5px;
+    border-radius:999px;
+    background:#111827;
+    color:#64748b;
+}
+
+.rb-v3-node.v3-success{
+    border-color:#15803d;
+    box-shadow:0 0 0 1px rgba(34,197,94,.08);
+}
+
+.rb-v3-node.v3-success strong{
+    color:#4ade80;
+}
+
+.rb-v3-node.v3-running{
+    border-color:#0284c7;
+}
+
+.rb-v3-node.v3-running strong{
+    color:#38bdf8;
+}
+
+.rb-v3-node.v3-warning{
+    border-color:#a16207;
+}
+
+.rb-v3-node.v3-warning strong{
+    color:#fbbf24;
+}
+
+.rb-v3-node.v3-failed{
+    border-color:#b91c1c;
+}
+
+.rb-v3-node.v3-failed strong{
+    color:#f87171;
+}
+
+.rb-v3-drawer{
+    border-left:1px solid rgba(148,163,184,.12);
+    padding:18px;
+    background:rgba(15,23,42,.78);
+}
+
+.rb-v3-drawer h3{
+    font-size:14px;
+    margin:7px 0 12px;
+    color:#e2e8f0;
+}
+
+.rb-v3-drawer-body{
+    white-space:pre-wrap;
+    font-size:11px;
+    line-height:1.55;
+    color:#94a3b8;
+}
+
+.rb-v3-resolution{
+    display:inline-block;
+    margin-top:16px;
+    padding:8px 11px;
+    border-radius:8px;
+    background:#0369a1;
+    color:white;
+    text-decoration:none;
+    font-size:11px;
+    font-weight:700;
+}
+
+@media (max-width:1100px){
+    .rb-v3-canvas{
+        grid-template-columns:1fr;
+    }
+
+    .rb-v3-drawer{
+        border-left:0;
+        border-top:1px solid rgba(148,163,184,.12);
+    }
+}
+
 @keyframes rbTransactionMove {
     from { left: 0; }
     to   { left: calc(100% - 5px); }
@@ -796,6 +1015,164 @@
         </div>
 
     </div>
+
+
+    <!-- RB_LCC_GRAPH_V3_UI -->
+    <section class="rb-v3-shell" id="rb-v3-shell">
+
+        <div class="rb-v3-head">
+            <div>
+                <div class="rb-v3-kicker">CASE FLOW V3</div>
+                <div class="rb-v3-title" id="rb-v3-title">
+                    Select a case
+                </div>
+            </div>
+
+            <div class="rb-v3-case-meta" id="rb-v3-case-meta">
+                Waiting for case data
+            </div>
+        </div>
+
+        <div class="rb-v3-canvas">
+
+            <div class="rb-v3-main">
+
+                <button class="rb-v3-node" data-v3-node="ORDER">
+                    <span>Order</span>
+                    <strong>Waiting</strong>
+                    <small></small>
+                </button>
+
+                <div class="rb-v3-link"></div>
+
+                <button class="rb-v3-node" data-v3-node="MWL">
+                    <span>MWL</span>
+                    <strong>Waiting</strong>
+                    <small></small>
+                </button>
+
+                <div class="rb-v3-link"></div>
+
+                <button class="rb-v3-node" data-v3-node="EXAM">
+                    <span>Exam</span>
+                    <strong>Waiting</strong>
+                    <small></small>
+                </button>
+
+                <div class="rb-v3-link"></div>
+
+                <button class="rb-v3-node" data-v3-node="PACS">
+                    <span>PACS</span>
+                    <strong>Waiting</strong>
+                    <small></small>
+                </button>
+
+                <div class="rb-v3-branch">
+                    <div class="rb-v3-branch-line"></div>
+
+                    <button
+                        class="rb-v3-node rb-v3-secondary"
+                        data-v3-node="MATCHING"
+                    >
+                        <span>Matching</span>
+                        <strong>Waiting</strong>
+                        <small></small>
+                    </button>
+
+                    <button
+                        class="rb-v3-exception"
+                        data-v3-exception="MATCHING"
+                    >
+                        Review / Unmatched
+                    </button>
+                </div>
+
+                <div class="rb-v3-link"></div>
+
+                <div class="rb-v3-branch">
+                    <button
+                        class="rb-v3-node"
+                        data-v3-node="READINESS"
+                    >
+                        <span>Case Ready</span>
+                        <strong>Waiting</strong>
+                        <small></small>
+                    </button>
+
+                    <div
+                        class="rb-v3-blockers"
+                        id="rb-v3-blockers"
+                    ></div>
+                </div>
+
+                <div class="rb-v3-link"></div>
+
+                <div class="rb-v3-branch">
+                    <button
+                        class="rb-v3-node"
+                        data-v3-node="ASSIGNMENT"
+                    >
+                        <span>Assignment</span>
+                        <strong>Waiting</strong>
+                        <small></small>
+                    </button>
+
+                    <div class="rb-v3-mini-flow">
+                        <span>Offered</span>
+                        <span>Accepted</span>
+                        <span>No Candidate / Timeout</span>
+                    </div>
+                </div>
+
+                <div class="rb-v3-link"></div>
+
+                <div class="rb-v3-branch">
+                    <button
+                        class="rb-v3-node"
+                        data-v3-node="REPORTING"
+                    >
+                        <span>Reporting</span>
+                        <strong>Waiting</strong>
+                        <small></small>
+                    </button>
+
+                    <div class="rb-v3-mini-flow">
+                        <span>Draft</span>
+                        <span>Verified</span>
+                        <span>Final</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <aside class="rb-v3-drawer" id="rb-v3-drawer">
+                <div class="rb-v3-drawer-kicker">
+                    NODE DETAILS
+                </div>
+
+                <h3 id="rb-v3-drawer-title">
+                    Select a workflow node
+                </h3>
+
+                <div
+                    class="rb-v3-drawer-body"
+                    id="rb-v3-drawer-body"
+                >
+                    Click any node or blocker to inspect it.
+                </div>
+
+                <a
+                    id="rb-v3-resolution"
+                    class="rb-v3-resolution"
+                    href="#"
+                    hidden
+                >
+                    Open Resolution
+                </a>
+            </aside>
+
+        </div>
+    </section>
 
     <div class="rb-transactions">
         <div class="rb-transactions-title">
@@ -1103,6 +1480,7 @@
         }
 
         renderFocusedCase();
+        loadGraphV3(focusedOrderId);
     }
 
     if (txList) {
@@ -1145,6 +1523,337 @@
                 focusOrder(orderId);
             }
         );
+    }
+
+
+    const v3State = {
+        orderId: null,
+        data: null,
+    };
+
+    function v3ClassForState(value) {
+        const state = String(
+            value || ''
+        ).toUpperCase();
+
+        if (
+            state.includes('ERROR') ||
+            state.includes('FAILED') ||
+            state.includes('BLOCKED') ||
+            state === 'NO_CANDIDATE' ||
+            state === 'TIMEOUT'
+        ) {
+            return 'v3-failed';
+        }
+
+        if (
+            state.includes('REVIEW') ||
+            state.includes('WAIT') ||
+            state.includes('UNASSIGNED') ||
+            state.includes('REQUESTED')
+        ) {
+            return 'v3-warning';
+        }
+
+        if (
+            state.includes('RUNNING') ||
+            state.includes('RECEIVING') ||
+            state.includes('PROGRESS') ||
+            state.includes('DRAFT')
+        ) {
+            return 'v3-running';
+        }
+
+        if (
+            state.includes('COMPLETE') ||
+            state.includes('SUCCESS') ||
+            state.includes('READY') ||
+            state.includes('ASSIGNED') ||
+            state.includes('FINAL') ||
+            state.includes('VERIFIED') ||
+            state.includes('RECEIVED')
+        ) {
+            return 'v3-success';
+        }
+
+        return '';
+    }
+
+    function v3NodeDetails(node) {
+        const lines = [];
+
+        lines.push(
+            'Stage: ' + String(node.key || '')
+        );
+
+        lines.push(
+            'State: ' + String(node.state || 'UNKNOWN')
+        );
+
+        const d = node.details || {};
+
+        Object.entries(d).forEach(([key, value]) => {
+            if (
+                value !== null &&
+                value !== undefined &&
+                typeof value !== 'object'
+            ) {
+                lines.push(
+                    key + ': ' + String(value)
+                );
+            }
+        });
+
+        if (d.doctor) {
+            lines.push(
+                'Doctor: '
+                + String(
+                    d.doctor.full_name ||
+                    d.doctor.username ||
+                    ''
+                )
+            );
+
+            lines.push(
+                'Presence: '
+                + (
+                    d.doctor.online
+                    ? 'ONLINE'
+                    : 'OFFLINE'
+                )
+            );
+
+            lines.push(
+                'Availability: '
+                + String(d.doctor.state || 'UNKNOWN')
+            );
+        }
+
+        return lines.join('\n');
+    }
+
+    function v3OpenDrawer(title, body, url) {
+        const titleEl =
+            document.getElementById(
+                'rb-v3-drawer-title'
+            );
+
+        const bodyEl =
+            document.getElementById(
+                'rb-v3-drawer-body'
+            );
+
+        const link =
+            document.getElementById(
+                'rb-v3-resolution'
+            );
+
+        if (titleEl) {
+            titleEl.textContent = title;
+        }
+
+        if (bodyEl) {
+            bodyEl.textContent = body;
+        }
+
+        if (link) {
+            if (url) {
+                link.href = url;
+                link.hidden = false;
+            } else {
+                link.hidden = true;
+            }
+        }
+    }
+
+    function renderGraphV3(data) {
+        v3State.data = data;
+
+        const order = data.order || {};
+
+        const title =
+            document.getElementById(
+                'rb-v3-title'
+            );
+
+        const meta =
+            document.getElementById(
+                'rb-v3-case-meta'
+            );
+
+        if (title) {
+            title.textContent =
+                'Order '
+                + String(order.id || '')
+                + ' — '
+                + String(order.accession || '');
+        }
+
+        if (meta) {
+            meta.textContent =
+                [
+                    order.modality || '',
+                    order.procedure || '',
+                    order.status || ''
+                ]
+                .filter(Boolean)
+                .join(' · ');
+        }
+
+        const nodes = data.nodes || [];
+
+        nodes.forEach(node => {
+            const el = document.querySelector(
+                '.rb-v3-node[data-v3-node="'
+                + node.key
+                + '"]'
+            );
+
+            if (!el) {
+                return;
+            }
+
+            el.classList.remove(
+                'v3-success',
+                'v3-running',
+                'v3-warning',
+                'v3-failed'
+            );
+
+            const cls =
+                v3ClassForState(node.state);
+
+            if (cls) {
+                el.classList.add(cls);
+            }
+
+            const strong =
+                el.querySelector('strong');
+
+            if (strong) {
+                strong.textContent =
+                    String(node.state || 'UNKNOWN');
+            }
+
+            const small =
+                el.querySelector('small');
+
+            if (small) {
+                if (
+                    node.key === 'PACS' &&
+                    node.details
+                ) {
+                    small.textContent =
+                        String(
+                            node.details.image_count || 0
+                        )
+                        + ' images';
+                } else if (
+                    node.key === 'ASSIGNMENT' &&
+                    node.details &&
+                    node.details.doctor
+                ) {
+                    small.textContent =
+                        node.details.doctor.full_name
+                        || node.details.doctor.username
+                        || '';
+                } else if (
+                    node.key === 'REPORTING' &&
+                    node.details
+                ) {
+                    small.textContent =
+                        node.details.radiologist || '';
+                } else {
+                    small.textContent = '';
+                }
+            }
+
+            el.onclick = () => {
+                v3OpenDrawer(
+                    node.key,
+                    v3NodeDetails(node),
+                    node.resolution_url
+                );
+            };
+        });
+
+        const blockerBox =
+            document.getElementById(
+                'rb-v3-blockers'
+            );
+
+        if (blockerBox) {
+            blockerBox.innerHTML = '';
+
+            (data.blockers || []).forEach(blocker => {
+                const btn =
+                    document.createElement('button');
+
+                btn.type = 'button';
+                btn.className = 'rb-v3-blocker';
+
+                btn.textContent =
+                    blocker.code
+                    + (
+                        blocker.owner_role
+                        ? ' · ' + blocker.owner_role
+                        : ''
+                    );
+
+                btn.addEventListener(
+                    'click',
+                    () => {
+                        v3OpenDrawer(
+                            blocker.code,
+                            'Owner: '
+                            + String(
+                                blocker.owner_role || 'Unknown'
+                            ),
+                            blocker.resolution_url
+                        );
+                    }
+                );
+
+                blockerBox.appendChild(btn);
+            });
+        }
+    }
+
+    async function loadGraphV3(orderId) {
+        if (!orderId) {
+            return;
+        }
+
+        v3State.orderId = String(orderId);
+
+        try {
+            const response = await fetch(
+                '/api/command-center/case/'
+                + encodeURIComponent(orderId)
+                + '/graph-v3',
+                {
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    'HTTP ' + response.status
+                );
+            }
+
+            const data = await response.json();
+
+            renderGraphV3(data);
+
+        } catch (error) {
+            v3OpenDrawer(
+                'Graph V3 unavailable',
+                String(error),
+                ''
+            );
+        }
     }
 
     const source = new EventSource(
