@@ -14916,6 +14916,395 @@ def live_command_center():
     return render_template('live_command_center.html')
 
 
+
+# ============================================================
+# RadBridge Live Command Center
+# Normalized read-only event feed.
+# RB_LIVE_COMMAND_CENTER_EVENTS_API_V1
+# ============================================================
+
+@app.route('/api/command-center/events')
+@require_perm('audit.view')
+def command_center_events():
+
+    limit=request.args.get(
+        'limit',
+        100,
+        type=int
+    )
+
+    limit=max(1,min(limit or 100,200))
+
+    order_filter=request.args.get(
+        'order_id',
+        type=int
+    )
+
+    events=[]
+    order_cache={}
+
+    def timestamp_value(value):
+        if not value:
+            return ''
+
+        try:
+            text=value.isoformat()
+            if getattr(value,'tzinfo',None) is None:
+                text += 'Z'
+            return text
+        except Exception:
+            return str(value)
+
+    def order_context(order_id):
+        try:
+            oid=int(order_id)
+        except Exception:
+            return {
+                'order_id':None,
+                'accession':'',
+                'correlation_id':''
+            }
+
+        if oid not in order_cache:
+            order_cache[oid]=db.session.get(
+                Order,
+                oid
+            )
+
+        order=order_cache[oid]
+
+        return {
+            'order_id':oid,
+            'accession':(
+                order.accession
+                if order else ''
+            ) or '',
+            'correlation_id':f'order:{oid}'
+        }
+
+    def append_event(
+        source,
+        source_id,
+        event_type,
+        stage,
+        status,
+        timestamp,
+        order_id=None,
+        details='',
+        payload=None
+    ):
+        ctx=order_context(order_id)
+
+        events.append({
+            'event_key':f'{source}:{source_id}',
+            'source':source,
+            'source_id':source_id,
+            'event_type':str(
+                event_type or ''
+            ).upper(),
+            'stage':stage,
+            'status':status,
+            'timestamp':timestamp_value(
+                timestamp
+            ),
+            'order_id':ctx['order_id'],
+            'accession':ctx['accession'],
+            'correlation_id':ctx[
+                'correlation_id'
+            ],
+            'details':str(
+                details or ''
+            )[:1000],
+            'payload':payload or {}
+        })
+
+    def outbox_stage(event_type,payload):
+        event_type=str(
+            event_type or ''
+        ).upper()
+
+        if event_type=='ORDER_MWL_CREATE':
+            return 'MWL','SUCCESS'
+
+        if event_type=='ORDER_SMART_ASSIGNMENT':
+            return 'ASSIGNMENT','REQUESTED'
+
+        if event_type in (
+            'EXAM_STATUS_CHANGED',
+            'EXAM_STATUS_OVERRIDE'
+        ):
+            new_state=str(
+                payload.get('to') or ''
+            ).upper()
+
+            if new_state=='IN_PROGRESS':
+                return 'EXAM','RUNNING'
+
+            if new_state=='EXAM_COMPLETED':
+                return 'EXAM','SUCCESS'
+
+            if new_state=='REPORTING':
+                return 'REPORTING','RUNNING'
+
+            return 'EXAM','INFO'
+
+        return 'ORDER','INFO'
+
+    def assignment_status(event_type):
+        event_type=str(
+            event_type or ''
+        ).upper()
+
+        mapping={
+            'OFFERED':'RUNNING',
+            'STRATEGY_SELECTED':'RUNNING',
+            'ACCEPTED':'SUCCESS',
+            'TIMEOUT':'FAILED',
+            'NO_CANDIDATE':'FAILED',
+            'READINESS_BLOCK':'BLOCKED',
+            'REJECTED':'FAILED',
+            'BUSY':'WAITING',
+            'CANCELLED':'CANCELLED',
+        }
+
+        return mapping.get(
+            event_type,
+            'INFO'
+        )
+
+    def workflow_status(event_type):
+        event_type=str(
+            event_type or ''
+        ).upper()
+
+        if event_type.endswith('_FAILED'):
+            return 'FAILED'
+
+        if event_type=='RETURNED':
+            return 'BLOCKED'
+
+        if event_type in (
+            'RESOLVED',
+            'READY_FOR_REREVIEW'
+        ):
+            return 'SUCCESS'
+
+        return 'INFO'
+
+    # --------------------------------------------------------
+    # EventOutbox
+    # --------------------------------------------------------
+
+    q=EventOutbox.query.filter(
+        EventOutbox.entity_type=='order'
+    )
+
+    if order_filter is not None:
+        q=q.filter(
+            EventOutbox.entity_id==
+            str(order_filter)
+        )
+
+    outbox_rows=(
+        q.order_by(
+            EventOutbox.id.desc()
+        )
+        .limit(limit)
+        .all()
+    )
+
+    for row in outbox_rows:
+
+        try:
+            payload=json.loads(
+                row.payload_json or '{}'
+            )
+        except Exception:
+            payload={}
+
+        stage,status=outbox_stage(
+            row.event_type,
+            payload
+        )
+
+        append_event(
+            source='OUTBOX',
+            source_id=row.id,
+            event_type=row.event_type,
+            stage=stage,
+            status=status,
+            timestamp=getattr(
+                row,
+                'created_at',
+                None
+            ),
+            order_id=row.entity_id,
+            details='',
+            payload=payload
+        )
+
+    # --------------------------------------------------------
+    # Assignment Events
+    # --------------------------------------------------------
+
+    q=AssignmentEscalationEvent.query
+
+    if order_filter is not None:
+        q=q.filter(
+            AssignmentEscalationEvent.order_id
+            ==order_filter
+        )
+
+    assignment_rows=(
+        q.order_by(
+            AssignmentEscalationEvent.id.desc()
+        )
+        .limit(limit)
+        .all()
+    )
+
+    for row in assignment_rows:
+
+        append_event(
+            source='ASSIGNMENT',
+            source_id=row.id,
+            event_type=row.event_type,
+            stage='ASSIGNMENT',
+            status=assignment_status(
+                row.event_type
+            ),
+            timestamp=row.created_at,
+            order_id=row.order_id,
+            details=row.details,
+            payload={
+                'offer_id':row.offer_id
+            }
+        )
+
+    # --------------------------------------------------------
+    # Case Workflow Events
+    # --------------------------------------------------------
+
+    q=CaseWorkflowEvent.query
+
+    if order_filter is not None:
+        q=q.filter(
+            CaseWorkflowEvent.order_id
+            ==order_filter
+        )
+
+    workflow_rows=(
+        q.order_by(
+            CaseWorkflowEvent.id.desc()
+        )
+        .limit(limit)
+        .all()
+    )
+
+    for row in workflow_rows:
+
+        append_event(
+            source='WORKFLOW',
+            source_id=row.id,
+            event_type=row.event_type,
+            stage='READINESS',
+            status=workflow_status(
+                row.event_type
+            ),
+            timestamp=row.created_at,
+            order_id=row.order_id,
+            details=getattr(
+                row,
+                'details',
+                ''
+            )
+        )
+
+    # --------------------------------------------------------
+    # Order-specific reporting audit
+    # --------------------------------------------------------
+
+    reporting_actions=[
+        'OHIF_REPORT_OPENED',
+        'ONLYOFFICE_EDITOR_OPENED',
+        'REPORT_EDIT_LEASE_ACQUIRED',
+        'REPORT_EDIT_LEASE_RELEASED',
+        'REPORT_FINALIZED',
+        'REPORT_VERIFIED',
+        'REPORT_SAVED',
+    ]
+
+    q=AuditLog.query.filter(
+        AuditLog.entity=='order',
+        AuditLog.action.in_(
+            reporting_actions
+        )
+    )
+
+    if order_filter is not None:
+        q=q.filter(
+            AuditLog.entity_id==
+            str(order_filter)
+        )
+
+    audit_rows=(
+        q.order_by(
+            AuditLog.id.desc()
+        )
+        .limit(limit)
+        .all()
+    )
+
+    for row in audit_rows:
+
+        action=str(
+            row.action or ''
+        ).upper()
+
+        if 'FINAL' in action:
+            status='SUCCESS'
+        elif 'OPENED' in action:
+            status='RUNNING'
+        elif 'ACQUIRED' in action:
+            status='RUNNING'
+        elif 'RELEASED' in action:
+            status='INFO'
+        else:
+            status='INFO'
+
+        append_event(
+            source='AUDIT',
+            source_id=row.id,
+            event_type=row.action,
+            stage='REPORTING',
+            status=status,
+            timestamp=row.created_at,
+            order_id=row.entity_id,
+            details=row.details
+        )
+
+    # Sort normalized events using real timestamps.
+    events.sort(
+        key=lambda x:(
+            x.get('timestamp') or '',
+            x.get('event_key') or ''
+        ),
+        reverse=True
+    )
+
+    events=events[:limit]
+
+    return jsonify({
+        'schema':
+            'radbridge.command_center.events.v1',
+        'generated_at':
+            datetime.utcnow().isoformat()+'Z',
+        'order_filter':order_filter,
+        'count':len(events),
+        'events':events
+    })
+
+
 @app.route('/api/command-center/snapshot')
 @require_perm('audit.view')
 def command_center_snapshot():
