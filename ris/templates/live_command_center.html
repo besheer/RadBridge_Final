@@ -1,0 +1,478 @@
+{% extends "base.html" %}
+
+{% block title %}Live Command Center · RadBridge{% endblock %}
+{% block page_title %}{{"مركز التحكم المباشر" if ui_lang=="ar" else "Live Command Center"}}{% endblock %}
+{% block subtitle %}{{"مراقبة مباشرة لمسار العمل — للقراءة فقط" if ui_lang=="ar" else "Live workflow observability — read only"}}{% endblock %}
+
+{% block content %}
+
+<style>
+.rb-lcc{
+  --lcc-bg:#07111f;
+  --lcc-panel:#0d1929;
+  --lcc-panel2:#111f31;
+  --lcc-line:#24344b;
+  --lcc-text:#edf4ff;
+  --lcc-muted:#8ea0b8;
+  --lcc-good:#35d07f;
+  --lcc-warn:#ffb84d;
+  --lcc-bad:#ff647c;
+  --lcc-info:#56a8ff;
+  color:var(--lcc-text);
+  background:var(--lcc-bg);
+  border-radius:18px;
+  padding:20px;
+  min-height:720px;
+}
+
+.rb-lcc *{box-sizing:border-box}
+
+.lcc-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:18px;
+}
+
+.lcc-live{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-weight:700;
+}
+
+.lcc-live-dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:var(--lcc-good);
+  box-shadow:0 0 14px var(--lcc-good);
+}
+
+.lcc-meta{
+  color:var(--lcc-muted);
+  font-size:12px;
+}
+
+.lcc-counters{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(120px,1fr));
+  gap:12px;
+  margin-bottom:18px;
+}
+
+.lcc-card,
+.lcc-node,
+.lcc-panel{
+  background:linear-gradient(180deg,var(--lcc-panel2),var(--lcc-panel));
+  border:1px solid var(--lcc-line);
+  box-shadow:0 10px 30px rgba(0,0,0,.18);
+}
+
+.lcc-card{
+  border-radius:14px;
+  padding:14px;
+}
+
+.lcc-card small{
+  display:block;
+  color:var(--lcc-muted);
+  margin-bottom:8px;
+}
+
+.lcc-card strong{
+  font-size:27px;
+}
+
+.lcc-flow{
+  position:relative;
+  display:grid;
+  grid-template-columns:repeat(6,minmax(135px,1fr));
+  gap:22px;
+  padding:24px 8px;
+  overflow-x:auto;
+}
+
+.lcc-node{
+  position:relative;
+  min-width:135px;
+  border-radius:15px;
+  padding:16px;
+  z-index:2;
+}
+
+.lcc-node:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  top:50%;
+  left:100%;
+  width:23px;
+  height:2px;
+  background:linear-gradient(90deg,var(--lcc-info),var(--lcc-good));
+  box-shadow:0 0 9px rgba(86,168,255,.55);
+}
+
+[dir="rtl"] .lcc-node:not(:last-child)::after{
+  left:auto;
+  right:100%;
+}
+
+.lcc-node-title{
+  font-weight:750;
+  margin-bottom:10px;
+}
+
+.lcc-node-value{
+  font-size:25px;
+  font-weight:800;
+}
+
+.lcc-node-detail{
+  color:var(--lcc-muted);
+  font-size:12px;
+  margin-top:7px;
+  min-height:18px;
+}
+
+.lcc-grid{
+  display:grid;
+  grid-template-columns:1.3fr 1fr;
+  gap:14px;
+  margin-top:16px;
+}
+
+.lcc-panel{
+  border-radius:15px;
+  padding:16px;
+}
+
+.lcc-panel h3{
+  margin:0 0 14px;
+  font-size:15px;
+}
+
+.lcc-row{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:8px 0;
+  border-bottom:1px solid rgba(142,160,184,.13);
+}
+
+.lcc-row:last-child{border-bottom:0}
+
+.lcc-key{color:var(--lcc-muted)}
+
+.lcc-good{color:var(--lcc-good)}
+.lcc-warn{color:var(--lcc-warn)}
+.lcc-bad{color:var(--lcc-bad)}
+.lcc-info{color:var(--lcc-info)}
+
+.lcc-error{
+  display:none;
+  margin-bottom:14px;
+  border:1px solid rgba(255,100,124,.5);
+  background:rgba(255,100,124,.08);
+  padding:10px 12px;
+  border-radius:10px;
+  color:#ffc3cd;
+}
+
+@media(max-width:1200px){
+  .lcc-counters{grid-template-columns:repeat(3,1fr)}
+  .lcc-flow{grid-template-columns:repeat(3,minmax(150px,1fr))}
+}
+
+@media(max-width:760px){
+  .lcc-counters{grid-template-columns:repeat(2,1fr)}
+  .lcc-grid{grid-template-columns:1fr}
+}
+</style>
+
+<div class="rb-lcc" id="rbLiveCommandCenter">
+
+  <div class="lcc-toolbar">
+    <div class="lcc-live">
+      <span class="lcc-live-dot"></span>
+      <span>LIVE</span>
+      <span class="lcc-meta">READ ONLY</span>
+    </div>
+
+    <div class="lcc-meta">
+      <span id="lccGenerated">Waiting for snapshot…</span>
+    </div>
+  </div>
+
+  <div id="lccError" class="lcc-error"></div>
+
+  <div class="lcc-counters">
+    <div class="lcc-card">
+      <small>Total Orders</small>
+      <strong id="lccOrders">—</strong>
+    </div>
+
+    <div class="lcc-card">
+      <small>Exam Completed</small>
+      <strong id="lccExamCompleted">—</strong>
+    </div>
+
+    <div class="lcc-card">
+      <small>PACS Matches</small>
+      <strong id="lccMatches">—</strong>
+    </div>
+
+    <div class="lcc-card">
+      <small>Ready</small>
+      <strong class="lcc-good" id="lccReady">—</strong>
+    </div>
+
+    <div class="lcc-card">
+      <small>Ready Unassigned</small>
+      <strong class="lcc-warn" id="lccUnassigned">—</strong>
+    </div>
+
+    <div class="lcc-card">
+      <small>Final Reports</small>
+      <strong class="lcc-info" id="lccFinal">—</strong>
+    </div>
+  </div>
+
+  <div class="lcc-flow">
+
+    <div class="lcc-node">
+      <div class="lcc-node-title">Orders</div>
+      <div class="lcc-node-value" id="nodeOrders">—</div>
+      <div class="lcc-node-detail">Registration / scheduling</div>
+    </div>
+
+    <div class="lcc-node">
+      <div class="lcc-node-title">Exam</div>
+      <div class="lcc-node-value" id="nodeExam">—</div>
+      <div class="lcc-node-detail">Exam completed</div>
+    </div>
+
+    <div class="lcc-node">
+      <div class="lcc-node-title">PACS</div>
+      <div class="lcc-node-value" id="nodePacs">—</div>
+      <div class="lcc-node-detail" id="nodePacsDetail">Study matching</div>
+    </div>
+
+    <div class="lcc-node">
+      <div class="lcc-node-title">Readiness</div>
+      <div class="lcc-node-value" id="nodeReady">—</div>
+      <div class="lcc-node-detail" id="nodeReadyDetail">Case readiness</div>
+    </div>
+
+    <div class="lcc-node">
+      <div class="lcc-node-title">Assignment</div>
+      <div class="lcc-node-value" id="nodeAssignment">—</div>
+      <div class="lcc-node-detail" id="nodeAssignmentDetail">Active assignments</div>
+    </div>
+
+    <div class="lcc-node">
+      <div class="lcc-node-title">Reporting</div>
+      <div class="lcc-node-value" id="nodeReporting">—</div>
+      <div class="lcc-node-detail" id="nodeReportingDetail">Final reports</div>
+    </div>
+
+  </div>
+
+  <div class="lcc-grid">
+
+    <div class="lcc-panel">
+      <h3>Workflow Status</h3>
+      <div id="lccWorkflowRows"></div>
+    </div>
+
+    <div class="lcc-panel">
+      <h3>Attention</h3>
+
+      <div class="lcc-row">
+        <span class="lcc-key">Unmatched studies</span>
+        <strong class="lcc-warn" id="lccUnmatched">—</strong>
+      </div>
+
+      <div class="lcc-row">
+        <span class="lcc-key">Blocked cases</span>
+        <strong class="lcc-bad" id="lccBlocked">—</strong>
+      </div>
+
+      <div class="lcc-row">
+        <span class="lcc-key">Missing PACS</span>
+        <strong class="lcc-bad" id="lccMissingPacs">—</strong>
+      </div>
+
+      <div class="lcc-row">
+        <span class="lcc-key">Incomplete images</span>
+        <strong class="lcc-warn" id="lccIncomplete">—</strong>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  const endpoint='/api/command-center/snapshot';
+  const refreshMs=10000;
+
+  function el(id){
+    return document.getElementById(id);
+  }
+
+  function setText(id,value){
+    const x=el(id);
+    if(x) x.textContent=value;
+  }
+
+  function sumObject(obj){
+    return Object.values(obj || {})
+      .reduce((a,b)=>a+(Number(b)||0),0);
+  }
+
+  function row(label,value,klass){
+    return '<div class="lcc-row">' +
+      '<span class="lcc-key">' + label + '</span>' +
+      '<strong class="' + (klass || '') + '">' +
+      String(value) +
+      '</strong></div>';
+  }
+
+  function render(data){
+    const orders=data.orders || {};
+    const pacs=data.pacs || {};
+    const readiness=data.readiness || {};
+    const assignment=data.assignment || {};
+    const reporting=data.reporting || {};
+
+    const orderStatus=orders.status || {};
+    const examStatus=orders.exam_status || {};
+    const readyStatus=readiness.status || {};
+    const blockers=readiness.blockers || {};
+    const reportStatus=reporting.status || {};
+
+    const totalOrders=sumObject(orderStatus);
+    const examCompleted=Number(examStatus.EXAM_COMPLETED || 0);
+    const matches=Number(pacs.current_matches || 0);
+    const ready=Number(readyStatus.READY || 0);
+    const blocked=Number(readyStatus.BLOCKED || 0);
+    const unassigned=Number(assignment.ready_unassigned || 0);
+    const activeAssignments=Number(assignment.active_assignments || 0);
+    const finals=Number(reportStatus.FINAL || 0);
+    const unmatched=Number(pacs.unmatched_studies || 0);
+
+    setText('lccOrders',totalOrders);
+    setText('lccExamCompleted',examCompleted);
+    setText('lccMatches',matches);
+    setText('lccReady',ready);
+    setText('lccUnassigned',unassigned);
+    setText('lccFinal',finals);
+
+    setText('nodeOrders',totalOrders);
+    setText('nodeExam',examCompleted);
+    setText('nodePacs',matches);
+    setText('nodeReady',ready);
+    setText('nodeAssignment',activeAssignments);
+    setText('nodeReporting',finals);
+
+    setText(
+      'nodePacsDetail',
+      unmatched + ' unmatched'
+    );
+
+    setText(
+      'nodeReadyDetail',
+      blocked + ' blocked'
+    );
+
+    setText(
+      'nodeAssignmentDetail',
+      unassigned + ' ready / unassigned'
+    );
+
+    setText(
+      'nodeReportingDetail',
+      Number(reportStatus.DRAFT || 0) + ' draft'
+    );
+
+    setText('lccUnmatched',unmatched);
+    setText('lccBlocked',blocked);
+    setText(
+      'lccMissingPacs',
+      Number(blockers.MISSING_PACS || 0)
+    );
+    setText(
+      'lccIncomplete',
+      Number(blockers.INCOMPLETE_IMAGES || 0)
+    );
+
+    const rows=el('lccWorkflowRows');
+
+    if(rows){
+      rows.innerHTML=
+        row('Orders',totalOrders,'lcc-info') +
+        row('Exam completed',examCompleted,'') +
+        row('PACS matches',matches,'') +
+        row('Ready',ready,'lcc-good') +
+        row('Active assignments',activeAssignments,'') +
+        row('Final reports',finals,'lcc-info');
+    }
+
+    setText(
+      'lccGenerated',
+      'Snapshot: ' + (data.generated_at || '—')
+    );
+
+    const error=el('lccError');
+    if(error){
+      error.style.display='none';
+      error.textContent='';
+    }
+  }
+
+  async function refresh(){
+    try{
+      const response=await fetch(endpoint,{
+        method:'GET',
+        credentials:'same-origin',
+        headers:{
+          'Accept':'application/json'
+        }
+      });
+
+      if(!response.ok){
+        throw new Error('HTTP ' + response.status);
+      }
+
+      const data=await response.json();
+
+      if(data.schema !== 'radbridge.command_center.snapshot.v1'){
+        throw new Error('Unexpected snapshot schema');
+      }
+
+      render(data);
+
+    }catch(err){
+      const error=el('lccError');
+
+      if(error){
+        error.textContent=
+          'Snapshot unavailable: ' +
+          (err && err.message ? err.message : 'Unknown error');
+
+        error.style.display='block';
+      }
+    }
+  }
+
+  refresh();
+  window.setInterval(refresh,refreshMs);
+})();
+</script>
+
+{% endblock %}

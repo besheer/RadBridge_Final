@@ -14909,6 +14909,13 @@ def admin_qa():
 # RB_LIVE_COMMAND_CENTER_SNAPSHOT_V1
 # ============================================================
 
+# RB_LIVE_COMMAND_CENTER_UI_V1
+@app.route('/operations/live-command-center')
+@require_perm('audit.view')
+def live_command_center():
+    return render_template('live_command_center.html')
+
+
 @app.route('/api/command-center/snapshot')
 @require_perm('audit.view')
 def command_center_snapshot():
