@@ -680,6 +680,13 @@
     font-size: 11px;
 }
 
+
+/* RB_LCC_CASE_FOCUS_FIX_V2 */
+.rb-tx.rb-selected {
+    outline: 1px solid #38bdf8;
+    background: rgba(14,116,144,.18);
+}
+
 .rb-tx-stage {
     color: #e2e8f0;
     font-weight: 700;
@@ -954,11 +961,6 @@
 
         if (order !== '-') {
             row.style.cursor = 'pointer';
-
-            row.addEventListener(
-                'click',
-                () => focusOrder(order)
-            );
         }
 
         txList.prepend(row);
@@ -981,6 +983,8 @@
     // RB_LCC_CASE_AWARE_V2
     const caseState = new Map();
     let focusedOrderId = null;
+    let latestOrderId = null;
+    let latestEventTime = -1;
 
     function rememberEvent(event) {
         if (
@@ -1010,6 +1014,18 @@
             stage,
             event
         );
+
+        const eventTime = Date.parse(
+            event.timestamp || ''
+        );
+
+        if (
+            Number.isFinite(eventTime) &&
+            eventTime >= latestEventTime
+        ) {
+            latestEventTime = eventTime;
+            latestOrderId = orderId;
+        }
     }
 
     function resetGraph() {
@@ -1089,6 +1105,48 @@
         renderFocusedCase();
     }
 
+    if (txList) {
+        txList.addEventListener(
+            'click',
+            event => {
+                const row = event.target.closest(
+                    '.rb-tx[data-order-id]'
+                );
+
+                if (
+                    !row ||
+                    !txList.contains(row)
+                ) {
+                    return;
+                }
+
+                const orderId =
+                    row.dataset.orderId;
+
+                if (
+                    !orderId ||
+                    orderId === '-'
+                ) {
+                    return;
+                }
+
+                txList.querySelectorAll(
+                    '.rb-tx.rb-selected'
+                ).forEach(item => {
+                    item.classList.remove(
+                        'rb-selected'
+                    );
+                });
+
+                row.classList.add(
+                    'rb-selected'
+                );
+
+                focusOrder(orderId);
+            }
+        );
+    }
+
     const source = new EventSource(
         '/api/command-center/events/stream'
     );
@@ -1111,11 +1169,8 @@
 
                 rememberEvent(event);
 
-                if (focusedOrderId === null) {
-                    focusOrder(event.order_id);
-                }
-
                 if (
+                    focusedOrderId !== null &&
                     event.order_id !== null &&
                     String(event.order_id)
                     === focusedOrderId
@@ -1142,6 +1197,13 @@
 
             if (stateLabel) {
                 stateLabel.textContent = 'Live SSE';
+            }
+
+            if (
+                focusedOrderId === null &&
+                latestOrderId !== null
+            ) {
+                focusOrder(latestOrderId);
             }
         }
     );
