@@ -14912,6 +14912,372 @@ def admin_qa():
 # RB_LIVE_COMMAND_CENTER_UI_V1
 
 # ============================================================
+
+# RB_COMMAND_CENTER_CASE_GRAPH_V3
+# Read-only per-case workflow contract for the Live Command Center.
+@app.get('/api/command-center/case/<int:order_id>/graph-v3')
+@require_perm('audit.view')
+def api_command_center_case_graph_v3(order_id):
+    order = Order.query.get_or_404(order_id)
+
+    def iso(value):
+        return value.isoformat() if value else None
+
+    def val(obj, name, default=None):
+        return getattr(obj, name, default) if obj is not None else default
+
+    def resolution(code):
+        code = str(code or '').upper()
+
+        if code in (
+            'MISSING_PACS',
+            'INCOMPLETE_IMAGES',
+            'MISSING_SERIES',
+            'WRONG_PROTOCOL',
+            'MOTION_ARTIFACT',
+            'ADDITIONAL_IMAGING',
+        ):
+            return {
+                'owner_role': 'TECHNICIAN',
+                'url': url_for(
+                    'technician_case_workspace',
+                    order_id=order.id
+                ),
+            }
+
+        if code in (
+            'REVIEW_REQUIRED',
+            'UNMATCHED',
+            'DEMOGRAPHIC_MISMATCH',
+            'PACS_DEMOGRAPHIC_REVIEW_REQUIRED',
+        ):
+            return {
+                'owner_role': 'RECEPTION',
+                'url': url_for('pacs_reconciliation'),
+            }
+
+        if code in (
+            'MISSING_HISTORY',
+            'MISSING_DOCUMENTS',
+            'MISSING_ATTACHMENTS',
+            'MISSING_REFERRAL',
+        ):
+            return {
+                'owner_role': 'RECEPTION',
+                'url': url_for('order_detail', order_id=order.id),
+            }
+
+        if code in (
+            'NO_CANDIDATE',
+            'TIMEOUT',
+            'ASSIGNMENT_TIMEOUT',
+        ):
+            return {
+                'owner_role': 'ASSIGNMENT',
+                'url': url_for('assignment_dashboard'),
+            }
+
+        if code.startswith('REPORT_') or code.startswith('ONLYOFFICE_'):
+            return {
+                'owner_role': 'DOCTOR',
+                'url': url_for('report_editor', order_id=order.id),
+            }
+
+        return {
+            'owner_role': '',
+            'url': url_for('order_detail', order_id=order.id),
+        }
+
+    readiness = None
+    if 'CaseReadiness' in globals():
+        readiness = (
+            CaseReadiness.query
+            .filter_by(order_id=order.id)
+            .order_by(CaseReadiness.id.desc())
+            .first()
+        )
+
+    pacs_inbox = None
+    if 'PacsStudyInbox' in globals():
+        q = PacsStudyInbox.query
+        if hasattr(PacsStudyInbox, 'order_id'):
+            pacs_inbox = (
+                q.filter_by(order_id=order.id)
+                .order_by(PacsStudyInbox.id.desc())
+                .first()
+            )
+
+    pacs_match = None
+    if 'PacsStudyMatch' in globals():
+        q = PacsStudyMatch.query
+        if hasattr(PacsStudyMatch, 'order_id'):
+            pacs_match = (
+                q.filter_by(order_id=order.id)
+                .order_by(PacsStudyMatch.id.desc())
+                .first()
+            )
+
+    assignment = (
+        CaseAssignment.query
+        .filter_by(order_id=order.id, active=True)
+        .order_by(CaseAssignment.id.desc())
+        .first()
+    )
+
+    doctor = val(assignment, 'doctor')
+    doctor_presence = None
+    if doctor is not None:
+        st = (
+            DoctorAvailabilityState.query
+            .filter_by(user_id=doctor.id)
+            .first()
+        )
+
+        effective_state = val(
+            st,
+            'state',
+            'UNKNOWN'
+        )
+
+        busy_until = val(
+            st,
+            'busy_until'
+        )
+
+        if (
+            effective_state == 'BUSY'
+            and busy_until
+            and busy_until <= datetime.utcnow()
+        ):
+            effective_state = 'AVAILABLE'
+
+        last_seen_at = val(
+            st,
+            'last_seen_at'
+        )
+
+        online = bool(
+            last_seen_at
+            and last_seen_at
+                >= datetime.utcnow() - timedelta(minutes=5)
+            and effective_state != 'OFFLINE'
+        )
+
+        doctor_presence = {
+            'user_id': doctor.id,
+            'username': val(
+                doctor,
+                'username',
+                ''
+            ),
+            'full_name': val(
+                doctor,
+                'full_name',
+                ''
+            ),
+            'state': effective_state,
+            'last_seen_at': iso(
+                last_seen_at
+            ),
+            'online': online,
+            'online_window_minutes': 5,
+        }
+
+    blockers = []
+
+    blocker_fields = (
+        ('missing_pacs', 'MISSING_PACS'),
+        ('incomplete_images', 'INCOMPLETE_IMAGES'),
+        ('missing_series', 'MISSING_SERIES'),
+        ('missing_history', 'MISSING_HISTORY'),
+        ('missing_attachments', 'MISSING_ATTACHMENTS'),
+        ('missing_documents', 'MISSING_DOCUMENTS'),
+    )
+
+    for field, code in blocker_fields:
+        if bool(val(readiness, field, False)):
+            target = resolution(code)
+            blockers.append({
+                'code': code,
+                'owner_role': target['owner_role'],
+                'resolution_url': target['url'],
+            })
+
+    workflow_events = (
+        CaseWorkflowEvent.query
+        .filter_by(order_id=order.id)
+        .order_by(CaseWorkflowEvent.created_at.asc())
+        .all()
+    )
+
+    event_rows = []
+    for ev in workflow_events:
+        code = (
+            val(ev, 'reason_code', '')
+            or val(ev, 'event_type', '')
+        )
+        target = resolution(code)
+
+        event_rows.append({
+            'id': ev.id,
+            'event_type': val(ev, 'event_type', ''),
+            'reason_code': val(ev, 'reason_code', ''),
+            'owner_role': (
+                val(ev, 'owner_role', '')
+                or target['owner_role']
+            ),
+            'note': val(ev, 'note', ''),
+            'created_at': iso(val(ev, 'created_at')),
+            'resolution_url': target['url'],
+        })
+
+    report = val(order, 'report')
+
+    pacs_state = (
+        val(pacs_inbox, 'state')
+        or val(order, 'pacs_status')
+        or 'WAITING'
+    )
+
+    match_state = (
+        val(pacs_match, 'status')
+        or val(pacs_match, 'state')
+        or val(pacs_inbox, 'match_method')
+        or 'WAITING'
+    )
+
+    readiness_state = 'READY'
+    if readiness is None:
+        readiness_state = 'NOT_CHECKED'
+    elif blockers:
+        readiness_state = 'BLOCKED'
+
+    assignment_state = (
+        'ASSIGNED'
+        if assignment is not None
+        else 'UNASSIGNED'
+    )
+
+    report_state = (
+        val(report, 'status', 'UNREPORTED')
+        if report is not None
+        else 'UNREPORTED'
+    )
+
+    nodes = [
+        {
+            'key': 'ORDER',
+            'state': val(order, 'status', 'REGISTERED'),
+            'resolution_url': url_for(
+                'order_detail',
+                order_id=order.id
+            ),
+        },
+        {
+            'key': 'MWL',
+            'state': (
+                'ERROR'
+                if str(val(order, 'status', '')).upper()
+                in ('MWL_ERROR', 'ROUTING_ERROR')
+                else 'REQUESTED'
+            ),
+            'resolution_url': url_for(
+                'order_detail',
+                order_id=order.id
+            ),
+        },
+        {
+            'key': 'EXAM',
+            'state': val(order, 'exam_status', 'WAITING'),
+            'resolution_url': url_for(
+                'technician_case_workspace',
+                order_id=order.id
+            ),
+        },
+        {
+            'key': 'PACS',
+            'state': pacs_state,
+            'details': {
+                'image_count': int(
+                    val(order, 'pacs_image_count', 0) or 0
+                ),
+                'study_id': val(order, 'pacs_study_id', ''),
+                'last_seen_at': iso(
+                    val(order, 'pacs_last_seen_at')
+                ),
+            },
+            'resolution_url': url_for(
+                'pacs_case_actions',
+                order_id=order.id
+            ),
+        },
+        {
+            'key': 'MATCHING',
+            'state': match_state,
+            'resolution_url': url_for('pacs_reconciliation'),
+        },
+        {
+            'key': 'READINESS',
+            'state': readiness_state,
+            'blockers': blockers,
+            'resolution_url': url_for(
+                'case_readiness_dashboard'
+            ),
+        },
+        {
+            'key': 'ASSIGNMENT',
+            'state': assignment_state,
+            'details': {
+                'assignment_type': val(
+                    assignment,
+                    'assignment_type',
+                    ''
+                ),
+                'assigned_at': iso(
+                    val(assignment, 'assigned_at')
+                ),
+                'doctor': doctor_presence,
+            },
+            'resolution_url': url_for(
+                'assignment_dashboard'
+            ),
+        },
+        {
+            'key': 'REPORTING',
+            'state': report_state,
+            'details': {
+                'radiologist': val(report, 'radiologist', ''),
+                'verified_at': iso(
+                    val(report, 'verified_at')
+                ),
+                'finalized_at': iso(
+                    val(report, 'finalized_at')
+                ),
+            },
+            'resolution_url': url_for(
+                'report_editor',
+                order_id=order.id
+            ),
+        },
+    ]
+
+    return jsonify({
+        'schema': 'radbridge.command_center.case_graph.v3',
+        'read_only': True,
+        'order': {
+            'id': order.id,
+            'accession': val(order, 'accession', ''),
+            'modality': val(order, 'modality', ''),
+            'procedure': val(order, 'procedure', ''),
+            'status': val(order, 'status', ''),
+        },
+        'nodes': nodes,
+        'blockers': blockers,
+        'events': event_rows,
+        'assigned_doctor': doctor_presence,
+    })
+
+
 # RB_LIVE_COMMAND_CENTER_SSE_V1
 # Read-only Server-Sent Events transport for Command Center.
 # It reuses the normalized event API and never writes clinical
