@@ -15144,6 +15144,233 @@ def command_center_events():
         )
 
     # --------------------------------------------------------
+    # PACS / DICOM receipt
+    # RB_LIVE_COMMAND_CENTER_PACS_MATCHING_EVENTS_V1
+    # --------------------------------------------------------
+
+    q=PacsStudyInbox.query
+
+    if order_filter is not None:
+        q=q.filter(
+            PacsStudyInbox.order_id==order_filter
+        )
+
+    inbox_rows=(
+        q.order_by(
+            PacsStudyInbox.id.desc()
+        )
+        .limit(limit)
+        .all()
+    )
+
+    for row in inbox_rows:
+
+        append_event(
+            source='PACS_INBOX',
+            source_id=f'{row.id}:received',
+            event_type='PACS_STUDY_RECEIVED',
+            stage='PACS',
+            status=(
+                'SUCCESS'
+                if int(row.image_count or 0)>0
+                else 'WAITING'
+            ),
+            timestamp=(
+                row.first_seen_at
+                or row.last_seen_at
+            ),
+            order_id=row.order_id,
+            details=(
+                f'state={row.state or ""}; '
+                f'images={int(row.image_count or 0)}; '
+                f'source_ae={row.source_ae or ""}'
+            ),
+            payload={
+                'orthanc_study_id':
+                    row.orthanc_study_id or '',
+                'study_instance_uid':
+                    row.study_instance_uid or '',
+                'pacs_accession':
+                    row.accession or '',
+                'modality':
+                    row.modality or '',
+                'source_ae':
+                    row.source_ae or '',
+                'image_count':
+                    int(row.image_count or 0),
+                'inbox_state':
+                    row.state or '',
+            }
+        )
+
+        inbox_state=str(
+            row.state or ''
+        ).upper()
+
+        if inbox_state=='REVIEW_REQUIRED':
+            append_event(
+                source='PACS_INBOX',
+                source_id=f'{row.id}:matching',
+                event_type='PACS_MATCH_REVIEW_REQUIRED',
+                stage='MATCHING',
+                status='BLOCKED',
+                timestamp=(
+                    row.last_seen_at
+                    or row.first_seen_at
+                ),
+                order_id=row.order_id,
+                details=(
+                    row.error_text
+                    or row.match_method
+                    or 'PACS matching review required'
+                ),
+                payload={
+                    'orthanc_study_id':
+                        row.orthanc_study_id or '',
+                    'study_instance_uid':
+                        row.study_instance_uid or '',
+                    'match_method':
+                        row.match_method or '',
+                    'inbox_state':
+                        row.state or '',
+                }
+            )
+
+        elif inbox_state=='ERROR':
+            append_event(
+                source='PACS_INBOX',
+                source_id=f'{row.id}:matching',
+                event_type='PACS_MATCH_ERROR',
+                stage='MATCHING',
+                status='FAILED',
+                timestamp=(
+                    row.last_seen_at
+                    or row.first_seen_at
+                ),
+                order_id=row.order_id,
+                details=(
+                    row.error_text
+                    or 'PACS inbox error'
+                ),
+                payload={
+                    'orthanc_study_id':
+                        row.orthanc_study_id or '',
+                    'study_instance_uid':
+                        row.study_instance_uid or '',
+                    'match_method':
+                        row.match_method or '',
+                    'inbox_state':
+                        row.state or '',
+                }
+            )
+
+    # --------------------------------------------------------
+    # Confirmed PACS matches
+    # --------------------------------------------------------
+
+    q=PacsStudyMatch.query
+
+    if order_filter is not None:
+        q=q.filter(
+            PacsStudyMatch.order_id
+            ==order_filter
+        )
+
+    match_rows=(
+        q.order_by(
+            PacsStudyMatch.id.desc()
+        )
+        .limit(limit)
+        .all()
+    )
+
+    for row in match_rows:
+
+        append_event(
+            source='PACS_MATCH',
+            source_id=row.id,
+            event_type='PACS_MATCH_CONFIRMED',
+            stage='MATCHING',
+            status='SUCCESS',
+            timestamp=row.confirmed_at,
+            order_id=row.order_id,
+            details=(
+                f'method={row.match_method or ""}; '
+                f'confidence={row.confidence or ""}; '
+                f'current={bool(row.is_current)}'
+            ),
+            payload={
+                'orthanc_study_id':
+                    row.orthanc_study_id or '',
+                'match_method':
+                    row.match_method or '',
+                'confidence':
+                    row.confidence or '',
+                'is_current':
+                    bool(row.is_current),
+                'pacs_accession':
+                    row.pacs_accession or '',
+            }
+        )
+
+    # --------------------------------------------------------
+    # PACS reconciliation / resolution history
+    # --------------------------------------------------------
+
+    q=PacsResolutionEvent.query
+
+    if order_filter is not None:
+        q=q.filter(
+            PacsResolutionEvent.order_id
+            ==order_filter
+        )
+
+    resolution_rows=(
+        q.order_by(
+            PacsResolutionEvent.id.desc()
+        )
+        .limit(limit)
+        .all()
+    )
+
+    for row in resolution_rows:
+
+        resolution_type=str(
+            row.event_type or ''
+        ).upper()
+
+        resolution_status=(
+            'SUCCESS'
+            if resolution_type in (
+                'PRIMARY_LINK_CHANGED',
+                'MATCH_CONFIRMED',
+                'RESOLVED'
+            )
+            else 'INFO'
+        )
+
+        append_event(
+            source='PACS_RESOLUTION',
+            source_id=row.id,
+            event_type=row.event_type,
+            stage='MATCHING',
+            status=resolution_status,
+            timestamp=row.created_at,
+            order_id=row.order_id,
+            details=row.reason,
+            payload={
+                'old_orthanc_study_id':
+                    row.old_orthanc_study_id or '',
+                'new_orthanc_study_id':
+                    row.new_orthanc_study_id or '',
+                'old_study_instance_uid':
+                    row.old_study_instance_uid or '',
+                'new_study_instance_uid':
+                    row.new_study_instance_uid or '',
+            }
+        )
+
+    # --------------------------------------------------------
     # Assignment Events
     # --------------------------------------------------------
 
