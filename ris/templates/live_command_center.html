@@ -2999,8 +2999,13 @@
             stateBox.classList.remove('connected');
         }
 
+        /* RB_LCC_OFF_LABEL_POLISH_V1 */
         if (stateLabel) {
-            stateLabel.textContent = 'Reconnecting...';
+            stateLabel.textContent =
+                controlState
+                && controlState.mode === 'OFF'
+                ? 'Monitoring Off'
+                : 'Reconnecting...';
         }
     };
 
