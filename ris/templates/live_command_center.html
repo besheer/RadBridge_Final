@@ -754,6 +754,108 @@
     }
 }
 
+
+.rb-resource-panel{
+    margin-top:18px;
+    padding:16px;
+    border:1px solid rgba(148,163,184,.16);
+    border-radius:14px;
+    background:rgba(2,6,23,.72);
+}
+
+.rb-resource-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+}
+
+.rb-resource-kicker{
+    font-size:10px;
+    letter-spacing:.12em;
+    color:#64748b;
+    font-weight:800;
+}
+
+.rb-resource-title{
+    margin-top:3px;
+    color:#e2e8f0;
+    font-size:15px;
+    font-weight:800;
+}
+
+.rb-resource-state{
+    font-size:11px;
+    color:#94a3b8;
+    font-weight:700;
+}
+
+.rb-resource-grid{
+    margin-top:14px;
+    display:grid;
+    grid-template-columns:
+        repeat(3,minmax(0,1fr));
+    gap:9px;
+}
+
+.rb-resource-card{
+    border:1px solid rgba(148,163,184,.14);
+    border-radius:10px;
+    background:#0f172a;
+    padding:10px;
+}
+
+.rb-resource-card span{
+    display:block;
+    font-size:9px;
+    color:#64748b;
+}
+
+.rb-resource-card strong{
+    display:block;
+    margin-top:5px;
+    color:#e2e8f0;
+    font-size:13px;
+}
+
+.rb-resource-card small{
+    display:block;
+    margin-top:3px;
+    color:#64748b;
+    font-size:8px;
+}
+
+.rb-resource-ok{
+    color:#4ade80 !important;
+}
+
+.rb-resource-warn{
+    color:#fbbf24 !important;
+}
+
+.rb-resource-bad{
+    color:#f87171 !important;
+}
+
+.rb-resource-footer{
+    margin-top:10px;
+    font-size:9px;
+    color:#64748b;
+}
+
+@media (max-width:1000px){
+    .rb-resource-grid{
+        grid-template-columns:
+            repeat(2,minmax(0,1fr));
+    }
+}
+
+@media (max-width:650px){
+    .rb-resource-grid{
+        grid-template-columns:1fr;
+    }
+}
+
 .rb-v3-shell{
     margin-top:18px;
     border:1px solid rgba(148,163,184,.16);
@@ -1222,6 +1324,129 @@
         class="rb-control-message"
         id="rb-control-message"
     ></div>
+
+</section>
+
+
+<!-- RB_LCC_RESOURCE_MONITOR_UI_V1 -->
+<section
+    class="rb-resource-panel"
+    id="rb-resource-panel"
+>
+
+    <div class="rb-resource-head">
+        <div>
+            <div class="rb-resource-kicker">
+                RESOURCE MONITOR
+            </div>
+
+            <div class="rb-resource-title">
+                System Health
+            </div>
+        </div>
+
+        <div
+            class="rb-resource-state"
+            id="rb-resource-state"
+        >
+            Loading...
+        </div>
+    </div>
+
+    <div class="rb-resource-grid">
+
+        <div class="rb-resource-card">
+            <span>Host Load</span>
+            <strong id="rb-resource-load">
+                -
+            </strong>
+            <small id="rb-resource-load-sub">
+                1m / 5m / 15m
+            </small>
+        </div>
+
+        <div class="rb-resource-card">
+            <span>Host Memory</span>
+            <strong id="rb-resource-host-mem">
+                -
+            </strong>
+            <small id="rb-resource-host-mem-sub">
+                available
+            </small>
+        </div>
+
+        <div class="rb-resource-card">
+            <span>RIS Memory</span>
+            <strong id="rb-resource-ris-mem">
+                -
+            </strong>
+            <small id="rb-resource-ris-mem-sub">
+                container
+            </small>
+        </div>
+
+        <div class="rb-resource-card">
+            <span>RIS Processes</span>
+            <strong id="rb-resource-pids">
+                -
+            </strong>
+            <small>
+                PIDs
+            </small>
+        </div>
+
+        <div class="rb-resource-card">
+            <span>Disk</span>
+            <strong id="rb-resource-disk">
+                -
+            </strong>
+            <small id="rb-resource-disk-sub">
+                used
+            </small>
+        </div>
+
+        <div class="rb-resource-card">
+            <span>Monitoring</span>
+            <strong id="rb-resource-mode">
+                -
+            </strong>
+            <small id="rb-resource-interval">
+                -
+            </small>
+        </div>
+
+        <div class="rb-resource-card">
+            <span>RIS</span>
+            <strong id="rb-resource-ris-health">
+                -
+            </strong>
+        </div>
+
+        <div class="rb-resource-card">
+            <span>Database</span>
+            <strong id="rb-resource-db-health">
+                -
+            </strong>
+        </div>
+
+        <div class="rb-resource-card">
+            <span>PACS</span>
+            <strong id="rb-resource-pacs-health">
+                -
+            </strong>
+            <small id="rb-resource-pacs-http">
+                -
+            </small>
+        </div>
+
+    </div>
+
+    <div
+        class="rb-resource-footer"
+        id="rb-resource-footer"
+    >
+        Waiting for telemetry...
+    </div>
 
 </section>
 
@@ -1734,6 +1959,391 @@
     }
 
 
+
+
+    function rbFormatBytes(value) {
+        const n = Number(value);
+
+        if (!Number.isFinite(n) || n < 0) {
+            return '-';
+        }
+
+        const units = [
+            'B',
+            'KB',
+            'MB',
+            'GB',
+            'TB'
+        ];
+
+        let size = n;
+        let index = 0;
+
+        while (
+            size >= 1024 &&
+            index < units.length - 1
+        ) {
+            size /= 1024;
+            index += 1;
+        }
+
+        return (
+            size.toFixed(
+                index >= 2 ? 1 : 0
+            )
+            + ' '
+            + units[index]
+        );
+    }
+
+    function rbStatusClass(value) {
+        const status =
+            String(value || '').toUpperCase();
+
+        if (
+            status === 'HEALTHY' ||
+            status === 'ONLINE'
+        ) {
+            return 'rb-resource-ok';
+        }
+
+        if (
+            status === 'DEGRADED' ||
+            status === 'WARNING'
+        ) {
+            return 'rb-resource-warn';
+        }
+
+        if (
+            status === 'FAILED' ||
+            status === 'OFFLINE'
+        ) {
+            return 'rb-resource-bad';
+        }
+
+        return '';
+    }
+
+    function rbSetHealth(
+        elementId,
+        status
+    ) {
+        const el =
+            document.getElementById(
+                elementId
+            );
+
+        if (!el) {
+            return;
+        }
+
+        el.textContent =
+            String(status || 'UNKNOWN');
+
+        el.classList.remove(
+            'rb-resource-ok',
+            'rb-resource-warn',
+            'rb-resource-bad'
+        );
+
+        const cls =
+            rbStatusClass(status);
+
+        if (cls) {
+            el.classList.add(cls);
+        }
+    }
+
+    function renderResourceState(data) {
+
+        const host =
+            data.host || {};
+
+        const container =
+            data.container || {};
+
+        const services =
+            data.services || {};
+
+        const monitoring =
+            data.monitoring || {};
+
+        const load =
+            document.getElementById(
+                'rb-resource-load'
+            );
+
+        if (load) {
+            load.textContent =
+                [
+                    host.load1,
+                    host.load5,
+                    host.load15
+                ]
+                .map(value => {
+                    const n = Number(value);
+
+                    return Number.isFinite(n)
+                        ? n.toFixed(2)
+                        : '-';
+                })
+                .join(' / ');
+        }
+
+        const hostMem =
+            document.getElementById(
+                'rb-resource-host-mem'
+            );
+
+        const hostMemSub =
+            document.getElementById(
+                'rb-resource-host-mem-sub'
+            );
+
+        if (hostMem) {
+            hostMem.textContent =
+                rbFormatBytes(
+                    Number(
+                        host.mem_available_kb
+                        || 0
+                    ) * 1024
+                );
+        }
+
+        if (hostMemSub) {
+            hostMemSub.textContent =
+                'of '
+                + rbFormatBytes(
+                    Number(
+                        host.mem_total_kb
+                        || 0
+                    ) * 1024
+                )
+                + ' available';
+        }
+
+        const risMem =
+            document.getElementById(
+                'rb-resource-ris-mem'
+            );
+
+        if (risMem) {
+            risMem.textContent =
+                rbFormatBytes(
+                    container.memory_current_bytes
+                );
+        }
+
+        const pids =
+            document.getElementById(
+                'rb-resource-pids'
+            );
+
+        if (pids) {
+            pids.textContent =
+                String(
+                    container.pids_current
+                    ?? '-'
+                );
+        }
+
+        const disk =
+            document.getElementById(
+                'rb-resource-disk'
+            );
+
+        const diskSub =
+            document.getElementById(
+                'rb-resource-disk-sub'
+            );
+
+        if (disk) {
+            disk.textContent =
+                rbFormatBytes(
+                    host.disk_used_bytes
+                );
+        }
+
+        if (diskSub) {
+            diskSub.textContent =
+                'of '
+                + rbFormatBytes(
+                    host.disk_total_bytes
+                )
+                + ' used';
+        }
+
+        const mode =
+            document.getElementById(
+                'rb-resource-mode'
+            );
+
+        const interval =
+            document.getElementById(
+                'rb-resource-interval'
+            );
+
+        if (mode) {
+            mode.textContent =
+                String(
+                    monitoring.mode || '-'
+                );
+        }
+
+        if (interval) {
+            if (
+                String(
+                    monitoring.mode || ''
+                ).toUpperCase() === 'NORMAL'
+            ) {
+                interval.textContent =
+                    String(
+                        monitoring
+                            .normal_interval_seconds
+                        || '-'
+                    )
+                    + ' sec';
+            } else if (
+                String(
+                    monitoring.mode || ''
+                ).toUpperCase() === 'LIVE'
+            ) {
+                interval.textContent =
+                    String(
+                        monitoring
+                            .live_interval_seconds
+                        || '-'
+                    )
+                    + ' sec';
+            } else {
+                interval.textContent =
+                    'stream disabled';
+            }
+        }
+
+        rbSetHealth(
+            'rb-resource-ris-health',
+            (
+                services.ris || {}
+            ).status
+        );
+
+        rbSetHealth(
+            'rb-resource-db-health',
+            (
+                services.database || {}
+            ).status
+        );
+
+        rbSetHealth(
+            'rb-resource-pacs-health',
+            (
+                services.pacs || {}
+            ).status
+        );
+
+        const pacsHttp =
+            document.getElementById(
+                'rb-resource-pacs-http'
+            );
+
+        if (pacsHttp) {
+            const http =
+                (
+                    services.pacs || {}
+                ).http_status;
+
+            pacsHttp.textContent =
+                http
+                ? 'HTTP ' + String(http)
+                : '-';
+        }
+
+        const state =
+            document.getElementById(
+                'rb-resource-state'
+            );
+
+        if (state) {
+            state.textContent =
+                'Telemetry online';
+        }
+
+        const footer =
+            document.getElementById(
+                'rb-resource-footer'
+            );
+
+        if (footer) {
+            footer.textContent =
+                'Updated '
+                + String(
+                    data.timestamp || '-'
+                );
+        }
+    }
+
+    async function loadResourceState() {
+
+        try {
+            const response = await fetch(
+                '/api/command-center/resources',
+                {
+                    credentials:
+                        'same-origin',
+                    cache:
+                        'no-store',
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    'HTTP '
+                    + response.status
+                );
+            }
+
+            const data =
+                await response.json();
+
+            renderResourceState(
+                data
+            );
+
+        } catch (error) {
+
+            const state =
+                document.getElementById(
+                    'rb-resource-state'
+                );
+
+            if (state) {
+                state.textContent =
+                    'Telemetry unavailable';
+                state.classList.add(
+                    'rb-resource-bad'
+                );
+            }
+
+            const footer =
+                document.getElementById(
+                    'rb-resource-footer'
+                );
+
+            if (footer) {
+                footer.textContent =
+                    String(error);
+            }
+        }
+    }
+
+    loadResourceState();
+
+    const rbResourceTimer =
+        window.setInterval(
+            loadResourceState,
+            15000
+        );
 
     const controlState = {
         mode: null,
