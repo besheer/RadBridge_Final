@@ -22772,6 +22772,105 @@ def _apply_smart_intake_ocr_result(doc, result):
     doc.ocr_provider_key = cfg.provider_key if cfg else ''
     doc.ocr_config_hash = ocr_configuration_hash(cfg) if cfg else ''
 
+    # ========================================================
+    # RB_SMART_INTAKE_OCR_FIELD_SYNC_V1
+    #
+    # Persist OCR suggestions into SmartIntakeFieldReview so
+    # the identity-review / registration UI can consume them.
+    #
+    # OCR suggestions remain PENDING here. final_value and
+    # ACCEPTED/CORRECTED status are set only by the explicit
+    # review/save workflow.
+    # ========================================================
+
+    core_fields = {
+        key: str(fields.get(key) or '').strip()
+        for key in OCR_INTAKE_CORE_FIELDS
+    }
+
+    normalized = normalize_intake_identity(
+        core_fields
+    )
+
+    validation = validate_intake_identity(
+        normalized
+    )
+
+    validation_fields = (
+        validation.get('fields')
+        or {}
+    )
+
+    for field_key in OCR_INTAKE_CORE_FIELDS:
+
+        extracted = str(
+            core_fields.get(field_key)
+            or ''
+        )
+
+        normalized_value = str(
+            normalized.get(field_key)
+            or ''
+        )
+
+        # Keep rows already reviewed by a user untouched.
+        row = (
+            SmartIntakeFieldReview.query
+            .filter_by(
+                intake_id=doc.intake_id,
+                field_key=field_key
+            )
+            .first()
+        )
+
+        if not row:
+            row = SmartIntakeFieldReview(
+                intake_id=doc.intake_id,
+                field_key=field_key
+            )
+            db.session.add(row)
+
+        if row.review_status in (
+            'ACCEPTED',
+            'CORRECTED'
+        ):
+            continue
+
+        if extracted or normalized_value:
+
+            item = (
+                validation_fields.get(
+                    field_key
+                )
+                or {}
+            )
+
+            row.source_document_id = doc.id
+            row.source_type = (
+                doc.document_type
+                or ''
+            )
+
+            row.extracted_value = extracted
+            row.normalized_value = normalized_value
+
+            row.confidence = float(
+                result.get('confidence')
+                or 0
+            )
+
+            row.validation_status = str(
+                item.get('status')
+                or 'warning'
+            ).upper()
+
+            row.validation_message = str(
+                item.get('message')
+                or ''
+            )[:500]
+
+            row.review_status = 'PENDING'
+
     return classification
 
 
