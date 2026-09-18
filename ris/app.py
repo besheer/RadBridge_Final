@@ -15638,6 +15638,248 @@ def api_command_center_control_set():
     })
 
 
+
+# ============================================================
+# RB_COMMAND_CENTER_RESOURCE_MONITOR_V1
+# Read-only resource and service health telemetry.
+# ============================================================
+
+def _rb_read_text(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as handle:
+            return handle.read().strip()
+    except Exception:
+        return ''
+
+
+def _rb_int(value):
+    try:
+        return int(str(value).strip())
+    except Exception:
+        return None
+
+
+def _rb_cgroup_metrics():
+    data = {
+        'memory_current_bytes': None,
+        'memory_max_bytes': None,
+        'pids_current': None,
+        'cpu_usage_usec': None,
+        'cpu_user_usec': None,
+        'cpu_system_usec': None,
+    }
+
+    memory_current = _rb_read_text(
+        '/sys/fs/cgroup/memory.current'
+    )
+    memory_max = _rb_read_text(
+        '/sys/fs/cgroup/memory.max'
+    )
+    pids_current = _rb_read_text(
+        '/sys/fs/cgroup/pids.current'
+    )
+    cpu_stat = _rb_read_text(
+        '/sys/fs/cgroup/cpu.stat'
+    )
+
+    data['memory_current_bytes'] = \
+        _rb_int(memory_current)
+
+    if memory_max and memory_max != 'max':
+        data['memory_max_bytes'] = \
+            _rb_int(memory_max)
+
+    data['pids_current'] = \
+        _rb_int(pids_current)
+
+    if cpu_stat:
+        for line in cpu_stat.splitlines():
+            parts = line.split()
+            if len(parts) != 2:
+                continue
+
+            key, value = parts
+
+            if key == 'usage_usec':
+                data['cpu_usage_usec'] = \
+                    _rb_int(value)
+
+            elif key == 'user_usec':
+                data['cpu_user_usec'] = \
+                    _rb_int(value)
+
+            elif key == 'system_usec':
+                data['cpu_system_usec'] = \
+                    _rb_int(value)
+
+    return data
+
+
+def _rb_host_metrics():
+    import os as _os
+    import shutil as _shutil
+
+    result = {
+        'cpu_count': _os.cpu_count(),
+        'load1': None,
+        'load5': None,
+        'load15': None,
+        'mem_total_kb': None,
+        'mem_available_kb': None,
+        'disk_total_bytes': None,
+        'disk_used_bytes': None,
+        'disk_free_bytes': None,
+    }
+
+    try:
+        load1, load5, load15 = _os.getloadavg()
+
+        result['load1'] = load1
+        result['load5'] = load5
+        result['load15'] = load15
+
+    except Exception:
+        pass
+
+    meminfo = _rb_read_text('/proc/meminfo')
+
+    if meminfo:
+        for line in meminfo.splitlines():
+
+            if line.startswith('MemTotal:'):
+                parts = line.split()
+                if len(parts) >= 2:
+                    result['mem_total_kb'] = \
+                        _rb_int(parts[1])
+
+            elif line.startswith('MemAvailable:'):
+                parts = line.split()
+                if len(parts) >= 2:
+                    result['mem_available_kb'] = \
+                        _rb_int(parts[1])
+
+    try:
+        usage = _shutil.disk_usage('/')
+
+        result['disk_total_bytes'] = usage.total
+        result['disk_used_bytes'] = usage.used
+        result['disk_free_bytes'] = usage.free
+
+    except Exception:
+        pass
+
+    return result
+
+
+def _rb_db_health():
+    try:
+        value = db.session.execute(
+            text('SELECT 1')
+        ).scalar()
+
+        return {
+            'status':
+                'HEALTHY'
+                if value == 1
+                else 'DEGRADED',
+            'detail': str(value),
+        }
+
+    except Exception as exc:
+
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+        return {
+            'status': 'FAILED',
+            'detail': type(exc).__name__,
+        }
+
+
+def _rb_pacs_health():
+    try:
+        response = requests.get(
+            PACS_ORTHANC_URL + '/system',
+            auth=_orthanc_auth(),
+            timeout=3,
+        )
+
+        return {
+            'status':
+                'ONLINE'
+                if response.ok
+                else 'DEGRADED',
+            'http_status':
+                int(response.status_code),
+        }
+
+    except Exception as exc:
+        return {
+            'status': 'OFFLINE',
+            'http_status': None,
+            'detail': type(exc).__name__,
+        }
+
+
+@app.get('/api/command-center/resources')
+@require_perm('audit.view')
+def api_command_center_resources():
+
+    control = command_center_control_state()
+
+    return jsonify({
+        'schema':
+            'radbridge.command_center.resources.v1',
+
+        'read_only':
+            True,
+
+        'timestamp':
+            datetime.utcnow().isoformat()
+            + 'Z',
+
+        'monitoring': {
+            'mode':
+                control.get('mode'),
+
+            'normal_interval_seconds':
+                control.get(
+                    'normal_interval_seconds'
+                ),
+
+            'live_interval_seconds':
+                control.get(
+                    'live_interval_seconds'
+                ),
+
+            'storage_configured':
+                control.get(
+                    'storage_configured'
+                ),
+        },
+
+        'host':
+            _rb_host_metrics(),
+
+        'container':
+            _rb_cgroup_metrics(),
+
+        'services': {
+            'ris': {
+                'status': 'HEALTHY',
+            },
+
+            'database':
+                _rb_db_health(),
+
+            'pacs':
+                _rb_pacs_health(),
+        },
+    })
+
+
 # RB_LIVE_COMMAND_CENTER_SSE_V1
 # Read-only Server-Sent Events transport for Command Center.
 # It reuses the normalized event API and never writes clinical
