@@ -21920,6 +21920,296 @@ def reports_portal_csv():
     )
 
 
+
+# ============================================================
+# RB_SLA_TAT_ADMIN_V1
+# SLA / TAT policy administration.
+#
+# Existing TATPolicy schema only.
+# No schema creation or migration is performed here.
+# Resolution semantics:
+#   priority + modality exact
+#   -> fallback priority + "*"
+# ============================================================
+
+@app.route(
+    '/admin/tat-policies',
+    methods=['GET','POST']
+)
+@require_perm('assignment.manage')
+def admin_tat_policies():
+
+    priorities = (
+        'STAT',
+        'URGENT',
+        'ROUTINE',
+    )
+
+    if request.method == 'POST':
+
+        action = (
+            request.form.get('action')
+            or 'SAVE'
+        ).strip().upper()
+
+        row_id = request.form.get(
+            'policy_id',
+            type=int
+        )
+
+        row = (
+            db.session.get(
+                TATPolicy,
+                row_id
+            )
+            if row_id
+            else None
+        )
+
+        if action == 'DISABLE':
+
+            if not row:
+                abort(404)
+
+            row.active = False
+
+            audit(
+                'TAT_POLICY_DISABLED',
+                'tat_policy',
+                row.id,
+                (
+                    f'priority={row.priority};'
+                    f'modality={row.modality}'
+                )
+            )
+
+            db.session.commit()
+
+            flash(
+                'SLA / TAT policy disabled.',
+                'success'
+            )
+
+            return redirect(
+                url_for(
+                    'admin_tat_policies'
+                )
+            )
+
+        priority = (
+            request.form.get('priority')
+            or ''
+        ).strip().upper()
+
+        modality = (
+            request.form.get('modality')
+            or '*'
+        ).strip().upper()
+
+        if not modality:
+            modality = '*'
+
+        if priority not in priorities:
+            flash(
+                'Invalid priority.',
+                'danger'
+            )
+            return redirect(
+                url_for(
+                    'admin_tat_policies'
+                )
+            )
+
+        def required_nonnegative_int(name):
+            value = request.form.get(
+                name,
+                type=int
+            )
+
+            if value is None or value < 0:
+                raise ValueError(name)
+
+            return value
+
+        try:
+            ready_to_assign_min = (
+                required_nonnegative_int(
+                    'ready_to_assign_min'
+                )
+            )
+
+            assign_to_accept_min = (
+                required_nonnegative_int(
+                    'assign_to_accept_min'
+                )
+            )
+
+            accept_to_final_min = (
+                required_nonnegative_int(
+                    'accept_to_final_min'
+                )
+            )
+
+            total_tat_min = (
+                required_nonnegative_int(
+                    'total_tat_min'
+                )
+            )
+
+        except ValueError:
+            flash(
+                'All SLA values must be zero or positive minutes.',
+                'danger'
+            )
+            return redirect(
+                url_for(
+                    'admin_tat_policies'
+                )
+            )
+
+        active = (
+            request.form.get('active')
+            == '1'
+        )
+
+        duplicate_query = (
+            TATPolicy.query
+            .filter_by(
+                priority=priority,
+                modality=modality,
+                active=True,
+            )
+        )
+
+        if row:
+            duplicate_query = (
+                duplicate_query
+                .filter(
+                    TATPolicy.id != row.id
+                )
+            )
+
+        duplicate = (
+            duplicate_query
+            .order_by(
+                TATPolicy.id.asc()
+            )
+            .first()
+        )
+
+        if active and duplicate:
+            flash(
+                (
+                    'An active SLA / TAT policy already exists '
+                    f'for {priority} + {modality}.'
+                ),
+                'danger'
+            )
+
+            return redirect(
+                url_for(
+                    'admin_tat_policies'
+                )
+            )
+
+        created = row is None
+
+        if row is None:
+            row = TATPolicy()
+            db.session.add(row)
+
+        row.priority = priority
+        row.modality = modality
+
+        row.ready_to_assign_min = (
+            ready_to_assign_min
+        )
+
+        row.assign_to_accept_min = (
+            assign_to_accept_min
+        )
+
+        row.accept_to_final_min = (
+            accept_to_final_min
+        )
+
+        row.total_tat_min = (
+            total_tat_min
+        )
+
+        row.active = active
+
+        db.session.flush()
+
+        audit(
+            (
+                'TAT_POLICY_CREATED'
+                if created
+                else 'TAT_POLICY_UPDATED'
+            ),
+            'tat_policy',
+            row.id,
+            (
+                f'priority={row.priority};'
+                f'modality={row.modality};'
+                f'ready_to_assign_min={row.ready_to_assign_min};'
+                f'assign_to_accept_min={row.assign_to_accept_min};'
+                f'accept_to_final_min={row.accept_to_final_min};'
+                f'total_tat_min={row.total_tat_min};'
+                f'active={row.active}'
+            )
+        )
+
+        db.session.commit()
+
+        flash(
+            (
+                'SLA / TAT policy created.'
+                if created
+                else 'SLA / TAT policy updated.'
+            ),
+            'success'
+        )
+
+        return redirect(
+            url_for(
+                'admin_tat_policies'
+            )
+        )
+
+    rows = (
+        TATPolicy.query
+        .order_by(
+            TATPolicy.priority,
+            TATPolicy.modality,
+            TATPolicy.id
+        )
+        .all()
+    )
+
+    modalities = sorted({
+        str(x[0]).strip().upper()
+        for x in (
+            db.session.query(
+                Order.modality
+            )
+            .filter(
+                Order.modality.isnot(None)
+            )
+            .distinct()
+            .all()
+        )
+        if x[0]
+    })
+
+    return render_template(
+        'admin_tat_policies.html',
+        rows=rows,
+        priorities=priorities,
+        modalities=modalities,
+    )
+
+
 @app.get('/operations/tat')
 @require_perm('orders.view')
 def tat_dashboard():
