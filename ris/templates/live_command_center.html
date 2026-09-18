@@ -1405,6 +1405,18 @@
             </small>
         </div>
 
+
+        <!-- RB_LCC_AUTO_PROTECTION_UI_V1 -->
+        <div class="rb-resource-card">
+            <span>Auto Protection</span>
+            <strong id="rb-resource-autoprotect">
+                -
+            </strong>
+            <small id="rb-resource-autoprotect-sub">
+                -
+            </small>
+        </div>
+
         <div class="rb-resource-card">
             <span>Monitoring</span>
             <strong id="rb-resource-mode">
@@ -2171,6 +2183,73 @@
                     host.disk_total_bytes
                 )
                 + ' used';
+        }
+
+
+        const autoProtection =
+            data.auto_protection || {};
+
+        const autoProtect =
+            document.getElementById(
+                'rb-resource-autoprotect'
+            );
+
+        const autoProtectSub =
+            document.getElementById(
+                'rb-resource-autoprotect-sub'
+            );
+
+        if (autoProtect) {
+            if (autoProtection.enabled === false) {
+                autoProtect.textContent = 'OFF';
+            } else if (autoProtection.triggered) {
+                autoProtect.textContent = 'TRIGGERED';
+            } else if (autoProtection.high_since) {
+                autoProtect.textContent = 'WATCHING';
+            } else {
+                autoProtect.textContent = 'ON';
+            }
+
+            autoProtect.classList.remove(
+                'rb-resource-ok',
+                'rb-resource-warn',
+                'rb-resource-bad'
+            );
+
+            if (autoProtection.triggered) {
+                autoProtect.classList.add(
+                    'rb-resource-warn'
+                );
+            } else if (autoProtection.high_since) {
+                autoProtect.classList.add(
+                    'rb-resource-warn'
+                );
+            } else if (autoProtection.enabled !== false) {
+                autoProtect.classList.add(
+                    'rb-resource-ok'
+                );
+            }
+        }
+
+        if (autoProtectSub) {
+            if (autoProtection.triggered) {
+                autoProtectSub.textContent =
+                    String(
+                        autoProtection.action
+                        || 'LIVE_TO_NORMAL'
+                    );
+            } else if (autoProtection.high_since) {
+                autoProtectSub.textContent =
+                    'Sustained pressure detected';
+            } else {
+                autoProtectSub.textContent =
+                    'Sustain '
+                    + String(
+                        autoProtection.sustain_seconds
+                        || 120
+                    )
+                    + ' sec';
+            }
         }
 
         const mode =
