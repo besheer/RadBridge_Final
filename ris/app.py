@@ -11670,6 +11670,39 @@ def readiness_allows_auto_assign(order):
     '''
     return assignment_readiness_decision(order)['allowed']
 
+
+# RB_TAT_POLICY_RESOLVER_V1
+def resolve_tat_policy(priority, modality=None):
+    """Resolve active TAT policy by priority + modality, then wildcard."""
+    priority_key = str(priority or 'ROUTINE').strip().upper()
+    modality_key = str(modality or '').strip().upper()
+
+    if modality_key:
+        exact = (
+            TATPolicy.query
+            .filter_by(
+                priority=priority_key,
+                modality=modality_key,
+                active=True,
+            )
+            .order_by(TATPolicy.id.asc())
+            .first()
+        )
+        if exact:
+            return exact
+
+    return (
+        TATPolicy.query
+        .filter_by(
+            priority=priority_key,
+            modality='*',
+            active=True,
+        )
+        .order_by(TATPolicy.id.asc())
+        .first()
+    )
+
+
 def case_delay_snapshot(order):
     events=CaseWorkflowEvent.query.filter_by(order_id=order.id).order_by(CaseWorkflowEvent.created_at).all()
     now=datetime.utcnow()
@@ -11681,7 +11714,10 @@ def case_delay_snapshot(order):
     except Exception: pass
     registered=getattr(order,'created_at',None) or getattr(order,'scheduled',None)
     total_min=int((now-registered).total_seconds()/60) if registered else 0
-    policy=TATPolicy.query.filter_by(priority=str(order.priority or 'ROUTINE').upper(),active=True).first()
+    policy=resolve_tat_policy(
+        order.priority,
+        order.modality
+    )
     overdue=bool(policy and total_min>policy.total_tat_min and not final)
     if readiness and readiness.status=='BLOCKED':
         owner='TECHNICIAN' if readiness.incomplete_images or readiness.missing_pacs else 'RECEPTION'
