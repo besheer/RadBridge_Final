@@ -114,8 +114,13 @@
 {% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('operations_dashboard')}}">📊 <span>{{"لوحة التشغيل" if ui_lang=="ar" else "Operations Dashboard"}}</span></a>{% endif %}
 {% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('operations_journey')}}">🧭 <span>{{"رحلة المريض" if ui_lang=="ar" else "Patient Journey"}}</span></a>{% endif %}
 {% if has_perm("workflow.command.view") %}<a class="nav-link" href="{{url_for('workflow_command_center')}}">🎛 <span>{{"مركز التحكم" if ui_lang=="ar" else "Command Center"}}</span></a>{% endif %}
+
+<!-- RB_OPERATIONS_NAV_COMPLETION_V1 -->
+{% if has_perm("audit.view") %}<a class="nav-link nav-link-featured" href="{{url_for('live_command_center')}}">🟢 <span>{{"مركز التحكم المباشر" if ui_lang=="ar" else "Live Command Center"}}</span></a>{% endif %}
 {% if has_perm("appointments.manage") %}<a class="nav-link" href="{{url_for('operations_booking_board')}}">▦ <span>{{"لوحة الحجز" if ui_lang=="ar" else "Booking Board"}}</span></a>{% endif %}
 {% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('case_readiness_dashboard')}}">✓ <span>{{"جاهزية الحالات" if ui_lang=="ar" else "Case Readiness"}}</span></a>{% endif %}
+
+{% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('case_exception_resolver')}}">⚠ <span>{{"استثناءات الحالات" if ui_lang=="ar" else "Case Exceptions"}}</span></a>{% endif %}
 {% if has_perm("orders.view") %}<a class="nav-link nav-link-featured" href="{{url_for('case_operations_control_center')}}">⌘ <span>{{"مركز عمليات الحالات" if ui_lang=="ar" else "Case Operations Control"}}</span></a>{% endif %}
 {% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('assignment_dashboard')}}">⇶ <span>{{"لوحة التوزيع" if ui_lang=="ar" else "Assignment Dashboard"}}</span></a>{% endif %}
 {% if has_perm("reports.view") %}<a class="nav-link" href="{{url_for('unassigned_cases')}}">○ <span>{{"حالات غير موزعة" if ui_lang=="ar" else "Unassigned Cases"}}</span></a>{% endif %}
