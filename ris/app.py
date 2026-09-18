@@ -15640,6 +15640,284 @@ def api_command_center_control_set():
 
 
 # ============================================================
+
+# ============================================================
+# RB_COMMAND_CENTER_AUTO_PROTECTION_V1
+# Protects Command Center monitoring only.
+#
+# LIVE -> NORMAL when sustained resource pressure is detected.
+# Never changes RIS/PACS/DB/clinical workflow behavior.
+# ============================================================
+
+def _rb_auto_protection_state_path():
+    control_path = _command_center_control_path()
+
+    if not control_path:
+        return ''
+
+    return control_path + '.autoprotect.json'
+
+
+def _rb_auto_protection_defaults():
+    return {
+        'enabled': True,
+        'load_ratio_threshold': 0.80,
+        'memory_percent_threshold': 85.0,
+        'sustain_seconds': 120,
+        'high_since': None,
+        'last_triggered_at': None,
+        'last_reason': '',
+    }
+
+
+def _rb_auto_protection_read_state():
+    state = _rb_auto_protection_defaults()
+
+    path = _rb_auto_protection_state_path()
+
+    if not path:
+        return state
+
+    try:
+        with open(
+            path,
+            'r',
+            encoding='utf-8'
+        ) as handle:
+            stored = json.load(handle)
+
+        if isinstance(stored, dict):
+            state.update(stored)
+
+    except FileNotFoundError:
+        pass
+
+    except Exception:
+        app.logger.exception(
+            'COMMAND_CENTER_AUTO_PROTECT_READ_FAILED'
+        )
+
+    return state
+
+
+def _rb_auto_protection_write_state(state):
+    path = _rb_auto_protection_state_path()
+
+    if not path:
+        return False
+
+    directory = os.path.dirname(path)
+
+    try:
+        if directory:
+            os.makedirs(
+                directory,
+                exist_ok=True
+            )
+
+        temp_path = (
+            path
+            + '.tmp.'
+            + str(os.getpid())
+        )
+
+        with open(
+            temp_path,
+            'w',
+            encoding='utf-8'
+        ) as handle:
+            json.dump(
+                state,
+                handle,
+                ensure_ascii=False,
+                sort_keys=True
+            )
+
+            handle.flush()
+            os.fsync(
+                handle.fileno()
+            )
+
+        os.replace(
+            temp_path,
+            path
+        )
+
+        return True
+
+    except Exception:
+        app.logger.exception(
+            'COMMAND_CENTER_AUTO_PROTECT_WRITE_FAILED'
+        )
+
+        return False
+
+
+def _rb_auto_protection_evaluate(
+    host_metrics,
+    container_metrics
+):
+    import time as _time
+
+    control = command_center_control_state()
+    state = _rb_auto_protection_read_state()
+
+    result = {
+        'enabled': bool(
+            state.get('enabled', True)
+        ),
+        'triggered': False,
+        'action': None,
+        'reason': '',
+        'high_since': state.get('high_since'),
+        'sustain_seconds': int(
+            state.get('sustain_seconds') or 120
+        ),
+    }
+
+    if not result['enabled']:
+        return result
+
+    if str(control.get('mode')).upper() != 'LIVE':
+        if state.get('high_since') is not None:
+            state['high_since'] = None
+            _rb_auto_protection_write_state(state)
+
+        return result
+
+    cpu_count = max(
+        1,
+        int(host_metrics.get('cpu_count') or 1)
+    )
+
+    load1 = host_metrics.get('load1')
+
+    try:
+        load_ratio = (
+            float(load1) / float(cpu_count)
+        )
+    except Exception:
+        load_ratio = 0.0
+
+    mem_total_kb = (
+        host_metrics.get('mem_total_kb')
+    )
+
+    mem_available_kb = (
+        host_metrics.get('mem_available_kb')
+    )
+
+    memory_percent = 0.0
+
+    try:
+        if (
+            mem_total_kb
+            and mem_available_kb is not None
+        ):
+            memory_percent = (
+                (
+                    float(mem_total_kb)
+                    - float(mem_available_kb)
+                )
+                / float(mem_total_kb)
+            ) * 100.0
+    except Exception:
+        memory_percent = 0.0
+
+    load_threshold = float(
+        state.get(
+            'load_ratio_threshold',
+            0.80
+        )
+    )
+
+    memory_threshold = float(
+        state.get(
+            'memory_percent_threshold',
+            85.0
+        )
+    )
+
+    reasons = []
+
+    if load_ratio >= load_threshold:
+        reasons.append(
+            'LOAD_RATIO_HIGH'
+        )
+
+    if memory_percent >= memory_threshold:
+        reasons.append(
+            'MEMORY_HIGH'
+        )
+
+    now = _time.time()
+
+    if not reasons:
+        if state.get('high_since') is not None:
+            state['high_since'] = None
+            state['last_reason'] = ''
+            _rb_auto_protection_write_state(state)
+
+        return result
+
+    if state.get('high_since') is None:
+        state['high_since'] = now
+        state['last_reason'] = ','.join(reasons)
+        _rb_auto_protection_write_state(state)
+
+        result['high_since'] = now
+        result['reason'] = state['last_reason']
+
+        return result
+
+    try:
+        elapsed = (
+            now
+            - float(state.get('high_since'))
+        )
+    except Exception:
+        elapsed = 0
+
+    result['high_since'] = state.get('high_since')
+    result['reason'] = ','.join(reasons)
+
+    sustain_seconds = int(
+        state.get('sustain_seconds') or 120
+    )
+
+    if elapsed < sustain_seconds:
+        return result
+
+    ok, write_result = \
+        _command_center_write_control_state(
+            mode='NORMAL',
+            updated_by='AUTO_PROTECTION',
+        )
+
+    if not ok:
+        result['reason'] = (
+            result['reason']
+            + '; CONTROL_WRITE_FAILED'
+        )
+        return result
+
+    triggered_at = (
+        datetime.utcnow().isoformat()
+        + 'Z'
+    )
+
+    state['high_since'] = None
+    state['last_triggered_at'] = triggered_at
+    state['last_reason'] = result['reason']
+
+    _rb_auto_protection_write_state(state)
+
+    result['triggered'] = True
+    result['action'] = 'LIVE_TO_NORMAL'
+
+    return result
+
+
 # RB_COMMAND_CENTER_RESOURCE_MONITOR_V1
 # Read-only resource and service health telemetry.
 # ============================================================
@@ -15829,6 +16107,14 @@ def api_command_center_resources():
 
     control = command_center_control_state()
 
+    host_metrics = _rb_host_metrics()
+    container_metrics = _rb_cgroup_metrics()
+
+    auto_protection = _rb_auto_protection_evaluate(
+        host_metrics,
+        container_metrics,
+    )
+
     return jsonify({
         'schema':
             'radbridge.command_center.resources.v1',
@@ -15861,10 +16147,13 @@ def api_command_center_resources():
         },
 
         'host':
-            _rb_host_metrics(),
+            host_metrics,
 
         'container':
-            _rb_cgroup_metrics(),
+            container_metrics,
+
+        'auto_protection':
+            auto_protection,
 
         'services': {
             'ris': {
