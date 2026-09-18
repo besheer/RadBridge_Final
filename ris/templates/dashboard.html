@@ -171,7 +171,7 @@
 </section>
 {% endif %}
 
-{% if has_perm('orders.view') or has_perm('workflow.command.view') %}
+{% if has_perm('orders.view') or has_perm('workflow.command.view') or has_perm('audit.view') %}
 <section class="rb-section">
   <div class="rb-section-head">
     <h2>Operations & Exceptions</h2>
@@ -196,6 +196,39 @@
         <span class="rb-module-icon">📡</span>
         <div><h3>Workflow Command Center</h3><p>Operational monitoring and escalation.</p></div>
         <span class="rb-module-count">{{stats.completed}} completed</span>
+      </a>
+    {% endif %}
+
+    <!-- RB_DASHBOARD_SLA_OPERATIONS_LINKS_V1 -->
+
+    {% if has_perm('audit.view') %}
+      <a class="rb-module" href="{{url_for('live_command_center')}}">
+        <span class="rb-module-icon">🟢</span>
+        <div>
+          <h3>Live Command Center</h3>
+          <p>Live workflow, system health, resources and monitoring controls.</p>
+        </div>
+        <span class="rb-module-count">Live operations</span>
+      </a>
+    {% endif %}
+
+    {% if has_perm('orders.view') %}
+      <a class="rb-module" href="{{url_for('tat_dashboard')}}">
+        <span class="rb-module-icon">⏱</span>
+        <div>
+          <h3>TAT Dashboard</h3>
+          <p>Turnaround-time monitoring, SLA visibility and overdue workflow cases.</p>
+        </div>
+        <span class="rb-module-count">SLA & TAT</span>
+      </a>
+
+      <a class="rb-module" href="{{url_for('escalation_board')}}">
+        <span class="rb-module-icon">⚑</span>
+        <div>
+          <h3>Escalations</h3>
+          <p>Operational escalations, overdue cases and SLA exceptions.</p>
+        </div>
+        <span class="rb-module-count">Exceptions</span>
       </a>
     {% endif %}
   </div>
