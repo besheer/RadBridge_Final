@@ -635,9 +635,40 @@ form.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{
 });
 document.getElementById('calDate').onchange=e=>{const u=new URL(location.href);u.searchParams.set('date',e.target.value);location.href=u};
 // RB_CALENDAR_EXISTING_PATIENT_DEEP_LINK_V1
+// RB_CALENDAR_MODALITY_DEEP_LINK_V1
 const qs=new URLSearchParams(location.search);
+
 if(qs.get('open_registration')==='1'){
-  const b=document.querySelector('.rb-add');
+
+  const requestedModality=(qs.get('modality')||'')
+    .trim()
+    .toUpperCase();
+
+  let b=null;
+
+  if(requestedModality){
+
+    const cells=[...document.querySelectorAll('.rb-cell')];
+
+    const matchingCell=cells.find(cell=>{
+      const modality=String(
+        cell.dataset.modality||''
+      ).trim().toUpperCase();
+
+      return (
+        modality===requestedModality
+        && cell.querySelector('.rb-add')
+      );
+    });
+
+    if(matchingCell){
+      b=matchingCell.querySelector('.rb-add');
+    }
+  }
+
+  if(!b){
+    b=document.querySelector('.rb-add');
+  }
 
   if(b){
     openWs(b.closest('.rb-cell'));
