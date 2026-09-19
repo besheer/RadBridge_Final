@@ -10054,7 +10054,26 @@ def registration_defaults_for(user=None):
 
 def registration_form_context(form_data=None,selected_patient=None,duplicate_patients=None):
     selected_patient_obj = Patient.query.get(selected_patient) if selected_patient else None
-    form_data=form_data or {}
+    form_data=dict(form_data or {})
+
+    # RB_SELECTED_PATIENT_FORM_PREFILL_V1
+    # Existing form values always win. Patient data only fills missing fields.
+    if selected_patient_obj:
+        patient_prefill = {
+            'patient': str(selected_patient_obj.id),
+            'name': str(selected_patient_obj.name or ''),
+            'national_id': str(selected_patient_obj.national_id or ''),
+            'phone': str(selected_patient_obj.phone or ''),
+            'dob': str(selected_patient_obj.dob or ''),
+            'sex': str(selected_patient_obj.sex or ''),
+            'address': str(selected_patient_obj.address or ''),
+            'patient_mode': 'existing',
+        }
+
+        for key,value in patient_prefill.items():
+            if key not in form_data or str(form_data.get(key) or '').strip()=='':
+                form_data[key]=value
+
     defaults=registration_defaults_for()
     return dict(
         patients=Patient.query.order_by(Patient.name).all(),
