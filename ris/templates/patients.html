@@ -7,5 +7,124 @@
 <select name="priority"><option value="">Priority</option><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select>
 </div><div class="actions"><button class="btn small primary">Filter</button><a class="btn small" href="{{request.path}}">Clear</a></div></form><div class="panel"><div class="panel-head"><form class="search"><input name="q" value="{{q}}" placeholder="Name, Patient ID, phone, national ID"><button class="btn">Search</button></form>{% if has_perm('patients.create') %}<a class="btn primary" href="{{url_for('new_patient')}}">+ Register Patient</a>{% endif %}</div>
 <table><thead><tr><th>Patient ID</th><th>Name</th><th>DOB</th><th>Sex</th><th>Phone</th><th>National ID</th><th></th></tr></thead><tbody>
-{% for p in patients %}<tr><td><b>{{p.patient_id}}</b></td><td>{{p.name}}</td><td>{{p.dob}}</td><td>{{p.sex}}</td><td>{{p.phone or '-'}}</td><td>{{p.national_id or '-'}}</td><td>{% if has_perm('orders.create') %}<a class="btn small" href="{{url_for('new_order',patient=p.id)}}">New Order</a>{% endif %}</td></tr>{% else %}<tr><td colspan="7" class="empty">No patients.</td></tr>{% endfor %}
-</tbody></table></div>{% endblock %}
+{% for p in patients %}<tr><td><b>{{p.patient_id}}</b></td><td>{{p.name}}</td><td>{{p.dob}}</td><td>{{p.sex}}</td><td>{{p.phone or '-'}}</td><td>{{p.national_id or '-'}}</td><td>{% if has_perm('orders.create') %}<button class="btn small rb-new-order-btn" type="button" data-patient-id="{{p.id}}" data-patient-name="{{p.name|e}}">New Order</button>{% endif %}</td></tr>{% else %}<tr><td colspan="7" class="empty">No patients.</td></tr>{% endfor %}
+</tbody></table></div>
+<!-- RB_PATIENT_NEW_ORDER_MODALITY_PICKER_V1 -->
+<div id="rbModalityPicker" class="booking-overlay" hidden>
+  <div style="
+    min-height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  ">
+    <div class="panel" style="
+      width:min(520px,95vw);
+      margin:0;
+      padding:22px;
+    ">
+      <div style="
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        margin-bottom:16px;
+      ">
+        <div>
+          <h3 style="margin:0">
+            {{ 'اختر نوع الفحص' if ui_lang=='ar' else 'Choose Modality' }}
+          </h3>
+          <small id="rbModalityPatientName"></small>
+        </div>
+
+        <button
+          type="button"
+          class="btn"
+          id="rbModalityClose"
+        >×</button>
+      </div>
+
+      <div class="grid4">
+        <button type="button" class="btn primary rb-modality-choice" data-modality="MR">MRI</button>
+        <button type="button" class="btn primary rb-modality-choice" data-modality="CT">CT</button>
+        <button type="button" class="btn primary rb-modality-choice" data-modality="DX">X-Ray</button>
+        <button type="button" class="btn primary rb-modality-choice" data-modality="US">US</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const picker=document.getElementById('rbModalityPicker');
+  const closeBtn=document.getElementById('rbModalityClose');
+  const patientLabel=document.getElementById('rbModalityPatientName');
+
+  let selectedPatientId='';
+
+  function closePicker(){
+    picker.hidden=true;
+    selectedPatientId='';
+  }
+
+  document.querySelectorAll('.rb-new-order-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      selectedPatientId=String(
+        btn.dataset.patientId||''
+      ).trim();
+
+      patientLabel.textContent=
+        btn.dataset.patientName||'';
+
+      picker.hidden=false;
+    });
+  });
+
+  document.querySelectorAll('.rb-modality-choice').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const modality=String(
+        btn.dataset.modality||''
+      ).trim().toUpperCase();
+
+      if(!selectedPatientId || !modality){
+        return;
+      }
+
+      const url=new URL(
+        "{{ url_for('schedule_calendar') }}",
+        window.location.origin
+      );
+
+      url.searchParams.set(
+        'open_registration',
+        '1'
+      );
+
+      url.searchParams.set(
+        'patient',
+        selectedPatientId
+      );
+
+      url.searchParams.set(
+        'modality',
+        modality
+      );
+
+      window.location.href=url.toString();
+    });
+  });
+
+  closeBtn.addEventListener(
+    'click',
+    closePicker
+  );
+
+  picker.addEventListener('click',event=>{
+    if(event.target===picker){
+      closePicker();
+    }
+  });
+})();
+</script>
+
+{% endblock %}
