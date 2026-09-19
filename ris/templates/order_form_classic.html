@@ -82,6 +82,60 @@ document.addEventListener('DOMContentLoaded', function () {
 {% include "_registration_style_selector.html" %}
 {% include "_patient_created_banner.html" %}
 
+{% if selected_patient_obj %}
+<!-- RB_SELECTED_PATIENT_SUMMARY_V1 -->
+<div class="panel rb-selected-patient-summary"
+     style="margin:0 0 16px 0;padding:14px 16px;">
+  <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <strong>
+      {{ 'بيانات المريض المختار' if ui_lang=='ar' else 'Selected Patient' }}
+    </strong>
+
+    <span>
+      {{ selected_patient_obj.patient_id or '' }}
+    </span>
+  </div>
+
+  <div style="
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+      gap:10px;
+      margin-top:12px;
+  ">
+    <div>
+      <small>{{ 'الاسم' if ui_lang=='ar' else 'Name' }}</small><br>
+      <strong>{{ selected_patient_obj.name or '-' }}</strong>
+    </div>
+
+    <div>
+      <small>{{ 'الرقم القومي' if ui_lang=='ar' else 'National ID' }}</small><br>
+      <strong>{{ selected_patient_obj.national_id or '-' }}</strong>
+    </div>
+
+    <div>
+      <small>{{ 'تاريخ الميلاد' if ui_lang=='ar' else 'DOB' }}</small><br>
+      <strong>{{ selected_patient_obj.dob or '-' }}</strong>
+    </div>
+
+    <div>
+      <small>{{ 'النوع' if ui_lang=='ar' else 'Sex' }}</small><br>
+      <strong>{{ selected_patient_obj.sex or '-' }}</strong>
+    </div>
+
+    <div>
+      <small>{{ 'الهاتف' if ui_lang=='ar' else 'Phone' }}</small><br>
+      <strong>{{ selected_patient_obj.phone or '-' }}</strong>
+    </div>
+
+    <div>
+      <small>{{ 'العنوان' if ui_lang=='ar' else 'Address' }}</small><br>
+      <strong>{{ selected_patient_obj.address or '-' }}</strong>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
 <form method="post" enctype="multipart/form-data" class="panel classic-registration"><div class="notice info validation-preserve-note">Validation errors keep the entered patient/visit data on this screen. Browser security may require re-selecting file attachments after a server-side validation response.</div>
 <input type="hidden" name="patient_mode" id="pmode" value="{{patient_mode_value}}">
 <div class="classic-section">
