@@ -13276,6 +13276,194 @@ def admin_booking_availability():
     return render_template('admin_booking_availability.html',
         branches=branches,branch_id=branch_id,rows=rows)
 
+
+# RB_SMART_BOOKING_V2_AVAILABILITY_API_V1
+@app.get('/api/booking/smart-availability')
+@require_perm('appointments.view')
+def api_smart_booking_availability():
+    branch_id=request.args.get('branch_id',type=int)
+    procedure_id=request.args.get('procedure_id',type=int)
+    requested_device_id=request.args.get('device_id',type=int)
+    date_text=(request.args.get('date') or '').strip()
+
+    if not branch_id:
+        return jsonify({
+            'ok':False,
+            'error':'branch_id required'
+        }),400
+
+    if not procedure_id:
+        return jsonify({
+            'ok':False,
+            'error':'procedure_id required'
+        }),400
+
+    branch=Branch.query.get(branch_id)
+    procedure=Procedure.query.get(procedure_id)
+
+    if not branch or not branch.active:
+        return jsonify({
+            'ok':False,
+            'error':'branch unavailable'
+        }),404
+
+    if not procedure or not procedure.active:
+        return jsonify({
+            'ok':False,
+            'error':'procedure unavailable'
+        }),404
+
+    if not procedure_available_in_branch(
+        procedure.id,
+        branch.id
+    ):
+        return jsonify({
+            'ok':False,
+            'error':'procedure not available in branch'
+        }),409
+
+    try:
+        selected=(
+            datetime.strptime(date_text,'%Y-%m-%d').date()
+            if date_text
+            else datetime.now().date()
+        )
+    except ValueError:
+        return jsonify({
+            'ok':False,
+            'error':'invalid date'
+        }),400
+
+    modality=(procedure.modality or '').strip().upper()
+
+    devices_q=Device.query.filter_by(
+        branch_id=branch.id,
+        active=True,
+    )
+
+    if modality:
+        devices_q=devices_q.filter(
+            db.func.upper(Device.modality)==modality
+        )
+
+    if requested_device_id:
+        devices_q=devices_q.filter(
+            Device.id==requested_device_id
+        )
+
+    devices=devices_q.order_by(
+        Device.priority.asc(),
+        Device.name.asc(),
+        Device.id.asc(),
+    ).all()
+
+    duration=max(
+        5,
+        int(procedure.duration_min or 20)
+    )
+
+    results=[]
+
+    for device in devices:
+
+        operational=(
+            getattr(device,'operational_status','ACTIVE')
+            or 'ACTIVE'
+        ).upper()
+
+        booking_enabled=bool(
+            getattr(device,'booking_enabled',True)
+        )
+
+        device_result={
+            'id':device.id,
+            'name':device.name,
+            'room':device.room or '',
+            'modality':device.modality or '',
+            'priority':device.priority,
+            'booking_enabled':booking_enabled,
+            'operational_status':operational,
+            'slots':[],
+        }
+
+        if (
+            not booking_enabled
+            or operational!='ACTIVE'
+        ):
+            results.append(device_result)
+            continue
+
+        slots=booking_v2_slots(
+            selected,
+            device,
+            slot_minutes=15,
+        )
+
+        for slot in slots:
+
+            reason=booking_restriction_reason(
+                branch,
+                procedure,
+                device,
+                slot,
+                duration,
+            )
+
+            if reason:
+                continue
+
+            device_result['slots'].append({
+                'start':slot.isoformat(),
+                'time':slot.strftime('%H:%M'),
+                'duration_min':duration,
+            })
+
+        results.append(device_result)
+
+    available=[
+        item
+        for item in results
+        if item['slots']
+    ]
+
+    best=None
+
+    if available:
+        best=min(
+            available,
+            key=lambda item:(
+                item['slots'][0]['start'],
+                item['priority'],
+                item['id'],
+            )
+        )
+
+    return jsonify({
+        'ok':True,
+        'branch':{
+            'id':branch.id,
+            'name':branch.name,
+        },
+        'procedure':{
+            'id':procedure.id,
+            'code':procedure.code,
+            'name':procedure.name,
+            'name_ar':procedure.name_ar,
+            'modality':procedure.modality,
+            'duration_min':duration,
+        },
+        'date':selected.isoformat(),
+        'devices':results,
+        'available_device_count':len(available),
+        'best_device_id':best['id'] if best else None,
+        'best_slot':(
+            best['slots'][0]
+            if best
+            else None
+        ),
+    })
+
+
 @app.post('/admin/booking-availability/seed')
 @require_perm('devices.manage')
 def admin_booking_availability_seed():
