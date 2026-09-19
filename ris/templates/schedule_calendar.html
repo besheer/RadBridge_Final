@@ -634,7 +634,34 @@ form.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{
  dirty=false
 });
 document.getElementById('calDate').onchange=e=>{const u=new URL(location.href);u.searchParams.set('date',e.target.value);location.href=u};
-const qs=new URLSearchParams(location.search);if(qs.get('open_registration')==='1'){const b=document.querySelector('.rb-add');if(b)openWs(b.closest('.rb-cell'))}
+// RB_CALENDAR_EXISTING_PATIENT_DEEP_LINK_V1
+const qs=new URLSearchParams(location.search);
+if(qs.get('open_registration')==='1'){
+  const b=document.querySelector('.rb-add');
+
+  if(b){
+    openWs(b.closest('.rb-cell'));
+
+    const patientId=(qs.get('patient')||'').trim();
+
+    if(/^\d+$/.test(patientId)){
+      const patientItem=pitems.find(
+        x=>String(x.dataset.id||'')===patientId
+      );
+
+      if(patientItem){
+        setMode('existing');
+
+        if(psearch){
+          const label=patientItem.querySelector('b');
+          psearch.value=label ? label.textContent.trim() : '';
+        }
+
+        patientItem.click();
+      }
+    }
+  }
+}
 })();
 </script>
 {% endblock %}
