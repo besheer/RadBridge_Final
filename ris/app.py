@@ -19396,6 +19396,408 @@ def cancellation_search_rows(term):
         if appointment and appointment not in appointments:appointments.insert(0,appointment)
     return orders[:50],appointments[:50]
 
+
+
+# RB_GRANULAR_DELETE_READONLY_PREVIEW_V1
+def granular_delete_order_preview_snapshot(order):
+    """
+    Read-only preview of data associated with one RIS order.
+    This helper MUST NOT mutate RIS, PACS, report files, or audit rows.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    order_table = Order.__table__.name
+
+    patient = (
+        db.session.get(Patient, order.patient_id)
+        if getattr(order, 'patient_id', None)
+        else None
+    )
+
+    dependency_rows = []
+    dependency_total = 0
+    active_dependency_tables = 0
+
+    for child_table in sorted(inspector.get_table_names()):
+        for fk in inspector.get_foreign_keys(child_table):
+            if fk.get('referred_table') != order_table:
+                continue
+
+            local_columns = fk.get('constrained_columns') or []
+
+            if len(local_columns) != 1:
+                dependency_rows.append({
+                    'table': child_table,
+                    'column': ','.join(local_columns),
+                    'count': None,
+                    'classification': 'COMPOSITE_FK_REVIEW',
+                })
+                continue
+
+            local_column = local_columns[0]
+
+            preparer = db.engine.dialect.identifier_preparer
+            quoted_table = preparer.quote(child_table)
+            quoted_column = preparer.quote(local_column)
+
+            count = db.session.execute(
+                text(
+                    'SELECT COUNT(*) FROM '
+                    + quoted_table
+                    + ' WHERE '
+                    + quoted_column
+                    + ' = :order_id'
+                ),
+                {'order_id': order.id},
+            ).scalar() or 0
+
+            lower = child_table.lower()
+
+            if 'audit' in lower:
+                classification = 'AUDIT_KEEP'
+            elif 'report' in lower:
+                classification = 'REPORT_DOMAIN'
+            elif any(
+                token in lower
+                for token in ('attach', 'document', 'file')
+            ):
+                classification = 'FILE_DOMAIN'
+            elif any(
+                token in lower
+                for token in ('pacs', 'study', 'image', 'dicom')
+            ):
+                classification = 'PACS_DOMAIN'
+            elif any(
+                token in lower
+                for token in (
+                    'workflow',
+                    'assignment',
+                    'lease',
+                    'queue',
+                )
+            ):
+                classification = 'WORKFLOW_DOMAIN'
+            elif any(
+                token in lower
+                for token in (
+                    'note',
+                    'consum',
+                    'nursing',
+                    'technician',
+                )
+            ):
+                classification = 'CASE_DOMAIN'
+            else:
+                classification = 'OTHER_DEPENDENCY'
+
+            dependency_total += int(count)
+
+            if count:
+                active_dependency_tables += 1
+
+            dependency_rows.append({
+                'table': child_table,
+                'column': local_column,
+                'count': int(count),
+                'classification': classification,
+            })
+
+    report_rows = []
+
+    if 'order_id' in Report.__table__.columns:
+        reports = (
+            Report.query
+            .filter_by(order_id=order.id)
+            .order_by(Report.id.desc())
+            .all()
+        )
+
+        for report in reports:
+            report_rows.append({
+                'id': report.id,
+                'status': getattr(report, 'status', None),
+                'finalized_at': getattr(
+                    report,
+                    'finalized_at',
+                    None,
+                ),
+            })
+
+    final_report_present = any(
+        str(row.get('status') or '').strip().upper() == 'FINAL'
+        for row in report_rows
+    )
+
+    pacs_study_id = (
+        getattr(order, 'pacs_study_id', None)
+        or ''
+    )
+
+    pacs_image_count = (
+        getattr(order, 'pacs_image_count', None)
+        or 0
+    )
+
+    blockers = []
+
+    if active_dependency_tables:
+        blockers.append(
+            'RIS case deletion remains blocked pending '
+            'dependency classification.'
+        )
+
+    if final_report_present:
+        blockers.append(
+            'Final report exists; report deletion requires '
+            'elevated destructive-action approval.'
+        )
+
+    return {
+        'kind': 'ORDER',
+        'patient': {
+            'id': getattr(patient, 'id', None),
+            'patient_id': getattr(
+                patient,
+                'patient_id',
+                None,
+            ),
+            'name': getattr(patient, 'name', None),
+        },
+        'order': {
+            'id': order.id,
+            'accession': getattr(
+                order,
+                'accession',
+                None,
+            ),
+            'status': getattr(order, 'status', None),
+            'exam_status': getattr(
+                order,
+                'exam_status',
+                None,
+            ),
+            'modality': getattr(
+                order,
+                'modality',
+                None,
+            ),
+            'procedure': getattr(
+                order,
+                'procedure',
+                None,
+            ),
+        },
+        'pacs': {
+            'study_id': pacs_study_id,
+            'status': getattr(
+                order,
+                'pacs_status',
+                None,
+            ),
+            'image_count': int(pacs_image_count),
+            'linked': bool(pacs_study_id),
+        },
+        'reports': {
+            'count': len(report_rows),
+            'rows': report_rows,
+            'final_present': final_report_present,
+        },
+        'ris_dependencies': {
+            'table_count': len(dependency_rows),
+            'active_table_count': active_dependency_tables,
+            'row_count': dependency_total,
+            'rows': dependency_rows,
+        },
+        'safety': {
+            'images_only_preview_available': True,
+            'reports_only_preview_available': True,
+            'ris_case_only_allowed': False,
+            'full_case_purge_allowed': False,
+            'blockers': blockers,
+        },
+        'readonly': True,
+    }
+
+
+def granular_delete_patient_preview_snapshot(patient):
+    """
+    Read-only preview of all RIS orders linked to one patient.
+    """
+    orders = (
+        Order.query
+        .filter_by(patient_id=patient.id)
+        .order_by(Order.id.desc())
+        .all()
+    )
+
+    order_rows = []
+
+    total_reports = 0
+    linked_pacs_cases = 0
+    active_cases = 0
+
+    for order in orders:
+        report_count = 0
+
+        if 'order_id' in Report.__table__.columns:
+            report_count = (
+                Report.query
+                .filter_by(order_id=order.id)
+                .count()
+            )
+
+        total_reports += report_count
+
+        if getattr(order, 'pacs_study_id', None):
+            linked_pacs_cases += 1
+
+        order_status = str(
+            getattr(order, 'status', '') or ''
+        ).strip().upper()
+
+        if order_status not in (
+            'CANCELLED',
+            'CANCELED',
+            'DELETED',
+        ):
+            active_cases += 1
+
+        order_rows.append({
+            'id': order.id,
+            'accession': getattr(
+                order,
+                'accession',
+                None,
+            ),
+            'status': getattr(order, 'status', None),
+            'exam_status': getattr(
+                order,
+                'exam_status',
+                None,
+            ),
+            'pacs_study_id': getattr(
+                order,
+                'pacs_study_id',
+                None,
+            ),
+            'pacs_image_count': (
+                getattr(
+                    order,
+                    'pacs_image_count',
+                    None,
+                )
+                or 0
+            ),
+            'report_count': report_count,
+        })
+
+    appointment_count = 0
+
+    if hasattr(Appointment, 'patient_id'):
+        appointment_count = (
+            Appointment.query
+            .filter_by(patient_id=patient.id)
+            .count()
+        )
+
+    blockers = []
+
+    if active_cases:
+        blockers.append(
+            'Patient has active/non-cancelled cases.'
+        )
+
+    if orders:
+        blockers.append(
+            'Full patient purge remains disabled until '
+            'all child dependencies are explicitly classified.'
+        )
+
+    return {
+        'kind': 'PATIENT',
+        'patient': {
+            'id': patient.id,
+            'patient_id': getattr(
+                patient,
+                'patient_id',
+                None,
+            ),
+            'name': getattr(patient, 'name', None),
+        },
+        'summary': {
+            'order_count': len(orders),
+            'appointment_count': appointment_count,
+            'report_count': total_reports,
+            'pacs_linked_case_count': linked_pacs_cases,
+            'active_case_count': active_cases,
+        },
+        'orders': order_rows,
+        'safety': {
+            'full_patient_purge_allowed': False,
+            'blockers': blockers,
+        },
+        'readonly': True,
+    }
+
+
+@app.get('/admin/cancellation-center/preview')
+@require_perm('data.cancel.case')
+def granular_delete_preview_home():
+    return render_template(
+        'admin_cancellation_preview.html'
+    )
+
+
+@app.get(
+    '/admin/cancellation-center/order/<int:order_id>/preview'
+)
+@require_perm('data.cancel.case')
+def granular_delete_order_preview(order_id):
+    order = Order.query.get_or_404(order_id)
+
+    snapshot = granular_delete_order_preview_snapshot(
+        order
+    )
+
+    if (
+        request.args.get('format', '').strip().lower()
+        == 'json'
+    ):
+        return jsonify(snapshot)
+
+    return render_template(
+        'admin_cancellation_preview.html',
+        preview=snapshot,
+    )
+
+
+@app.get(
+    '/admin/cancellation-center/patient/<int:patient_id>/preview'
+)
+@require_perm('data.cancel.case')
+def granular_delete_patient_preview(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
+
+    snapshot = (
+        granular_delete_patient_preview_snapshot(
+            patient
+        )
+    )
+
+    if (
+        request.args.get('format', '').strip().lower()
+        == 'json'
+    ):
+        return jsonify(snapshot)
+
+    return render_template(
+        'admin_cancellation_preview.html',
+        preview=snapshot,
+    )
+
+
+
 @app.get('/admin/cancellation-center')
 @require_perm('data.cancel.case')
 def admin_cancellation_center():

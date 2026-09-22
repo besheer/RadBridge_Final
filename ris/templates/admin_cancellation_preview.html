@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block page_title %}Deletion Preview{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <h2>Granular Data Deletion Preview</h2>
+  <p>
+    Read-only preview. No RIS, PACS, report,
+    patient, or file data is deleted from this page.
+  </p>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <div class="panel" style="min-width:300px">
+      <h3>Order Preview</h3>
+      <label>Order ID</label>
+      <input id="rb-preview-order-id"
+             type="number"
+             min="1"
+             placeholder="Order ID">
+      <button type="button"
+              onclick="rbOpenOrderPreview()">
+        Preview Order
+      </button>
+    </div>
+
+    <div class="panel" style="min-width:300px">
+      <h3>Patient Preview</h3>
+      <label>Patient database ID</label>
+      <input id="rb-preview-patient-id"
+             type="number"
+             min="1"
+             placeholder="Patient DB ID">
+      <button type="button"
+              onclick="rbOpenPatientPreview()">
+        Preview Patient
+      </button>
+    </div>
+  </div>
+</div>
+
+{% if preview %}
+<div class="panel">
+  <h3>
+    Preview:
+    {{ preview.kind }}
+  </h3>
+
+  {% if preview.kind == 'ORDER' %}
+    <p>
+      <strong>Patient:</strong>
+      {{ preview.patient.patient_id or '—' }}
+      —
+      {{ preview.patient.name or '—' }}
+    </p>
+
+    <p>
+      <strong>Order:</strong>
+      {{ preview.order.id }}
+      |
+      <strong>Accession:</strong>
+      {{ preview.order.accession or '—' }}
+    </p>
+
+    <table>
+      <tr>
+        <th>Domain</th>
+        <th>Status</th>
+        <th>Details</th>
+      </tr>
+
+      <tr>
+        <td>PACS Images</td>
+        <td>
+          {% if preview.pacs.linked %}
+            PRESENT
+          {% else %}
+            NONE / NOT LINKED
+          {% endif %}
+        </td>
+        <td>
+          Study {{ preview.pacs.study_id or '—' }};
+          images {{ preview.pacs.image_count }};
+          status {{ preview.pacs.status or '—' }}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Reports</td>
+        <td>
+          {% if preview.reports.count %}
+            PRESENT
+          {% else %}
+            NONE
+          {% endif %}
+        </td>
+        <td>
+          {{ preview.reports.count }} row(s);
+          FINAL:
+          {% if preview.reports.final_present %}
+            YES
+          {% else %}
+            NO
+          {% endif %}
+        </td>
+      </tr>
+
+      <tr>
+        <td>RIS Dependencies</td>
+        <td>
+          {{ preview.ris_dependencies.active_table_count }}
+          active table(s)
+        </td>
+        <td>
+          {{ preview.ris_dependencies.row_count }}
+          dependent row(s)
+          across
+          {{ preview.ris_dependencies.table_count }}
+          FK relation(s)
+        </td>
+      </tr>
+    </table>
+
+    <h3>Deletion Actions — Preview State</h3>
+
+    <table>
+      <tr>
+        <th>Action</th>
+        <th>Current State</th>
+      </tr>
+      <tr>
+        <td>Delete PACS Images Only</td>
+        <td>PREVIEW ONLY — NOT ENABLED</td>
+      </tr>
+      <tr>
+        <td>Delete Reports Only</td>
+        <td>PREVIEW ONLY — NOT ENABLED</td>
+      </tr>
+      <tr>
+        <td>Delete RIS Case Data Only</td>
+        <td>BLOCKED — dependency review required</td>
+      </tr>
+      <tr>
+        <td>Full Case Purge</td>
+        <td>BLOCKED</td>
+      </tr>
+    </table>
+
+    {% if preview.safety.blockers %}
+      <h3>Safety Blockers</h3>
+      <ul>
+      {% for blocker in preview.safety.blockers %}
+        <li>{{ blocker }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+    <h3>RIS Dependency Detail</h3>
+
+    <table>
+      <tr>
+        <th>Table</th>
+        <th>Class</th>
+        <th>Rows</th>
+      </tr>
+
+      {% for row in preview.ris_dependencies.rows %}
+      <tr>
+        <td>{{ row.table }}</td>
+        <td>{{ row.classification }}</td>
+        <td>
+          {% if row.count is none %}
+            REVIEW
+          {% else %}
+            {{ row.count }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+  {% elif preview.kind == 'PATIENT' %}
+
+    <p>
+      <strong>Patient:</strong>
+      {{ preview.patient.patient_id or '—' }}
+      —
+      {{ preview.patient.name or '—' }}
+    </p>
+
+    <table>
+      <tr>
+        <th>Orders</th>
+        <th>Appointments</th>
+        <th>Reports</th>
+        <th>PACS Cases</th>
+        <th>Active Cases</th>
+      </tr>
+      <tr>
+        <td>{{ preview.summary.order_count }}</td>
+        <td>{{ preview.summary.appointment_count }}</td>
+        <td>{{ preview.summary.report_count }}</td>
+        <td>{{ preview.summary.pacs_linked_case_count }}</td>
+        <td>{{ preview.summary.active_case_count }}</td>
+      </tr>
+    </table>
+
+    <h3>Orders</h3>
+
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>Accession</th>
+        <th>Status</th>
+        <th>PACS Study</th>
+        <th>Images</th>
+        <th>Reports</th>
+      </tr>
+
+      {% for row in preview.orders %}
+      <tr>
+        <td>{{ row.id }}</td>
+        <td>{{ row.accession or '—' }}</td>
+        <td>{{ row.status or '—' }}</td>
+        <td>{{ row.pacs_study_id or '—' }}</td>
+        <td>{{ row.pacs_image_count }}</td>
+        <td>{{ row.report_count }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h3>Full Patient Purge</h3>
+    <p>
+      BLOCKED — preview only.
+    </p>
+
+    {% if preview.safety.blockers %}
+      <ul>
+      {% for blocker in preview.safety.blockers %}
+        <li>{{ blocker }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+  {% endif %}
+</div>
+{% endif %}
+
+<script>
+function rbOpenOrderPreview(){
+  const value=document
+    .getElementById('rb-preview-order-id')
+    .value
+    .trim();
+
+  if(!value){
+    return;
+  }
+
+  window.location.href=
+    '/admin/cancellation-center/order/'
+    + encodeURIComponent(value)
+    + '/preview';
+}
+
+function rbOpenPatientPreview(){
+  const value=document
+    .getElementById('rb-preview-patient-id')
+    .value
+    .trim();
+
+  if(!value){
+    return;
+  }
+
+  window.location.href=
+    '/admin/cancellation-center/patient/'
+    + encodeURIComponent(value)
+    + '/preview';
+}
+</script>
+{% endblock %}

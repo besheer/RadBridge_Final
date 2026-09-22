@@ -7,4 +7,18 @@
 {% if q %}<div class="panel"><h3>Orders / Work Orders</h3><table><thead><tr><th>Accession</th><th>Patient</th><th>Exam</th><th>Status</th><th>Referral</th><th>Controlled action</th></tr></thead><tbody>
 {% for o in orders %}<tr><td><b>{{o.accession}}</b><small>ID {{o.id}}</small></td><td>{{o.patient.patient_id}} — {{o.patient.name}}</td><td>{{o.procedure}}</td><td>{{o.status}} / {{o.exam_status}}</td><td>{{o.referring_doctor.name if o.referring_doctor else 'None'}}</td><td><form method="post" action="{{url_for('admin_cancel_order',order_id=o.id)}}" class="actions"><input type="hidden" name="return_q" value="{{q}}"><input name="reason" required minlength="5" placeholder="Cancellation reason"><button class="btn danger">Cancel order</button></form>{% if o.referring_doctor_id %}<form method="post" action="{{url_for('admin_remove_order_referral',order_id=o.id)}}" class="actions"><input type="hidden" name="return_q" value="{{q}}"><input name="reason" required minlength="5" placeholder="Referral removal reason"><button class="btn">Remove referral</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="6">No matching orders.</td></tr>{% endfor %}
 </tbody></table></div><div class="panel"><h3>Appointments</h3><table><thead><tr><th>ID</th><th>Patient</th><th>Scheduled</th><th>Status</th><th>Controlled action</th></tr></thead><tbody>{% for a in appointments %}<tr><td>{{a.id}}</td><td>{{a.patient.patient_id}} — {{a.patient.name}}</td><td>{{a.scheduled}}</td><td>{{a.status}}</td><td><form method="post" action="{{url_for('admin_cancel_appointment',appointment_id=a.id)}}" class="actions"><input type="hidden" name="return_q" value="{{q}}"><input name="reason" required minlength="5" placeholder="Cancellation reason"><button class="btn danger">Cancel booking</button></form></td></tr>{% else %}<tr><td colspan="5">No matching appointments.</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+
+<!-- RB_GRANULAR_DELETE_PREVIEW_LINK_V1 -->
+<div class="panel">
+  <h3>Granular Data Deletion Preview</h3>
+  <p>
+    Inspect PACS images, reports, and RIS dependencies
+    before any destructive operation is enabled.
+  </p>
+  <a class="btn"
+     href="{{ url_for('granular_delete_preview_home') }}">
+    Open Deletion Preview
+  </a>
+</div>
+
 {% endblock %}
