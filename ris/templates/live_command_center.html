@@ -1752,7 +1752,7 @@
         row.className = 'rb-tx';
 
         const stage =
-            String(event.stage || 'UNKNOWN');
+            String(event.stage || 'Status Not Available');
 
         const status =
             normalizeStatus(event.status);
@@ -2050,7 +2050,7 @@
         }
 
         el.textContent =
-            String(status || 'UNKNOWN');
+            String(status || 'Status Not Available');
 
         el.classList.remove(
             'rb-resource-ok',
@@ -2664,7 +2664,7 @@
         );
 
         lines.push(
-            'State: ' + String(node.state || 'UNKNOWN')
+            'State: ' + String(node.state || 'Status Not Available')
         );
 
         const d = node.details || {};
@@ -2702,7 +2702,7 @@
 
             lines.push(
                 'Availability: '
-                + String(d.doctor.state || 'UNKNOWN')
+                + String(d.doctor.state || 'Status Not Available')
             );
         }
 
@@ -2809,7 +2809,7 @@
 
             if (strong) {
                 strong.textContent =
-                    String(node.state || 'UNKNOWN');
+                    String(node.state || 'Status Not Available');
             }
 
             const small =
@@ -2884,7 +2884,7 @@
                             blocker.code,
                             'Owner: '
                             + String(
-                                blocker.owner_role || 'Unknown'
+                                blocker.owner_role || 'Owner Not Assigned'
                             ),
                             blocker.resolution_url
                         );
