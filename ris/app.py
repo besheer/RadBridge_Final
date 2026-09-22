@@ -19909,6 +19909,36 @@ def granular_delete_order_preview_snapshot(order):
         or 0
     )
 
+    # Read-only Orthanc presence check.
+    #
+    # linked:
+    #     RIS retains a PACS study identifier.
+    #
+    # present:
+    #     True  -> Orthanc confirms the study exists.
+    #     False -> no study is linked, or Orthanc confirms HTTP 404.
+    #     None  -> presence cannot be established safely.
+    #
+    # Unknown/error deliberately fails closed for destructive actions.
+    pacs_present = False
+
+    if pacs_study_id:
+        try:
+            pacs_presence_response = requests.get(
+                f'{PACS_ORTHANC_URL}/studies/{pacs_study_id}',
+                auth=_orthanc_auth(),
+                timeout=10,
+            )
+
+            if pacs_presence_response.status_code == 200:
+                pacs_present = True
+            elif pacs_presence_response.status_code == 404:
+                pacs_present = False
+            else:
+                pacs_present = None
+        except Exception:
+            pacs_present = None
+
     blockers = []
 
     if active_dependency_tables:
@@ -19967,6 +19997,7 @@ def granular_delete_order_preview_snapshot(order):
             ),
             'image_count': int(pacs_image_count),
             'linked': bool(pacs_study_id),
+            'present': pacs_present,
         },
         'reports': {
             'count': len(report_rows),

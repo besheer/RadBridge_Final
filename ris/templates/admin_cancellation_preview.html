@@ -71,10 +71,17 @@
       <tr>
         <td>PACS Images</td>
         <td>
-          {% if preview.pacs.linked %}
-            PRESENT
-          {% else %}
+          {% if not preview.pacs.linked %}
             NONE / NOT LINKED
+          {% elif preview.pacs.present == true %}
+            PRESENT
+          {% elif preview.pacs.present == false
+                and preview.pacs.status == 'IMAGES_DELETED' %}
+            DELETED
+          {% elif preview.pacs.present == false %}
+            MISSING — REVIEW
+          {% else %}
+            REVIEW
           {% endif %}
         </td>
         <td>
@@ -132,7 +139,9 @@
         <td>
           {% if preview.kind == 'ORDER'
                 and preview.pacs
-                and preview.pacs.present %}
+                and preview.pacs.present
+                and preview.pacs.image_count > 0
+                and preview.pacs.status != 'IMAGES_DELETED' %}
             ENABLED — CONFIRMATION REQUIRED
           {% else %}
             NOT AVAILABLE — NO PACS IMAGES
@@ -158,7 +167,9 @@
 <!-- RB_GRANULAR_DELETE_IMAGES_ONLY_UI_V2 -->
 {% if preview.kind == 'ORDER'
       and preview.pacs
-      and preview.pacs.present %}
+      and preview.pacs.present
+                and preview.pacs.image_count > 0
+                and preview.pacs.status != 'IMAGES_DELETED' %}
 
 <div class="panel">
   <h3>Delete PACS Images Only</h3>
