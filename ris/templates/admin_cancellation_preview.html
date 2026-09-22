@@ -162,8 +162,6 @@
       </tr>
     </table>
 
-    {% if preview.safety.blockers %}
-      
 <!-- RB_GRANULAR_DELETE_IMAGES_ONLY_UI_V2 -->
 {% if preview.kind == 'ORDER'
       and preview.pacs
@@ -225,6 +223,7 @@
 
 {% endif %}
 
+    {% if preview.safety.blockers %}
 <h3>Safety Blockers</h3>
       <ul>
       {% for blocker in preview.safety.blockers %}

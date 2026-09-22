@@ -247,3 +247,19 @@ def test_delete_action_hidden_deleted_status_even_if_present():
     )
 
     assert 'name="confirm_accession"' not in rendered
+
+def test_delete_action_is_not_nested_under_safety_blockers():
+    src=_source()
+
+    action_pos=src.index(
+        "<!-- RB_GRANULAR_DELETE_IMAGES_ONLY_UI_V2 -->"
+    )
+    blockers_pos=src.index(
+        "{% if preview.safety.blockers %}"
+    )
+    safety_heading_pos=src.index(
+        "<h3>Safety Blockers</h3>"
+    )
+
+    assert action_pos < blockers_pos < safety_heading_pos
+
