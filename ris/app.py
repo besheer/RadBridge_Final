@@ -4996,7 +4996,36 @@ def dashboard():
 def patients():
     q=request.args.get('q','').strip(); query=Patient.query
     if q: query=query.filter(or_(Patient.name.ilike(f'%{q}%'),Patient.patient_id.ilike(f'%{q}%'),Patient.phone.ilike(f'%{q}%'),Patient.national_id.ilike(f'%{q}%')))
-    return render_template('patients.html',patients=query.order_by(Patient.id.desc()).limit(300).all(),q=q)
+    # RB_SMART_BOOKING_V2_PATIENTS_CONTEXT_V1
+    return render_template(
+        'patients.html',
+        patients=query.order_by(Patient.id.desc()).limit(300).all(),
+        q=q,
+        smart_booking_branches=Branch.query.filter_by(active=True).order_by(Branch.name).all(),
+        # RB_SMART_BOOKING_V2_JSON_CONTEXT_V1
+        smart_booking_procedures=[
+            {
+                'id':p.id,
+                'code':p.code or '',
+                'name':p.name or '',
+                'name_ar':p.name_ar or '',
+                'modality':p.modality or '',
+                'duration_min':int(p.duration_min or 20),
+            }
+            for p in Procedure.query.filter_by(active=True).order_by(
+                Procedure.modality,
+                Procedure.name
+            ).all()
+        ],
+        smart_booking_procedure_branches=[
+            {
+                'branch_id':row.branch_id,
+                'procedure_id':row.procedure_id,
+                'active':bool(row.active),
+            }
+            for row in ProcedureBranch.query.filter_by(active=True).all()
+        ],
+    )
 
 @app.route('/patients/new',methods=['GET','POST'])
 @require_perm('patients.create')

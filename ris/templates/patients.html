@@ -9,46 +9,73 @@
 <table><thead><tr><th>Patient ID</th><th>Name</th><th>DOB</th><th>Sex</th><th>Phone</th><th>National ID</th><th></th></tr></thead><tbody>
 {% for p in patients %}<tr><td><b>{{p.patient_id}}</b></td><td>{{p.name}}</td><td>{{p.dob}}</td><td>{{p.sex}}</td><td>{{p.phone or '-'}}</td><td>{{p.national_id or '-'}}</td><td>{% if has_perm('orders.create') %}<button class="btn small rb-new-order-btn" type="button" data-patient-id="{{p.id}}" data-patient-name="{{p.name|e}}">New Order</button>{% endif %}</td></tr>{% else %}<tr><td colspan="7" class="empty">No patients.</td></tr>{% endfor %}
 </tbody></table></div>
-<!-- RB_PATIENT_NEW_ORDER_MODALITY_PICKER_V1 -->
-<div id="rbModalityPicker" class="booking-overlay" hidden>
-  <div style="
-    min-height:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
-  ">
-    <div class="panel" style="
-      width:min(520px,95vw);
-      margin:0;
-      padding:22px;
-    ">
-      <div style="
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:12px;
-        margin-bottom:16px;
-      ">
-        <div>
-          <h3 style="margin:0">
-            {{ 'اختر نوع الفحص' if ui_lang=='ar' else 'Choose Modality' }}
-          </h3>
-          <small id="rbModalityPatientName"></small>
-        </div>
 
-        <button
-          type="button"
-          class="btn"
-          id="rbModalityClose"
-        >×</button>
+<!-- RB_SMART_BOOKING_V2_PATIENTS_UI_V1 -->
+<div id="rbSmartBooking" class="booking-overlay" hidden>
+  <div style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div class="panel" style="width:min(760px,96vw);margin:0;padding:22px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px">
+        <div>
+          <h3 style="margin:0">{{ 'حجز ذكي' if ui_lang=='ar' else 'Smart Booking' }}</h3>
+          <small id="rbSmartPatientName"></small>
+        </div>
+        <button type="button" class="btn" id="rbSmartClose">×</button>
       </div>
 
-      <div class="grid4">
-        <button type="button" class="btn primary rb-modality-choice" data-modality="MR">MRI</button>
-        <button type="button" class="btn primary rb-modality-choice" data-modality="CT">CT</button>
-        <button type="button" class="btn primary rb-modality-choice" data-modality="DX">X-Ray</button>
-        <button type="button" class="btn primary rb-modality-choice" data-modality="US">US</button>
+      <div class="grid2">
+        <div>
+          <label>{{ 'الفرع' if ui_lang=='ar' else 'Branch' }}</label>
+          <select id="rbSmartBranch">
+            {% for b in smart_booking_branches %}
+            <option value="{{b.id}}">{{b.name}}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label>{{ 'التاريخ' if ui_lang=='ar' else 'Date' }}</label>
+          <input type="date" id="rbSmartDate">
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <label>{{ 'الفحص' if ui_lang=='ar' else 'Examination' }}</label>
+        <input
+          type="search"
+          id="rbSmartProcedureSearch"
+          placeholder="{{ 'ابحث باسم أو كود الفحص' if ui_lang=='ar' else 'Search by examination name or code' }}"
+          autocomplete="off"
+        >
+        <div id="rbSmartProcedureResults" style="max-height:220px;overflow:auto;margin-top:8px"></div>
+      </div>
+
+      <div id="rbSmartProcedureSummary" class="notice info" hidden style="margin-top:12px"></div>
+
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <label>{{ 'الغرفة / الجهاز' if ui_lang=='ar' else 'Room / Device' }}</label>
+          <select id="rbSmartDevice">
+            <option value="">{{ 'اختيار تلقائي' if ui_lang=='ar' else 'Auto Select' }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label>{{ 'المواعيد المتاحة' if ui_lang=='ar' else 'Available Slots' }}</label>
+          <select id="rbSmartSlot">
+            <option value="">{{ 'اختر الفحص أولاً' if ui_lang=='ar' else 'Select examination first' }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="rbSmartStatus" class="notice info" hidden style="margin-top:12px"></div>
+
+      <div class="actions" style="margin-top:18px">
+        <button type="button" class="btn" id="rbSmartCancel">
+          {{ 'إلغاء' if ui_lang=='ar' else 'Cancel' }}
+        </button>
+        <button type="button" class="btn primary" id="rbSmartContinue" disabled>
+          {{ 'متابعة' if ui_lang=='ar' else 'Continue' }}
+        </button>
       </div>
     </div>
   </div>
@@ -56,75 +83,278 @@
 
 <script>
 (() => {
-  const picker=document.getElementById('rbModalityPicker');
-  const closeBtn=document.getElementById('rbModalityClose');
-  const patientLabel=document.getElementById('rbModalityPatientName');
+  const overlay=document.getElementById('rbSmartBooking');
+  const closeBtn=document.getElementById('rbSmartClose');
+  const cancelBtn=document.getElementById('rbSmartCancel');
+  const patientName=document.getElementById('rbSmartPatientName');
+  const branch=document.getElementById('rbSmartBranch');
+  const dateInput=document.getElementById('rbSmartDate');
+  const search=document.getElementById('rbSmartProcedureSearch');
+  const results=document.getElementById('rbSmartProcedureResults');
+  const summary=document.getElementById('rbSmartProcedureSummary');
+  const device=document.getElementById('rbSmartDevice');
+  const slot=document.getElementById('rbSmartSlot');
+  const status=document.getElementById('rbSmartStatus');
+  const continueBtn=document.getElementById('rbSmartContinue');
+
+  const procedures={{ smart_booking_procedures|tojson }};
+  const mappings={{ smart_booking_procedure_branches|tojson }};
 
   let selectedPatientId='';
+  let selectedProcedureId='';
 
-  function closePicker(){
-    picker.hidden=true;
+  function todayLocal(){
+    const d=new Date();
+    const y=d.getFullYear();
+    const m=String(d.getMonth()+1).padStart(2,'0');
+    const day=String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function close(){
+    overlay.hidden=true;
     selectedPatientId='';
+    selectedProcedureId='';
+    results.innerHTML='';
+    summary.hidden=true;
+    status.hidden=true;
+    continueBtn.disabled=true;
+  }
+
+  function availableForBranch(procId,branchId){
+    return mappings.some(x =>
+      String(x.procedure_id)===String(procId) &&
+      String(x.branch_id)===String(branchId) &&
+      Boolean(x.active)
+    );
+  }
+
+  function renderProcedureResults(){
+    const q=(search.value||'').trim().toLowerCase();
+    const branchId=branch.value;
+
+    const rows=procedures
+      .filter(p => availableForBranch(p.id,branchId))
+      .filter(p => {
+        const hay=[
+          p.code||'',
+          p.name||'',
+          p.name_ar||'',
+          p.modality||''
+        ].join(' ').toLowerCase();
+
+        return !q || hay.includes(q);
+      })
+      .slice(0,60);
+
+    results.innerHTML='';
+
+    rows.forEach(p=>{
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='btn';
+      b.style.display='block';
+      b.style.width='100%';
+      b.style.textAlign='left';
+      b.style.marginBottom='6px';
+      b.textContent=
+        `${p.code||''} · ${p.name||''} · ${p.modality||''} · ${p.duration_min||20}m`;
+
+      b.onclick=()=>{
+        selectedProcedureId=String(p.id);
+        search.value=p.name||'';
+
+        summary.textContent=
+          `${p.code||''} · ${p.name||''} · ${p.modality||''} · ${p.duration_min||20} min`;
+
+        summary.hidden=false;
+        results.innerHTML='';
+        loadAvailability();
+      };
+
+      results.appendChild(b);
+    });
+  }
+
+  async function loadAvailability(){
+    continueBtn.disabled=true;
+    slot.innerHTML='<option value="">Loading...</option>';
+    device.innerHTML='<option value="">Auto Select</option>';
+
+    if(!selectedProcedureId || !branch.value || !dateInput.value){
+      return;
+    }
+
+    const u=new URL(
+      "{{ url_for('api_smart_booking_availability') }}",
+      window.location.origin
+    );
+
+    u.searchParams.set('branch_id',branch.value);
+    u.searchParams.set('procedure_id',selectedProcedureId);
+    u.searchParams.set('date',dateInput.value);
+
+    if(device.value){
+      u.searchParams.set('device_id',device.value);
+    }
+
+    const r=await fetch(u.toString(),{
+      credentials:'same-origin'
+    });
+
+    const data=await r.json();
+
+    if(!r.ok || !data.ok){
+      status.textContent=data.error||'Unable to load availability';
+      status.hidden=false;
+      slot.innerHTML='<option value="">No availability</option>';
+      return;
+    }
+
+    status.hidden=true;
+
+    const previousDevice=device.value;
+
+    device.innerHTML='<option value="">Auto Select</option>';
+
+    (data.devices||[]).forEach(d=>{
+      const o=document.createElement('option');
+      o.value=d.id;
+      o.textContent=
+        `${d.name}${d.room ? ' · '+d.room : ''} · ${d.modality}`;
+      device.appendChild(o);
+    });
+
+    if(previousDevice){
+      device.value=previousDevice;
+    }
+
+    slot.innerHTML='';
+
+    let slotRows=[];
+
+    if(device.value){
+      const selected=(data.devices||[]).find(
+        d=>String(d.id)===String(device.value)
+      );
+
+      if(selected){
+        slotRows=(selected.slots||[]).map(s=>({
+          ...s,
+          device_id:selected.id
+        }));
+      }
+    }else{
+      (data.devices||[]).forEach(d=>{
+        (d.slots||[]).forEach(s=>{
+          slotRows.push({
+            ...s,
+            device_id:d.id,
+            device_name:d.name
+          });
+        });
+      });
+
+      slotRows.sort((a,b)=>a.start.localeCompare(b.start));
+    }
+
+    if(!slotRows.length){
+      const o=document.createElement('option');
+      o.value='';
+      o.textContent='No available slots';
+      slot.appendChild(o);
+      continueBtn.disabled=true;
+      return;
+    }
+
+    slotRows.slice(0,100).forEach(s=>{
+      const o=document.createElement('option');
+      o.value=s.start;
+      o.dataset.deviceId=s.device_id||'';
+      o.textContent=
+        `${s.time}${s.device_name ? ' · '+s.device_name : ''}`;
+      slot.appendChild(o);
+    });
+
+    continueBtn.disabled=false;
   }
 
   document.querySelectorAll('.rb-new-order-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      selectedPatientId=String(
-        btn.dataset.patientId||''
-      ).trim();
-
-      patientLabel.textContent=
-        btn.dataset.patientName||'';
-
-      picker.hidden=false;
+      selectedPatientId=String(btn.dataset.patientId||'').trim();
+      patientName.textContent=btn.dataset.patientName||'';
+      dateInput.value=todayLocal();
+      search.value='';
+      selectedProcedureId='';
+      summary.hidden=true;
+      status.hidden=true;
+      continueBtn.disabled=true;
+      overlay.hidden=false;
+      renderProcedureResults();
     });
   });
 
-  document.querySelectorAll('.rb-modality-choice').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const modality=String(
-        btn.dataset.modality||''
-      ).trim().toUpperCase();
+  search.addEventListener('input',renderProcedureResults);
 
-      if(!selectedPatientId || !modality){
-        return;
-      }
-
-      const url=new URL(
-        "{{ url_for('schedule_calendar') }}",
-        window.location.origin
-      );
-
-      url.searchParams.set(
-        'open_registration',
-        '1'
-      );
-
-      url.searchParams.set(
-        'patient',
-        selectedPatientId
-      );
-
-      url.searchParams.set(
-        'modality',
-        modality
-      );
-
-      window.location.href=url.toString();
-    });
+  branch.addEventListener('change',()=>{
+    selectedProcedureId='';
+    search.value='';
+    summary.hidden=true;
+    renderProcedureResults();
   });
 
-  closeBtn.addEventListener(
-    'click',
-    closePicker
-  );
+  dateInput.addEventListener('change',()=>{
+    if(selectedProcedureId){
+      loadAvailability();
+    }
+  });
 
-  picker.addEventListener('click',event=>{
-    if(event.target===picker){
-      closePicker();
+  device.addEventListener('change',()=>{
+    if(selectedProcedureId){
+      loadAvailability();
+    }
+  });
+
+  continueBtn.addEventListener('click',()=>{
+    if(!selectedPatientId || !selectedProcedureId || !slot.value){
+      return;
+    }
+
+    const selectedOption=slot.selectedOptions[0];
+    const selectedDeviceId=
+      device.value ||
+      selectedOption?.dataset.deviceId ||
+      '';
+
+    const u=new URL(
+      "{{ url_for('schedule_calendar') }}",
+      window.location.origin
+    );
+
+    u.searchParams.set('open_registration','1');
+    u.searchParams.set('patient',selectedPatientId);
+    u.searchParams.set('branch_id',branch.value);
+    u.searchParams.set('procedure_id',selectedProcedureId);
+    u.searchParams.set('date',dateInput.value);
+    u.searchParams.set('scheduled',slot.value);
+
+    if(selectedDeviceId){
+      u.searchParams.set('device_id',selectedDeviceId);
+    }
+
+    window.location.href=u.toString();
+  });
+
+  closeBtn.addEventListener('click',close);
+  cancelBtn.addEventListener('click',close);
+
+  overlay.addEventListener('click',e=>{
+    if(e.target===overlay){
+      close();
     }
   });
 })();
 </script>
+
 
 {% endblock %}
