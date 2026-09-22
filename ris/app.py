@@ -231,6 +231,7 @@ ALL_PERMISSIONS = [
     'data.delete.module',
     'data.reset',
     'data.purge',
+    'data.cancel.case',
 
     'backup.download',
     'backup.all_patients',
@@ -4885,6 +4886,14 @@ def login():
         if u and u.active and check_password_hash(u.password_hash,request.form.get('password','')):
             session['uid']=u.id; audit('LOGIN','user',u.id,'Successful login'); db.session.commit()
             return redirect(request.args.get('next') or url_for('dashboard'))
+        attempted=(request.form.get('username','').strip()[:80] or 'UNKNOWN')
+        db.session.add(AuditLog(
+            user_id=(u.id if u else None),username=attempted,
+            action='LOGIN_FAILED',entity='user',entity_id=str(u.id if u else ''),
+            details='reason=INVALID_CREDENTIALS',
+            ip=request.headers.get('X-Forwarded-For',request.remote_addr or '')[:80]
+        ))
+        db.session.commit()
         flash('Invalid username or password.','danger')
     return render_template('login.html')
 
@@ -19304,7 +19313,88 @@ def admin_erp_sync_items():
 @app.route('/admin/audit')
 @require_perm('audit.view')
 def admin_audit():
-    return render_template('admin_audit.html',rows=AuditLog.query.order_by(AuditLog.id.desc()).limit(500).all())
+    action=(request.args.get('action') or '').strip()[:100]
+    username=(request.args.get('username') or '').strip()[:80]
+    ip=(request.args.get('ip') or '').strip()[:80]
+    entity=(request.args.get('entity') or '').strip()[:80]
+    q=AuditLog.query
+    if action:q=q.filter(AuditLog.action.ilike(f'%{action}%'))
+    if username:q=q.filter(AuditLog.username.ilike(f'%{username}%'))
+    if ip:q=q.filter(AuditLog.ip.ilike(f'%{ip}%'))
+    if entity:q=q.filter(AuditLog.entity.ilike(f'%{entity}%'))
+    rows=q.order_by(AuditLog.id.desc()).limit(1000).all()
+    since=datetime.utcnow()-timedelta(hours=24)
+    failed_24h=AuditLog.query.filter(AuditLog.action=='LOGIN_FAILED',AuditLog.created_at>=since).count()
+    successful_24h=AuditLog.query.filter(AuditLog.action=='LOGIN',AuditLog.created_at>=since).count()
+    return render_template('admin_audit.html',rows=rows,action=action,username=username,ip=ip,entity=entity,
+        failed_24h=failed_24h,successful_24h=successful_24h,
+        cancellation_count=AuditLog.query.filter(AuditLog.action.in_([
+            'APPOINTMENT_CANCELLED_ADMIN','ORDER_CANCELLED_ADMIN','ORDER_REFERRAL_REMOVED'])).count())
+
+def cancellation_reason():
+    reason=(request.form.get('reason') or '').strip()
+    if len(reason)<5:abort(400,'Cancellation reason must contain at least 5 characters.')
+    return reason[:1000]
+
+def cancellation_search_rows(term):
+    term=(term or '').strip()
+    if not term:return [],[]
+    orders=Order.query.join(Patient,Order.patient_id==Patient.id).filter(db.or_(
+        Order.accession.ilike(f'%{term}%'),Patient.patient_id.ilike(f'%{term}%'),Patient.name.ilike(f'%{term}%')
+    )).order_by(Order.id.desc()).limit(50).all()
+    appointments=Appointment.query.join(Patient,Appointment.patient_id==Patient.id).filter(db.or_(
+        Patient.patient_id.ilike(f'%{term}%'),Patient.name.ilike(f'%{term}%')
+    )).order_by(Appointment.id.desc()).limit(50).all()
+    if term.isdigit():
+        order=Order.query.get(int(term));appointment=Appointment.query.get(int(term))
+        if order and order not in orders:orders.insert(0,order)
+        if appointment and appointment not in appointments:appointments.insert(0,appointment)
+    return orders[:50],appointments[:50]
+
+@app.get('/admin/cancellation-center')
+@require_perm('data.cancel.case')
+def admin_cancellation_center():
+    term=(request.args.get('q') or '').strip();orders,appointments=cancellation_search_rows(term)
+    return render_template('admin_cancellation_center.html',q=term,orders=orders,appointments=appointments)
+
+@app.post('/admin/cancellation-center/appointments/<int:appointment_id>/cancel')
+@require_perm('data.cancel.case')
+def admin_cancel_appointment(appointment_id):
+    row=Appointment.query.get_or_404(appointment_id);reason=cancellation_reason();previous=row.status
+    row.status='CANCELLED';row.cancelled_at=datetime.utcnow()
+    audit('APPOINTMENT_CANCELLED_ADMIN','appointment',row.id,f'reason={reason};previous_status={previous};order_id={row.order_id or ""}')
+    db.session.commit();flash('Appointment cancelled and audited.','success')
+    return redirect(url_for('admin_cancellation_center',q=request.form.get('return_q','')))
+
+@app.post('/admin/cancellation-center/orders/<int:order_id>/cancel')
+@require_perm('data.cancel.case')
+def admin_cancel_order(order_id):
+    order=Order.query.get_or_404(order_id);reason=cancellation_reason()
+    report=getattr(order,'report',None);report_status=str(getattr(report,'status','') or '').upper()
+    if str(order.status or '').upper()=='FINAL' or report_status in ('FINAL','FINALIZED','VERIFIED'):
+        audit('ORDER_CANCEL_BLOCKED_FINAL','order',order.id,f'reason={reason};report_status={report_status}')
+        db.session.commit();abort(409,'Final or verified reports require a dedicated audited amendment workflow.')
+    previous=f'order={order.status};exam={getattr(order,"exam_status","")}'
+    order.status='CANCELLED'
+    if hasattr(order,'exam_status'):order.exam_status='CANCELLED'
+    if order.appointment:order.appointment.status='CANCELLED';order.appointment.cancelled_at=datetime.utcnow()
+    for assignment in CaseAssignment.query.filter_by(order_id=order.id,active=True).all():
+        assignment.active=False;assignment.unassigned_at=datetime.utcnow()
+    for offer in AssignmentOffer.query.filter_by(order_id=order.id,status='PENDING').all():
+        offer.status='CANCELLED';offer.responded_at=datetime.utcnow()
+    audit('ORDER_CANCELLED_ADMIN','order',order.id,f'reason={reason};previous={previous};accession={order.accession}')
+    db.session.commit();flash('Order cancelled and downstream assignment stopped.','success')
+    return redirect(url_for('admin_cancellation_center',q=request.form.get('return_q','')))
+
+@app.post('/admin/cancellation-center/orders/<int:order_id>/remove-referral')
+@require_perm('data.cancel.case')
+def admin_remove_order_referral(order_id):
+    order=Order.query.get_or_404(order_id);reason=cancellation_reason();previous=order.referring_doctor_id
+    if not previous:abort(409,'This order has no referral to remove.')
+    order.referring_doctor_id=None
+    audit('ORDER_REFERRAL_REMOVED','order',order.id,f'reason={reason};previous_referring_doctor_id={previous};accession={order.accession}')
+    db.session.commit();flash('Referral removed and audited.','success')
+    return redirect(url_for('admin_cancellation_center',q=request.form.get('return_q','')))
 
 
 @app.route('/admin/roles',methods=['GET','POST'])
