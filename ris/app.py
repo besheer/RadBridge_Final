@@ -2946,7 +2946,23 @@ def pacs_lookup_order(order):
         stats=st.get('Statistics') or {}
         c=stats.get('CountInstances')
         if c is None:
-            c=len(st.get('Instances') or [])
+            instances=st.get('Instances')
+            if instances is not None:
+                c=len(instances or [])
+            else:
+                c=0
+                for series_id in (st.get('Series') or []):
+                    try:
+                        sr=requests.get(
+                            PACS_ORTHANC_URL+'/series/'+str(series_id),
+                            auth=_orthanc_auth(),
+                            timeout=8,
+                        )
+                        sr.raise_for_status()
+                        series_data=sr.json() or {}
+                        c += len(series_data.get('Instances') or [])
+                    except Exception:
+                        continue
         count += int(c or 0)
 
     now=datetime.utcnow()
