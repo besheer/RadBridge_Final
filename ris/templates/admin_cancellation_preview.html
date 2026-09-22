@@ -130,9 +130,9 @@
       <tr>
         <td>Delete PACS Images Only</td>
         <td>
-          {% if snapshot.kind == 'ORDER'
-                and snapshot.pacs
-                and snapshot.pacs.present %}
+          {% if preview.kind == 'ORDER'
+                and preview.pacs
+                and preview.pacs.present %}
             ENABLED — CONFIRMATION REQUIRED
           {% else %}
             NOT AVAILABLE — NO PACS IMAGES
@@ -156,9 +156,9 @@
     {% if preview.safety.blockers %}
       
 <!-- RB_GRANULAR_DELETE_IMAGES_ONLY_UI_V2 -->
-{% if snapshot.kind == 'ORDER'
-      and snapshot.pacs
-      and snapshot.pacs.present %}
+{% if preview.kind == 'ORDER'
+      and preview.pacs
+      and preview.pacs.present %}
 
 <div class="panel">
   <h3>Delete PACS Images Only</h3>
@@ -171,14 +171,14 @@
 
   <p>
     <strong>Accession:</strong>
-    {{ snapshot.order.accession }}
+    {{ preview.order.accession }}
   </p>
 
   <form
     method="post"
     action="{{ url_for(
       'granular_delete_order_images_only',
-      order_id=snapshot.order.id
+      order_id=preview.order.id
     ) }}"
     onsubmit="return confirm(
       'Permanently delete PACS images for this order?'
