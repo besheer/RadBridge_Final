@@ -129,7 +129,15 @@
       </tr>
       <tr>
         <td>Delete PACS Images Only</td>
-        <td>PREVIEW ONLY — NOT ENABLED</td>
+        <td>
+          {% if snapshot.kind == 'ORDER'
+                and snapshot.pacs
+                and snapshot.pacs.present %}
+            ENABLED — CONFIRMATION REQUIRED
+          {% else %}
+            NOT AVAILABLE — NO PACS IMAGES
+          {% endif %}
+        </td>
       </tr>
       <tr>
         <td>Delete Reports Only</td>
@@ -146,7 +154,67 @@
     </table>
 
     {% if preview.safety.blockers %}
-      <h3>Safety Blockers</h3>
+      
+<!-- RB_GRANULAR_DELETE_IMAGES_ONLY_UI_V2 -->
+{% if snapshot.kind == 'ORDER'
+      and snapshot.pacs
+      and snapshot.pacs.present %}
+
+<div class="panel">
+  <h3>Delete PACS Images Only</h3>
+
+  <p>
+    This operation deletes only the linked PACS study images.
+    Patient, order, reports, attachments, workflow history,
+    and audit history remain.
+  </p>
+
+  <p>
+    <strong>Accession:</strong>
+    {{ snapshot.order.accession }}
+  </p>
+
+  <form
+    method="post"
+    action="{{ url_for(
+      'granular_delete_order_images_only',
+      order_id=snapshot.order.id
+    ) }}"
+    onsubmit="return confirm(
+      'Permanently delete PACS images for this order?'
+    );"
+  >
+    <label>
+      Type accession exactly
+      <input
+        type="text"
+        name="confirm_accession"
+        autocomplete="off"
+        required
+      >
+    </label>
+
+    <label>
+      Reason
+      <textarea
+        name="reason"
+        minlength="5"
+        required
+      ></textarea>
+    </label>
+
+    <button
+      type="submit"
+      class="danger"
+    >
+      Delete PACS Images Only
+    </button>
+  </form>
+</div>
+
+{% endif %}
+
+<h3>Safety Blockers</h3>
       <ul>
       {% for blocker in preview.safety.blockers %}
         <li>{{ blocker }}</li>

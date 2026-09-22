@@ -19398,6 +19398,376 @@ def cancellation_search_rows(term):
 
 
 
+
+# RB_GRANULAR_DELETE_IMAGES_ONLY_V1
+def granular_delete_images_only_preflight(order, typed_accession, reason):
+    blockers=[]
+
+    user=current_user()
+
+    if (
+        not user
+        or not getattr(user, 'role', None)
+        or getattr(user.role, 'code', '') != 'SUPER_ADMIN'
+    ):
+        blockers.append('SUPER_ADMIN_REQUIRED')
+
+    reason=(reason or '').strip()
+    typed_accession=(typed_accession or '').strip()
+    accession=(order.accession or '').strip()
+    study_id=(order.pacs_study_id or '').strip()
+
+    if len(reason) < 5:
+        blockers.append('REASON_REQUIRED')
+
+    if not accession:
+        blockers.append('ORDER_ACCESSION_MISSING')
+    elif typed_accession != accession:
+        blockers.append('ACCESSION_CONFIRMATION_MISMATCH')
+
+    if not study_id:
+        blockers.append('PACS_STUDY_ID_MISSING')
+
+    patient=db.session.get(Patient, order.patient_id)
+
+    if not patient:
+        blockers.append('PATIENT_MISSING')
+
+    same_study_orders=[]
+
+    if study_id:
+        same_study_orders=(
+            Order.query
+            .filter(Order.pacs_study_id == study_id)
+            .order_by(Order.id)
+            .all()
+        )
+
+        others=[
+            row
+            for row in same_study_orders
+            if row.id != order.id
+        ]
+
+        if others:
+            blockers.append('PACS_STUDY_SHARED_BY_OTHER_ORDER')
+
+    active_transfer_count=0
+
+    if study_id:
+        active_transfer_count=(
+            PacsTransferJob.query
+            .filter(
+                PacsTransferJob.order_id == order.id,
+                PacsTransferJob.orthanc_study_id == study_id,
+                PacsTransferJob.status.in_(
+                    ('PENDING','SENDING')
+                ),
+            )
+            .count()
+        )
+
+        if active_transfer_count:
+            blockers.append('ACTIVE_PACS_TRANSFER_JOB')
+
+    orthanc_status=None
+    orthanc_payload=None
+    orthanc_error=''
+
+    if study_id:
+        try:
+            response=requests.get(
+                f'{PACS_ORTHANC_URL}/studies/{study_id}',
+                auth=_orthanc_auth(),
+                timeout=10,
+            )
+
+            orthanc_status=response.status_code
+
+            if response.status_code == 200:
+                orthanc_payload=response.json()
+            else:
+                blockers.append('ORTHANC_STUDY_NOT_AVAILABLE')
+
+        except Exception as exc:
+            orthanc_error=type(exc).__name__
+            blockers.append('ORTHANC_LOOKUP_FAILED')
+
+    if orthanc_payload:
+        tags=orthanc_payload.get('MainDicomTags') or {}
+        patient_tags=orthanc_payload.get('PatientMainDicomTags') or {}
+
+        orthanc_accession=(tags.get('AccessionNumber') or '').strip()
+        orthanc_patient_id=(patient_tags.get('PatientID') or '').strip()
+        orthanc_uid=(tags.get('StudyInstanceUID') or '').strip()
+
+        ris_patient_id=(
+            (patient.patient_id or '').strip()
+            if patient
+            else ''
+        )
+
+        ris_uid=(
+            getattr(order, 'study_instance_uid', '')
+            or ''
+        ).strip()
+
+        if not orthanc_accession or orthanc_accession != accession:
+            blockers.append('ORTHANC_ACCESSION_MISMATCH')
+
+        if (
+            orthanc_patient_id
+            and ris_patient_id
+            and orthanc_patient_id != ris_patient_id
+        ):
+            blockers.append('ORTHANC_PATIENT_ID_MISMATCH')
+
+        if (
+            orthanc_uid
+            and ris_uid
+            and orthanc_uid != ris_uid
+        ):
+            blockers.append('ORTHANC_STUDY_UID_MISMATCH')
+
+    return {
+        'allowed': not blockers,
+        'blockers': blockers,
+        'reason': reason,
+        'typed_accession': typed_accession,
+        'accession': accession,
+        'study_id': study_id,
+        'patient': patient,
+        'orthanc_status': orthanc_status,
+        'orthanc_payload': orthanc_payload,
+        'orthanc_error': orthanc_error,
+        'same_study_order_count': len(same_study_orders),
+        'active_transfer_count': active_transfer_count,
+    }
+
+
+@app.post(
+    '/admin/cancellation-center/order/<int:order_id>/delete-images'
+)
+@require_perm('data.cancel.case')
+def granular_delete_order_images_only(order_id):
+    order=Order.query.get_or_404(order_id)
+
+    reason=(request.form.get('reason') or '').strip()
+    typed_accession=(
+        request.form.get('confirm_accession')
+        or ''
+    ).strip()
+
+    preflight=granular_delete_images_only_preflight(
+        order,
+        typed_accession,
+        reason,
+    )
+
+    if not preflight['allowed']:
+        audit(
+            'PACS_IMAGES_DELETE_BLOCKED_ADMIN',
+            'order',
+            order.id,
+            (
+                f"accession={order.accession}; "
+                f"study={preflight['study_id']}; "
+                f"blockers={','.join(preflight['blockers'])}; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+
+        return {
+            'ok': False,
+            'deleted': False,
+            'blockers': preflight['blockers'],
+        }, 409
+
+    study_id=preflight['study_id']
+    image_count_before=order.pacs_image_count or 0
+    study_uid=(
+        getattr(order, 'study_instance_uid', '')
+        or ''
+    )
+
+    audit(
+        'PACS_IMAGES_DELETE_REQUESTED_ADMIN',
+        'order',
+        order.id,
+        (
+            f"accession={order.accession}; "
+            f"patient_id={order.patient.patient_id if order.patient else ''}; "
+            f"study={study_id}; "
+            f"study_uid={study_uid}; "
+            f"image_count_before={image_count_before}; "
+            f"reason={reason}"
+        ),
+    )
+    db.session.commit()
+
+    try:
+        response=requests.delete(
+            f'{PACS_ORTHANC_URL}/studies/{study_id}',
+            auth=_orthanc_auth(),
+            timeout=20,
+        )
+    except Exception as exc:
+        audit(
+            'PACS_IMAGES_DELETE_FAILED_ADMIN',
+            'order',
+            order.id,
+            (
+                f"accession={order.accession}; "
+                f"study={study_id}; "
+                f"stage=ORTHANC_DELETE_EXCEPTION; "
+                f"error={type(exc).__name__}; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+
+        return {
+            'ok': False,
+            'deleted': False,
+            'error': 'ORTHANC_DELETE_FAILED',
+        }, 502
+
+    if response.status_code != 200:
+        audit(
+            'PACS_IMAGES_DELETE_FAILED_ADMIN',
+            'order',
+            order.id,
+            (
+                f"accession={order.accession}; "
+                f"study={study_id}; "
+                f"stage=ORTHANC_DELETE_HTTP; "
+                f"http={response.status_code}; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+
+        return {
+            'ok': False,
+            'deleted': False,
+            'error': 'ORTHANC_DELETE_REJECTED',
+            'http_status': response.status_code,
+        }, 502
+
+    try:
+        verify=requests.get(
+            f'{PACS_ORTHANC_URL}/studies/{study_id}',
+            auth=_orthanc_auth(),
+            timeout=10,
+        )
+    except Exception as exc:
+        audit(
+            'PACS_IMAGES_DELETE_FAILED_ADMIN',
+            'order',
+            order.id,
+            (
+                f"accession={order.accession}; "
+                f"study={study_id}; "
+                f"stage=ORTHANC_VERIFY_EXCEPTION; "
+                f"error={type(exc).__name__}; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+
+        return {
+            'ok': False,
+            'deleted': True,
+            'ris_state_updated': False,
+            'error': 'ORTHANC_DELETE_VERIFICATION_FAILED',
+        }, 502
+
+    if verify.status_code != 404:
+        audit(
+            'PACS_IMAGES_DELETE_FAILED_ADMIN',
+            'order',
+            order.id,
+            (
+                f"accession={order.accession}; "
+                f"study={study_id}; "
+                f"stage=ORTHANC_VERIFY_PRESENT; "
+                f"http={verify.status_code}; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+
+        return {
+            'ok': False,
+            'deleted': True,
+            'ris_state_updated': False,
+            'error': 'ORTHANC_STUDY_STILL_PRESENT',
+        }, 502
+
+    try:
+        order.pacs_image_count=0
+        order.pacs_status='IMAGES_DELETED'
+        order.pacs_last_seen_at=datetime.utcnow()
+        order.pacs_last_change_at=datetime.utcnow()
+
+        audit(
+            'PACS_IMAGES_DELETED_ADMIN',
+            'order',
+            order.id,
+            (
+                f"accession={order.accession}; "
+                f"patient_id={order.patient.patient_id if order.patient else ''}; "
+                f"study={study_id}; "
+                f"study_uid={study_uid}; "
+                f"image_count_before={image_count_before}; "
+                f"image_count_after=0; "
+                f"orthanc_verified_absent=yes; "
+                f"reason={reason}"
+            ),
+        )
+
+        db.session.commit()
+
+    except Exception as exc:
+        db.session.rollback()
+
+        try:
+            audit(
+                'PACS_IMAGES_DELETE_FAILED_ADMIN',
+                'order',
+                order.id,
+                (
+                    f"accession={order.accession}; "
+                    f"study={study_id}; "
+                    f"stage=RIS_STATE_UPDATE_AFTER_PACS_DELETE; "
+                    f"error={type(exc).__name__}; "
+                    f"reason={reason}"
+                ),
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        return {
+            'ok': False,
+            'deleted': True,
+            'ris_state_updated': False,
+            'error': 'RIS_STATE_UPDATE_FAILED_AFTER_PACS_DELETE',
+        }, 500
+
+    return {
+        'ok': True,
+        'deleted': True,
+        'ris_state_updated': True,
+        'order_id': order.id,
+        'accession': order.accession,
+        'pacs_study_id': study_id,
+        'pacs_status': order.pacs_status,
+        'pacs_image_count': order.pacs_image_count,
+    }, 200
+
+
 # RB_GRANULAR_DELETE_READONLY_PREVIEW_V1
 def granular_delete_order_preview_snapshot(order):
     """
