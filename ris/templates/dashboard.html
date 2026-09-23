@@ -199,6 +199,17 @@
       </a>
     {% endif %}
 
+    {% if has_perm('correction.request') or has_perm('correction.review') %}
+      <a class="rb-module" href="{{url_for('correction_center')}}">
+        <span class="rb-module-icon">🛡️</span>
+        <div>
+          <h3>Correction & Cancellation</h3>
+          <p>Report wrong images or data, request cancellation, and review controlled corrections.</p>
+        </div>
+        <span class="rb-module-count">Audited workflow</span>
+      </a>
+    {% endif %}
+
     <!-- RB_DASHBOARD_SLA_OPERATIONS_LINKS_V1 -->
 
     {% if has_perm('audit.view') %}

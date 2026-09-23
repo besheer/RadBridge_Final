@@ -48,6 +48,7 @@ from flask import Flask, request, redirect, url_for, render_template, flash, sen
 from flask_sqlalchemy import SQLAlchemy
 from procedure_catalog import PROCEDURE_CATALOG
 from sqlalchemy import or_, text, inspect, and_, func
+from sqlalchemy.exc import IntegrityError
 import requests
 from docx import Document
 from reportlab.lib.pagesizes import A4
@@ -190,13 +191,14 @@ AUTH = (ORTHANC_USER, ORTHANC_PASSWORD)
 ROLE_PERMS = {
     'SUPER_ADMIN': ['*'],
     'IT': ['dashboard.view','patients.view','orders.view','devices.manage','users.view','audit.view','pacs.view'],
-    'RECEPTION': ['dashboard.view','patients.view','patients.create','patients.edit','orders.view','orders.create','appointments.manage','payments.create','attachments.view','attachments.upload','delivery.manage','finance.discount.request'],
+    'RECEPTION': ['dashboard.view','patients.view','patients.create','patients.edit','orders.view','orders.create','appointments.manage','payments.create','attachments.view','attachments.upload','delivery.manage','finance.discount.request','correction.request'],
     'CALL_CENTER': ['dashboard.view','patients.view','patients.create','orders.view','appointments.manage'],
     'NURSING': ['dashboard.view','patients.view','orders.view','nursing.worklist','consumables.use','attachments.view','attachments.upload'],
-    'TECHNICIAN': ['dashboard.view','patients.view','orders.view','technician.worklist','consumables.use','orders.status','attachments.view','pacs.transfer'],
+    'TECHNICIAN': ['dashboard.view','patients.view','orders.view','technician.worklist','consumables.use','orders.status','attachments.view','pacs.transfer','correction.request'],
     'SERVICE': ['dashboard.view','patients.view','orders.view','technician.worklist','consumables.use','orders.status'],
     'RADIOLOGIST': ['dashboard.view','patients.view','orders.view','reports.view','reports.edit','pacs.view','attachments.view','workflow.command.view','pacs.open_pool.take'],
-    'CASE_COORDINATOR': ['dashboard.view','patients.view','orders.view','reports.view','attachments.view','reports.coordinate','reports.version.view','assignment.manage'],
+    'CASE_COORDINATOR': ['dashboard.view','patients.view','orders.view','reports.view','attachments.view','reports.coordinate','reports.version.view','assignment.manage','correction.request','correction.review'],
+    'BRANCH_MANAGER': ['dashboard.view','patients.view','orders.view','reports.view','attachments.view','correction.request'],
     'CASHIER': ['dashboard.view','patients.view','orders.view','payments.create','payments.refund','receipts.print','cashier.workstation','finance.discount.request'],
     'CONTRACTS': ['dashboard.view','contracts.manage','procedures.view','patients.view','orders.view'],
     'INVENTORY': ['dashboard.view','inventory.manage','orders.view'],
@@ -241,7 +243,8 @@ ALL_PERMISSIONS = [
     'workflow.command.view','pacs.intake.view','pacs.intake.manage',
     'pacs.destinations.manage','pacs.transfer','pacs.archive.manage','pacs.discovery.view','pacs.discovery.manage',
     'storage.cloud.view','storage.cloud.manage','storage.targets.view','storage.targets.manage','dr.view','dr.manage','dr.failover',
-    'reports.coordinate','reports.version.view','pacs.open_pool.take','assignment.manage',]
+    'reports.coordinate','reports.version.view','pacs.open_pool.take','assignment.manage',
+    'correction.request','correction.review','correction.execute',]
 
 class Branch(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2332,6 +2335,47 @@ class CoordinatorTask(db.Model):
     returned_at=db.Column(db.DateTime)
     order=db.relationship('Order',foreign_keys=[order_id])
     report=db.relationship('Report',foreign_keys=[report_id])
+    assignee=db.relationship('User',foreign_keys=[assigned_to])
+
+
+
+# RB_CORRECTION_REQUEST_WORKFLOW_V1
+class CorrectionRequest(db.Model):
+    __tablename__='correction_request'
+    __table_args__=(
+        db.CheckConstraint(
+            "request_type IN ('WRONG_IMAGES','WRONG_DEMOGRAPHICS','WRONG_ORDER','WRONG_ACCESSION','DUPLICATE_CASE','CANCEL_ORDER','WRONG_REPORT','OTHER')",
+            name='ck_correction_request_type',
+        ),
+        db.CheckConstraint(
+            "status IN ('NEW','UNDER_REVIEW','NEED_INFO','APPROVED','REJECTED','COMPLETED')",
+            name='ck_correction_request_status',
+        ),
+        db.Index(
+            'uq_correction_request_open_order_type',
+            'order_id',
+            'request_type',
+            unique=True,
+            postgresql_where=db.text("status IN ('NEW','UNDER_REVIEW','NEED_INFO','APPROVED')"),
+            sqlite_where=db.text("status IN ('NEW','UNDER_REVIEW','NEED_INFO','APPROVED')"),
+        ),
+    )
+    id=db.Column(db.Integer,primary_key=True)
+    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
+    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
+    request_type=db.Column(db.String(40),nullable=False,index=True)
+    status=db.Column(db.String(30),nullable=False,default='NEW',index=True)
+    reason=db.Column(db.Text,nullable=False)
+    requested_by=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
+    assigned_to=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
+    review_note=db.Column(db.Text,default='')
+    created_at=db.Column(db.DateTime,default=datetime.utcnow,nullable=False,index=True)
+    updated_at=db.Column(db.DateTime,default=datetime.utcnow,nullable=False)
+    reviewed_at=db.Column(db.DateTime)
+    closed_at=db.Column(db.DateTime)
+    order=db.relationship('Order',foreign_keys=[order_id])
+    branch=db.relationship('Branch',foreign_keys=[branch_id])
+    requester=db.relationship('User',foreign_keys=[requested_by])
     assignee=db.relationship('User',foreign_keys=[assigned_to])
 
 class StorageLocation(db.Model):
@@ -20199,6 +20243,217 @@ def granular_delete_patient_preview(patient_id):
 
 
 
+# RB_CORRECTION_CANCELLATION_CENTER_V1
+CORRECTION_REQUEST_TYPES=(
+    ('WRONG_IMAGES','Wrong images / study sent'),
+    ('WRONG_DEMOGRAPHICS','Wrong patient demographics'),
+    ('WRONG_ORDER','Wrong order / examination'),
+    ('WRONG_ACCESSION','Wrong accession'),
+    ('DUPLICATE_CASE','Duplicate case'),
+    ('CANCEL_ORDER','Cancel order request'),
+    ('WRONG_REPORT','Wrong report / report correction'),
+    ('OTHER','Other correction'),
+)
+CORRECTION_REQUEST_TYPE_CODES={code for code,_ in CORRECTION_REQUEST_TYPES}
+CORRECTION_OPEN_STATUSES=('NEW','UNDER_REVIEW','NEED_INFO','APPROVED')
+CORRECTION_REVIEW_STATUSES=('ALL','NEW','UNDER_REVIEW','NEED_INFO','APPROVED','REJECTED','COMPLETED')
+
+
+def correction_can_request():
+    return has_perm('correction.request') or has_perm('correction.review')
+
+
+def correction_can_review():
+    return has_perm('correction.review')
+
+
+def correction_branch_allowed(order, user=None):
+    user=user or current_user()
+    if not user or not order:
+        return False
+    if user.role and user.role.code=='SUPER_ADMIN':
+        return True
+    # Global correction reviewers may operate across branches. Request-only
+    # users without an explicit branch fail closed instead of gaining global
+    # access accidentally.
+    if not user.branch_id:
+        return bool(has_perm('correction.review'))
+    return int(order.branch_id or 0)==int(user.branch_id)
+
+
+def correction_search_orders(term, user=None, limit=50):
+    term=(term or '').strip()
+    if not term:
+        return []
+    user=user or current_user()
+    q=Order.query.join(Patient,Order.patient_id==Patient.id)
+    if user and not (user.role and user.role.code=='SUPER_ADMIN'):
+        if user.branch_id:
+            q=q.filter(Order.branch_id==user.branch_id)
+        elif not has_perm('correction.review'):
+            return []
+    like=f'%{term}%'
+    filters=[
+        Order.accession.ilike(like),
+        Patient.patient_id.ilike(like),
+        Patient.name.ilike(like),
+        Patient.phone.ilike(like),
+    ]
+    if term.isdigit():
+        filters.append(Order.id==int(term))
+    return q.filter(db.or_(*filters)).order_by(Order.id.desc()).limit(limit).all()
+
+
+@app.get('/correction-center')
+@login_required
+def correction_center():
+    if not (correction_can_request() or correction_can_review()):
+        abort(403)
+    u=current_user()
+    term=(request.args.get('q') or '').strip()
+    orders=correction_search_orders(term,u)
+    my_requests=CorrectionRequest.query.filter_by(requested_by=u.id).order_by(CorrectionRequest.id.desc()).limit(50).all()
+    pending_count=0
+    if correction_can_review():
+        rq=CorrectionRequest.query.filter(CorrectionRequest.status.in_(('NEW','UNDER_REVIEW','NEED_INFO','APPROVED')))
+        if u.branch_id and not (u.role and u.role.code=='SUPER_ADMIN'):
+            rq=rq.filter(db.or_(CorrectionRequest.branch_id==u.branch_id,CorrectionRequest.branch_id.is_(None)))
+        pending_count=rq.count()
+    return render_template(
+        'correction_center.html',q=term,orders=orders,my_requests=my_requests,
+        request_types=CORRECTION_REQUEST_TYPES,can_review=correction_can_review(),
+        pending_count=pending_count,
+    )
+
+
+@app.post('/correction-center/request')
+@require_perm('correction.request')
+def correction_request_submit():
+    u=current_user()
+    order_id=request.form.get('order_id',type=int)
+    request_type=(request.form.get('request_type') or '').strip().upper()
+    reason=(request.form.get('reason') or '').strip()
+    if not order_id:
+        abort(400,'Order is required.')
+    if request_type not in CORRECTION_REQUEST_TYPE_CODES:
+        abort(400,'Invalid correction request type.')
+    if len(reason)<5:
+        abort(400,'Correction reason must contain at least 5 characters.')
+    order=Order.query.get_or_404(order_id)
+    if not correction_branch_allowed(order,u):
+        abort(403)
+    duplicate=CorrectionRequest.query.filter(
+        CorrectionRequest.order_id==order.id,
+        CorrectionRequest.request_type==request_type,
+        CorrectionRequest.status.in_(CORRECTION_OPEN_STATUSES),
+    ).first()
+    if duplicate:
+        abort(409,f'An active {request_type} request already exists for this order.')
+    row=CorrectionRequest(
+        order_id=order.id,
+        branch_id=order.branch_id or u.branch_id,
+        request_type=request_type,
+        status='NEW',
+        reason=reason[:2000],
+        requested_by=u.id,
+        updated_at=datetime.utcnow(),
+    )
+    db.session.add(row)
+    try:
+        db.session.flush()
+        audit(
+            'CORRECTION_REQUEST_CREATED','correction_request',row.id,
+            f'order_id={order.id};accession={order.accession};type={request_type};branch_id={row.branch_id or ""};reason={reason[:1000]}'
+        )
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        abort(409,f'An active {request_type} request already exists for this order.')
+    flash('Correction request submitted for coordinator review.','success')
+    return redirect(url_for('correction_center',q=order.accession))
+
+
+@app.get('/correction-center/requests')
+@require_perm('correction.review')
+def correction_request_queue():
+    u=current_user()
+    status=(request.args.get('status') or 'ALL').strip().upper()
+    if status not in CORRECTION_REVIEW_STATUSES:
+        status='ALL'
+    q=CorrectionRequest.query
+    if u.branch_id and not (u.role and u.role.code=='SUPER_ADMIN'):
+        q=q.filter(db.or_(CorrectionRequest.branch_id==u.branch_id,CorrectionRequest.branch_id.is_(None)))
+    if status!='ALL':
+        q=q.filter(CorrectionRequest.status==status)
+    rows=q.order_by(CorrectionRequest.id.desc()).limit(300).all()
+    return render_template(
+        'correction_request_queue.html',rows=rows,status=status,
+        statuses=CORRECTION_REVIEW_STATUSES,
+    )
+
+
+@app.post('/correction-center/requests/<int:request_id>/action')
+@require_perm('correction.review')
+def correction_request_action(request_id):
+    u=current_user()
+    row=(
+        CorrectionRequest.query
+        .filter_by(id=request_id)
+        .with_for_update()
+        .first_or_404()
+    )
+    if row.order and not correction_branch_allowed(row.order,u):
+        abort(403)
+    action=(request.form.get('action') or '').strip().upper()
+    note=(request.form.get('note') or '').strip()
+    if action not in ('CLAIM','NEED_INFO','APPROVE','REJECT'):
+        abort(400,'Invalid correction review action.')
+    # Four-eyes rule applies to every review action, not only approval.
+    # A requester cannot claim, request information on, approve, or reject
+    # their own correction request even if they hold multiple roles.
+    if row.requested_by==u.id:
+        abort(409,'Requester cannot review their own correction request.')
+    if action!='CLAIM' and len(note)<5:
+        abort(400,'Review note must contain at least 5 characters.')
+    if row.assigned_to and row.assigned_to!=u.id and not (u.role and u.role.code=='SUPER_ADMIN'):
+        abort(403)
+    if action=='CLAIM':
+        if row.status not in ('NEW','NEED_INFO','UNDER_REVIEW'):
+            abort(409,'This request cannot be claimed in its current state.')
+        row.assigned_to=u.id
+        row.status='UNDER_REVIEW'
+    elif action=='NEED_INFO':
+        if row.status not in ('NEW','UNDER_REVIEW'):
+            abort(409,'This request cannot request more information in its current state.')
+        row.assigned_to=u.id
+        row.status='NEED_INFO'
+        row.review_note=note[:2000]
+        row.reviewed_at=datetime.utcnow()
+    elif action=='APPROVE':
+        if row.status not in ('NEW','UNDER_REVIEW','NEED_INFO'):
+            abort(409,'This request cannot be approved in its current state.')
+        row.assigned_to=u.id
+        row.status='APPROVED'
+        row.review_note=note[:2000]
+        row.reviewed_at=datetime.utcnow()
+    elif action=='REJECT':
+        if row.status not in ('NEW','UNDER_REVIEW','NEED_INFO'):
+            abort(409,'This request cannot be rejected in its current state.')
+        row.assigned_to=u.id
+        row.status='REJECTED'
+        row.review_note=note[:2000]
+        row.reviewed_at=datetime.utcnow()
+        row.closed_at=datetime.utcnow()
+    row.updated_at=datetime.utcnow()
+    audit(
+        'CORRECTION_REQUEST_REVIEW','correction_request',row.id,
+        f'action={action};status={row.status};order_id={row.order_id};accession={row.order.accession if row.order else ""};requester={row.requested_by};reviewer={u.id};note={note[:1000]}'
+    )
+    db.session.commit()
+    flash(f'Correction request {row.id}: {row.status}.','success')
+    return redirect(url_for('correction_request_queue',status=request.form.get('return_status','ALL')))
+
+
 @app.get('/admin/cancellation-center')
 @require_perm('data.cancel.case')
 def admin_cancellation_center():
@@ -20523,6 +20778,25 @@ def seed_master_data():
         r=Role.query.filter_by(code=code).first()
         if not r:
             db.session.add(Role(code=code,name=code.replace('_',' ').title(),permissions_json=json.dumps(perms)))
+    db.session.commit()
+
+    # RB_CORRECTION_PERMISSION_DEFAULTS_V1
+    # Append only the new correction permissions to standard roles. Existing
+    # custom permissions remain untouched and execution is never granted here.
+    correction_defaults={
+        'RECEPTION': {'correction.request'},
+        'TECHNICIAN': {'correction.request'},
+        'BRANCH_MANAGER': {'correction.request'},
+        'CASE_COORDINATOR': {'correction.request','correction.review'},
+    }
+    for code,required in correction_defaults.items():
+        role=Role.query.filter_by(code=code).first()
+        if not role:
+            continue
+        current=set(role.permissions())
+        missing=required-current
+        if missing:
+            role.permissions_json=json.dumps(sorted(current|required))
     db.session.commit()
     if User.query.count()==0:
         admin_role=Role.query.filter_by(code='SUPER_ADMIN').first()
