@@ -2378,6 +2378,147 @@ class CorrectionRequest(db.Model):
     requester=db.relationship('User',foreign_keys=[requested_by])
     assignee=db.relationship('User',foreign_keys=[assigned_to])
 
+
+# RB_CORRECTION_EXECUTION_LEDGER_PHASE2A_V1
+class CorrectionExecution(db.Model):
+    __tablename__='correction_execution'
+
+    id=db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    correction_request_id=db.Column(
+        db.Integer,
+        db.ForeignKey('correction_request.id'),
+        nullable=False,
+        unique=True,
+        index=True
+    )
+
+    order_id=db.Column(
+        db.Integer,
+        db.ForeignKey('order.id'),
+        nullable=False,
+        index=True
+    )
+
+    branch_id=db.Column(
+        db.Integer,
+        db.ForeignKey('branch.id'),
+        nullable=True,
+        index=True
+    )
+
+    execution_type=db.Column(
+        db.String(40),
+        nullable=False,
+        index=True
+    )
+
+    status=db.Column(
+        db.String(40),
+        nullable=False,
+        default='READY_FOR_EXECUTION',
+        index=True
+    )
+
+    state_version=db.Column(
+        db.Integer,
+        nullable=False,
+        default=1
+    )
+
+    claimed_by=db.Column(
+        db.Integer,
+        db.ForeignKey('user.id'),
+        nullable=True,
+        index=True
+    )
+
+    executed_by=db.Column(
+        db.Integer,
+        db.ForeignKey('user.id'),
+        nullable=True
+    )
+
+    request_snapshot_json=db.Column(
+        db.Text,
+        nullable=False,
+        default='{}'
+    )
+
+    preflight_snapshot_json=db.Column(
+        db.Text,
+        nullable=False,
+        default='{}'
+    )
+
+    result_snapshot_json=db.Column(
+        db.Text,
+        nullable=False,
+        default='{}'
+    )
+
+    confirmation_token_hash=db.Column(
+        db.String(128),
+        nullable=True
+    )
+
+    confirmation_expires_at=db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    failure_code=db.Column(
+        db.String(80),
+        nullable=True
+    )
+
+    failure_message=db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    created_at=db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow
+    )
+
+    updated_at=db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+    claimed_at=db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    started_at=db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    executed_at=db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    verified_at=db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    failed_at=db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+
 class StorageLocation(db.Model):
     """Logical storage target.
 
@@ -20256,6 +20397,542 @@ CORRECTION_REQUEST_TYPES=(
 )
 CORRECTION_REQUEST_TYPE_CODES={code for code,_ in CORRECTION_REQUEST_TYPES}
 CORRECTION_OPEN_STATUSES=('NEW','UNDER_REVIEW','NEED_INFO','APPROVED')
+
+
+# RB_CORRECTION_EXECUTION_STATE_MACHINE_PHASE2A_V1
+
+CORRECTION_EXECUTION_STATUSES=(
+    'READY_FOR_EXECUTION',
+    'CLAIMED_FOR_EXECUTION',
+    'ON_HOLD',
+    'PREFLIGHT_PASSED',
+    'PREFLIGHT_BLOCKED',
+    'EXECUTING',
+    'VERIFYING',
+    'COMPLETED',
+    'EXECUTION_FAILED',
+    'VERIFICATION_FAILED',
+    'EXPIRED',
+    'CANCELLED_BEFORE_EXECUTION',
+)
+
+CORRECTION_EXECUTION_TERMINAL_STATUSES={
+    'COMPLETED',
+    'EXECUTION_FAILED',
+    'VERIFICATION_FAILED',
+    'EXPIRED',
+    'CANCELLED_BEFORE_EXECUTION',
+}
+
+CORRECTION_EXECUTION_TRANSITIONS={
+    'READY_FOR_EXECUTION':{
+        'CLAIMED_FOR_EXECUTION',
+        'ON_HOLD',
+        'CANCELLED_BEFORE_EXECUTION',
+        'EXPIRED',
+    },
+    'CLAIMED_FOR_EXECUTION':{
+        'READY_FOR_EXECUTION',
+        'ON_HOLD',
+        'PREFLIGHT_PASSED',
+        'PREFLIGHT_BLOCKED',
+        'CANCELLED_BEFORE_EXECUTION',
+        'EXPIRED',
+    },
+    'ON_HOLD':{
+        'READY_FOR_EXECUTION',
+        'CLAIMED_FOR_EXECUTION',
+        'CANCELLED_BEFORE_EXECUTION',
+        'EXPIRED',
+    },
+    'PREFLIGHT_PASSED':{
+        'EXECUTING',
+        'ON_HOLD',
+        'CANCELLED_BEFORE_EXECUTION',
+        'EXPIRED',
+    },
+    'PREFLIGHT_BLOCKED':{
+        'READY_FOR_EXECUTION',
+        'ON_HOLD',
+        'CANCELLED_BEFORE_EXECUTION',
+        'EXPIRED',
+    },
+    'EXECUTING':{
+        'VERIFYING',
+        'EXECUTION_FAILED',
+    },
+    'VERIFYING':{
+        'COMPLETED',
+        'VERIFICATION_FAILED',
+    },
+}
+
+
+def correction_execution_user_has_perm(
+    user,
+    permission='correction.execute',
+):
+    if not user or not getattr(user,'role',None):
+        return False
+
+    try:
+        permissions=set(user.role.permissions())
+    except Exception:
+        return False
+
+    return (
+        '*' in permissions
+        or permission in permissions
+    )
+
+
+def correction_execution_snapshot(
+    correction_request,
+):
+    order=correction_request.order
+
+    return {
+        'correction_request_id':
+            correction_request.id,
+        'correction_request_status':
+            correction_request.status,
+        'request_type':
+            correction_request.request_type,
+        'requester_id':
+            correction_request.requested_by,
+        'reviewer_id':
+            correction_request.assigned_to,
+        'order_id':
+            correction_request.order_id,
+        'branch_id':
+            correction_request.branch_id,
+        'order_status':
+            getattr(order,'status',None)
+            if order else None,
+        'exam_status':
+            getattr(order,'exam_status',None)
+            if order else None,
+        'accession':
+            getattr(order,'accession',None)
+            if order else None,
+        'pacs_status':
+            getattr(order,'pacs_status',None)
+            if order else None,
+        'pacs_image_count':
+            getattr(order,'pacs_image_count',None)
+            if order else None,
+        'pacs_study_id':
+            getattr(order,'pacs_study_id',None)
+            if order else None,
+        'study_instance_uid':
+            getattr(order,'study_instance_uid',None)
+            if order else None,
+    }
+
+
+
+# RB_CORRECTION_EXECUTION_CONCURRENCY_HARDENING_V1
+
+CORRECTION_EXECUTION_SNAPSHOT_KEYS=(
+    'correction_request_id',
+    'correction_request_status',
+    'request_type',
+    'requester_id',
+    'reviewer_id',
+    'order_id',
+    'branch_id',
+    'order_status',
+    'exam_status',
+    'accession',
+    'pacs_status',
+    'pacs_image_count',
+    'pacs_study_id',
+    'study_instance_uid',
+)
+
+
+def correction_execution_request_lock(
+    correction_request_id,
+):
+    return (
+        CorrectionRequest.query
+        .filter_by(
+            id=correction_request_id
+        )
+        .with_for_update()
+        .first()
+    )
+
+
+def correction_execution_row_lock(
+    execution_id,
+):
+    return (
+        CorrectionExecution.query
+        .filter_by(id=execution_id)
+        .with_for_update()
+        .first()
+    )
+
+
+def correction_execution_saved_snapshot(
+    execution,
+):
+    try:
+        value=json.loads(
+            execution.request_snapshot_json
+            or '{}'
+        )
+    except Exception:
+        raise ValueError(
+            'CORRECTION_EXECUTION_SNAPSHOT_INVALID'
+        )
+
+    if not isinstance(value,dict):
+        raise ValueError(
+            'CORRECTION_EXECUTION_SNAPSHOT_INVALID'
+        )
+
+    return value
+
+
+def correction_execution_assert_snapshot_current(
+    execution,
+    correction_request,
+):
+    saved=correction_execution_saved_snapshot(
+        execution
+    )
+
+    current=correction_execution_snapshot(
+        correction_request
+    )
+
+    mismatches=[]
+
+    for key in CORRECTION_EXECUTION_SNAPSHOT_KEYS:
+        if saved.get(key) != current.get(key):
+            mismatches.append(key)
+
+    if mismatches:
+        raise ValueError(
+            'CORRECTION_EXECUTION_STALE_SNAPSHOT:'
+            + ','.join(mismatches)
+        )
+
+    return current
+
+
+def correction_execution_prepare(
+    correction_request,
+):
+    if not correction_request:
+        raise ValueError(
+            'CORRECTION_REQUEST_REQUIRED'
+        )
+
+    if not getattr(
+        correction_request,
+        'id',
+        None
+    ):
+        raise ValueError(
+            'CORRECTION_REQUEST_NOT_PERSISTED'
+        )
+
+    locked_request=(
+        correction_execution_request_lock(
+            correction_request.id
+        )
+    )
+
+    if not locked_request:
+        raise ValueError(
+            'CORRECTION_REQUEST_NOT_FOUND'
+        )
+
+    if locked_request.status!='APPROVED':
+        raise ValueError(
+            'CORRECTION_REQUEST_NOT_APPROVED'
+        )
+
+    existing=(
+        CorrectionExecution.query
+        .filter_by(
+            correction_request_id=
+                locked_request.id
+        )
+        .first()
+    )
+
+    if existing:
+        raise ValueError(
+            'CORRECTION_EXECUTION_ALREADY_EXISTS'
+        )
+
+    snapshot=correction_execution_snapshot(
+        locked_request
+    )
+
+    row=CorrectionExecution(
+        correction_request_id=
+            locked_request.id,
+        order_id=
+            locked_request.order_id,
+        branch_id=
+            locked_request.branch_id,
+        execution_type=
+            locked_request.request_type,
+        status='READY_FOR_EXECUTION',
+        state_version=1,
+        request_snapshot_json=json.dumps(
+            snapshot,
+            ensure_ascii=False,
+            sort_keys=True,
+            default=str,
+        ),
+        preflight_snapshot_json='{}',
+        result_snapshot_json='{}',
+    )
+
+    db.session.add(row)
+    db.session.flush()
+
+    return row
+
+
+def correction_execution_assert_actor(
+    execution,
+    user,
+):
+    if not execution:
+        raise ValueError(
+            'CORRECTION_EXECUTION_REQUIRED'
+        )
+
+    if not correction_execution_user_has_perm(
+        user
+    ):
+        raise PermissionError(
+            'CORRECTION_EXECUTE_PERMISSION_REQUIRED'
+        )
+
+    req=correction_execution_request_lock(
+        execution.correction_request_id
+    )
+
+    if not req:
+        raise ValueError(
+            'CORRECTION_REQUEST_NOT_FOUND'
+        )
+
+    if req.status!='APPROVED':
+        raise ValueError(
+            'CORRECTION_REQUEST_NO_LONGER_APPROVED'
+        )
+
+    if user.id==req.requested_by:
+        raise PermissionError(
+            'REQUESTER_CANNOT_EXECUTE'
+        )
+
+    if (
+        req.assigned_to
+        and user.id==req.assigned_to
+    ):
+        raise PermissionError(
+            'REVIEWER_CANNOT_EXECUTE'
+        )
+
+    if (
+        execution.claimed_by
+        and execution.claimed_by!=user.id
+    ):
+        raise PermissionError(
+            'CORRECTION_EXECUTION_CLAIMED_BY_ANOTHER_USER'
+        )
+
+    order=db.session.get(
+        Order,
+        execution.order_id
+    )
+
+    if (
+        order
+        and not correction_branch_allowed(
+            order,
+            user
+        )
+    ):
+        raise PermissionError(
+            'CORRECTION_EXECUTION_BRANCH_FORBIDDEN'
+        )
+
+    return req
+
+
+def correction_execution_transition(
+    execution,
+    new_status,
+    user=None,
+    expected_version=None,
+):
+    if not execution:
+        raise ValueError(
+            'CORRECTION_EXECUTION_REQUIRED'
+        )
+
+    if not getattr(
+        execution,
+        'id',
+        None
+    ):
+        raise ValueError(
+            'CORRECTION_EXECUTION_NOT_PERSISTED'
+        )
+
+    locked=correction_execution_row_lock(
+        execution.id
+    )
+
+    if not locked:
+        raise ValueError(
+            'CORRECTION_EXECUTION_NOT_FOUND'
+        )
+
+    if expected_version is not None:
+        if (
+            int(locked.state_version or 0)
+            !=
+            int(expected_version)
+        ):
+            raise ValueError(
+                'CORRECTION_EXECUTION_STALE_VERSION'
+            )
+
+    new_status=(
+        new_status or ''
+    ).strip().upper()
+
+    if (
+        new_status
+        not in CORRECTION_EXECUTION_STATUSES
+    ):
+        raise ValueError(
+            'INVALID_CORRECTION_EXECUTION_STATUS'
+        )
+
+    current=locked.status
+
+    allowed=(
+        CORRECTION_EXECUTION_TRANSITIONS
+        .get(
+            current,
+            set()
+        )
+    )
+
+    if new_status not in allowed:
+        raise ValueError(
+            'INVALID_CORRECTION_EXECUTION_TRANSITION'
+        )
+
+    req=None
+
+    if user is not None:
+        req=correction_execution_assert_actor(
+            locked,
+            user
+        )
+
+        correction_execution_assert_snapshot_current(
+            locked,
+            req
+        )
+
+    now=datetime.utcnow()
+
+    locked.status=new_status
+
+    locked.state_version=(
+        int(
+            locked.state_version
+            or 0
+        )
+        + 1
+    )
+
+    locked.updated_at=now
+
+    if new_status=='CLAIMED_FOR_EXECUTION':
+        locked.claimed_by=(
+            user.id
+            if user else None
+        )
+        locked.claimed_at=now
+
+    elif new_status=='READY_FOR_EXECUTION':
+        locked.claimed_by=None
+        locked.claimed_at=None
+
+    elif new_status=='EXECUTING':
+        locked.executed_by=(
+            user.id
+            if user else None
+        )
+        locked.started_at=now
+
+    elif new_status=='VERIFYING':
+        locked.executed_at=now
+
+    elif new_status=='COMPLETED':
+        locked.verified_at=now
+
+    elif new_status in (
+        'EXECUTION_FAILED',
+        'VERIFICATION_FAILED',
+    ):
+        locked.failed_at=now
+
+    db.session.flush()
+
+    return locked
+
+
+def correction_execution_hold(
+    execution,
+    user,
+    expected_version=None,
+):
+    return correction_execution_transition(
+        execution,
+        'ON_HOLD',
+        user,
+        expected_version=expected_version,
+    )
+
+
+def correction_execution_release(
+    execution,
+    user,
+    expected_version=None,
+):
+    return correction_execution_transition(
+        execution,
+        'READY_FOR_EXECUTION',
+        user,
+        expected_version=expected_version,
+    )
+
+
+
+
+
+
+
+
+
+
 CORRECTION_REVIEW_STATUSES=('ALL','NEW','UNDER_REVIEW','NEED_INFO','APPROVED','REJECTED','COMPLETED')
 
 
@@ -20371,6 +21048,416 @@ def correction_request_submit():
         abort(409,f'An active {request_type} request already exists for this order.')
     flash('Correction request submitted for coordinator review.','success')
     return redirect(url_for('correction_center',q=order.accession))
+
+
+
+# RB_CORRECTION_EXECUTION_PREVIEW_ROUTES_PHASE2A_V1
+
+def correction_execution_assert_request_actor(
+    correction_request,
+    user,
+):
+    if not correction_request:
+        raise ValueError(
+            'CORRECTION_REQUEST_REQUIRED'
+        )
+
+    if not correction_execution_user_has_perm(
+        user
+    ):
+        raise PermissionError(
+            'CORRECTION_EXECUTE_PERMISSION_REQUIRED'
+        )
+
+    if correction_request.status!='APPROVED':
+        raise ValueError(
+            'CORRECTION_REQUEST_NOT_APPROVED'
+        )
+
+    if user.id==correction_request.requested_by:
+        raise PermissionError(
+            'REQUESTER_CANNOT_EXECUTE'
+        )
+
+    if (
+        correction_request.assigned_to
+        and user.id==correction_request.assigned_to
+    ):
+        raise PermissionError(
+            'REVIEWER_CANNOT_EXECUTE'
+        )
+
+    order=correction_request.order
+
+    if (
+        order
+        and not correction_branch_allowed(
+            order,
+            user
+        )
+    ):
+        raise PermissionError(
+            'CORRECTION_EXECUTION_BRANCH_FORBIDDEN'
+        )
+
+    return correction_request
+
+
+def correction_execution_http_error(
+    exc,
+):
+    text=str(exc)
+
+    if isinstance(exc,PermissionError):
+        abort(403,text)
+
+    if text in (
+        'CORRECTION_EXECUTION_ALREADY_EXISTS',
+        'CORRECTION_EXECUTION_STALE_VERSION',
+        'CORRECTION_EXECUTION_STALE_SNAPSHOT',
+        'CORRECTION_REQUEST_NO_LONGER_APPROVED',
+    ):
+        abort(409,text)
+
+    abort(400,text)
+
+
+@app.get('/correction-center/executions')
+@require_perm('correction.execute')
+def correction_execution_queue():
+    user=current_user()
+
+    approved=(
+        CorrectionRequest.query
+        .filter(
+            CorrectionRequest.status=='APPROVED'
+        )
+        .order_by(
+            CorrectionRequest.id.desc()
+        )
+        .limit(300)
+        .all()
+    )
+
+    approved_rows=[]
+
+    for row in approved:
+        if row.requested_by==user.id:
+            continue
+
+        if (
+            row.assigned_to
+            and row.assigned_to==user.id
+        ):
+            continue
+
+        if (
+            row.order
+            and not correction_branch_allowed(
+                row.order,
+                user
+            )
+        ):
+            continue
+
+        execution=(
+            CorrectionExecution.query
+            .filter_by(
+                correction_request_id=row.id
+            )
+            .first()
+        )
+
+        approved_rows.append(
+            {
+                'request':row,
+                'execution':execution,
+            }
+        )
+
+    executions=(
+        CorrectionExecution.query
+        .order_by(
+            CorrectionExecution.id.desc()
+        )
+        .limit(300)
+        .all()
+    )
+
+    visible_executions=[]
+
+    for execution in executions:
+        order=db.session.get(
+            Order,
+            execution.order_id
+        )
+
+        if (
+            order
+            and correction_branch_allowed(
+                order,
+                user
+            )
+        ):
+            visible_executions.append(
+                execution
+            )
+
+    return render_template(
+        'correction_execution_queue.html',
+        approved_rows=approved_rows,
+        executions=visible_executions,
+    )
+
+
+@app.post(
+    '/correction-center/requests/'
+    '<int:request_id>/execution/prepare'
+)
+@require_perm('correction.execute')
+def correction_execution_prepare_route(
+    request_id
+):
+    user=current_user()
+
+    row=(
+        CorrectionRequest.query
+        .filter_by(id=request_id)
+        .with_for_update()
+        .first_or_404()
+    )
+
+    try:
+        correction_execution_assert_request_actor(
+            row,
+            user
+        )
+
+        execution=correction_execution_prepare(
+            row
+        )
+
+        audit(
+            'CORRECTION_EXECUTION_PREPARED',
+            'correction_execution',
+            execution.id,
+            (
+                f'correction_request_id={row.id};'
+                f'order_id={row.order_id};'
+                f'type={row.request_type};'
+                f'executor_candidate={user.id};'
+                f'status={execution.status};'
+                f'state_version={execution.state_version}'
+            )
+        )
+
+        db.session.commit()
+
+    except (
+        ValueError,
+        PermissionError,
+    ) as exc:
+        db.session.rollback()
+        correction_execution_http_error(exc)
+
+    flash(
+        'Execution ledger prepared. '
+        'No correction has been executed.',
+        'success'
+    )
+
+    return redirect(
+        url_for(
+            'correction_execution_queue'
+        )
+    )
+
+
+@app.post(
+    '/correction-center/executions/'
+    '<int:execution_id>/claim'
+)
+@require_perm('correction.execute')
+def correction_execution_claim_route(
+    execution_id
+):
+    user=current_user()
+
+    execution=(
+        CorrectionExecution.query
+        .filter_by(id=execution_id)
+        .with_for_update()
+        .first_or_404()
+    )
+
+    expected_version=request.form.get(
+        'expected_version',
+        type=int
+    )
+
+    if expected_version is None:
+        abort(
+            400,
+            'Expected state version is required.'
+        )
+
+    try:
+        updated=correction_execution_transition(
+            execution,
+            'CLAIMED_FOR_EXECUTION',
+            user,
+            expected_version=expected_version,
+        )
+
+        audit(
+            'CORRECTION_EXECUTION_CLAIMED',
+            'correction_execution',
+            updated.id,
+            (
+                f'user_id={user.id};'
+                f'status={updated.status};'
+                f'state_version={updated.state_version}'
+            )
+        )
+
+        db.session.commit()
+
+    except (
+        ValueError,
+        PermissionError,
+    ) as exc:
+        db.session.rollback()
+        correction_execution_http_error(exc)
+
+    return redirect(
+        url_for(
+            'correction_execution_queue'
+        )
+    )
+
+
+@app.post(
+    '/correction-center/executions/'
+    '<int:execution_id>/hold'
+)
+@require_perm('correction.execute')
+def correction_execution_hold_route(
+    execution_id
+):
+    user=current_user()
+
+    execution=(
+        CorrectionExecution.query
+        .filter_by(id=execution_id)
+        .with_for_update()
+        .first_or_404()
+    )
+
+    expected_version=request.form.get(
+        'expected_version',
+        type=int
+    )
+
+    if expected_version is None:
+        abort(
+            400,
+            'Expected state version is required.'
+        )
+
+    try:
+        updated=correction_execution_hold(
+            execution,
+            user,
+            expected_version=expected_version,
+        )
+
+        audit(
+            'CORRECTION_EXECUTION_HELD',
+            'correction_execution',
+            updated.id,
+            (
+                f'user_id={user.id};'
+                f'status={updated.status};'
+                f'state_version={updated.state_version}'
+            )
+        )
+
+        db.session.commit()
+
+    except (
+        ValueError,
+        PermissionError,
+    ) as exc:
+        db.session.rollback()
+        correction_execution_http_error(exc)
+
+    return redirect(
+        url_for(
+            'correction_execution_queue'
+        )
+    )
+
+
+@app.post(
+    '/correction-center/executions/'
+    '<int:execution_id>/release'
+)
+@require_perm('correction.execute')
+def correction_execution_release_route(
+    execution_id
+):
+    user=current_user()
+
+    execution=(
+        CorrectionExecution.query
+        .filter_by(id=execution_id)
+        .with_for_update()
+        .first_or_404()
+    )
+
+    expected_version=request.form.get(
+        'expected_version',
+        type=int
+    )
+
+    if expected_version is None:
+        abort(
+            400,
+            'Expected state version is required.'
+        )
+
+    try:
+        updated=correction_execution_release(
+            execution,
+            user,
+            expected_version=expected_version,
+        )
+
+        audit(
+            'CORRECTION_EXECUTION_RELEASED',
+            'correction_execution',
+            updated.id,
+            (
+                f'user_id={user.id};'
+                f'status={updated.status};'
+                f'state_version={updated.state_version}'
+            )
+        )
+
+        db.session.commit()
+
+    except (
+        ValueError,
+        PermissionError,
+    ) as exc:
+        db.session.rollback()
+        correction_execution_http_error(exc)
+
+    return redirect(
+        url_for(
+            'correction_execution_queue'
+        )
+    )
 
 
 @app.get('/correction-center/requests')

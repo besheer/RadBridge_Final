@@ -230,3 +230,1301 @@ def test_closed_request_allows_new_request_of_same_type(app_ctx):
     new=m.CorrectionRequest(order_id=order.id,branch_id=branch.id,request_type='WRONG_IMAGES',status='NEW',reason='New request after closure',requested_by=requester.id)
     m.db.session.add(new);m.db.session.commit()
     assert m.CorrectionRequest.query.filter_by(order_id=order.id,request_type='WRONG_IMAGES').count()==2
+
+
+# RB_CORRECTION_PHASE2A_EXECUTION_TESTS_V1
+
+def _make_phase2a_approved_request(
+    m,
+    suffix,
+    branch,
+    requester,
+    reviewer,
+):
+    _,order=make_case(
+        m,
+        suffix,
+        branch
+    )
+
+    row=m.CorrectionRequest(
+        order_id=order.id,
+        branch_id=branch.id,
+        request_type='WRONG_IMAGES',
+        status='APPROVED',
+        reason='Phase 2A execution ledger test',
+        requested_by=requester.id,
+        assigned_to=reviewer.id,
+        review_note='Approved for Phase 2A test only',
+    )
+
+    m.db.session.add(row)
+    m.db.session.commit()
+
+    return order,row
+
+
+def test_phase2a_execution_model_declared(
+    app_ctx
+):
+    m=app_ctx
+
+    assert (
+        m.CorrectionExecution.__tablename__
+        ==
+        'correction_execution'
+    )
+
+    cols={
+        c.name
+        for c in
+        m.CorrectionExecution.__table__.columns
+    }
+
+    required={
+        'id',
+        'correction_request_id',
+        'order_id',
+        'branch_id',
+        'execution_type',
+        'status',
+        'state_version',
+        'claimed_by',
+        'executed_by',
+        'request_snapshot_json',
+        'preflight_snapshot_json',
+        'result_snapshot_json',
+        'confirmation_token_hash',
+        'confirmation_expires_at',
+        'failure_code',
+        'failure_message',
+        'created_at',
+        'updated_at',
+        'claimed_at',
+        'started_at',
+        'executed_at',
+        'verified_at',
+        'failed_at',
+    }
+
+    assert required == cols
+
+
+def test_phase2a_prepare_requires_approved_request(
+    app_ctx
+):
+    m=app_ctx
+
+    branch=m.Branch(
+        code='P2A-B1',
+        name='Phase2A Branch 1'
+    )
+
+    m.db.session.add(branch)
+    m.db.session.commit()
+
+    requester=make_user(
+        m,
+        'p2a-requester-1',
+        'TECHNICIAN',
+        branch,
+        ('correction.request',)
+    )
+
+    _,order=make_case(
+        m,
+        'P2A-NOTAPPROVED',
+        branch
+    )
+
+    row=m.CorrectionRequest(
+        order_id=order.id,
+        branch_id=branch.id,
+        request_type='WRONG_IMAGES',
+        status='NEW',
+        reason='Not approved',
+        requested_by=requester.id,
+    )
+
+    m.db.session.add(row)
+    m.db.session.commit()
+
+    import pytest
+
+    with pytest.raises(
+        ValueError,
+        match='CORRECTION_REQUEST_NOT_APPROVED'
+    ):
+        m.correction_execution_prepare(row)
+
+
+def test_phase2a_prepare_is_non_destructive(
+    app_ctx
+):
+    m=app_ctx
+
+    branch=m.Branch(
+        code='P2A-B2',
+        name='Phase2A Branch 2'
+    )
+
+    m.db.session.add(branch)
+    m.db.session.commit()
+
+    requester=make_user(
+        m,
+        'p2a-requester-2',
+        'TECHNICIAN',
+        branch,
+        ('correction.request',)
+    )
+
+    reviewer=make_user(
+        m,
+        'p2a-reviewer-2',
+        'CASE_COORDINATOR',
+        branch,
+        ('correction.review',)
+    )
+
+    order,row=_make_phase2a_approved_request(
+        m,
+        'P2A-PREP',
+        branch,
+        requester,
+        reviewer
+    )
+
+    before=(
+        order.status,
+        order.exam_status,
+        order.pacs_status,
+        order.pacs_image_count,
+        order.pacs_study_id,
+        order.study_instance_uid,
+        row.status,
+        row.requested_by,
+        row.assigned_to,
+    )
+
+    execution=m.correction_execution_prepare(
+        row
+    )
+
+    m.db.session.commit()
+    m.db.session.refresh(order)
+    m.db.session.refresh(row)
+    m.db.session.refresh(execution)
+
+    after=(
+        order.status,
+        order.exam_status,
+        order.pacs_status,
+        order.pacs_image_count,
+        order.pacs_study_id,
+        order.study_instance_uid,
+        row.status,
+        row.requested_by,
+        row.assigned_to,
+    )
+
+    assert before == after
+
+    assert (
+        execution.status
+        ==
+        'READY_FOR_EXECUTION'
+    )
+
+    assert execution.state_version == 1
+    assert execution.order_id == order.id
+
+    assert (
+        execution.correction_request_id
+        ==
+        row.id
+    )
+
+
+def test_phase2a_one_execution_per_request(
+    app_ctx
+):
+    m=app_ctx
+
+    branch=m.Branch(
+        code='P2A-B3',
+        name='Phase2A Branch 3'
+    )
+
+    m.db.session.add(branch)
+    m.db.session.commit()
+
+    requester=make_user(
+        m,
+        'p2a-requester-3',
+        'TECHNICIAN',
+        branch,
+        ('correction.request',)
+    )
+
+    reviewer=make_user(
+        m,
+        'p2a-reviewer-3',
+        'CASE_COORDINATOR',
+        branch,
+        ('correction.review',)
+    )
+
+    _,row=_make_phase2a_approved_request(
+        m,
+        'P2A-UNIQUE',
+        branch,
+        requester,
+        reviewer
+    )
+
+    m.correction_execution_prepare(row)
+    m.db.session.commit()
+
+    import pytest
+
+    with pytest.raises(
+        ValueError,
+        match='CORRECTION_EXECUTION_ALREADY_EXISTS'
+    ):
+        m.correction_execution_prepare(row)
+
+
+def test_phase2a_requester_cannot_execute(
+    app_ctx
+):
+    m=app_ctx
+
+    branch=m.Branch(
+        code='P2A-B4',
+        name='Phase2A Branch 4'
+    )
+
+    m.db.session.add(branch)
+    m.db.session.commit()
+
+    requester=make_user(
+        m,
+        'p2a-requester-4',
+        'TECHNICIAN',
+        branch,
+        (
+            'correction.request',
+            'correction.execute',
+        )
+    )
+
+    reviewer=make_user(
+        m,
+        'p2a-reviewer-4',
+        'CASE_COORDINATOR',
+        branch,
+        ('correction.review',)
+    )
+
+    _,row=_make_phase2a_approved_request(
+        m,
+        'P2A-REQUESTER',
+        branch,
+        requester,
+        reviewer
+    )
+
+    execution=m.correction_execution_prepare(
+        row
+    )
+
+    m.db.session.commit()
+
+    import pytest
+
+    with pytest.raises(
+        PermissionError,
+        match='REQUESTER_CANNOT_EXECUTE'
+    ):
+        m.correction_execution_transition(
+            execution,
+            'CLAIMED_FOR_EXECUTION',
+            requester
+        )
+
+
+def test_phase2a_reviewer_cannot_execute(
+    app_ctx
+):
+    m=app_ctx
+
+    branch=m.Branch(
+        code='P2A-B5',
+        name='Phase2A Branch 5'
+    )
+
+    m.db.session.add(branch)
+    m.db.session.commit()
+
+    requester=make_user(
+        m,
+        'p2a-requester-5',
+        'TECHNICIAN',
+        branch,
+        ('correction.request',)
+    )
+
+    reviewer=make_user(
+        m,
+        'p2a-reviewer-5',
+        'CASE_COORDINATOR',
+        branch,
+        (
+            'correction.review',
+            'correction.execute',
+        )
+    )
+
+    _,row=_make_phase2a_approved_request(
+        m,
+        'P2A-REVIEWER',
+        branch,
+        requester,
+        reviewer
+    )
+
+    execution=m.correction_execution_prepare(
+        row
+    )
+
+    m.db.session.commit()
+
+    import pytest
+
+    with pytest.raises(
+        PermissionError,
+        match='REVIEWER_CANNOT_EXECUTE'
+    ):
+        m.correction_execution_transition(
+            execution,
+            'CLAIMED_FOR_EXECUTION',
+            reviewer
+        )
+
+
+def test_phase2a_executor_requires_permission(
+    app_ctx
+):
+    m=app_ctx
+
+    branch=m.Branch(
+        code='P2A-B6',
+        name='Phase2A Branch 6'
+    )
+
+    m.db.session.add(branch)
+    m.db.session.commit()
+
+    requester=make_user(
+        m,
+        'p2a-requester-6',
+        'TECHNICIAN',
+        branch,
+        ('correction.request',)
+    )
+
+    reviewer=make_user(
+        m,
+        'p2a-reviewer-6',
+        'CASE_COORDINATOR',
+        branch,
+        ('correction.review',)
+    )
+
+    executor=make_user(
+        m,
+        'p2a-executor-no-perm',
+        'TECHNICIAN',
+        branch,
+        ()
+    )
+
+    _,row=_make_phase2a_approved_request(
+        m,
+        'P2A-NOPERM',
+        branch,
+        requester,
+        reviewer
+    )
+
+    execution=m.correction_execution_prepare(
+        row
+    )
+
+    m.db.session.commit()
+
+    import pytest
+
+    with pytest.raises(
+        PermissionError,
+        match='CORRECTION_EXECUTE_PERMISSION_REQUIRED'
+    ):
+        m.correction_execution_transition(
+            execution,
+            'CLAIMED_FOR_EXECUTION',
+            executor
+        )
+
+
+def test_phase2a_claim_hold_release_versioning(
+    app_ctx
+):
+    m=app_ctx
+
+    branch=m.Branch(
+        code='P2A-B7',
+        name='Phase2A Branch 7'
+    )
+
+    m.db.session.add(branch)
+    m.db.session.commit()
+
+    requester=make_user(
+        m,
+        'p2a-requester-7',
+        'TECHNICIAN',
+        branch,
+        ('correction.request',)
+    )
+
+    reviewer=make_user(
+        m,
+        'p2a-reviewer-7',
+        'CASE_COORDINATOR',
+        branch,
+        ('correction.review',)
+    )
+
+    executor=make_user(
+        m,
+        'p2a-executor-7',
+        'TECHNICIAN',
+        branch,
+        ('correction.execute',)
+    )
+
+    _,row=_make_phase2a_approved_request(
+        m,
+        'P2A-VERSION',
+        branch,
+        requester,
+        reviewer
+    )
+
+    execution=m.correction_execution_prepare(
+        row
+    )
+
+    assert execution.state_version == 1
+
+    m.correction_execution_transition(
+        execution,
+        'CLAIMED_FOR_EXECUTION',
+        executor
+    )
+
+    assert (
+        execution.status
+        ==
+        'CLAIMED_FOR_EXECUTION'
+    )
+    assert execution.state_version == 2
+    assert execution.claimed_by == executor.id
+    assert execution.claimed_at is not None
+
+    m.correction_execution_hold(
+        execution,
+        executor
+    )
+
+    assert execution.status == 'ON_HOLD'
+    assert execution.state_version == 3
+
+    m.correction_execution_release(
+        execution,
+        executor
+    )
+
+    assert (
+        execution.status
+        ==
+        'READY_FOR_EXECUTION'
+    )
+    assert execution.state_version == 4
+    assert execution.claimed_by is None
+
+
+def test_phase2a_invalid_transition_fails_closed(
+    app_ctx
+):
+    m=app_ctx
+
+    branch=m.Branch(
+        code='P2A-B8',
+        name='Phase2A Branch 8'
+    )
+
+    m.db.session.add(branch)
+    m.db.session.commit()
+
+    requester=make_user(
+        m,
+        'p2a-requester-8',
+        'TECHNICIAN',
+        branch,
+        ('correction.request',)
+    )
+
+    reviewer=make_user(
+        m,
+        'p2a-reviewer-8',
+        'CASE_COORDINATOR',
+        branch,
+        ('correction.review',)
+    )
+
+    executor=make_user(
+        m,
+        'p2a-executor-8',
+        'TECHNICIAN',
+        branch,
+        ('correction.execute',)
+    )
+
+    _,row=_make_phase2a_approved_request(
+        m,
+        'P2A-INVALID',
+        branch,
+        requester,
+        reviewer
+    )
+
+    execution=m.correction_execution_prepare(
+        row
+    )
+
+    import pytest
+
+    with pytest.raises(
+        ValueError,
+        match='INVALID_CORRECTION_EXECUTION_TRANSITION'
+    ):
+        m.correction_execution_transition(
+            execution,
+            'COMPLETED',
+            executor
+        )
+
+    assert (
+        execution.status
+        ==
+        'READY_FOR_EXECUTION'
+    )
+
+    assert execution.state_version == 1
+
+
+def test_phase2a_no_destructive_execution_route_added(
+    app_ctx
+):
+    import inspect
+
+    m=app_ctx
+
+    source=inspect.getsource(m)
+
+    assert (
+        '@app.post("/correction-center/execute'
+        not in source
+    )
+
+    assert (
+        "@app.post('/correction-center/execute"
+        not in source
+    )
+
+    assert (
+        'CORRECTION_EXECUTION_DELETE'
+        not in source
+    )
+
+    assert (
+        'CORRECTION_EXECUTION_REMAP'
+        not in source
+    )
+
+
+
+# RB_CORRECTION_PHASE2A_HARDENING_TESTS_V1
+
+def _phase2a_hardening_fixture(
+    m,
+    suffix,
+):
+    branch=m.Branch(
+        code='P2AH-'+suffix,
+        name='Phase2A Hardening '+suffix
+    )
+
+    m.db.session.add(branch)
+    m.db.session.commit()
+
+    requester=make_user(
+        m,
+        'p2ah-requester-'+suffix,
+        'TECHNICIAN',
+        branch,
+        ('correction.request',)
+    )
+
+    reviewer=make_user(
+        m,
+        'p2ah-reviewer-'+suffix,
+        'CASE_COORDINATOR',
+        branch,
+        ('correction.review',)
+    )
+
+    executor=make_user(
+        m,
+        'p2ah-executor-'+suffix,
+        'TECHNICIAN',
+        branch,
+        ('correction.execute',)
+    )
+
+    executor2=make_user(
+        m,
+        'p2ah-executor2-'+suffix,
+        'TECHNICIAN',
+        branch,
+        ('correction.execute',)
+    )
+
+    order,row=_make_phase2a_approved_request(
+        m,
+        'P2AH-'+suffix,
+        branch,
+        requester,
+        reviewer,
+    )
+
+    execution=m.correction_execution_prepare(
+        row
+    )
+
+    m.db.session.commit()
+
+    return (
+        branch,
+        requester,
+        reviewer,
+        executor,
+        executor2,
+        order,
+        row,
+        execution,
+    )
+
+
+def test_phase2a_prepare_and_transition_use_row_locks(
+    app_ctx
+):
+    import inspect
+
+    m=app_ctx
+
+    prepare_source=inspect.getsource(
+        m.correction_execution_prepare
+    )
+
+    transition_source=inspect.getsource(
+        m.correction_execution_transition
+    )
+
+    request_lock_source=inspect.getsource(
+        m.correction_execution_request_lock
+    )
+
+    execution_lock_source=inspect.getsource(
+        m.correction_execution_row_lock
+    )
+
+    assert (
+        'correction_execution_request_lock'
+        in prepare_source
+    )
+
+    assert (
+        'correction_execution_row_lock'
+        in transition_source
+    )
+
+    assert (
+        '.with_for_update()'
+        in request_lock_source
+    )
+
+    assert (
+        '.with_for_update()'
+        in execution_lock_source
+    )
+
+
+def test_phase2a_stale_state_version_fails_closed(
+    app_ctx
+):
+    import pytest
+
+    m=app_ctx
+
+    (
+        _,
+        _,
+        _,
+        executor,
+        _,
+        _,
+        _,
+        execution,
+    )=_phase2a_hardening_fixture(
+        m,
+        'VERSION'
+    )
+
+    m.correction_execution_transition(
+        execution,
+        'CLAIMED_FOR_EXECUTION',
+        executor,
+        expected_version=1,
+    )
+
+    assert execution.state_version==2
+
+    with pytest.raises(
+        ValueError,
+        match='CORRECTION_EXECUTION_STALE_VERSION'
+    ):
+        m.correction_execution_hold(
+            execution,
+            executor,
+            expected_version=1,
+        )
+
+    m.db.session.refresh(execution)
+
+    assert (
+        execution.status
+        ==
+        'CLAIMED_FOR_EXECUTION'
+    )
+
+    assert execution.state_version==2
+
+
+def test_phase2a_changed_clinical_snapshot_blocks_transition(
+    app_ctx
+):
+    import pytest
+
+    m=app_ctx
+
+    (
+        _,
+        _,
+        _,
+        executor,
+        _,
+        order,
+        _,
+        execution,
+    )=_phase2a_hardening_fixture(
+        m,
+        'SNAPSHOT'
+    )
+
+    original=order.pacs_status
+
+    order.pacs_status=(
+        'WAITING'
+        if original!='WAITING'
+        else 'IMAGES_COMPLETE'
+    )
+
+    m.db.session.commit()
+
+    with pytest.raises(
+        ValueError,
+        match='CORRECTION_EXECUTION_STALE_SNAPSHOT'
+    ):
+        m.correction_execution_transition(
+            execution,
+            'CLAIMED_FOR_EXECUTION',
+            executor,
+            expected_version=1,
+        )
+
+    m.db.session.refresh(execution)
+
+    assert (
+        execution.status
+        ==
+        'READY_FOR_EXECUTION'
+    )
+
+    assert execution.state_version==1
+
+
+def test_phase2a_request_losing_approval_blocks_execution(
+    app_ctx
+):
+    import pytest
+
+    m=app_ctx
+
+    (
+        _,
+        _,
+        _,
+        executor,
+        _,
+        _,
+        row,
+        execution,
+    )=_phase2a_hardening_fixture(
+        m,
+        'APPROVAL'
+    )
+
+    row.status='REJECTED'
+    m.db.session.commit()
+
+    with pytest.raises(
+        ValueError,
+        match='CORRECTION_REQUEST_NO_LONGER_APPROVED'
+    ):
+        m.correction_execution_transition(
+            execution,
+            'CLAIMED_FOR_EXECUTION',
+            executor,
+            expected_version=1,
+        )
+
+    m.db.session.refresh(execution)
+
+    assert (
+        execution.status
+        ==
+        'READY_FOR_EXECUTION'
+    )
+
+    assert execution.state_version==1
+
+
+def test_phase2a_second_executor_cannot_control_claim(
+    app_ctx
+):
+    import pytest
+
+    m=app_ctx
+
+    (
+        _,
+        _,
+        _,
+        executor,
+        executor2,
+        _,
+        _,
+        execution,
+    )=_phase2a_hardening_fixture(
+        m,
+        'CLAIM'
+    )
+
+    m.correction_execution_transition(
+        execution,
+        'CLAIMED_FOR_EXECUTION',
+        executor,
+        expected_version=1,
+    )
+
+    assert execution.claimed_by==executor.id
+    assert execution.state_version==2
+
+    with pytest.raises(
+        PermissionError,
+        match='CORRECTION_EXECUTION_CLAIMED_BY_ANOTHER_USER'
+    ):
+        m.correction_execution_hold(
+            execution,
+            executor2,
+            expected_version=2,
+        )
+
+    m.db.session.refresh(execution)
+
+    assert execution.claimed_by==executor.id
+
+    assert (
+        execution.status
+        ==
+        'CLAIMED_FOR_EXECUTION'
+    )
+
+    assert execution.state_version==2
+
+
+
+# RB_CORRECTION_PHASE2A_PREVIEW_ROUTE_TESTS_V1
+
+def test_phase2a_execution_queue_requires_execute_permission(
+    app_ctx
+):
+    m=app_ctx
+
+    branch=m.Branch(
+        code='P2AR-B1',
+        name='Phase2A Route Branch 1'
+    )
+
+    m.db.session.add(branch)
+    m.db.session.commit()
+
+    user=make_user(
+        m,
+        'p2ar-noexec',
+        'TECHNICIAN',
+        branch,
+        ('correction.request',)
+    )
+
+    client=m.app.test_client()
+    login(client,user)
+
+    r=client.get(
+        '/correction-center/executions'
+    )
+
+    assert r.status_code==403
+
+
+def test_phase2a_prepare_route_is_non_destructive(
+    app_ctx
+):
+    m=app_ctx
+
+    (
+        branch,
+        requester,
+        reviewer,
+        executor,
+        _,
+        order,
+        row,
+        _
+    )=_phase2a_hardening_fixture(
+        m,
+        'ROUTEPREP'
+    )
+
+    # Remove fixture-created ledger so route can prepare it.
+    m.CorrectionExecution.query.delete()
+    m.db.session.commit()
+
+    before=(
+        order.status,
+        order.exam_status,
+        order.pacs_status,
+        order.pacs_image_count,
+        order.pacs_study_id,
+        order.study_instance_uid,
+        row.status,
+    )
+
+    client=m.app.test_client()
+    login(client,executor)
+
+    r=client.post(
+        f'/correction-center/requests/{row.id}/execution/prepare',
+        follow_redirects=False
+    )
+
+    assert r.status_code in (302,303)
+
+    execution=(
+        m.CorrectionExecution.query
+        .filter_by(
+            correction_request_id=row.id
+        )
+        .one()
+    )
+
+    m.db.session.refresh(order)
+    m.db.session.refresh(row)
+
+    after=(
+        order.status,
+        order.exam_status,
+        order.pacs_status,
+        order.pacs_image_count,
+        order.pacs_study_id,
+        order.study_instance_uid,
+        row.status,
+    )
+
+    assert before==after
+    assert execution.status=='READY_FOR_EXECUTION'
+    assert execution.state_version==1
+
+
+def test_phase2a_requester_cannot_prepare_ledger_route(
+    app_ctx
+):
+    m=app_ctx
+
+    (
+        _,
+        requester,
+        _,
+        _,
+        _,
+        _,
+        row,
+        _
+    )=_phase2a_hardening_fixture(
+        m,
+        'ROUTEREQ'
+    )
+
+    m.CorrectionExecution.query.delete()
+
+    requester.role.permissions_json=(
+        '["correction.request","correction.execute"]'
+    )
+
+    m.db.session.commit()
+
+    client=m.app.test_client()
+    login(client,requester)
+
+    r=client.post(
+        f'/correction-center/requests/{row.id}/execution/prepare'
+    )
+
+    assert r.status_code==403
+
+    assert (
+        m.CorrectionExecution.query.count()
+        ==
+        0
+    )
+
+
+def test_phase2a_reviewer_cannot_prepare_ledger_route(
+    app_ctx
+):
+    m=app_ctx
+
+    (
+        _,
+        _,
+        reviewer,
+        _,
+        _,
+        _,
+        row,
+        _
+    )=_phase2a_hardening_fixture(
+        m,
+        'ROUTEREV'
+    )
+
+    m.CorrectionExecution.query.delete()
+
+    reviewer.role.permissions_json=(
+        '["correction.review","correction.execute"]'
+    )
+
+    m.db.session.commit()
+
+    client=m.app.test_client()
+    login(client,reviewer)
+
+    r=client.post(
+        f'/correction-center/requests/{row.id}/execution/prepare'
+    )
+
+    assert r.status_code==403
+
+    assert (
+        m.CorrectionExecution.query.count()
+        ==
+        0
+    )
+
+
+def test_phase2a_claim_hold_release_routes(
+    app_ctx
+):
+    m=app_ctx
+
+    (
+        _,
+        _,
+        _,
+        executor,
+        _,
+        _,
+        _,
+        execution
+    )=_phase2a_hardening_fixture(
+        m,
+        'ROUTEFLOW'
+    )
+
+    client=m.app.test_client()
+    login(client,executor)
+
+    r=client.post(
+        f'/correction-center/executions/{execution.id}/claim',
+        data={
+            'expected_version':'1'
+        },
+        follow_redirects=False
+    )
+
+    assert r.status_code in (302,303)
+
+    m.db.session.refresh(execution)
+
+    assert (
+        execution.status
+        ==
+        'CLAIMED_FOR_EXECUTION'
+    )
+
+    assert execution.state_version==2
+
+    r=client.post(
+        f'/correction-center/executions/{execution.id}/hold',
+        data={
+            'expected_version':'2'
+        },
+        follow_redirects=False
+    )
+
+    assert r.status_code in (302,303)
+
+    m.db.session.refresh(execution)
+
+    assert execution.status=='ON_HOLD'
+    assert execution.state_version==3
+
+    r=client.post(
+        f'/correction-center/executions/{execution.id}/release',
+        data={
+            'expected_version':'3'
+        },
+        follow_redirects=False
+    )
+
+    assert r.status_code in (302,303)
+
+    m.db.session.refresh(execution)
+
+    assert (
+        execution.status
+        ==
+        'READY_FOR_EXECUTION'
+    )
+
+    assert execution.state_version==4
+
+
+def test_phase2a_stale_version_route_returns_409(
+    app_ctx
+):
+    m=app_ctx
+
+    (
+        _,
+        _,
+        _,
+        executor,
+        _,
+        _,
+        _,
+        execution
+    )=_phase2a_hardening_fixture(
+        m,
+        'ROUTESTALE'
+    )
+
+    client=m.app.test_client()
+    login(client,executor)
+
+    r=client.post(
+        f'/correction-center/executions/{execution.id}/claim',
+        data={
+            'expected_version':'99'
+        }
+    )
+
+    assert r.status_code==409
+
+    m.db.session.refresh(execution)
+
+    assert (
+        execution.status
+        ==
+        'READY_FOR_EXECUTION'
+    )
+
+    assert execution.state_version==1
+
+
+def test_phase2a_execution_template_has_no_destructive_action(
+    app_ctx
+):
+    from pathlib import Path
+
+    m=app_ctx
+
+    path=Path(
+        m.app.root_path
+    ) / 'templates' / 'correction_execution_queue.html'
+
+    text=path.read_text(
+        encoding='utf-8'
+    )
+
+    assert 'Prepare Execution Ledger' in text
+    assert '>Claim<' not in text or 'Claim' in text
+    assert 'Hold' in text
+    assert 'Release' in text
+
+    forbidden=(
+        'Delete Images',
+        'Delete PACS',
+        'Execute Delete',
+        'Execute Cancellation',
+        'Merge Patient',
+        'Execute Merge',
+        'Remap Study',
+        'Execute Remap',
+    )
+
+    for item in forbidden:
+        assert item not in text
