@@ -96,7 +96,7 @@ def test_images_only_exact_orthanc_delete_contract(app_ctx):
     import inspect
 
     source=inspect.getsource(
-        m.granular_delete_order_images_only
+        m.granular_delete_images_only_execute
     )
 
     assert 'requests.delete' in source
@@ -108,7 +108,7 @@ def test_images_only_retains_pacs_identifiers(app_ctx):
     import inspect
 
     source=inspect.getsource(
-        m.granular_delete_order_images_only
+        m.granular_delete_images_only_execute
     )
 
     assert "order.pacs_image_count=0" in source
@@ -122,7 +122,7 @@ def test_images_only_audit_contract(app_ctx):
     import inspect
 
     source=inspect.getsource(
-        m.granular_delete_order_images_only
+        m.granular_delete_images_only_execute
     )
 
     assert 'PACS_IMAGES_DELETE_REQUESTED_ADMIN' in source

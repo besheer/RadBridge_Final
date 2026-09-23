@@ -19730,24 +19730,24 @@ def granular_delete_images_only_preflight(order, typed_accession, reason):
     }
 
 
-@app.post(
-    '/admin/cancellation-center/order/<int:order_id>/delete-images'
-)
-@require_perm('data.cancel.case')
-def granular_delete_order_images_only(order_id):
-    order=Order.query.get_or_404(order_id)
+def granular_delete_images_only_execute(
+    order,
+    typed_accession,
+    reason,
+    preflight=None,
+    after_delete=None,
+):
+    order_id=order.id
 
-    reason=(request.form.get('reason') or '').strip()
-    typed_accession=(
-        request.form.get('confirm_accession')
-        or ''
-    ).strip()
-
-    preflight=granular_delete_images_only_preflight(
-        order,
-        typed_accession,
-        reason,
-    )
+    # Phase 2B callers may persist the exact preflight result in the
+    # execution ledger before crossing the irreversible DELETE boundary.
+    # Legacy/admin callers retain the original self-contained behavior.
+    if preflight is None:
+        preflight=granular_delete_images_only_preflight(
+            order,
+            typed_accession,
+            reason,
+        )
 
     if not preflight['allowed']:
         audit(
@@ -19769,7 +19769,79 @@ def granular_delete_order_images_only(order_id):
             'blockers': preflight['blockers'],
         }, 409
 
-    study_id=preflight['study_id']
+    # Final critical revalidation at the irreversible boundary.
+    # The earlier preflight is persisted in the correction execution ledger,
+    # but PACS/RIS state can change between that check and Orthanc DELETE.
+    # Refresh the order and rerun the same safety contract immediately before
+    # deletion; never cross the boundary on stale identity/transfer state.
+    initial_study_id=(preflight.get('study_id') or '').strip()
+    initial_accession=(preflight.get('accession') or '').strip()
+
+    try:
+        db.session.refresh(order)
+    except Exception as exc:
+        audit(
+            'PACS_IMAGES_DELETE_BLOCKED_ADMIN',
+            'order',
+            order.id,
+            (
+                f"accession={order.accession}; "
+                f"study={initial_study_id}; "
+                f"stage=FINAL_REVALIDATION_REFRESH; "
+                f"error={type(exc).__name__}; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+
+        return {
+            'ok': False,
+            'deleted': False,
+            'ris_state_updated': False,
+            'error': 'FINAL_REVALIDATION_FAILED',
+            'blockers': ['ORDER_REFRESH_FAILED'],
+        }, 409
+
+    final_preflight=granular_delete_images_only_preflight(
+        order,
+        typed_accession,
+        reason,
+    )
+
+    final_blockers=list(final_preflight.get('blockers') or ())
+    final_study_id=(final_preflight.get('study_id') or '').strip()
+    final_accession=(final_preflight.get('accession') or '').strip()
+
+    if final_study_id != initial_study_id:
+        final_blockers.append('PACS_STUDY_CHANGED_AFTER_PREFLIGHT')
+
+    if final_accession != initial_accession:
+        final_blockers.append('ACCESSION_CHANGED_AFTER_PREFLIGHT')
+
+    if final_blockers:
+        audit(
+            'PACS_IMAGES_DELETE_BLOCKED_ADMIN',
+            'order',
+            order.id,
+            (
+                f"accession={order.accession}; "
+                f"study={final_study_id}; "
+                f"stage=FINAL_REVALIDATION; "
+                f"blockers={','.join(final_blockers)}; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+
+        return {
+            'ok': False,
+            'deleted': False,
+            'ris_state_updated': False,
+            'error': 'FINAL_REVALIDATION_BLOCKED',
+            'blockers': final_blockers,
+        }, 409
+
+    study_id=final_study_id
     image_count_before=order.pacs_image_count or 0
     study_uid=(
         getattr(order, 'study_instance_uid', '')
@@ -19839,6 +19911,11 @@ def granular_delete_order_images_only(order_id):
             'error': 'ORTHANC_DELETE_REJECTED',
             'http_status': response.status_code,
         }, 502
+
+    # Orthanc accepted the DELETE. Persist VERIFYING before the
+    # post-delete absence check or any RIS PACS-state mutation.
+    if after_delete is not None:
+        after_delete()
 
     try:
         verify=requests.get(
@@ -19951,6 +20028,26 @@ def granular_delete_order_images_only(order_id):
         'pacs_status': order.pacs_status,
         'pacs_image_count': order.pacs_image_count,
     }, 200
+
+
+@app.post(
+    '/admin/cancellation-center/order/<int:order_id>/delete-images'
+)
+@require_perm('data.cancel.case')
+def granular_delete_order_images_only(order_id):
+    order=Order.query.get_or_404(order_id)
+
+    reason=(request.form.get('reason') or '').strip()
+    typed_accession=(
+        request.form.get('confirm_accession')
+        or ''
+    ).strip()
+
+    return granular_delete_images_only_execute(
+        order,
+        typed_accession,
+        reason,
+    )
 
 
 # RB_GRANULAR_DELETE_READONLY_PREVIEW_V1
@@ -21458,6 +21555,537 @@ def correction_execution_release_route(
             'correction_execution_queue'
         )
     )
+
+
+# RB_CORRECTION_WRONG_IMAGES_EXECUTION_PHASE2B_V1
+# RB_CORRECTION_PHASE2B_TRUE_STATE_MACHINE_V1
+def correction_wrong_images_execute(
+    execution_id,
+    actor,
+    expected_version,
+    typed_accession,
+    reason,
+):
+    execution=(
+        CorrectionExecution.query
+        .filter_by(id=execution_id)
+        .with_for_update()
+        .first()
+    )
+
+    if not execution:
+        return {
+            'ok':False,
+            'error':'EXECUTION_NOT_FOUND',
+        },404
+
+    request_row=(
+        CorrectionRequest.query
+        .filter_by(
+            id=execution.correction_request_id
+        )
+        .with_for_update()
+        .first()
+    )
+
+    if not request_row:
+        return {
+            'ok':False,
+            'error':'CORRECTION_REQUEST_NOT_FOUND',
+        },404
+
+    order=(
+        Order.query
+        .filter_by(id=execution.order_id)
+        .with_for_update()
+        .first()
+    )
+
+    if not order:
+        return {
+            'ok':False,
+            'error':'ORDER_NOT_FOUND',
+        },404
+
+    if execution.execution_type!='WRONG_IMAGES':
+        return {
+            'ok':False,
+            'error':'EXECUTION_TYPE_MISMATCH',
+        },409
+
+    if request_row.request_type!='WRONG_IMAGES':
+        return {
+            'ok':False,
+            'error':'REQUEST_TYPE_MISMATCH',
+        },409
+
+    if request_row.status!='APPROVED':
+        return {
+            'ok':False,
+            'error':'REQUEST_NOT_APPROVED',
+        },409
+
+    if execution.status!='CLAIMED_FOR_EXECUTION':
+        return {
+            'ok':False,
+            'error':'EXECUTION_NOT_CLAIMED',
+        },409
+
+    if execution.claimed_by!=actor.id:
+        return {
+            'ok':False,
+            'error':'EXECUTION_CLAIM_OWNER_MISMATCH',
+        },409
+
+    if request_row.requested_by==actor.id:
+        return {
+            'ok':False,
+            'error':'REQUESTER_CANNOT_EXECUTE',
+        },409
+
+    if request_row.assigned_to==actor.id:
+        return {
+            'ok':False,
+            'error':'REVIEWER_CANNOT_EXECUTE',
+        },409
+
+    try:
+        expected_version=int(expected_version)
+    except (TypeError,ValueError):
+        return {
+            'ok':False,
+            'error':'INVALID_EXPECTED_VERSION',
+        },400
+
+    if execution.state_version!=expected_version:
+        return {
+            'ok':False,
+            'error':'STALE_VERSION',
+            'current_version':execution.state_version,
+        },409
+
+    try:
+        correction_execution_assert_snapshot_current(
+            execution,
+            request_row,
+        )
+    except ValueError as exc:
+        return {
+            'ok':False,
+            'error':str(exc),
+        },409
+
+    # Run and persist the full preflight before entering the execution path.
+    preflight=granular_delete_images_only_preflight(
+        order,
+        typed_accession,
+        reason,
+    )
+
+    preflight_snapshot={
+        key:value
+        for key,value in preflight.items()
+        if key not in (
+            'patient',
+            'orthanc_payload',
+        )
+    }
+
+    execution.preflight_snapshot_json=json.dumps(
+        preflight_snapshot,
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+    )
+
+    db.session.flush()
+
+    if not preflight.get('allowed'):
+        execution=correction_execution_transition(
+            execution,
+            'PREFLIGHT_BLOCKED',
+            None,
+            expected_version=execution.state_version,
+        )
+
+        execution.failure_code='PREFLIGHT_BLOCKED'
+        execution.failure_message=';'.join(
+            preflight.get('blockers')
+            or ()
+        )[:2000]
+
+        audit(
+            'CORRECTION_EXECUTION_PREFLIGHT_BLOCKED',
+            'correction_execution',
+            execution.id,
+            (
+                f'order_id={order.id};'
+                f'accession={order.accession};'
+                f'actor={actor.id};'
+                f'blockers={execution.failure_message};'
+                f'state_version={execution.state_version}'
+            ),
+        )
+
+        db.session.commit()
+
+        return {
+            'ok':False,
+            'deleted':False,
+            'ris_state_updated':False,
+            'error':'PREFLIGHT_BLOCKED',
+            'blockers':
+                preflight.get('blockers')
+                or [],
+        },409
+
+    # CLAIMED_FOR_EXECUTION -> PREFLIGHT_PASSED
+    execution=correction_execution_transition(
+            execution,
+            'PREFLIGHT_PASSED',
+            None,
+            expected_version=execution.state_version,
+        )
+
+    audit(
+        'CORRECTION_EXECUTION_PREFLIGHT_PASSED',
+        'correction_execution',
+        execution.id,
+        (
+            f'order_id={order.id};'
+            f'accession={order.accession};'
+            f'actor={actor.id};'
+            f'state_version={execution.state_version}'
+        ),
+    )
+
+    db.session.commit()
+
+    # PREFLIGHT_PASSED -> EXECUTING immediately before the
+    # primitive is allowed to cross the Orthanc DELETE boundary.
+    execution=correction_execution_transition(
+            execution,
+            'EXECUTING',
+            None,
+            expected_version=execution.state_version,
+        )
+
+    execution.executed_by=actor.id
+
+    audit(
+        'CORRECTION_EXECUTION_STARTED',
+        'correction_execution',
+        execution.id,
+        (
+            f'order_id={order.id};'
+            f'accession={order.accession};'
+            f'actor={actor.id};'
+            f'state_version={execution.state_version}'
+        ),
+    )
+
+    db.session.commit()
+
+    verifying_state={
+        'entered':False,
+    }
+
+    def enter_verifying():
+        current=(
+            CorrectionExecution.query
+            .filter_by(id=execution_id)
+            .with_for_update()
+            .first()
+        )
+
+        if not current:
+            raise RuntimeError(
+                'EXECUTION_LOST_AFTER_DELETE'
+            )
+
+        current=correction_execution_transition(
+            current,
+            'VERIFYING',
+            None,
+            expected_version=current.state_version,
+        )
+
+        audit(
+            'CORRECTION_EXECUTION_VERIFYING',
+            'correction_execution',
+            current.id,
+            (
+                f'order_id={order.id};'
+                f'accession={order.accession};'
+                f'actor={actor.id};'
+                f'state_version={current.state_version}'
+            ),
+        )
+
+        db.session.commit()
+
+        verifying_state['entered']=True
+
+    payload,status_code=granular_delete_images_only_execute(
+        order,
+        typed_accession,
+        reason,
+        preflight=preflight,
+        after_delete=enter_verifying,
+    )
+
+    execution=(
+        CorrectionExecution.query
+        .filter_by(id=execution_id)
+        .with_for_update()
+        .first()
+    )
+
+    if not execution:
+        return {
+            'ok':False,
+            'error':'EXECUTION_LOST_AFTER_DELETE',
+        },500
+
+    execution.result_snapshot_json=json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+    )
+
+    deleted=bool(
+        payload.get('deleted')
+    )
+
+    ris_state_updated=bool(
+        payload.get('ris_state_updated')
+    )
+
+    if (
+        status_code==200
+        and payload.get('ok') is True
+        and deleted
+        and ris_state_updated
+    ):
+        # VERIFYING -> COMPLETED.
+        # user=None is intentional because successful RIS PACS-state
+        # mutation changes the original request snapshot.
+        execution=correction_execution_transition(
+            execution,
+            'COMPLETED',
+            None,
+            expected_version=execution.state_version,
+        )
+
+        execution.failure_code=None
+        execution.failure_message=None
+
+        request_row=(
+            CorrectionRequest.query
+            .filter_by(
+                id=execution.correction_request_id
+            )
+            .with_for_update()
+            .first()
+        )
+
+        if request_row:
+            request_row.status='COMPLETED'
+            request_row.closed_at=datetime.utcnow()
+            request_row.updated_at=datetime.utcnow()
+
+        audit(
+            'CORRECTION_EXECUTION_COMPLETED',
+            'correction_execution',
+            execution.id,
+            (
+                f'order_id={order.id};'
+                f'accession={order.accession};'
+                f'actor={actor.id};'
+                f'state_version={execution.state_version}'
+            ),
+        )
+
+        db.session.commit()
+
+        return payload,200
+
+    failure_error=(
+        payload.get('error')
+        or 'UNKNOWN_EXECUTION_FAILURE'
+    )
+
+    if not deleted:
+        target_status='EXECUTION_FAILED'
+
+    else:
+        if not verifying_state['entered']:
+            # DELETE may already have happened. Leave EXECUTING as an
+            # uncertain hard-blocked state rather than pretending that
+            # execution safely failed before the destructive boundary.
+            db.session.rollback()
+
+            return {
+                'ok':False,
+                'deleted':True,
+                'ris_state_updated':False,
+                'error':
+                    'VERIFYING_STATE_NOT_ENTERED_AFTER_DELETE',
+            },500
+
+        target_status='VERIFICATION_FAILED'
+
+    execution=correction_execution_transition(
+            execution,
+            target_status,
+            None,
+            expected_version=execution.state_version,
+        )
+
+    execution.failure_code=str(
+        failure_error
+    )[:80]
+
+    execution.failure_message=str(
+        failure_error
+    )[:2000]
+
+    audit(
+        'CORRECTION_EXECUTION_FAILED',
+        'correction_execution',
+        execution.id,
+        (
+            f'order_id={order.id};'
+            f'accession={order.accession};'
+            f'actor={actor.id};'
+            f'status={execution.status};'
+            f'error={failure_error};'
+            f'state_version={execution.state_version}'
+        ),
+    )
+
+    db.session.commit()
+
+    return payload,status_code
+
+
+
+
+# RB_CORRECTION_PHASE2B_HTTP_EXECUTE_ROUTE_V1
+@app.post(
+    '/correction-center/executions/'
+    '<int:execution_id>/execute'
+)
+@require_perm('correction.execute')
+def correction_execution_execute_route(
+    execution_id,
+):
+    enabled=(
+        os.getenv(
+            'RADBRIDGE_CORRECTION_DESTRUCTIVE_EXECUTION_ENABLED',
+            '0',
+        )
+        or '0'
+    ).strip().lower()
+
+    if enabled not in (
+        '1',
+        'true',
+        'yes',
+        'on',
+    ):
+        abort(
+            503,
+            'Correction destructive execution is disabled.',
+        )
+
+    actor=current_user()
+
+    if not actor:
+        abort(401)
+
+    expected_version=(
+        request.form.get('expected_version')
+        or ''
+    ).strip()
+
+    typed_accession=(
+        request.form.get('confirm_accession')
+        or ''
+    ).strip()
+
+    reason=(
+        request.form.get('reason')
+        or ''
+    ).strip()
+
+    if not expected_version:
+        abort(
+            400,
+            'Expected state version is required.',
+        )
+
+    try:
+        int(expected_version)
+    except (TypeError,ValueError):
+        abort(
+            400,
+            'Expected state version is invalid.',
+        )
+
+    if not typed_accession:
+        abort(
+            400,
+            'Accession confirmation is required.',
+        )
+
+    if len(reason)<5:
+        abort(
+            400,
+            'Execution reason must contain at least 5 characters.',
+        )
+
+    payload,status_code=correction_wrong_images_execute(
+        execution_id,
+        actor,
+        expected_version,
+        typed_accession,
+        reason,
+    )
+
+    if status_code==200:
+        flash(
+            'Correction execution completed and verified.',
+            'success',
+        )
+
+    elif status_code==409:
+        flash(
+            payload.get('error')
+            or 'Correction execution was blocked.',
+            'danger',
+        )
+
+    elif status_code>=500:
+        flash(
+            payload.get('error')
+            or 'Correction execution failed.',
+            'danger',
+        )
+
+    else:
+        flash(
+            payload.get('error')
+            or 'Correction execution was not completed.',
+            'warning',
+        )
+
+    return (
+        jsonify(payload),
+        status_code,
+    )
+
 
 
 @app.get('/correction-center/requests')

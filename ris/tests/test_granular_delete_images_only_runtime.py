@@ -121,7 +121,7 @@ def test_success_updates_only_pacs_state(monkeypatch,app_ctx):
     def fake_get(url,*args,**kwargs):
         calls["get"]+=1
 
-        if calls["get"]==1:
+        if calls["get"] in (1,2):
             return FakeResponse(
                 200,
                 orthanc_payload(),

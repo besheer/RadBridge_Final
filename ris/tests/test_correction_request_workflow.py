@@ -1528,3 +1528,1005 @@ def test_phase2a_execution_template_has_no_destructive_action(
 
     for item in forbidden:
         assert item not in text
+
+
+def _phase2b_execution_fixture(m,suffix):
+    branch=m.Branch(
+        code=f'P2B-{suffix}',
+        name=f'Phase2B {suffix}',
+    )
+    m.db.session.add(branch)
+    m.db.session.commit()
+
+    requester=make_user(
+        m,
+        f'p2b-requester-{suffix}',
+        'TECHNICIAN',
+        branch,
+        ('correction.request',),
+    )
+
+    reviewer=make_user(
+        m,
+        f'p2b-reviewer-{suffix}',
+        'CASE_COORDINATOR',
+        branch,
+        ('correction.review',),
+    )
+
+    executor=make_user(
+        m,
+        f'p2b-executor-{suffix}',
+        'SUPER_ADMIN',
+        branch,
+        (),
+    )
+
+    patient,order=make_case(
+        m,
+        f'P2B-{suffix}',
+        branch,
+    )
+
+    order.pacs_status='IMAGES_COMPLETE'
+    order.pacs_image_count=7
+    order.pacs_study_id=f'study-p2b-{suffix}'
+    order.study_instance_uid=f'1.2.840.p2b.{suffix}'
+
+    request_row=m.CorrectionRequest(
+        order_id=order.id,
+        branch_id=branch.id,
+        request_type='WRONG_IMAGES',
+        status='APPROVED',
+        reason='Approved wrong images request',
+        requested_by=requester.id,
+        assigned_to=reviewer.id,
+    )
+
+    m.db.session.add(request_row)
+    m.db.session.flush()
+
+    snapshot=m.correction_execution_snapshot(
+        request_row
+    )
+
+    execution=m.CorrectionExecution(
+        correction_request_id=request_row.id,
+        order_id=order.id,
+        branch_id=branch.id,
+        execution_type='WRONG_IMAGES',
+        status='CLAIMED_FOR_EXECUTION',
+        state_version=4,
+        claimed_by=executor.id,
+        request_snapshot_json=m.json.dumps(
+            snapshot,
+            sort_keys=True,
+            separators=(',',':'),
+            default=str,
+        ),
+        preflight_snapshot_json='',
+        result_snapshot_json='',
+    )
+
+    m.db.session.add(execution)
+    m.db.session.commit()
+
+    return (
+        branch,
+        requester,
+        reviewer,
+        executor,
+        patient,
+        order,
+        request_row,
+        execution,
+    )
+
+
+def _phase2b_allowed_preflight(order):
+    return {
+        'allowed':True,
+        'blockers':[],
+        'reason':'Approved execution reason',
+        'typed_accession':order.accession,
+        'accession':order.accession,
+        'study_id':order.pacs_study_id,
+        'orthanc_status':200,
+        'orthanc_error':'',
+        'same_study_order_count':1,
+        'active_transfer_count':0,
+    }
+
+
+def test_phase2b_wrong_images_success_uses_shared_primitive(
+    monkeypatch,
+    app_ctx,
+):
+    m=app_ctx
+
+    (
+        _,
+        _,
+        _,
+        executor,
+        _,
+        order,
+        request_row,
+        execution,
+    )=_phase2b_execution_fixture(
+        m,
+        'SUCCESS',
+    )
+
+    calls={'count':0}
+
+    def fake_shared(
+        order_arg,
+        accession_arg,
+        reason_arg,
+        preflight=None,
+        after_delete=None,
+    ):
+        calls['count']+=1
+
+        assert order_arg.id==order.id
+        assert accession_arg==order.accession
+        assert reason_arg=='Approved execution reason'
+
+        assert preflight is not None
+        assert preflight['allowed'] is True
+        assert after_delete is not None
+        after_delete()
+
+        order_arg.pacs_status='IMAGES_DELETED'
+        order_arg.pacs_image_count=0
+
+        return {
+            'ok':True,
+            'deleted':True,
+            'ris_state_updated':True,
+            'order_id':order_arg.id,
+        },200
+
+    monkeypatch.setattr(
+        m,
+        'granular_delete_images_only_preflight',
+        lambda order_arg,*a,**k: _phase2b_allowed_preflight(order_arg),
+    )
+
+    monkeypatch.setattr(
+        m,
+        'granular_delete_images_only_execute',
+        fake_shared,
+    )
+
+    with m.app.test_request_context(
+        '/correction-center/executions/test/execute',
+        method='POST',
+    ):
+        m.session['uid']=executor.id
+
+        payload,status=m.correction_wrong_images_execute(
+            execution.id,
+            executor,
+            4,
+            order.accession,
+            'Approved execution reason',
+        )
+
+    assert status==200
+    assert payload['ok'] is True
+    assert calls['count']==1
+
+    m.db.session.refresh(execution)
+    m.db.session.refresh(request_row)
+
+    assert execution.status=='COMPLETED'
+    assert execution.state_version==8
+    assert execution.executed_by==executor.id
+    assert request_row.status=='COMPLETED'
+
+
+def test_phase2b_stale_version_blocks_before_shared_primitive(
+    monkeypatch,
+    app_ctx,
+):
+    m=app_ctx
+
+    (
+        _,
+        _,
+        _,
+        executor,
+        _,
+        order,
+        _,
+        execution,
+    )=_phase2b_execution_fixture(
+        m,
+        'STALEVER',
+    )
+
+    calls={'count':0}
+
+    def fail_shared(*args,**kwargs):
+        calls['count']+=1
+        raise AssertionError(
+            'shared primitive must not run'
+        )
+
+    monkeypatch.setattr(
+        m,
+        'granular_delete_images_only_execute',
+        fail_shared,
+    )
+
+    payload,status=m.correction_wrong_images_execute(
+        execution.id,
+        executor,
+        99,
+        order.accession,
+        'Approved execution reason',
+    )
+
+    assert status==409
+    assert payload['error']=='STALE_VERSION'
+    assert calls['count']==0
+
+    m.db.session.refresh(execution)
+
+    assert execution.status=='CLAIMED_FOR_EXECUTION'
+    assert execution.state_version==4
+
+
+def test_phase2b_requester_cannot_execute(
+    monkeypatch,
+    app_ctx,
+):
+    m=app_ctx
+
+    (
+        _,
+        requester,
+        _,
+        _,
+        _,
+        order,
+        _,
+        execution,
+    )=_phase2b_execution_fixture(
+        m,
+        'REQUESTER',
+    )
+
+    execution.claimed_by=requester.id
+    m.db.session.commit()
+
+    calls={'count':0}
+
+    monkeypatch.setattr(
+        m,
+        'granular_delete_images_only_execute',
+        lambda *a,**k: (
+            calls.__setitem__(
+                'count',
+                calls['count']+1
+            )
+        ),
+    )
+
+    payload,status=m.correction_wrong_images_execute(
+        execution.id,
+        requester,
+        4,
+        order.accession,
+        'Approved execution reason',
+    )
+
+    assert status==409
+    assert payload['error']=='REQUESTER_CANNOT_EXECUTE'
+    assert calls['count']==0
+
+
+def test_phase2b_reviewer_cannot_execute(
+    monkeypatch,
+    app_ctx,
+):
+    m=app_ctx
+
+    (
+        _,
+        _,
+        reviewer,
+        _,
+        _,
+        order,
+        _,
+        execution,
+    )=_phase2b_execution_fixture(
+        m,
+        'REVIEWER',
+    )
+
+    execution.claimed_by=reviewer.id
+    m.db.session.commit()
+
+    calls={'count':0}
+
+    monkeypatch.setattr(
+        m,
+        'granular_delete_images_only_execute',
+        lambda *a,**k: (
+            calls.__setitem__(
+                'count',
+                calls['count']+1
+            )
+        ),
+    )
+
+    payload,status=m.correction_wrong_images_execute(
+        execution.id,
+        reviewer,
+        4,
+        order.accession,
+        'Approved execution reason',
+    )
+
+    assert status==409
+    assert payload['error']=='REVIEWER_CANNOT_EXECUTE'
+    assert calls['count']==0
+
+
+def test_phase2b_delete_failure_maps_to_execution_failed(
+    monkeypatch,
+    app_ctx,
+):
+    m=app_ctx
+
+    (
+        _,
+        _,
+        _,
+        executor,
+        _,
+        order,
+        _,
+        execution,
+    )=_phase2b_execution_fixture(
+        m,
+        'DELETEFAIL',
+    )
+
+    monkeypatch.setattr(
+        m,
+        'granular_delete_images_only_preflight',
+        lambda order_arg,*a,**k: _phase2b_allowed_preflight(order_arg),
+    )
+
+    def fake_delete_failure(*args,**kwargs):
+        assert kwargs.get('preflight',{}).get('allowed') is True
+        assert kwargs.get('after_delete') is not None
+        return (
+            {
+                'ok':False,
+                'deleted':False,
+                'ris_state_updated':False,
+                'error':'ORTHANC_DELETE_FAILED',
+            },
+            502,
+        )
+
+    monkeypatch.setattr(
+        m,
+        'granular_delete_images_only_execute',
+        fake_delete_failure,
+    )
+
+    with m.app.test_request_context(
+        '/correction-center/executions/test/execute',
+        method='POST',
+    ):
+        m.session['uid']=executor.id
+
+        payload,status=m.correction_wrong_images_execute(
+            execution.id,
+            executor,
+            4,
+            order.accession,
+            'Approved execution reason',
+        )
+
+    assert status==502
+    assert payload['deleted'] is False
+
+    m.db.session.refresh(execution)
+
+    assert execution.status=='EXECUTION_FAILED'
+    assert execution.state_version==7
+
+
+def test_phase2b_post_delete_failure_maps_to_verification_failed(
+    monkeypatch,
+    app_ctx,
+):
+    m=app_ctx
+
+    (
+        _,
+        _,
+        _,
+        executor,
+        _,
+        order,
+        _,
+        execution,
+    )=_phase2b_execution_fixture(
+        m,
+        'VERIFYFAIL',
+    )
+
+    monkeypatch.setattr(
+        m,
+        'granular_delete_images_only_preflight',
+        lambda order_arg,*a,**k: _phase2b_allowed_preflight(order_arg),
+    )
+
+    def fake_verify_failure(*args,**kwargs):
+        assert kwargs.get('preflight',{}).get('allowed') is True
+        after_delete=kwargs.get('after_delete')
+        assert after_delete is not None
+        after_delete()
+        return (
+            {
+                'ok':False,
+                'deleted':True,
+                'ris_state_updated':False,
+                'error':'ORTHANC_STUDY_STILL_PRESENT',
+            },
+            502,
+        )
+
+    monkeypatch.setattr(
+        m,
+        'granular_delete_images_only_execute',
+        fake_verify_failure,
+    )
+
+    with m.app.test_request_context(
+        '/correction-center/executions/test/execute',
+        method='POST',
+    ):
+        m.session['uid']=executor.id
+
+        payload,status=m.correction_wrong_images_execute(
+            execution.id,
+            executor,
+            4,
+            order.accession,
+            'Approved execution reason',
+        )
+
+    assert status==502
+    assert payload['deleted'] is True
+
+    m.db.session.refresh(execution)
+
+    assert execution.status=='VERIFICATION_FAILED'
+    assert execution.state_version==8
+
+
+def test_phase2b_second_execute_attempt_is_blocked(
+    monkeypatch,
+    app_ctx,
+):
+    m=app_ctx
+
+    (
+        _,
+        _,
+        _,
+        executor,
+        _,
+        order,
+        _,
+        execution,
+    )=_phase2b_execution_fixture(
+        m,
+        'SECOND',
+    )
+
+    execution.status='COMPLETED'
+    execution.state_version=6
+    m.db.session.commit()
+
+    calls={'count':0}
+
+    def fail_shared(*args,**kwargs):
+        calls['count']+=1
+        raise AssertionError(
+            'second execution must not reach shared primitive'
+        )
+
+    monkeypatch.setattr(
+        m,
+        'granular_delete_images_only_execute',
+        fail_shared,
+    )
+
+    payload,status=m.correction_wrong_images_execute(
+        execution.id,
+        executor,
+        6,
+        order.accession,
+        'Approved execution reason',
+    )
+
+    assert status==409
+    assert payload['error']=='EXECUTION_NOT_CLAIMED'
+    assert calls['count']==0
+
+
+def test_phase2b_adapter_adds_no_second_requests_delete(
+    app_ctx,
+):
+    import inspect
+
+    m=app_ctx
+
+    adapter=inspect.getsource(
+        m.correction_wrong_images_execute
+    )
+
+    helper=inspect.getsource(
+        m.granular_delete_images_only_execute
+    )
+
+    assert 'requests.delete(' not in adapter
+    assert helper.count('requests.delete(')==1
+
+
+def test_phase2b_execute_route_disabled_by_default(
+    app_ctx,
+    monkeypatch,
+):
+    m=app_ctx
+
+    import uuid
+    test_suffix=uuid.uuid4().hex[:10]
+
+    monkeypatch.delenv(
+        'RADBRIDGE_CORRECTION_DESTRUCTIVE_EXECUTION_ENABLED',
+        raising=False,
+    )
+
+    called={'count':0}
+
+    def fake_adapter(*args,**kwargs):
+        called['count']+=1
+        raise AssertionError(
+            'adapter must not run while feature flag is disabled'
+        )
+
+    monkeypatch.setattr(
+        m,
+        'correction_wrong_images_execute',
+        fake_adapter,
+    )
+
+    client=m.app.test_client()
+
+    super_role=m.Role.query.filter_by(
+        code='SUPER_ADMIN'
+    ).first()
+
+    user=m.User(
+        username=f'phase2b-disabled-route-user-{test_suffix}',
+        full_name='Phase2B Disabled Route',
+        password_hash='phase2b-test-only-hash',
+        role_id=super_role.id,
+        active=True,
+    )
+
+    m.db.session.add(user)
+    m.db.session.commit()
+
+    with client.session_transaction() as sess:
+        sess['uid']=user.id
+
+    response=client.post(
+        '/correction-center/executions/999/execute',
+        data={
+            'expected_version':'1',
+            'confirm_accession':'TEST',
+            'reason':'Valid test reason',
+        },
+    )
+
+    assert response.status_code==503
+    assert called['count']==0
+
+
+def test_phase2b_execute_route_requires_permission(
+    app_ctx,
+    monkeypatch,
+):
+    m=app_ctx
+
+    import uuid
+    test_suffix=uuid.uuid4().hex[:10]
+
+    monkeypatch.setenv(
+        'RADBRIDGE_CORRECTION_DESTRUCTIVE_EXECUTION_ENABLED',
+        '1',
+    )
+
+    role=m.Role.query.filter_by(
+        code='TECHNICIAN'
+    ).first()
+
+    user=m.User(
+        username=f'phase2b-no-execute-perm-{test_suffix}',
+        full_name='Phase2B No Execute Permission',
+        password_hash='phase2b-test-only-hash',
+        role_id=role.id,
+        active=True,
+    )
+
+    m.db.session.add(user)
+    m.db.session.commit()
+
+    client=m.app.test_client()
+
+    with client.session_transaction() as sess:
+        sess['uid']=user.id
+
+    response=client.post(
+        '/correction-center/executions/999/execute',
+        data={
+            'expected_version':'1',
+            'confirm_accession':'TEST',
+            'reason':'Valid test reason',
+        },
+    )
+
+    assert response.status_code in (302,403)
+
+
+def test_phase2b_execute_route_uses_authenticated_actor_only(
+    app_ctx,
+    monkeypatch,
+):
+    m=app_ctx
+
+    import uuid
+    test_suffix=uuid.uuid4().hex[:10]
+
+    monkeypatch.setenv(
+        'RADBRIDGE_CORRECTION_DESTRUCTIVE_EXECUTION_ENABLED',
+        '1',
+    )
+
+    super_role=m.Role.query.filter_by(
+        code='SUPER_ADMIN'
+    ).first()
+
+    user=m.User(
+        username=f'phase2b-route-actor-{test_suffix}',
+        full_name='Phase2B Route Actor',
+        password_hash='phase2b-test-only-hash',
+        role_id=super_role.id,
+        active=True,
+    )
+
+    m.db.session.add(user)
+    m.db.session.commit()
+
+    captured={}
+
+    def fake_adapter(
+        execution_id,
+        actor,
+        expected_version,
+        typed_accession,
+        reason,
+    ):
+        captured['execution_id']=execution_id
+        captured['actor_id']=actor.id
+        captured['expected_version']=expected_version
+        captured['typed_accession']=typed_accession
+        captured['reason']=reason
+
+        return {
+            'ok':False,
+            'error':'TEST_BLOCK',
+        },409
+
+    monkeypatch.setattr(
+        m,
+        'correction_wrong_images_execute',
+        fake_adapter,
+    )
+
+    client=m.app.test_client()
+
+    with client.session_transaction() as sess:
+        sess['uid']=user.id
+
+    response=client.post(
+        '/correction-center/executions/321/execute',
+        data={
+            'expected_version':'7',
+            'confirm_accession':'RB-321',
+            'reason':'Controlled route test reason',
+            'actor_id':'999999',
+        },
+    )
+
+    assert response.status_code==409
+
+    assert captured['execution_id']==321
+    assert captured['actor_id']==user.id
+    assert captured['expected_version']=='7'
+    assert captured['typed_accession']=='RB-321'
+    assert captured['reason']=='Controlled route test reason'
+
+
+def test_phase2b_execute_route_requires_expected_version(
+    app_ctx,
+    monkeypatch,
+):
+    m=app_ctx
+
+    import uuid
+    test_suffix=uuid.uuid4().hex[:10]
+
+    monkeypatch.setenv(
+        'RADBRIDGE_CORRECTION_DESTRUCTIVE_EXECUTION_ENABLED',
+        '1',
+    )
+
+    super_role=m.Role.query.filter_by(
+        code='SUPER_ADMIN'
+    ).first()
+
+    user=m.User(
+        username=f'phase2b-route-version-{test_suffix}',
+        full_name='Phase2B Route Version',
+        password_hash='phase2b-test-only-hash',
+        role_id=super_role.id,
+        active=True,
+    )
+
+    m.db.session.add(user)
+    m.db.session.commit()
+
+    client=m.app.test_client()
+
+    with client.session_transaction() as sess:
+        sess['uid']=user.id
+
+    response=client.post(
+        '/correction-center/executions/123/execute',
+        data={
+            'confirm_accession':'RB-123',
+            'reason':'Controlled route test reason',
+        },
+    )
+
+    assert response.status_code==400
+
+
+def test_phase2b_execute_route_requires_accession_and_reason(
+    app_ctx,
+    monkeypatch,
+):
+    m=app_ctx
+
+    import uuid
+    test_suffix=uuid.uuid4().hex[:10]
+
+    monkeypatch.setenv(
+        'RADBRIDGE_CORRECTION_DESTRUCTIVE_EXECUTION_ENABLED',
+        '1',
+    )
+
+    super_role=m.Role.query.filter_by(
+        code='SUPER_ADMIN'
+    ).first()
+
+    user=m.User(
+        username=f'phase2b-route-form-{test_suffix}',
+        full_name='Phase2B Route Form',
+        password_hash='phase2b-test-only-hash',
+        role_id=super_role.id,
+        active=True,
+    )
+
+    m.db.session.add(user)
+    m.db.session.commit()
+
+    client=m.app.test_client()
+
+    with client.session_transaction() as sess:
+        sess['uid']=user.id
+
+    missing_accession=client.post(
+        '/correction-center/executions/123/execute',
+        data={
+            'expected_version':'1',
+            'reason':'Controlled route test reason',
+        },
+    )
+
+    assert missing_accession.status_code==400
+
+    short_reason=client.post(
+        '/correction-center/executions/123/execute',
+        data={
+            'expected_version':'1',
+            'confirm_accession':'RB-123',
+            'reason':'bad',
+        },
+    )
+
+    assert short_reason.status_code==400
+
+
+def test_phase2b_execute_route_contains_no_direct_delete(
+    app_ctx,
+):
+    import inspect
+
+    m=app_ctx
+
+    source=inspect.getsource(
+        m.correction_execution_execute_route
+    )
+
+    assert 'requests.delete(' not in source
+    assert 'granular_delete_images_only_preflight(' not in source
+    assert 'pacs_status=' not in source
+    assert 'pacs_image_count=' not in source
+
+    assert (
+        source.count(
+            'correction_wrong_images_execute('
+        )
+        == 1
+    )
+
+
+def test_phase2b_adapter_must_not_bypass_execution_transition_helper(
+    app_ctx,
+):
+    import inspect
+
+    m=app_ctx
+
+    source=inspect.getsource(
+        m.correction_wrong_images_execute
+    )
+
+    assert 'correction_execution_transition(' in source
+
+    forbidden=(
+        "execution.status='EXECUTING'",
+        "execution.status='COMPLETED'",
+        "execution.status='EXECUTION_FAILED'",
+        "execution.status='VERIFICATION_FAILED'",
+    )
+
+    for marker in forbidden:
+        assert marker not in source
+
+
+def test_phase2b_state_machine_requires_preflight_before_executing(
+    app_ctx,
+):
+    m=app_ctx
+
+    assert (
+        'EXECUTING'
+        not in
+        m.CORRECTION_EXECUTION_TRANSITIONS[
+            'CLAIMED_FOR_EXECUTION'
+        ]
+    )
+
+    assert (
+        'PREFLIGHT_PASSED'
+        in
+        m.CORRECTION_EXECUTION_TRANSITIONS[
+            'CLAIMED_FOR_EXECUTION'
+        ]
+    )
+
+    assert (
+        'EXECUTING'
+        in
+        m.CORRECTION_EXECUTION_TRANSITIONS[
+            'PREFLIGHT_PASSED'
+        ]
+    )
+
+
+def test_phase2b_state_machine_requires_verifying_before_completed(
+    app_ctx,
+):
+    m=app_ctx
+
+    assert (
+        'COMPLETED'
+        not in
+        m.CORRECTION_EXECUTION_TRANSITIONS[
+            'EXECUTING'
+        ]
+    )
+
+    assert (
+        'VERIFYING'
+        in
+        m.CORRECTION_EXECUTION_TRANSITIONS[
+            'EXECUTING'
+        ]
+    )
+
+    assert (
+        'COMPLETED'
+        in
+        m.CORRECTION_EXECUTION_TRANSITIONS[
+            'VERIFYING'
+        ]
+    )
+
+
+def test_phase2b_failure_states_match_irreversible_boundary(
+    app_ctx,
+):
+    m=app_ctx
+
+    assert (
+        'EXECUTION_FAILED'
+        in
+        m.CORRECTION_EXECUTION_TRANSITIONS[
+            'EXECUTING'
+        ]
+    )
+
+    assert (
+        'VERIFICATION_FAILED'
+        in
+        m.CORRECTION_EXECUTION_TRANSITIONS[
+            'VERIFYING'
+        ]
+    )
+
+    assert (
+        'VERIFICATION_FAILED'
+        not in
+        m.CORRECTION_EXECUTION_TRANSITIONS[
+            'EXECUTING'
+        ]
+    )
+
+
+def test_phase2b_preflight_block_is_before_destructive_execution(
+    app_ctx,
+):
+    m=app_ctx
+
+    assert (
+        'PREFLIGHT_BLOCKED'
+        in
+        m.CORRECTION_EXECUTION_TRANSITIONS[
+            'CLAIMED_FOR_EXECUTION'
+        ]
+    )
+
+    assert (
+        'EXECUTING'
+        not in
+        m.CORRECTION_EXECUTION_TRANSITIONS[
+            'PREFLIGHT_BLOCKED'
+        ]
+    )
