@@ -21698,7 +21698,7 @@ def granular_delete_full_case_orchestration_preview_snapshot(
 
     return {
         'readonly':True,
-        'execution_enabled':False,
+        'execution_enabled':_full_case_orchestration_execution_enabled(),
         'can_execute_full_case':can_execute_full_case,
         'order_id':int(order.id),
         'accession':accession,
@@ -21935,6 +21935,314 @@ def granular_delete_order_ris_case_data_only(order_id):
     reason=(request.form.get('reason') or '').strip()
     typed_accession=(request.form.get('confirm_accession') or '').strip()
     return granular_delete_ris_case_only_execute(order,typed_accession,reason)
+
+
+# RB_FULL_CASE_ORCHESTRATION_EXECUTOR_V1
+def _full_case_orchestration_execution_enabled():
+    return str(
+        os.environ.get(
+            'RADBRIDGE_FULL_CASE_ORCHESTRATION_EXECUTION_ENABLED',
+            '0',
+        )
+        or '0'
+    ).strip().lower() in ('1','true','yes','on')
+
+
+def _full_case_orchestration_failure(
+    order_id,
+    accession,
+    reason,
+    stage,
+    error,
+    status,
+    completed_stages=None,
+    details=None,
+):
+    completed=list(completed_stages or [])
+    stage_result=(details or {}).get('stage_result') if isinstance(details,dict) else None
+    partial_destructive_changes=bool(completed) or bool(
+        isinstance(stage_result,dict) and stage_result.get('deleted')
+    )
+    payload={
+        'ok':False,
+        'deleted':False,
+        'full_case_deleted':False,
+        'partial_destructive_changes':partial_destructive_changes,
+        'order_id':int(order_id),
+        'accession':accession,
+        'failed_stage':stage,
+        'error':error,
+        'completed_stages':completed,
+        'stop_on_stage_failure':True,
+    }
+    if details:
+        payload['details']=details
+
+    try:
+        audit(
+            'FULL_CASE_DELETE_FAILED_ADMIN',
+            'order',
+            order_id,
+            (
+                f"accession={accession}; stage={stage}; error={error}; "
+                f"completed={','.join(completed)}; reason={reason}"
+            ),
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    return payload,status
+
+
+def _full_case_orchestration_final_postcheck(order_id, patient_id):
+    order_present=db.session.get(Order,int(order_id)) is not None
+    patient_present=db.session.get(Patient,int(patient_id)) is not None
+    report_count=Report.query.filter_by(order_id=int(order_id)).count()
+    dependency_rows=[]
+    if not order_present:
+        # Direct order-FK dependencies must be gone/nullified before the Order
+        # disappears. The validated RIS executor enforces this immediately
+        # before deleting the Order; report_count remains independently checked.
+        dependency_count=0
+    else:
+        dependency_rows=_ris_case_only_dependency_rows(
+            db.session.get(Order,int(order_id))
+        )
+        dependency_count=sum(
+            int(row.get('count') or 0)
+            for row in dependency_rows
+            if row.get('count') is not None
+        )
+    ok=bool(
+        not order_present
+        and patient_present
+        and report_count == 0
+        and dependency_count == 0
+    )
+    return {
+        'ok':ok,
+        'order_removed':not order_present,
+        'patient_preserved':patient_present,
+        'report_count':int(report_count),
+        'direct_dependency_count':int(dependency_count),
+        'dependency_rows':dependency_rows,
+    }
+
+
+def granular_delete_full_case_orchestration_execute(
+    order,
+    typed_accession,
+    reason,
+):
+    """Execute the validated Full Case sequence with fail-closed staging.
+
+    Required order: PACS Images Only -> Reports Only -> RIS Case Data Only.
+    Each underlying executor retains its own final revalidation and audit trail.
+    Successful irreversible stages are never silently rolled back or replayed.
+    """
+    user=current_user()
+    if not _delete_reports_only_is_super_admin(user):
+        abort(403)
+
+    reason=str(reason or '').strip()
+    typed_accession=str(typed_accession or '').strip()
+    accession=str(getattr(order,'accession','') or '').strip()
+    order_id=int(order.id)
+    patient_id=int(getattr(order,'patient_id',0) or 0)
+
+    if not _full_case_orchestration_execution_enabled():
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'INITIAL_PREFLIGHT',
+            'FULL_CASE_EXECUTION_DISABLED',409,
+        )
+    if len(reason) < 5:
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'INITIAL_PREFLIGHT','REASON_REQUIRED',400,
+        )
+    if not accession or typed_accession != accession:
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'INITIAL_PREFLIGHT',
+            'ACCESSION_CONFIRMATION_MISMATCH',409,
+        )
+    if str(getattr(order,'status','') or '').strip().upper() not in ('CANCELLED','CANCELED'):
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'INITIAL_PREFLIGHT','ORDER_NOT_CANCELLED',409,
+        )
+    if not patient_id or db.session.get(Patient,patient_id) is None:
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'INITIAL_PREFLIGHT','PATIENT_NOT_FOUND',409,
+        )
+
+    initial_snapshot=granular_delete_order_preview_snapshot(order)
+    plan=initial_snapshot.get('full_case_orchestration') or {}
+    if not plan.get('can_execute_full_case'):
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'INITIAL_PREFLIGHT',
+            'FULL_CASE_PREFLIGHT_BLOCKED',409,
+            details={'blockers':list(plan.get('blockers') or [])},
+        )
+
+    stage_map={
+        str(row.get('code')):str(row.get('state'))
+        for row in (plan.get('stages') or [])
+    }
+    completed=[]
+    stage_results=[]
+
+    try:
+        audit(
+            'FULL_CASE_DELETE_REQUESTED_ADMIN','order',order_id,
+            (
+                f"accession={accession}; sequence=PACS_IMAGES_ONLY>REPORTS_ONLY>RIS_CASE_DATA_ONLY; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'INITIAL_AUDIT',
+            'FULL_CASE_REQUEST_AUDIT_FAILED',500,
+            details={'failure_type':type(exc).__name__},
+        )
+
+    # Stage 1: PACS Images Only. COMPLETE/NOT_REQUIRED are explicit safe skips.
+    pacs_state=stage_map.get('PACS_IMAGES_ONLY','BLOCKED')
+    if pacs_state == 'READY':
+        current=db.session.get(Order,order_id)
+        if current is None:
+            return _full_case_orchestration_failure(
+                order_id,accession,reason,'PACS_IMAGES_ONLY','ORDER_DISAPPEARED',409,completed
+            )
+        result,status=granular_delete_images_only_execute(
+            current,typed_accession,reason
+        )
+        stage_results.append({'stage':'PACS_IMAGES_ONLY','status':status,'result':result})
+        if status != 200 or not result.get('ok'):
+            return _full_case_orchestration_failure(
+                order_id,accession,reason,'PACS_IMAGES_ONLY',
+                result.get('error') or 'PACS_IMAGES_STAGE_FAILED',status,completed,
+                details={'stage_result':result},
+            )
+        completed.append('PACS_IMAGES_ONLY')
+    elif pacs_state in ('COMPLETE','NOT_REQUIRED'):
+        completed.append('PACS_IMAGES_ONLY_SKIPPED_'+pacs_state)
+        stage_results.append({'stage':'PACS_IMAGES_ONLY','status':200,'result':{'ok':True,'skipped':True,'state':pacs_state}})
+    else:
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'PACS_IMAGES_ONLY','PACS_STAGE_NOT_READY',409,completed,
+            details={'state':pacs_state},
+        )
+
+    # Stage 2: Reports Only. Re-query after PACS stage; the underlying executor
+    # performs its own locked final revalidation and same-filesystem quarantine.
+    current=db.session.get(Order,order_id)
+    if current is None:
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'REPORTS_ONLY','ORDER_DISAPPEARED',409,completed
+        )
+    report_count=Report.query.filter_by(order_id=order_id).count()
+    if report_count:
+        result,status=granular_delete_reports_only_execute(
+            current,typed_accession,reason
+        )
+        stage_results.append({'stage':'REPORTS_ONLY','status':status,'result':result})
+        if status != 200 or not result.get('ok'):
+            return _full_case_orchestration_failure(
+                order_id,accession,reason,'REPORTS_ONLY',
+                result.get('error') or 'REPORTS_STAGE_FAILED',status,completed,
+                details={'stage_result':result},
+            )
+        completed.append('REPORTS_ONLY')
+    else:
+        completed.append('REPORTS_ONLY_SKIPPED_COMPLETE')
+        stage_results.append({'stage':'REPORTS_ONLY','status':200,'result':{'ok':True,'skipped':True,'state':'COMPLETE'}})
+
+    # Stage 3: RIS Case Data Only. This executor removes the Order last and
+    # preserves Patient/Audit while requiring reports to be zero.
+    current=db.session.get(Order,order_id)
+    if current is None:
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'RIS_CASE_DATA_ONLY','ORDER_DISAPPEARED',409,completed
+        )
+    result,status=granular_delete_ris_case_only_execute(
+        current,typed_accession,reason
+    )
+    stage_results.append({'stage':'RIS_CASE_DATA_ONLY','status':status,'result':result})
+    if status != 200 or not result.get('ok'):
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'RIS_CASE_DATA_ONLY',
+            result.get('error') or 'RIS_CASE_STAGE_FAILED',status,completed,
+            details={'stage_result':result},
+        )
+    completed.append('RIS_CASE_DATA_ONLY')
+
+    postcheck=_full_case_orchestration_final_postcheck(order_id,patient_id)
+    if not postcheck.get('ok'):
+        return _full_case_orchestration_failure(
+            order_id,accession,reason,'FINAL_POSTCHECK',
+            'FULL_CASE_FINAL_POSTCHECK_FAILED',500,completed,
+            details={'postcheck':postcheck,'stage_results':stage_results},
+        )
+
+    try:
+        audit(
+            'FULL_CASE_DELETED_ADMIN','order',order_id,
+            (
+                f"accession={accession}; patient_id={patient_id}; "
+                f"stages={','.join(completed)}; patient_preserved=yes; "
+                f"order_removed=yes; reports_zero=yes; reason={reason}"
+            ),
+        )
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        return {
+            'ok':False,
+            'deleted':True,
+            'full_case_deleted':True,
+            'order_id':order_id,
+            'accession':accession,
+            'completed_stages':completed,
+            'stage_results':stage_results,
+            'postcheck':postcheck,
+            'error':'FINAL_AUDIT_FAILED_AFTER_DELETE',
+            'failure_type':type(exc).__name__,
+        },500
+
+    return {
+        'ok':True,
+        'deleted':True,
+        'full_case_deleted':True,
+        'order_id':order_id,
+        'accession':accession,
+        'patient_id':patient_id,
+        'patient_preserved':True,
+        'audit_history_preserved':True,
+        'pacs_images_deleted_or_not_required':True,
+        'reports_deleted':True,
+        'ris_case_deleted':True,
+        'completed_stages':completed,
+        'stage_results':stage_results,
+        'postcheck':postcheck,
+    },200
+
+
+@app.post(
+    '/admin/cancellation-center/order/<int:order_id>/delete-full-case'
+)
+@require_perm('data.cancel.case')
+def granular_delete_order_full_case(order_id):
+    order=Order.query.get_or_404(order_id)
+    user=current_user()
+    if not _delete_reports_only_is_super_admin(user):
+        abort(403)
+    reason=(request.form.get('reason') or '').strip()
+    typed_accession=(request.form.get('confirm_accession') or '').strip()
+    return granular_delete_full_case_orchestration_execute(
+        order,typed_accession,reason
+    )
 
 
 @app.get(

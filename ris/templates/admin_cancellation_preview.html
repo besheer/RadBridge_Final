@@ -172,7 +172,7 @@
         <td>Full Case Deletion</td>
         <td>
           {% if preview.full_case_orchestration.can_execute_full_case %}
-            READ-ONLY PLAN READY — EXECUTION DISABLED
+            PLAN READY — CONTROLLED EXECUTION AVAILABLE
           {% else %}
             BLOCKED / REVIEW REQUIRED
           {% endif %}
@@ -218,7 +218,7 @@
         <strong>Can prepare Full Case execution:</strong>
         {{ 'YES' if preview.full_case_orchestration.can_execute_full_case else 'NO' }}
         |
-        <strong>Execution enabled:</strong> NO
+        <strong>Execution enabled:</strong> {{ 'YES' if preview.full_case_orchestration.execution_enabled else 'NO' }}
       </p>
 
       {% if preview.full_case_orchestration.blockers %}
@@ -237,6 +237,33 @@
           <li>{{ warning }}</li>
         {% endfor %}
         </ul>
+      {% endif %}
+
+
+      {% if preview.full_case_orchestration.can_execute_full_case
+            and preview.full_case_orchestration.execution_enabled %}
+        <div class="panel">
+          <h4>Execute Full Case Deletion</h4>
+          <p>
+            Permanent staged execution: PACS Images Only → Reports Only → RIS Case Data Only.
+            Patient and audit history are preserved. Execution stops immediately when any stage fails.
+          </p>
+          <form
+            method="post"
+            action="{{ url_for('granular_delete_order_full_case', order_id=preview.order.id) }}"
+            onsubmit="return confirm('Permanently execute Full Case Deletion in the required three-stage sequence?');"
+          >
+            <label>
+              Type accession exactly
+              <input type="text" name="confirm_accession" autocomplete="off" required>
+            </label>
+            <label>
+              Reason
+              <textarea name="reason" minlength="5" required></textarea>
+            </label>
+            <button type="submit" class="danger">Execute Full Case Deletion</button>
+          </form>
+        </div>
       {% endif %}
     </div>
 

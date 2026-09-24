@@ -125,5 +125,6 @@ def test_full_case_orchestration_ui_is_readonly(app_ctx):
     template=Path(app_ctx.app.template_folder)/'admin_cancellation_preview.html'
     source=template.read_text()
     assert 'RB_FULL_CASE_ORCHESTRATION_PREVIEW_UI_V1' in source
-    assert 'Execution enabled:</strong> NO' in source
+    assert 'preview.full_case_orchestration.execution_enabled' in source
+    assert 'granular_delete_order_full_case' in source
     assert 'PACS_IMAGES_ONLY' not in source or 'Full Case Deletion' in source
