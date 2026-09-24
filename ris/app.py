@@ -20867,7 +20867,7 @@ def _ris_case_only_dependency_rows(order):
     """Collect direct FK dependencies on order.id without mutating state."""
     from sqlalchemy import inspect as _ris_inspect, text as _ris_text
 
-    inspector=_ris_inspect(db.engine)
+    inspector=_ris_inspect(db.session.connection())
     order_table=Order.__table__.name
     preparer=db.engine.dialect.identifier_preparer
     rows=[]
@@ -20905,7 +20905,7 @@ def _ris_case_only_second_order_checks(order, policy_rows):
     """Fail closed when rows selected for deletion have incoming FK dependents."""
     from sqlalchemy import inspect as _ris_inspect, text as _ris_text
 
-    inspector=_ris_inspect(db.engine)
+    inspector=_ris_inspect(db.session.connection())
     tables=sorted(inspector.get_table_names())
     preparer=db.engine.dialect.identifier_preparer
     blockers=[]
@@ -20972,7 +20972,7 @@ def granular_delete_ris_case_only_execution_preview_snapshot(order, dependency_r
     if order_status not in ('CANCELLED','CANCELED'):
         blockers.append('ORDER_NOT_CANCELLED')
 
-    inspector=_ris_inspect(db.engine)
+    inspector=_ris_inspect(db.session.connection())
     nullify_checks=[]
     for row in snap.get('rows') or []:
         if not row.get('count') or row.get('action') != 'NULLIFY_ORDER_LINK':
@@ -21109,7 +21109,7 @@ def granular_delete_ris_case_only_execute(order, typed_accession, reason):
                 order,reason,'FINAL_REVALIDATION_BLOCKED',final_blockers or ['FINAL_PREFLIGHT_BLOCKED'],409
             )
 
-        inspector=_ris_inspect(db.engine)
+        inspector=_ris_inspect(db.session.connection())
         preparer=db.engine.dialect.identifier_preparer
         table_names=set(inspector.get_table_names())
 
