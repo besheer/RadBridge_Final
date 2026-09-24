@@ -1,0 +1,70 @@
+RADBRIDGE CANONICAL FEATURE MANIFEST
+====================================
+
+Purpose:
+Prevent previously accepted RadBridge functionality from disappearing
+during future source changes, builds, canary validation, or deployment.
+
+CANONICAL RULES
+---------------
+1. One canonical source line only.
+2. New development must start from current CANONICAL_HEAD.
+3. Never build/deploy from an older snapshot.
+4. Canary images must be built from canonical source only.
+5. Missing accepted feature => STOP before build/deploy.
+6. Historical code may be reconciled into canonical source, never replace it wholesale.
+
+DOCTOR WORKSPACE
+----------------
+REQUIRED: radbridge.doctor.column-layout.v5
+REQUIRED: columnPresets
+REQUIRED: reporting:defaultColumns
+REQUIRED: clinical:['priority','accession','patient_worklist'
+REQUIRED: verification:['priority','accession','patient_worklist'
+REQUIRED: dragstart
+REQUIRED: dragover
+REQUIRED: pointerdown
+REQUIRED: layout.widths[key]
+REQUIRED: patient_worklist
+REQUIRED: doctor_workspace_column_layout_save
+REQUIRED: data-column-layout-api
+REQUIRED: rbDoctorColumnsButton
+REQUIRED: rbDoctorPatientIdFilter
+REQUIRED: rbDoctorExamCodeFilter
+REQUIRED: data-doctor-saved-update
+
+SAVED VIEWS / CLINICAL SEARCH
+-----------------------------
+REQUIRED: SavedSearchFilter
+REQUIRED: saved_view_update
+REQUIRED: saved_views=_saved_views_for('DOCTOR')
+
+REPORTING / WORKFLOW
+--------------------
+REQUIRED: ONLYOFFICE
+REQUIRED: report_status
+REQUIRED: reported_by
+REQUIRED: verified_by
+REQUIRED: finalized_by
+REQUIRED: sla_status
+
+DATA DELETION
+-------------
+REQUIRED: PACS_IMAGES_ONLY
+REQUIRED: REPORTS_ONLY
+REQUIRED: RIS_CASE_DATA_ONLY
+REQUIRED: granular_delete_images_only_execute
+REQUIRED: granular_delete_reports_only_execute
+REQUIRED: granular_delete_ris_case_only_execute
+
+FULL CASE ORCHESTRATION
+-----------------------
+REQUIRED: RADBRIDGE_FULL_CASE_ORCHESTRATION_EXECUTION_ENABLED
+REQUIRED: FULL_CASE_EXECUTION_DISABLED
+REQUIRED: partial_destructive_changes
+
+SAFETY
+------
+FORBIDDEN_NEW_WITHOUT_REVIEW: requests.delete(
+FORBIDDEN_NEW_WITHOUT_REVIEW: os.remove(
+FORBIDDEN_NEW_WITHOUT_REVIEW: shutil.rmtree(
