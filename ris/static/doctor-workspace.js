@@ -19,6 +19,11 @@
   const dateFrom=document.getElementById('rbDoctorDateFrom'), dateTo=document.getElementById('rbDoctorDateTo'), clearFilters=document.getElementById('rbDoctorClearFilters');
   const patientIdFilter=document.getElementById('rbDoctorPatientIdFilter'), examCodeFilter=document.getElementById('rbDoctorExamCodeFilter');
   const searchButton=document.getElementById('rbDoctorSearchButton');
+  const advancedFilters=document.getElementById('rbDoctorAdvancedFilters');
+  const applyAdvancedFilters=document.getElementById('rbDoctorApplyAdvancedFilters');
+  const clearAdvancedFilters=document.getElementById('rbDoctorClearAdvancedFilters');
+  const activeFilters=document.getElementById('rbDoctorActiveFilters');
+  const activeFilterChips=document.getElementById('rbDoctorActiveFilterChips');
   const datePresetButtons=[...document.querySelectorAll('[data-doctor-date-preset]')];
   const columnButton = document.getElementById('rbDoctorColumnsButton');
   const columnMenu = document.getElementById('rbDoctorColumnsMenu');
@@ -276,42 +281,77 @@
       offset+=layout.widths[key]||160;
     });
   }
+  const filterParamKeys=['q','patient_id','accession','priority','modality','exam_status','pacs_status','report_status','sla_status','date_from','date_to'];
+  const initial=new URLSearchParams(location.search);
+  const appliedSearch={q:initial.get('q')||'',patient_id:initial.get('patient_id')||'',accession:initial.get('accession')||''};
+  const appliedAdvanced={priority:initial.get('priority')||'',modality:initial.get('modality')||'',exam_status:initial.get('exam_status')||'',pacs_status:initial.get('pacs_status')||'',report_status:initial.get('report_status')||'',sla_status:initial.get('sla_status')||'',date_from:initial.get('date_from')||'',date_to:initial.get('date_to')||''};
+  search.value=appliedSearch.q;patientIdFilter.value=appliedSearch.patient_id;examCodeFilter.value=appliedSearch.accession;dateFrom.value=appliedAdvanced.date_from;dateTo.value=appliedAdvanced.date_to;
+  let initialFiltersApplied=false;
+  function appliedPayload(){return {...appliedSearch,...appliedAdvanced};}
+  function syncUrl(){
+    const url=new URL(location.href);filterParamKeys.forEach(key=>url.searchParams.delete(key));
+    Object.entries(appliedPayload()).forEach(([key,value])=>{if(value)url.searchParams.set(key,value);});
+    history.replaceState(null,'',url.pathname+(url.searchParams.toString()?`?${url.searchParams.toString()}`:'')+url.hash);
+  }
+  function updateAdvancedOpenState(){
+    if(!advancedFilters)return;
+    const hasAdvanced=Object.values(appliedAdvanced).some(Boolean);
+    if(hasAdvanced)advancedFilters.open=true;
+  }
+  const filterLabels={q:say('Search','بحث'),patient_id:say('Patient ID','رقم المريض'),accession:say('Exam / Accession','الفحص / Accession'),priority:say('Priority','الأولوية'),modality:say('Modality','نوع الجهاز'),exam_status:say('Exam status','حالة الفحص'),pacs_status:say('PACS status','حالة PACS'),report_status:say('Report status','حالة التقرير'),sla_status:say('SLA status','حالة SLA'),date_from:say('From','من'),date_to:say('To','إلى')};
+  function clearAppliedKey(key){
+    if(Object.prototype.hasOwnProperty.call(appliedSearch,key)){appliedSearch[key]='';if(key==='q')search.value='';if(key==='patient_id')patientIdFilter.value='';if(key==='accession')examCodeFilter.value='';}
+    if(Object.prototype.hasOwnProperty.call(appliedAdvanced,key)){appliedAdvanced[key]='';if(filters[key])filters[key].value='';if(key==='date_from')dateFrom.value='';if(key==='date_to')dateTo.value='';}
+    datePresetButtons.forEach(button=>button.classList.remove('is-active'));syncUrl();renderCases();
+  }
+  function renderActiveFilters(){
+    if(!activeFilters||!activeFilterChips)return;
+    activeFilterChips.replaceChildren();
+    const values=Object.entries(appliedPayload()).filter(([,value])=>Boolean(value));
+    activeFilters.hidden=!values.length;
+    values.forEach(([key,value])=>{const chip=node('button',`${filterLabels[key]||key}: ${value} ×`,'rb-doctor-filter-chip');chip.type='button';chip.addEventListener('click',()=>clearAppliedKey(key));activeFilterChips.append(chip);});
+  }
   function renderCases() {
     cases.replaceChildren();
-    const term = search.value.toLocaleLowerCase();
+    const term = appliedSearch.q.toLocaleLowerCase();
     externalCases.replaceChildren();
-    const archivedRequested=Boolean(term||patientIdFilter.value.trim()||examCodeFilter.value.trim()||filters.report_status.value==='FINAL');
+    const archivedRequested=Boolean(term||appliedSearch.patient_id||appliedSearch.accession||appliedAdvanced.report_status==='FINAL');
     const selected = rows.filter(c => {
       if(String(c.report_status||'').toUpperCase()==='FINAL'&&!archivedRequested) return false;
       const textMatch=[c.accession,c.patient_id,c.patient,c.patient_worklist,c.modality,c.procedure,c.procedure_code,c.body_part,c.branch,c.device,c.referring_doctor,c.clinical_indication,c.clinical_diagnosis,c.center,c.reported_by,c.verified_by,c.finalized_by].join(' ').toLocaleLowerCase().includes(term);
-      const patientMatch=!patientIdFilter.value||String(c.patient_id||'').toLocaleLowerCase().includes(patientIdFilter.value.toLocaleLowerCase());
-      const examTerm=examCodeFilter.value.toLocaleLowerCase(), examMatch=!examTerm||[c.accession,c.procedure_code,c.procedure].join(' ').toLocaleLowerCase().includes(examTerm);
-      const selectMatch=Object.entries(filters).every(([key,control])=>!control.value||String(c[key]||'')===control.value);
-      const caseDate=String(c.scheduled_at||'').slice(0,10), fromMatch=!dateFrom.value||caseDate>=dateFrom.value, toMatch=!dateTo.value||caseDate<=dateTo.value;
+      const patientMatch=!appliedSearch.patient_id||String(c.patient_id||'').toLocaleLowerCase().includes(appliedSearch.patient_id.toLocaleLowerCase());
+      const examTerm=appliedSearch.accession.toLocaleLowerCase(), examMatch=!examTerm||[c.accession,c.procedure_code,c.procedure].join(' ').toLocaleLowerCase().includes(examTerm);
+      const selectMatch=Object.entries(filters).every(([key])=>!appliedAdvanced[key]||String(c[key]||'')===appliedAdvanced[key]);
+      const caseDate=String(c.scheduled_at||'').slice(0,10), fromMatch=!appliedAdvanced.date_from||caseDate>=appliedAdvanced.date_from, toMatch=!appliedAdvanced.date_to||caseDate<=appliedAdvanced.date_to;
       return textMatch&&patientMatch&&examMatch&&selectMatch&&fromMatch&&toMatch;
     });
     resultCount.textContent=say(`${selected.length} of ${rows.length} cases`,`${selected.length} من ${rows.length} حالة`);
     function appendCases(target, source) { renderCaseTable(target, selected.filter(c => c.source === source)); }
     appendCases(cases, 'INTERNAL');
     appendCases(externalCases, 'EXTERNAL');
+    renderActiveFilters();
   }
+  function preserveRequestedOption(control,value){if(value&&![...control.options].some(option=>option.value===value))control.append(new Option(value,value));}
   function populateFilters() {
     Object.entries(filters).forEach(([key,control])=>{
       const current=control.value, values=[...new Set(rows.map(row=>String(row[key]||'')).filter(Boolean))].sort();
-      control.replaceChildren(new Option(say('All','الكل'),'')); values.forEach(value=>control.append(new Option(value,value))); control.value=values.includes(current)?current:'';
+      control.replaceChildren(new Option(say('All','الكل'),'')); values.forEach(value=>control.append(new Option(value,value))); preserveRequestedOption(control,appliedAdvanced[key]);control.value=appliedAdvanced[key]||current||'';
     });
   }
   function clearAllFilters() {
-    search.value=''; patientIdFilter.value=''; examCodeFilter.value=''; dateFrom.value=''; dateTo.value=''; Object.values(filters).forEach(control=>{control.value='';}); datePresetButtons.forEach(button=>button.classList.remove('is-active')); renderCases();
+    Object.keys(appliedSearch).forEach(key=>appliedSearch[key]='');Object.keys(appliedAdvanced).forEach(key=>appliedAdvanced[key]='');
+    search.value=''; patientIdFilter.value=''; examCodeFilter.value=''; dateFrom.value=''; dateTo.value=''; Object.values(filters).forEach(control=>{control.value='';}); datePresetButtons.forEach(button=>button.classList.remove('is-active')); syncUrl();renderCases();
   }
-  function filterPayload(){return {q:search.value.trim(),patient_id:patientIdFilter.value.trim(),accession:examCodeFilter.value.trim(),priority:filters.priority.value,modality:filters.modality.value,exam_status:filters.exam_status.value,pacs_status:filters.pacs_status.value,report_status:filters.report_status.value,sla_status:filters.sla_status.value,date_from:dateFrom.value,date_to:dateTo.value};}
+  function clearOnlyAdvancedFilters(){Object.keys(appliedAdvanced).forEach(key=>appliedAdvanced[key]='');dateFrom.value='';dateTo.value='';Object.values(filters).forEach(control=>{control.value='';});datePresetButtons.forEach(button=>button.classList.remove('is-active'));syncUrl();renderCases();}
+  function applySearchFilters(){appliedSearch.q=search.value.trim();appliedSearch.patient_id=patientIdFilter.value.trim();appliedSearch.accession=examCodeFilter.value.trim();syncUrl();renderCases();}
+  function applyAdvancedFilterValues(){Object.keys(filters).forEach(key=>appliedAdvanced[key]=filters[key].value);appliedAdvanced.date_from=dateFrom.value;appliedAdvanced.date_to=dateTo.value;syncUrl();updateAdvancedOpenState();renderCases();}
+  function filterPayload(){return appliedPayload();}
   function fillSavedViewForm(form){form.querySelectorAll('input[data-doctor-filter-value]').forEach(item=>item.remove());Object.entries(filterPayload()).forEach(([key,value])=>{if(!value)return;const input=document.createElement('input');input.type='hidden';input.name=key;input.value=value;input.dataset.doctorFilterValue='1';form.append(input);});}
   document.querySelectorAll('[data-doctor-saved-update],[data-doctor-saved-create]').forEach(form=>form.addEventListener('submit',()=>fillSavedViewForm(form)));
-  const initial=new URLSearchParams(location.search);search.value=initial.get('q')||'';patientIdFilter.value=initial.get('patient_id')||'';examCodeFilter.value=initial.get('accession')||'';dateFrom.value=initial.get('date_from')||'';dateTo.value=initial.get('date_to')||'';
-  let initialFiltersApplied=false;
-  searchButton.addEventListener('click',renderCases);
-  [search,patientIdFilter,examCodeFilter].forEach(control=>control.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();renderCases();}}));
-  [dateFrom,dateTo,...Object.values(filters)].forEach(control=>control.addEventListener('change',renderCases));
+  searchButton.addEventListener('click',applySearchFilters);
+  [search,patientIdFilter,examCodeFilter].forEach(control=>control.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();applySearchFilters();}}));
+  if(applyAdvancedFilters)applyAdvancedFilters.addEventListener('click',applyAdvancedFilterValues);
+  if(clearAdvancedFilters)clearAdvancedFilters.addEventListener('click',clearOnlyAdvancedFilters);
   clearFilters.addEventListener('click',clearAllFilters);
   function localDate(value){return new Date(value.getTime()-value.getTimezoneOffset()*60000).toISOString().slice(0,10);}
   datePresetButtons.forEach(button=>button.addEventListener('click',()=>{
@@ -320,7 +360,7 @@
     if(preset==='yesterday'){const day=new Date(now);day.setDate(day.getDate()-1);from=to=localDate(day);}
     if(preset==='7days'){const day=new Date(now);day.setDate(day.getDate()-6);from=localDate(day);to=localDate(now);}
     if(preset==='month'){from=localDate(new Date(now.getFullYear(),now.getMonth(),1));to=localDate(now);}
-    dateFrom.value=from;dateTo.value=to;datePresetButtons.forEach(item=>item.classList.toggle('is-active',item===button));renderCases();
+    dateFrom.value=from;dateTo.value=to;appliedAdvanced.date_from=from;appliedAdvanced.date_to=to;datePresetButtons.forEach(item=>item.classList.toggle('is-active',item===button));syncUrl();renderCases();
   }));
   async function refresh() {
     if (loading || posting) return;
@@ -331,7 +371,7 @@
       const data = await r.json();
       if (!data.ok || !Array.isArray(data.cases) || !Array.isArray(data.offers)) throw new Error('Invalid response');
       if(!layoutLoaded){layout=normalizeLayout(data.column_layout||loadLocalLayout());layoutLoaded=true;storeLayout(false);syncColumnMenu();}
-      rows = data.cases; populateFilters();if(!initialFiltersApplied){Object.entries(filters).forEach(([key,control])=>{const requested=initial.get(key)||'';if([...control.options].some(option=>option.value===requested))control.value=requested;});initialFiltersApplied=true;}renderCases(); offers.replaceChildren();
+      rows = data.cases; populateFilters();if(!initialFiltersApplied){Object.entries(filters).forEach(([key,control])=>{preserveRequestedOption(control,appliedAdvanced[key]);control.value=appliedAdvanced[key];});dateFrom.value=appliedAdvanced.date_from;dateTo.value=appliedAdvanced.date_to;initialFiltersApplied=true;updateAdvancedOpenState();syncUrl();}renderCases(); offers.replaceChildren();
       data.offers.forEach(offer => {
         const el = card(offer.case), actions = node('div', undefined, 'actions');
         el.append(node('small', say('Expires: ', 'ينتهي: ') + new Date(offer.expires_at).toLocaleTimeString()));
@@ -385,7 +425,6 @@
   document.getElementById('rbWorkspaceRefresh').onclick = refresh;
   layout=loadLocalLayout();
   buildColumnMenu();
-  search.oninput = renderCases;
   refresh(); heartbeat();
   window.setInterval(() => { if (!document.hidden) refresh(); }, 20000);
   window.setInterval(heartbeat, 60000);
