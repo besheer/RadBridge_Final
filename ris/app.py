@@ -22822,6 +22822,19 @@ def correction_request_action(request_id):
     return redirect(url_for('correction_request_queue',status=request.form.get('return_status','ALL')))
 
 
+@app.get('/admin/data-deletion-center')
+@require_perm('*')
+def admin_data_deletion_center():
+    term=(request.args.get('q') or '').strip()
+    orders,appointments=cancellation_search_rows(term)
+    return render_template(
+        'admin_data_deletion_center.html',
+        q=term,
+        orders=orders,
+        appointments=appointments,
+    )
+
+
 @app.get('/admin/cancellation-center')
 @require_perm('data.cancel.case')
 def admin_cancellation_center():

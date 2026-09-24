@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block page_title %}Data Deletion Center{% endblock %}
+{% block subtitle %}Protected case selection and dependency review for permanent data deletion{% endblock %}
+{% block content %}
+<div class="panel danger-zone-note">
+  <b>Super Admin protected workflow.</b>
+  Search and explicitly select the correct case before opening dependency preview. This page itself does not delete data. Permanent actions remain gated by their existing confirmation, preflight, audit and safety checks.
+</div>
+
+<!-- RB_DATA_DELETION_CENTER_V1 -->
+<div class="panel">
+  <h3>Search &amp; Case Selection</h3>
+  <p>Search by accession, Patient ID, patient name, phone, or internal Order ID, then select the matching Order to review PACS, report, and RIS dependencies.</p>
+  <form method="get" class="actions">
+    <input name="q" value="{{q}}" required maxlength="120" autocomplete="off"
+           placeholder="Accession / Patient ID / Name / Phone / Order ID">
+    <button class="btn primary">🔎 Search</button>
+    <a class="btn" href="{{url_for('admin_data_deletion_center')}}">Clear</a>
+    <a class="btn" href="{{url_for('granular_delete_preview_home')}}">Open preview by internal ID</a>
+  </form>
+</div>
+
+{% if q %}
+<div class="panel">
+  <h3>Orders / Work Orders</h3>
+  <table>
+    <thead><tr><th>Order</th><th>Patient</th><th>Phone</th><th>Exam</th><th>Status</th><th>Referral</th><th>Case selection</th></tr></thead>
+    <tbody>
+    {% for o in orders %}
+      <tr>
+        <td><b>{{o.accession}}</b><small>Order ID {{o.id}}</small></td>
+        <td>{{o.patient.patient_id}} — {{o.patient.name}}</td>
+        <td>{{o.patient.phone or '—'}}</td>
+        <td>{{o.procedure}}</td>
+        <td>{{o.status}} / {{o.exam_status}}</td>
+        <td>{{o.referring_doctor.name if o.referring_doctor else 'None'}}</td>
+        <td><a class="btn primary" href="{{url_for('granular_delete_order_preview',order_id=o.id)}}">Select case &amp; review dependencies</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7">No matching orders.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <h3>Appointments / Linked Orders</h3>
+  <p>Appointments are shown only to help locate the linked Order. No booking cancellation is available from this protected deletion page.</p>
+  <table>
+    <thead><tr><th>ID</th><th>Patient</th><th>Phone</th><th>Scheduled</th><th>Status</th><th>Case selection</th></tr></thead>
+    <tbody>
+    {% for a in appointments %}
+      <tr>
+        <td>{{a.id}}</td>
+        <td>{{a.patient.patient_id}} — {{a.patient.name}}</td>
+        <td>{{a.patient.phone or '—'}}</td>
+        <td>{{a.scheduled}}</td>
+        <td>{{a.status}}</td>
+        <td>{% if a.order_id %}<a class="btn primary" href="{{url_for('granular_delete_order_preview',order_id=a.order_id)}}">Select linked Order {{a.order_id}}</a>{% else %}<span class="muted">No linked Order</span>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6">No matching appointments.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

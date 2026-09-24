@@ -88,18 +88,35 @@ def test_cancellation_search_order_id_is_exact_not_partial(app_ctx):
     assert order.id in [row.id for row in orders]
 
 
-def test_cancellation_center_result_has_explicit_case_selection(app_ctx):
+def test_cancellation_and_data_deletion_centers_are_separated(app_ctx):
     admin=_admin()
     _patient,order=_case('7705')
     client=m.app.test_client()
     _login(client,admin)
-    response=client.get('/admin/cancellation-center?q=SEL-ACC-7705')
-    assert response.status_code==200
-    assert b'Search &amp; Case Selection' in response.data
-    assert b'Accession / Patient ID / Name / Phone / Order ID' in response.data
-    assert b'Select case &amp; review dependencies' in response.data
-    expected=f'/admin/cancellation-center/order/{order.id}/preview'.encode()
-    assert expected in response.data
+
+    cancellation=client.get(
+        '/admin/cancellation-center?q=SEL-ACC-7705'
+    )
+    assert cancellation.status_code==200
+    assert b'Select case &amp; review dependencies' not in cancellation.data
+    assert b'Cancel order' in cancellation.data
+    assert b'Data Deletion Center' in cancellation.data
+
+    deletion=client.get(
+        '/admin/data-deletion-center?q=SEL-ACC-7705'
+    )
+    assert deletion.status_code==200
+    assert b'Search &amp; Case Selection' in deletion.data
+    assert b'Accession / Patient ID / Name / Phone / Order ID' in deletion.data
+    assert b'Select case &amp; review dependencies' in deletion.data
+    assert b'Cancel order' not in deletion.data
+    assert b'Cancel booking' not in deletion.data
+
+    expected=(
+        f'/admin/cancellation-center/order/{order.id}/preview'
+        .encode()
+    )
+    assert expected in deletion.data
 
 
 def test_cancellation_search_and_selection_is_read_only(app_ctx):
