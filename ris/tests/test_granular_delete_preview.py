@@ -190,3 +190,103 @@ def test_preview_source_has_no_destructive_calls(app_ctx):
 
     for marker in forbidden:
         assert marker not in source
+
+
+def test_ris_case_only_preflight_is_readonly_and_unknown_dependencies_fail_closed(app_ctx):
+    import inspect
+    m=app_ctx
+
+    source=inspect.getsource(m.granular_delete_ris_case_only_preview_snapshot)
+    forbidden=(
+        'requests.delete',
+        'db.session.delete',
+        '.delete()',
+        'os.remove',
+        '.unlink(',
+        'shutil.rmtree',
+    )
+    for marker in forbidden:
+        assert marker not in source
+
+    patient=m.Patient(patient_id='RIS-PREFLIGHT-P1',name='RIS Preflight Patient')
+    m.db.session.add(patient)
+    m.db.session.flush()
+    order=m.Order(
+        patient_id=patient.id,
+        accession='RIS-PREFLIGHT-ACC-1',
+        modality='DX',
+        procedure='RIS Preflight Exam',
+        scheduled=m.datetime.utcnow(),
+        status='CANCELLED',
+    )
+    m.db.session.add(order)
+    m.db.session.commit()
+
+    snap=m.granular_delete_ris_case_only_preview_snapshot(
+        order,
+        [{'table':'unknown_case_table','column':'order_id','count':1}],
+        [],
+    )
+    assert snap['readonly'] is True
+    assert snap['execution_implemented'] is False
+    assert snap['can_prepare_execution'] is False
+    assert snap['unknown_active_dependencies']==['unknown_case_table.order_id']
+    assert any('UNKNOWN_DEPENDENCY' in x for x in snap['blockers'])
+
+
+def test_ris_case_only_preflight_classifies_preserve_delete_and_block(app_ctx):
+    m=app_ctx
+    patient=m.Patient(patient_id='RIS-PREFLIGHT-P2',name='RIS Policy Patient')
+    m.db.session.add(patient)
+    m.db.session.flush()
+    order=m.Order(
+        patient_id=patient.id,
+        accession='RIS-PREFLIGHT-ACC-2',
+        modality='DX',
+        procedure='RIS Policy Exam',
+        scheduled=m.datetime.utcnow(),
+        status='CANCELLED',
+    )
+    m.db.session.add(order)
+    m.db.session.commit()
+
+    rows=[
+        {'table':'appointment','column':'order_id','count':1},
+        {'table':'clinical_note','column':'order_id','count':2},
+        {'table':'payment','column':'order_id','count':1},
+    ]
+    snap=m.granular_delete_ris_case_only_preview_snapshot(order,rows,[])
+    by_table={row['table']:row for row in snap['rows']}
+    assert by_table['appointment']['action']=='NULLIFY_ORDER_LINK'
+    assert by_table['clinical_note']['action']=='DELETE_CASE_ROW'
+    assert by_table['payment']['action']=='BLOCK'
+    assert snap['safe_nullify_row_count']==1
+    assert snap['safe_delete_row_count']==2
+    assert snap['can_prepare_execution'] is False
+    assert any('FINANCIAL_HISTORY_PRESENT' in x for x in snap['blockers'])
+
+
+def test_ris_case_only_preflight_blocks_reports_before_ris_delete(app_ctx):
+    m=app_ctx
+    patient=m.Patient(patient_id='RIS-PREFLIGHT-P3',name='RIS Report Gate Patient')
+    m.db.session.add(patient)
+    m.db.session.flush()
+    order=m.Order(
+        patient_id=patient.id,
+        accession='RIS-PREFLIGHT-ACC-3',
+        modality='DX',
+        procedure='RIS Report Gate Exam',
+        scheduled=m.datetime.utcnow(),
+        status='CANCELLED',
+    )
+    m.db.session.add(order)
+    m.db.session.commit()
+
+    snap=m.granular_delete_ris_case_only_preview_snapshot(
+        order,
+        [{'table':'report','column':'order_id','count':1}],
+        [{'id':123,'status':'DRAFT'}],
+    )
+    assert snap['report_count']==1
+    assert snap['can_prepare_execution'] is False
+    assert any('DELETE_REPORTS_FIRST' in x for x in snap['blockers'])

@@ -160,7 +160,13 @@
       </tr>
       <tr>
         <td>Delete RIS Case Data Only</td>
-        <td>BLOCKED — dependency review required</td>
+        <td>
+          {% if preview.ris_case_only.can_prepare_execution %}
+            PREFLIGHT READY — EXECUTION NOT IMPLEMENTED
+          {% else %}
+            BLOCKED / REVIEW REQUIRED
+          {% endif %}
+        </td>
       </tr>
       <tr>
         <td>Full Case Purge</td>
@@ -340,6 +346,72 @@
       {% endfor %}
       </ul>
     {% endif %}
+
+    <h3>Delete RIS Case Data Only — Read-Only Preflight</h3>
+    <p>
+      No RIS row, PACS image, report file, attachment file, patient, or
+      audit row is deleted by this preflight. Execution is not implemented.
+    </p>
+    <table>
+      <tr><th>Check</th><th>Result</th></tr>
+      <tr><td>Patient preserved</td><td>{{ 'YES' if preview.ris_case_only.patient_preserved else 'NO' }}</td></tr>
+      <tr><td>PACS images preserved</td><td>{{ 'YES' if preview.ris_case_only.pacs_images_preserved else 'NO' }}</td></tr>
+      <tr><td>Audit history preserved</td><td>{{ 'YES' if preview.ris_case_only.audit_history_preserved else 'NO' }}</td></tr>
+      <tr><td>Report rows blocking</td><td>{{ preview.ris_case_only.report_count }}</td></tr>
+      <tr><td>Active report edit leases</td><td>{{ preview.ris_case_only.lease.active_count }}</td></tr>
+      <tr><td>Rows classified for future DELETE</td><td>{{ preview.ris_case_only.safe_delete_row_count }}</td></tr>
+      <tr><td>Rows classified for future NULLIFY</td><td>{{ preview.ris_case_only.safe_nullify_row_count }}</td></tr>
+      <tr>
+        <td>RIS-case preflight</td>
+        <td>
+          {% if preview.ris_case_only.can_prepare_execution %}
+            READY FOR EXECUTOR DESIGN — NO DELETE ENABLED
+          {% else %}
+            BLOCKED
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+
+    {% if preview.ris_case_only.blockers %}
+      <h4>RIS-case blockers</h4>
+      <ul>
+      {% for blocker in preview.ris_case_only.blockers %}
+        <li>{{ blocker }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if preview.ris_case_only.warnings %}
+      <h4>RIS-case warnings</h4>
+      <ul>
+      {% for warning in preview.ris_case_only.warnings %}
+        <li>{{ warning }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+    <h4>RIS-case dependency policy</h4>
+    <table>
+      <tr>
+        <th>Table</th>
+        <th>Column</th>
+        <th>Rows</th>
+        <th>Classification</th>
+        <th>Future action</th>
+        <th>State</th>
+      </tr>
+      {% for row in preview.ris_case_only.rows %}
+      <tr>
+        <td>{{ row.table }}</td>
+        <td>{{ row.column }}</td>
+        <td>{{ 'REVIEW' if row.count is none else row.count }}</td>
+        <td>{{ row.classification }}</td>
+        <td>{{ row.action }}</td>
+        <td>{{ 'BLOCK' if row.blocking else 'OK' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
 
     <h3>RIS Dependency Detail</h3>
 

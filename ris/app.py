@@ -20672,6 +20672,196 @@ def granular_delete_reports_only_execute(order, typed_accession, reason):
         },500
 
 
+# RB_RIS_CASE_DATA_ONLY_PREFLIGHT_V1
+_RIS_CASE_ONLY_DEPENDENCY_POLICY = {
+    ('appointment','order_id'): ('PRESERVE','NULLIFY_ORDER_LINK','APPOINTMENT_PRESERVED'),
+    ('attachment','order_id'): ('PRESERVE','NULLIFY_ORDER_LINK','ATTACHMENT_FILE_PRESERVED'),
+    ('patient_document','order_id'): ('PRESERVE','NULLIFY_ORDER_LINK','PATIENT_DOCUMENT_PRESERVED'),
+    ('chat_thread','order_id'): ('PRESERVE','NULLIFY_ORDER_LINK','CHAT_THREAD_PRESERVED'),
+    ('external_prior_study','linked_order_id'): ('PRESERVE','NULLIFY_ORDER_LINK','EXTERNAL_PRIOR_PRESERVED'),
+    ('patient_communication','order_id'): ('PRESERVE','NULLIFY_ORDER_LINK','COMMUNICATION_PRESERVED'),
+    ('ris_notification','order_id'): ('PRESERVE','NULLIFY_ORDER_LINK','RIS_NOTIFICATION_PRESERVED'),
+    ('pacs_study_inbox','order_id'): ('PRESERVE','NULLIFY_ORDER_LINK','PACS_INBOX_PRESERVED'),
+    ('external_intake_case','order_id'): ('PRESERVE','NULLIFY_ORDER_LINK','EXTERNAL_INTAKE_PRESERVED'),
+
+    ('clinical_note','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('journey_event','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('order_performing_doctor','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('ai_draft_report','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('prior_study_selection','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('imaging_ai_analysis','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('case_readiness','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('case_readiness_override','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('case_exception_resolution_event','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('case_workflow_event','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('clinical_assessment','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('vital_sign','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('clinical_diagnosis','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('clinical_medication','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('clinical_lab_item','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+    ('pacs_study_match','order_id'): ('RIS_PACS_METADATA','DELETE_CASE_ROW','PACS_IMAGES_PRESERVED'),
+    ('pacs_exam_link','order_id'): ('RIS_PACS_METADATA','DELETE_CASE_ROW','PACS_IMAGES_PRESERVED'),
+    ('pacs_resolution_event','order_id'): ('RIS_PACS_METADATA','DELETE_CASE_ROW','PACS_IMAGES_PRESERVED'),
+    ('portal_access_token','order_id'): ('CASE_DATA','DELETE_CASE_ROW','TOKEN_REVOKE_DELETE'),
+    ('notification_event','order_id'): ('CASE_DATA','DELETE_CASE_ROW','CASE_OWNED'),
+
+    ('report','order_id'): ('REPORT_DOMAIN','BLOCK','DELETE_REPORTS_FIRST'),
+    ('coordinator_task','order_id'): ('WORKFLOW_GOVERNANCE','BLOCK','COORDINATOR_TASK_PRESENT'),
+    ('correction_request','order_id'): ('GOVERNANCE_HISTORY','BLOCK','CORRECTION_HISTORY_PRESENT'),
+    ('correction_execution','order_id'): ('GOVERNANCE_HISTORY','BLOCK','CORRECTION_HISTORY_PRESENT'),
+    ('demographic_override_audit','order_id'): ('AUDIT_HISTORY','BLOCK','AUDIT_HISTORY_PRESENT'),
+    ('payment','order_id'): ('FINANCIAL_HISTORY','BLOCK','FINANCIAL_HISTORY_PRESENT'),
+    ('payment_refund','order_id'): ('FINANCIAL_HISTORY','BLOCK','FINANCIAL_HISTORY_PRESENT'),
+    ('receipt','order_id'): ('FINANCIAL_HISTORY','BLOCK','FINANCIAL_HISTORY_PRESENT'),
+    ('insurance_approval_request','order_id'): ('FINANCIAL_HISTORY','BLOCK','INSURANCE_HISTORY_PRESENT'),
+    ('order_discount','order_id'): ('FINANCIAL_HISTORY','BLOCK','FINANCIAL_HISTORY_PRESENT'),
+    ('discount_approval_request','order_id'): ('FINANCIAL_HISTORY','BLOCK','FINANCIAL_HISTORY_PRESENT'),
+    ('order_consumable_usage','order_id'): ('INVENTORY_HISTORY','BLOCK','INVENTORY_HISTORY_PRESENT'),
+    ('order_consumable','order_id'): ('INVENTORY_HISTORY','BLOCK','INVENTORY_HISTORY_PRESENT'),
+    ('nursing_consumable_entry','order_id'): ('INVENTORY_HISTORY','BLOCK','INVENTORY_HISTORY_PRESENT'),
+    ('delivery_event','order_id'): ('DELIVERY_HISTORY','BLOCK','DELIVERY_HISTORY_PRESENT'),
+    ('case_assignment','order_id'): ('ACTIVE_WORKFLOW','BLOCK','ASSIGNMENT_HISTORY_REVIEW'),
+    ('assignment_offer','order_id'): ('ACTIVE_WORKFLOW','BLOCK','ASSIGNMENT_OFFER_REVIEW'),
+    ('assignment_escalation_event','order_id'): ('ACTIVE_WORKFLOW','BLOCK','ASSIGNMENT_ESCALATION_REVIEW'),
+    ('pacs_transfer_job','order_id'): ('ACTIVE_WORKFLOW','BLOCK','PACS_TRANSFER_REVIEW'),
+}
+
+
+def granular_delete_ris_case_only_preview_snapshot(order, dependency_rows, report_rows):
+    """Read-only explicit policy preflight for Delete RIS Case Data Only."""
+    from sqlalchemy import inspect as _ris_inspect, text as _ris_text
+
+    rows=[]
+    blockers=[]
+    warnings=[]
+    unknown_active=[]
+    safe_delete_rows=0
+    safe_nullify_rows=0
+
+    inspector=_ris_inspect(db.engine)
+    table_names=set(inspector.get_table_names())
+
+    for dependency in dependency_rows:
+        table=str(dependency.get('table') or '')
+        column=str(dependency.get('column') or '')
+        count=dependency.get('count')
+        count_value=int(count or 0) if count is not None else None
+        policy=_RIS_CASE_ONLY_DEPENDENCY_POLICY.get((table,column))
+
+        if count_value is None:
+            classification='REVIEW'
+            action='BLOCK'
+            reason='COMPOSITE_FK_REVIEW'
+            blocking=True
+        elif policy is None:
+            classification='UNCLASSIFIED'
+            action='BLOCK' if count_value else 'NONE'
+            reason='UNKNOWN_DEPENDENCY' if count_value else 'NO_ROWS'
+            blocking=bool(count_value)
+        else:
+            classification,action,reason=policy
+            blocking=bool(count_value and action == 'BLOCK')
+
+        if count_value:
+            if action == 'DELETE_CASE_ROW':
+                safe_delete_rows += count_value
+            elif action == 'NULLIFY_ORDER_LINK':
+                safe_nullify_rows += count_value
+
+        if blocking:
+            blockers.append(reason + ': ' + table + '.' + column)
+            if policy is None:
+                unknown_active.append(table + '.' + column)
+
+        rows.append({
+            'table':table,
+            'column':column,
+            'count':count_value,
+            'classification':classification,
+            'action':action,
+            'reason_code':reason,
+            'blocking':blocking,
+        })
+
+    report_count=len(report_rows)
+    if report_count:
+        marker='DELETE_REPORTS_FIRST: report.order_id'
+        if marker not in blockers:
+            blockers.append(marker)
+
+    active_lease_count=0
+    expired_lease_count=0
+    lease_verified=True
+    try:
+        if 'report_edit_lease' in table_names:
+            lease_result=db.session.execute(
+                _ris_text(
+                    'SELECT expires_at FROM report_edit_lease '
+                    'WHERE order_id = :order_id'
+                ),
+                {'order_id':int(order.id)},
+            ).all()
+            from datetime import datetime as _ris_datetime, timezone as _ris_timezone
+            now=_ris_datetime.utcnow()
+            for lease in lease_result:
+                value=lease[0]
+                if isinstance(value,str):
+                    raw=value.strip()
+                    if raw.endswith('Z'):
+                        raw=raw[:-1] + '+00:00'
+                    try:
+                        value=_ris_datetime.fromisoformat(raw)
+                    except ValueError:
+                        value=None
+                if value is None:
+                    active_lease_count += 1
+                    continue
+                if getattr(value,'tzinfo',None) is not None:
+                    value=value.astimezone(_ris_timezone.utc).replace(tzinfo=None)
+                if value > now:
+                    active_lease_count += 1
+                else:
+                    expired_lease_count += 1
+    except Exception as exc:
+        lease_verified=False
+        blockers.append('REPORT_LEASE_STATE_UNVERIFIED')
+        warnings.append(type(exc).__name__)
+
+    if active_lease_count:
+        blockers.append('ACTIVE_REPORT_EDIT_LEASE')
+    if expired_lease_count:
+        warnings.append('EXPIRED_REPORT_EDIT_LEASE_PRESENT')
+
+    can_prepare_execution=(
+        not blockers
+        and report_count == 0
+        and not unknown_active
+        and lease_verified
+        and active_lease_count == 0
+    )
+
+    return {
+        'readonly':True,
+        'execution_implemented':False,
+        'can_prepare_execution':can_prepare_execution,
+        'report_count':report_count,
+        'patient_preserved':True,
+        'pacs_images_preserved':True,
+        'audit_history_preserved':True,
+        'safe_delete_row_count':safe_delete_rows,
+        'safe_nullify_row_count':safe_nullify_rows,
+        'unknown_active_dependencies':unknown_active,
+        'lease':{
+            'verified':lease_verified,
+            'active_count':active_lease_count,
+            'expired_count':expired_lease_count,
+        },
+        'rows':rows,
+        'blockers':blockers,
+        'warnings':warnings,
+    }
+
+
 # RB_GRANULAR_DELETE_READONLY_PREVIEW_V1
 def granular_delete_order_preview_snapshot(order):
     """
@@ -20809,6 +20999,12 @@ def granular_delete_order_preview_snapshot(order):
         reports if 'order_id' in Report.__table__.columns else [],
     )
 
+    ris_case_only_preview = granular_delete_ris_case_only_preview_snapshot(
+        order,
+        dependency_rows,
+        report_rows,
+    )
+
     pacs_study_id = (
         getattr(order, 'pacs_study_id', None)
         or ''
@@ -20921,11 +21117,13 @@ def granular_delete_order_preview_snapshot(order):
             'row_count': dependency_total,
             'rows': dependency_rows,
         },
+        'ris_case_only': ris_case_only_preview,
         'safety': {
             'images_only_preview_available': True,
             'reports_only_preview_available': True,
             'reports_only_ready': reports_only_preview['can_delete_reports_only'],
             'ris_case_only_allowed': False,
+            'ris_case_only_preflight_ready': ris_case_only_preview['can_prepare_execution'],
             'full_case_purge_allowed': False,
             'blockers': blockers,
         },
