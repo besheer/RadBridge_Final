@@ -248,7 +248,7 @@
         <td>Reports-only readiness</td>
         <td>
           {% if preview.reports_only.can_delete_reports_only %}
-            READY FOR FUTURE CONTROLLED EXECUTION
+            READY — SUPER ADMIN CONFIRMATION REQUIRED
           {% else %}
             BLOCKED
           {% endif %}
@@ -272,6 +272,50 @@
         <li>{{ warning }}</li>
       {% endfor %}
       </ul>
+    {% endif %}
+
+    {% if preview.reports_only.can_delete_reports_only %}
+      <div class="panel">
+        <h4>Delete Reports Only</h4>
+        <p>
+          Super Admin controlled execution. This removes Report and
+          ReportVersion rows and quarantines this case's report files.
+          Order, Patient, PACS images/state, CoordinatorTask, and Audit
+          history are not deleted. Any CoordinatorTask or active lease
+          blocks execution before this form is enabled.
+        </p>
+        <form
+          method="post"
+          action="{{ url_for(
+            'granular_delete_order_reports_only',
+            order_id=preview.order.id
+          ) }}"
+          onsubmit="return confirm(
+            'Delete report records and quarantine report files for this order?'
+          );"
+        >
+          <label>
+            Type accession exactly
+            <input
+              type="text"
+              name="confirm_accession"
+              autocomplete="off"
+              required
+            >
+          </label>
+          <label>
+            Reason
+            <textarea
+              name="reason"
+              minlength="5"
+              required
+            ></textarea>
+          </label>
+          <button type="submit" class="danger">
+            Delete Reports Only
+          </button>
+        </form>
+      </div>
     {% endif %}
 
     {% if preview.reports_only.storage.artifacts %}

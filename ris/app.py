@@ -20344,6 +20344,334 @@ def granular_delete_reports_only_preview_snapshot(order, patient, reports):
     }
 
 
+# RB_DELETE_REPORTS_ONLY_EXECUTION_V1
+def _delete_reports_only_is_super_admin(user):
+    return bool(
+        user
+        and getattr(user, 'role', None)
+        and str(getattr(user.role, 'code', '') or '').strip().upper() == 'SUPER_ADMIN'
+    )
+
+
+def _delete_reports_only_quarantine_target(patient, order, operation_id):
+    """Return a same-filesystem quarantine target under REPORT_DIR."""
+    from pathlib import Path as _DeletePath
+    from report_storage_safety import canonical_case_paths, safe_token
+
+    paths=canonical_case_paths(REPORT_DIR,patient,order)
+    report_root=_DeletePath(REPORT_DIR).resolve()
+    quarantine_root=(report_root/'.quarantine'/'reports-only').resolve()
+    quarantine_target=(
+        quarantine_root
+        / safe_token(str(operation_id))
+        / safe_token(getattr(patient,'patient_id','PATIENT'))
+        / safe_token(getattr(order,'accession','ORDER'))
+    ).resolve()
+
+    try:
+        quarantine_target.relative_to(report_root)
+    except ValueError as exc:
+        raise RuntimeError('QUARANTINE_PATH_OUTSIDE_REPORT_ROOT') from exc
+
+    return paths['case_root'].resolve(),quarantine_target
+
+
+def _delete_reports_only_blocked_response(order, reason, code, blockers, status=409):
+    try:
+        audit(
+            'REPORTS_ONLY_DELETE_BLOCKED_ADMIN',
+            'order',
+            order.id,
+            (
+                f"accession={getattr(order,'accession','')}; "
+                f"code={code}; "
+                f"blockers={','.join(str(x) for x in (blockers or []))}; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    return {
+        'ok':False,
+        'deleted':False,
+        'error':code,
+        'blockers':list(blockers or []),
+    },status
+
+
+def granular_delete_reports_only_execute(order, typed_accession, reason):
+    """Dependency-safe Delete Reports Only execution.
+
+    Invariants:
+      * SUPER_ADMIN only.
+      * exact typed Accession and mandatory reason.
+      * Report/ReportVersion only; Order/Patient/PACS/Audit are preserved.
+      * CoordinatorTask or active edit lease blocks execution.
+      * report case directory is moved to same-filesystem quarantine first.
+      * database deletion is revalidated under row locks and verified before commit.
+      * any database failure attempts to restore quarantined files.
+    """
+    from pathlib import Path as _DeletePath
+    from sqlalchemy import inspect as _delete_inspect, text as _delete_text
+
+    user=current_user()
+    reason=str(reason or '').strip()
+    typed_accession=str(typed_accession or '').strip()
+    expected_accession=str(getattr(order,'accession','') or '').strip()
+
+    if not _delete_reports_only_is_super_admin(user):
+        abort(403)
+
+    if len(reason) < 5:
+        return _delete_reports_only_blocked_response(
+            order,reason,'REASON_REQUIRED',['REASON_REQUIRED'],400
+        )
+
+    if not typed_accession or typed_accession != expected_accession:
+        return _delete_reports_only_blocked_response(
+            order,reason,'ACCESSION_CONFIRMATION_MISMATCH',
+            ['ACCESSION_CONFIRMATION_MISMATCH'],409
+        )
+
+    patient=getattr(order,'patient',None)
+    if patient is None:
+        return _delete_reports_only_blocked_response(
+            order,reason,'PATIENT_NOT_FOUND',['PATIENT_NOT_FOUND'],409
+        )
+
+    initial_reports=(
+        Report.query
+        .filter_by(order_id=order.id)
+        .order_by(Report.id)
+        .all()
+    )
+    initial_preview=granular_delete_reports_only_preview_snapshot(
+        order,patient,initial_reports
+    )
+
+    if not initial_preview.get('can_delete_reports_only'):
+        return _delete_reports_only_blocked_response(
+            order,reason,'REPORTS_ONLY_PREFLIGHT_BLOCKED',
+            initial_preview.get('blocker_codes') or ['PREFLIGHT_BLOCKED'],409
+        )
+
+    initial_report_ids=tuple(initial_preview.get('report_ids') or ())
+    initial_version_ids=tuple(
+        int(row.get('id')) for row in (initial_preview.get('versions') or [])
+    )
+    initial_artifact_paths=tuple(sorted(
+        str(row.get('path') or '')
+        for row in initial_preview.get('storage',{}).get('artifacts',[])
+    ))
+    pacs_before={
+        'pacs_study_id':getattr(order,'pacs_study_id',None),
+        'pacs_image_count':getattr(order,'pacs_image_count',None),
+        'pacs_status':getattr(order,'pacs_status',None),
+        'study_instance_uid':getattr(order,'study_instance_uid',None),
+    }
+
+    operation_id=(
+        datetime.utcnow().strftime('%Y%m%d-%H%M%S')
+        +'-'+secrets.token_hex(6)
+    )
+    case_root=None
+    quarantine_target=None
+    quarantined=False
+
+    try:
+        locked_order=(
+            Order.query
+            .filter_by(id=order.id)
+            .with_for_update()
+            .first()
+        )
+        if locked_order is None:
+            raise RuntimeError('ORDER_NOT_FOUND_AFTER_LOCK')
+
+        locked_patient=db.session.get(Patient,locked_order.patient_id)
+        if locked_patient is None:
+            raise RuntimeError('PATIENT_NOT_FOUND_AFTER_LOCK')
+
+        locked_reports=(
+            Report.query
+            .filter_by(order_id=locked_order.id)
+            .order_by(Report.id)
+            .with_for_update()
+            .all()
+        )
+
+        final_preview=granular_delete_reports_only_preview_snapshot(
+            locked_order,locked_patient,locked_reports
+        )
+        final_blockers=list(final_preview.get('blocker_codes') or ())
+
+        if tuple(final_preview.get('report_ids') or ()) != initial_report_ids:
+            final_blockers.append('REPORT_SET_CHANGED_AFTER_PREFLIGHT')
+        if tuple(
+            int(row.get('id')) for row in (final_preview.get('versions') or [])
+        ) != initial_version_ids:
+            final_blockers.append('REPORT_VERSION_SET_CHANGED_AFTER_PREFLIGHT')
+        if tuple(sorted(
+            str(row.get('path') or '')
+            for row in final_preview.get('storage',{}).get('artifacts',[])
+        )) != initial_artifact_paths:
+            final_blockers.append('REPORT_ARTIFACT_SET_CHANGED_AFTER_PREFLIGHT')
+        if str(getattr(locked_order,'accession','') or '').strip() != expected_accession:
+            final_blockers.append('ACCESSION_CHANGED_AFTER_PREFLIGHT')
+
+        if final_blockers:
+            db.session.rollback()
+            return _delete_reports_only_blocked_response(
+                order,reason,'FINAL_REVALIDATION_BLOCKED',final_blockers,409
+            )
+
+        case_root,quarantine_target=_delete_reports_only_quarantine_target(
+            locked_patient,locked_order,operation_id
+        )
+        report_root=_DeletePath(REPORT_DIR).resolve()
+        case_root=_DeletePath(case_root).resolve()
+        quarantine_target=_DeletePath(quarantine_target).resolve()
+        case_root.relative_to(report_root)
+        quarantine_target.relative_to(report_root)
+
+        # Move the complete case report tree (versions + working files) before
+        # DB deletion. os.replace is same-filesystem and does not silently copy.
+        if case_root.exists():
+            quarantine_target.parent.mkdir(parents=True,exist_ok=True)
+            if quarantine_target.exists():
+                raise RuntimeError('QUARANTINE_TARGET_EXISTS')
+            os.replace(str(case_root),str(quarantine_target))
+            quarantined=True
+
+        report_ids=[int(row.id) for row in locked_reports]
+        version_count_before=int(final_preview.get('version_count') or 0)
+        expired_lease_count=int(final_preview.get('lease',{}).get('expired_count') or 0)
+
+        inspector=_delete_inspect(db.engine)
+        if report_ids and inspector.has_table('report_edit_lease'):
+            placeholders=','.join(str(int(value)) for value in report_ids)
+            db.session.execute(
+                _delete_text(
+                    'DELETE FROM report_edit_lease '
+                    'WHERE (order_id = :order_id OR report_id IN ('+placeholders+')) '
+                    'AND expires_at <= :now'
+                ),
+                {'order_id':int(locked_order.id),'now':datetime.utcnow()},
+            )
+
+        if report_ids:
+            ReportVersion.query.filter(
+                ReportVersion.report_id.in_(report_ids)
+            ).delete(synchronize_session=False)
+            for row in locked_reports:
+                db.session.delete(row)
+
+        db.session.flush()
+
+        remaining_reports=Report.query.filter_by(order_id=locked_order.id).count()
+        remaining_versions=(
+            ReportVersion.query
+            .filter(ReportVersion.report_id.in_(report_ids))
+            .count()
+            if report_ids else 0
+        )
+        order_still_present=db.session.get(Order,locked_order.id) is not None
+        patient_still_present=db.session.get(Patient,locked_patient.id) is not None
+
+        if remaining_reports or remaining_versions:
+            raise RuntimeError('REPORT_DELETE_POSTCHECK_FAILED')
+        if not order_still_present or not patient_still_present:
+            raise RuntimeError('CORE_CASE_PRESERVATION_FAILED')
+
+        for key,value in pacs_before.items():
+            if getattr(locked_order,key,None) != value:
+                raise RuntimeError('PACS_STATE_CHANGED_DURING_REPORT_DELETE')
+
+        audit(
+            'REPORTS_ONLY_DELETED_ADMIN',
+            'order',
+            locked_order.id,
+            (
+                f"accession={expected_accession}; "
+                f"report_ids={','.join(str(x) for x in report_ids)}; "
+                f"report_count={len(report_ids)}; "
+                f"version_count={version_count_before}; "
+                f"expired_leases_removed={expired_lease_count}; "
+                f"quarantined={'yes' if quarantined else 'no'}; "
+                f"quarantine={str(quarantine_target) if quarantined else ''}; "
+                f"operation_id={operation_id}; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+
+        return {
+            'ok':True,
+            'deleted':True,
+            'order_id':locked_order.id,
+            'accession':expected_accession,
+            'report_count_deleted':len(report_ids),
+            'version_count_deleted':version_count_before,
+            'expired_leases_removed':expired_lease_count,
+            'quarantined':quarantined,
+            'quarantine_path':str(quarantine_target) if quarantined else None,
+            'operation_id':operation_id,
+            'post_delete':{
+                'report_count':0,
+                'version_count':0,
+                'order_preserved':True,
+                'patient_preserved':True,
+                'pacs_state_preserved':True,
+            },
+        },200
+
+    except Exception as exc:
+        db.session.rollback()
+        restored=False
+        restore_error=None
+
+        if quarantined and quarantine_target is not None and case_root is not None:
+            try:
+                case_root.parent.mkdir(parents=True,exist_ok=True)
+                if case_root.exists():
+                    raise RuntimeError('RESTORE_TARGET_ALREADY_EXISTS')
+                os.replace(str(quarantine_target),str(case_root))
+                restored=True
+            except Exception as restore_exc:
+                restore_error=type(restore_exc).__name__
+
+        try:
+            audit(
+                'REPORTS_ONLY_DELETE_FAILED_ADMIN',
+                'order',
+                getattr(order,'id',''),
+                (
+                    f"accession={expected_accession}; "
+                    f"operation_id={operation_id}; "
+                    f"error={type(exc).__name__}; "
+                    f"quarantined={'yes' if quarantined else 'no'}; "
+                    f"restored={'yes' if restored else 'no'}; "
+                    f"restore_error={restore_error or ''}; "
+                    f"reason={reason}"
+                ),
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        return {
+            'ok':False,
+            'deleted':False,
+            'error':'REPORTS_ONLY_DELETE_FAILED',
+            'failure_type':type(exc).__name__,
+            'quarantined':quarantined,
+            'restored':restored,
+            'restore_error':restore_error,
+        },500
+
+
 # RB_GRANULAR_DELETE_READONLY_PREVIEW_V1
 def granular_delete_order_preview_snapshot(order):
     """
@@ -20754,6 +21082,29 @@ def granular_delete_order_preview(order_id):
     return render_template(
         'admin_cancellation_preview.html',
         preview=snapshot,
+    )
+
+
+@app.post(
+    '/admin/cancellation-center/order/<int:order_id>/delete-reports'
+)
+@require_perm('data.cancel.case')
+def granular_delete_order_reports_only(order_id):
+    order=Order.query.get_or_404(order_id)
+    user=current_user()
+    if not _delete_reports_only_is_super_admin(user):
+        abort(403)
+
+    reason=(request.form.get('reason') or '').strip()
+    typed_accession=(
+        request.form.get('confirm_accession')
+        or ''
+    ).strip()
+
+    return granular_delete_reports_only_execute(
+        order,
+        typed_accession,
+        reason,
     )
 
 
