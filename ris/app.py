@@ -4687,6 +4687,22 @@ def arabic_to_latin_name(value):
             out.append(' ')
     return re.sub(r'\s+',' ',' '.join(''.join(out).split())).strip().upper()
 
+def normalized_worklist_name(original_name, manual_value=''):
+    """Return a Latin, human-editable name suitable for DICOM MWL."""
+    candidate=str(manual_value or '').replace('^',' ').strip()
+    if not candidate:
+        candidate=arabic_to_latin_name(original_name)
+    elif re.search(r'[\u0600-\u06FF]',candidate):
+        candidate=arabic_to_latin_name(candidate)
+    candidate=re.sub(r"[^A-Za-z0-9 '\-]+",' ',candidate)
+    return re.sub(r'\s+',' ',candidate).strip().upper()
+
+def patient_worklist_display_name(patient):
+    return normalized_worklist_name(
+        getattr(patient,'name',''),
+        getattr(patient,'worklist_name',''),
+    )
+
 def dicom_person_name(value):
     value=re.sub(r'\s+',' ',str(value or '').strip().upper())
     return '^'.join([x for x in value.split(' ') if x])
@@ -7054,7 +7070,11 @@ def doctor_workspace():
     # RB_DOCTOR_UNIFIED_WORKSPACE_V1: personal queue, never a global worklist.
     if not doctor_workspace_user(current_user()):
         abort(403)
-    return render_template('doctor_unified_workspace.html')
+    return render_template(
+        'doctor_unified_workspace.html',
+        saved_views=_saved_views_for('DOCTOR'),
+        saved_view_page='DOCTOR',
+    )
 
 
 @app.get('/api/doctor/workspace')
@@ -7070,17 +7090,134 @@ def doctor_workspace_data():
     offers=AssignmentOffer.query.filter_by(doctor_user_id=u.id,status='PENDING').filter(AssignmentOffer.expires_at>now).order_by(AssignmentOffer.offered_at.desc()).limit(100).all()
     def case_data(o):
         external=ExternalIntakeCase.query.filter_by(order_id=o.id).first()
+        report=o.report
+        sla=report_sla_snapshot(o,report,now=now)
+        assessment=ClinicalAssessment.query.filter_by(order_id=o.id).first()
+        performing=OrderPerformingDoctor.query.filter_by(order_id=o.id).first()
+        attachment_count=PatientDocument.query.filter_by(order_id=o.id).count()
+        prior_count=PriorStudySelection.query.filter_by(order_id=o.id).count()
+        iso=lambda value: value.isoformat(sep=' ') if value else ''
         return {'id':o.id,'accession':o.accession,'patient':o.patient.name,
-                'procedure':o.procedure,'modality':o.modality,'status':o.status,
+                'patient_id':o.patient.patient_id,
+                'patient_worklist':patient_worklist_display_name(o.patient),
+                'dob':o.patient.dob or '','sex':o.patient.sex or '',
+                'procedure':o.procedure,
+                'procedure_code':o.proc.code if o.proc else '',
+                'modality':o.modality,
+                'body_part':o.proc.body_part if o.proc else '',
+                'contrast':bool(o.proc.contrast) if o.proc else False,
+                'priority':o.priority or 'ROUTINE','status':o.status,
+                'exam_status':o.exam_status or '','pacs_status':o.pacs_status or '',
                 'images':int(o.pacs_image_count or 0),
+                'branch':o.branch.name if o.branch else '',
+                'device':o.device.name if o.device else '',
+                'room':o.device.room if o.device else '',
+                'station_ae':o.station_ae or '',
+                'referring_doctor':o.referring_doctor.name if o.referring_doctor else '',
+                'assigned_doctor':o.assigned_doctor.full_name if o.assigned_doctor else '',
+                'performing_doctor':performing.doctor.full_name if performing and performing.doctor else '',
+                'clinical_indication':assessment.clinical_indication if assessment else '',
+                'clinical_history':assessment.history if assessment else '',
+                'clinical_diagnosis':assessment.diagnosis if assessment else '',
+                'allergy_notes':assessment.allergy_notes if assessment else '',
+                'attachment_count':attachment_count,'prior_count':prior_count,
+                'study_instance_uid':o.study_instance_uid or '',
+                'scheduled_at':iso(o.scheduled),'assigned_at':iso(o.assigned_at),
+                'exam_started_at':iso(o.exam_started_at),
+                'exam_completed_at':iso(o.exam_completed_at),
+                'pacs_last_seen_at':iso(o.pacs_last_seen_at),
+                'report_status':report.status if report else 'UNREPORTED',
+                'reported_by':report.radiologist if report else '',
+                'verified_by':report.verified_by if report else '',
+                'verified_at':iso(report.verified_at) if report else '',
+                'second_verified_by':report.second_verified_by if report else '',
+                'second_verified_at':iso(report.second_verified_at) if report else '',
+                'finalized_by':report.finalized_by if report else '',
+                'finalized_at':iso(report.finalized_at) if report else '',
+                'report_updated_at':iso(report.updated_at) if report else '',
+                'report_delivered':bool(o.report_delivered),
+                'images_delivered':bool(o.images_delivered),
+                'sla_status':sla['status'],
+                'sla_elapsed_minutes':sla['elapsed_minutes'],
+                'sla_remaining_minutes':sla['remaining_minutes'],
                 'source':'EXTERNAL' if external else 'INTERNAL',
                 'center':external.center.name if external else '',
-                'open_url':url_for('doctor_workspace_open',order_id=o.id)}
+                'open_url':url_for('doctor_workspace_open',order_id=o.id),
+                'return_url':url_for('return_case_form',order_id=o.id),
+                'return_allowed':bool((o.status or '').upper() not in ('FINAL','CANCELLED') and
+                    (getattr(report,'status','') or '').upper() not in ('VERIFIED','FINAL'))}
+    profile=UserProfile.query.filter_by(user_id=u.id).first()
+    profile_settings=user_profile_settings(profile) if profile else {}
     response=jsonify(ok=True,cases=[case_data(o) for o in orders],offers=[
         {'id':offer.id,'case':case_data(offer.order),'expires_at':offer.expires_at.isoformat()+'Z',
-         'respond_url':url_for('assignment_offer_respond',offer_id=offer.id)} for offer in offers])
+         'respond_url':url_for('assignment_offer_respond',offer_id=offer.id)} for offer in offers],
+        column_layout=profile_settings.get('doctor_worklist_columns'))
     response.headers['Cache-Control']='no-store'
     return response
+
+
+DOCTOR_WORKLIST_COLUMN_KEYS=(
+    'priority','accession','patient_id','patient','patient_worklist','dob','sex',
+    'procedure','modality','body_part','contrast','branch','device','room',
+    'station_ae','referring_doctor','assigned_doctor','performing_doctor',
+    'clinical_indication','clinical_history','clinical_diagnosis','allergy_notes',
+    'status','exam_status','pacs_status','images','attachment_count','prior_count',
+    'study_instance_uid','report_status','reported_by','verified_by','verified_at',
+    'second_verified_by','second_verified_at','finalized_by','finalized_at',
+    'report_updated_at','report_delivered','images_delivered','sla_status',
+    'sla_elapsed_minutes','sla_remaining_minutes','scheduled_at','assigned_at',
+    'exam_started_at','exam_completed_at','pacs_last_seen_at','center','action'
+)
+
+
+def normalize_doctor_worklist_layout(payload):
+    payload=payload if isinstance(payload,dict) else {}
+    allowed=set(DOCTOR_WORKLIST_COLUMN_KEYS)
+    order=[]
+    order_input=payload.get('order') if isinstance(payload.get('order'),list) else []
+    for key in order_input:
+        if isinstance(key,str) and key in allowed and key not in order:
+            order.append(key)
+    order.extend(key for key in DOCTOR_WORKLIST_COLUMN_KEYS if key not in order)
+    visible=[]
+    visible_input=payload.get('visible') if isinstance(payload.get('visible'),list) else []
+    for key in visible_input:
+        if key in allowed and key not in visible:
+            visible.append(key)
+    if not visible:
+        visible=['priority','accession','patient_worklist','procedure','modality',
+                 'images','pacs_status','report_status','sla_status','action']
+    widths={}
+    widths_input=payload.get('widths') if isinstance(payload.get('widths'),dict) else {}
+    for key,value in widths_input.items():
+        if key in allowed and isinstance(value,(int,float)):
+            widths[key]=max(72,min(520,int(value)))
+    pinned=[]
+    pinned_input=payload.get('pinned') if isinstance(payload.get('pinned'),list) else []
+    for key in pinned_input:
+        if key in allowed and key in visible and key not in pinned:
+            pinned.append(key)
+    density=payload.get('density') if payload.get('density') in ('compact','comfortable') else 'compact'
+    return {'version':2,'order':order,'visible':visible,'widths':widths,
+            'pinned':pinned[:3],'density':density}
+
+
+@app.post('/api/doctor/workspace/column-layout')
+@require_perm('reports.view')
+def doctor_workspace_column_layout_save():
+    user=current_user()
+    if not doctor_workspace_user(user):
+        abort(403)
+    payload=request.get_json(silent=True)
+    if not isinstance(payload,dict):
+        return jsonify(ok=False,error='INVALID_COLUMN_LAYOUT'),400
+    layout=normalize_doctor_worklist_layout(payload)
+    profile=get_user_profile(user)
+    settings=user_profile_settings(profile)
+    settings['doctor_worklist_columns']=layout
+    profile.settings_json=json.dumps(settings,separators=(',',':'))
+    db.session.commit()
+    return jsonify(ok=True,column_layout=layout)
 
 
 def doctor_workspace_user(user):
@@ -27204,7 +27341,8 @@ SAVED_VIEW_PAGES = {
 SAVED_VIEW_FILTER_KEYS = {
     'NURSING': {'q','date_from','date_to','priority'},
     'TECHNICIAN': {'q','date_from','date_to','priority'},
-    'DOCTOR': {'q','status','modality'},
+    'DOCTOR': {'q','patient_id','accession','priority','modality','exam_status',
+               'pacs_status','report_status','sla_status','date_from','date_to'},
 }
 
 def _saved_view_page_or_404(page_key):
@@ -27255,6 +27393,26 @@ def saved_view_save(page_key):
     db.session.commit()
 
     return redirect(url_for(SAVED_VIEW_PAGES[page_key], **data))
+
+@app.post('/saved-views/<page_key>/<int:view_id>/update')
+@login_required
+def saved_view_update(page_key,view_id):
+    page_key=_saved_view_page_or_404(page_key)
+    row=SavedSearchFilter.query.filter_by(
+        id=view_id,
+        user_id=current_user().id,
+        page_key=page_key
+    ).first_or_404()
+    data=_saved_view_filtered_data(page_key,request.form)
+    name=(request.form.get('view_name') or '').strip()
+    if name:
+        row.name=name[:120]
+    row.filter_json=json.dumps(data,ensure_ascii=False)
+    audit('SAVED_VIEW_UPDATE','saved_search_filter',row.id,
+          f'page={page_key}; name={row.name}')
+    db.session.commit()
+    flash('Saved view updated.','success')
+    return redirect(url_for(SAVED_VIEW_PAGES[page_key],**data))
 
 @app.get('/saved-views/<page_key>/<int:view_id>/apply')
 @login_required

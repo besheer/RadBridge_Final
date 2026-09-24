@@ -2,6 +2,7 @@
 {% block page_title %}{{'مساحة عمل الطبيب' if ui_lang=='ar' else 'Doctor Workspace'}}{% endblock %}
 {% block content %}
 <main id="rbUnifiedDoctorWorkspace" data-api="{{url_for('doctor_workspace_data')}}"
+ data-column-layout-api="{{url_for('doctor_workspace_column_layout_save')}}"
  data-heartbeat="{{url_for('doctor_presence_heartbeat') if me and me.role and me.role.code.upper() in ('RADIOLOGIST','DOCTOR') else ''}}" data-ar="{{'yes' if ui_lang=='ar' else 'no'}}">
   <p>{{'العروض وحالاتي في صفحة واحدة. الصور والتقرير في نافذة العمل.' if ui_lang=='ar' else 'Offers and my cases in one page. Images and reporting open in the reading window.'}}</p>
   <p id="rbWorkspaceMessage" role="status" aria-live="polite"></p>
@@ -11,10 +12,55 @@
     <div id="rbWorkspaceOfferRows"></div>
   </section>
   <section class="panel" aria-labelledby="rbCasesTitle">
-    <h2 id="rbCasesTitle">{{'حالاتي' if ui_lang=='ar' else 'My cases'}}</h2>
-    <label>{{'بحث في حالاتي' if ui_lang=='ar' else 'Search my cases'}}
-      <input type="search" id="rbWorkspaceSearch" autocomplete="off">
-    </label>
+    <div class="rb-doctor-table-tools">
+      <div><h2 id="rbCasesTitle">{{'حالاتي' if ui_lang=='ar' else 'My cases'}}</h2><span id="rbDoctorResultCount" class="rb-doctor-result-count"></span></div>
+      <div class="rb-doctor-column-picker"><button type="button" class="btn" id="rbDoctorColumnsButton" aria-expanded="false">⚙ {{'تخصيص الأعمدة' if ui_lang=='ar' else 'Customize Columns'}}</button><div id="rbDoctorColumnsMenu" class="rb-doctor-column-menu" hidden><b>{{'الأعمدة الظاهرة' if ui_lang=='ar' else 'Visible columns'}}</b></div></div>
+    </div>
+    <div class="rb-doctor-searchbar" aria-label="{{'البحث السريع' if ui_lang=='ar' else 'Quick case search'}}">
+      <div class="rb-assignment-scope"><span>✓</span><div><b>{{'معيّنة لي' if ui_lang=='ar' else 'Assigned to me'}}</b><small>{{'هذه الصفحة تعرض حالات الطبيب الحالي فقط' if ui_lang=='ar' else 'This workspace only shows your assigned cases'}}</small></div></div>
+      <label class="rb-filter-search"><span>{{'بحث' if ui_lang=='ar' else 'Search'}}</span><input type="search" id="rbWorkspaceSearch" autocomplete="off" placeholder="{{'المريض، رقم الفحص، الفحص، الطبيب...' if ui_lang=='ar' else 'Patient, accession, exam, doctor...'}}"></label>
+      <label><span>{{'رقم المريض' if ui_lang=='ar' else 'Patient ID'}}</span><input type="search" id="rbDoctorPatientIdFilter" autocomplete="off"></label>
+      <label><span>{{'كود الفحص / Accession' if ui_lang=='ar' else 'Exam code / Accession'}}</span><input type="search" id="rbDoctorExamCodeFilter" autocomplete="off"></label>
+      <button type="button" class="btn primary rb-doctor-search-button" id="rbDoctorSearchButton">🔍 {{'بحث' if ui_lang=='ar' else 'Search'}}</button>
+    </div>
+    <div class="rb-doctor-date-presets" aria-label="{{'اختيارات التاريخ' if ui_lang=='ar' else 'Date shortcuts'}}">
+      <button type="button" class="btn small" data-doctor-date-preset="today">{{'اليوم' if ui_lang=='ar' else 'Today'}}</button>
+      <button type="button" class="btn small" data-doctor-date-preset="yesterday">{{'أمس' if ui_lang=='ar' else 'Yesterday'}}</button>
+      <button type="button" class="btn small" data-doctor-date-preset="7days">{{'آخر 7 أيام' if ui_lang=='ar' else 'Last 7 days'}}</button>
+      <button type="button" class="btn small" data-doctor-date-preset="month">{{'هذا الشهر' if ui_lang=='ar' else 'This month'}}</button>
+      <button type="button" class="btn small" data-doctor-date-preset="all">{{'كل التواريخ' if ui_lang=='ar' else 'Any date'}}</button>
+      <button type="button" class="btn small" id="rbDoctorClearFilters">{{'مسح الفلاتر' if ui_lang=='ar' else 'Clear filters'}}</button>
+    </div>
+    <details class="rb-doctor-advanced-filters">
+      <summary>⚙ {{'فلاتر متقدمة والتقويم' if ui_lang=='ar' else 'Advanced filters & calendar'}}</summary>
+      <div class="rb-doctor-filters" aria-label="{{'فلاتر حالات الطبيب' if ui_lang=='ar' else 'Doctor case filters'}}">
+      <label><span>{{'الأولوية' if ui_lang=='ar' else 'Priority'}}</span><select id="rbDoctorPriorityFilter"><option value="">{{'الكل' if ui_lang=='ar' else 'All'}}</option></select></label>
+      <label><span>{{'نوع الجهاز' if ui_lang=='ar' else 'Modality'}}</span><select id="rbDoctorModalityFilter"><option value="">{{'الكل' if ui_lang=='ar' else 'All'}}</option></select></label>
+      <label><span>{{'حالة الفحص' if ui_lang=='ar' else 'Exam status'}}</span><select id="rbDoctorExamFilter"><option value="">{{'الكل' if ui_lang=='ar' else 'All'}}</option></select></label>
+      <label><span>{{'حالة PACS' if ui_lang=='ar' else 'PACS status'}}</span><select id="rbDoctorPacsFilter"><option value="">{{'الكل' if ui_lang=='ar' else 'All'}}</option></select></label>
+      <label><span>{{'حالة التقرير' if ui_lang=='ar' else 'Report status'}}</span><select id="rbDoctorReportFilter"><option value="">{{'الكل' if ui_lang=='ar' else 'All'}}</option></select></label>
+      <label><span>{{'حالة SLA' if ui_lang=='ar' else 'SLA status'}}</span><select id="rbDoctorSlaFilter"><option value="">{{'الكل' if ui_lang=='ar' else 'All'}}</option></select></label>
+      <label><span>{{'من تاريخ' if ui_lang=='ar' else 'From date'}}</span><input type="date" id="rbDoctorDateFrom"></label>
+      <label><span>{{'إلى تاريخ' if ui_lang=='ar' else 'To date'}}</span><input type="date" id="rbDoctorDateTo"></label>
+      </div>
+    </details>
+    {% if saved_views is defined %}
+    <section class="rb-doctor-saved-views" aria-label="{{'الفلاتر المحفوظة' if ui_lang=='ar' else 'Saved filters'}}">
+      <strong>{{'الفلاتر المحفوظة' if ui_lang=='ar' else 'Saved filters'}}</strong>
+      <div class="actions">
+      {% for v in saved_views %}
+        <a class="btn small" href="{{url_for('saved_view_apply',page_key=saved_view_page,view_id=v.id)}}">{% if v.is_default %}★ {% endif %}{{v.name}}</a>
+        <form method="post" action="{{url_for('saved_view_update',page_key=saved_view_page,view_id=v.id)}}" data-doctor-saved-update><button class="btn small" title="{{'حفظ الفلاتر الحالية داخل هذا الفلتر' if ui_lang=='ar' else 'Save current filters into this view'}}">{{'تحديث' if ui_lang=='ar' else 'Update'}}</button></form>
+        <form method="post" action="{{url_for('saved_view_set_default',page_key=saved_view_page,view_id=v.id)}}"><button class="btn small" title="{{'افتراضي' if ui_lang=='ar' else 'Set default'}}">☆</button></form>
+        <form method="post" action="{{url_for('saved_view_delete',page_key=saved_view_page,view_id=v.id)}}" onsubmit="return confirm('Delete saved view?')"><button class="btn small">×</button></form>
+      {% endfor %}
+      </div>
+      <form method="post" action="{{url_for('saved_view_save',page_key=saved_view_page)}}" class="actions" data-doctor-saved-create>
+        <input name="view_name" placeholder="{{'اسم الفلتر المحفوظ' if ui_lang=='ar' else 'Saved filter name'}}" required>
+        <button class="btn small primary">{{'حفظ الفلاتر الحالية' if ui_lang=='ar' else 'Save current filters'}}</button>
+      </form>
+    </section>
+    {% endif %}
     <div id="rbWorkspaceCaseRows"></div>
   </section>
   <section class="panel" aria-labelledby="rbExternalCasesTitle">
@@ -29,6 +75,11 @@
 #rbUnifiedDoctorWorkspace .rb-case-copy small{display:block}
 #rbUnifiedDoctorWorkspace .actions{display:flex;gap:8px;flex-wrap:wrap}
 #rbWorkspaceMessage a{margin-inline-start:12px}
+.rb-doctor-result-count{display:inline-flex;margin-top:4px;padding:3px 9px;border-radius:999px;background:#64748b22;color:var(--muted,#64748b)}.rb-doctor-searchbar{display:grid;grid-template-columns:minmax(190px,.8fr) minmax(300px,1.7fr) minmax(150px,.7fr) minmax(180px,.8fr) auto;gap:10px;align-items:end;margin:14px 0 8px}.rb-doctor-searchbar label,.rb-doctor-filters label{display:flex;flex-direction:column;gap:4px;font-size:.82rem}.rb-doctor-searchbar input,.rb-doctor-filters input,.rb-doctor-filters select{min-height:40px}.rb-doctor-search-button{min-height:40px}.rb-doctor-date-presets{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}.rb-doctor-date-presets .is-active{border-color:#3b82f6;background:#3b82f622}.rb-doctor-advanced-filters{margin:9px 0 14px;border:1px solid var(--line,#d9e1ec);border-radius:12px;background:rgba(100,116,139,.04)}.rb-doctor-advanced-filters summary{cursor:pointer;padding:11px 13px;font-weight:700}.rb-doctor-filters{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;align-items:end;padding:0 12px 12px}.rb-doctor-saved-views{margin:10px 0 14px;padding:12px;border:1px solid var(--line,#d9e1ec);border-radius:12px;background:rgba(100,116,139,.04)}.rb-doctor-saved-views>.actions{margin:8px 0;display:flex;gap:7px;flex-wrap:wrap;align-items:center}.rb-doctor-saved-views form{display:inline-flex}.rb-filter-search{min-width:0}.rb-assignment-scope{display:flex;align-items:center;gap:9px;padding:8px 10px;min-height:40px;border:1px solid #22c55e66;border-radius:10px;background:#22c55e14}.rb-assignment-scope>span{color:#22c55e;font-weight:800}.rb-assignment-scope small{display:block;color:var(--muted,#64748b)}
+.rb-doctor-table-tools{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}.rb-doctor-table-tools h2{margin-top:0}.rb-doctor-column-picker{position:relative}.rb-doctor-column-menu{position:absolute;z-index:30;inset-inline-end:0;top:calc(100% + 6px);width:min(760px,88vw);max-height:70vh;overflow:auto;background:var(--panel,#fff);border:1px solid var(--line,#d9e1ec);border-radius:14px;padding:14px;box-shadow:0 18px 42px rgba(15,36,66,.28);display:grid;grid-template-columns:repeat(3,minmax(190px,1fr));gap:12px}.rb-doctor-column-menu[hidden]{display:none}.rb-doctor-column-menu>b,.rb-doctor-presets,.rb-doctor-column-actions{grid-column:1/-1}.rb-doctor-presets{display:flex;gap:8px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--line,#d9e1ec)}.rb-doctor-column-group{border:1px solid var(--line,#d9e1ec);border-radius:10px;padding:10px}.rb-doctor-column-group>b{display:block;margin-bottom:5px}.rb-doctor-column-menu label{display:flex;align-items:center;gap:8px;padding:5px 2px;white-space:nowrap}.rb-doctor-column-menu input{width:auto}.rb-doctor-column-actions{display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:-14px;background:var(--panel,#fff);padding:10px 0 14px}.rb-doctor-table-wrap{overflow:auto;border:1px solid var(--line,#d9e1ec);border-radius:12px}.rb-doctor-table{width:100%;white-space:nowrap;border-collapse:separate;border-spacing:0}.rb-doctor-table thead th{position:sticky;top:0;z-index:2;background:var(--panel,#fff)}.rb-doctor-table td{max-width:240px;overflow:hidden;text-overflow:ellipsis}.rb-doctor-table tr:hover td{background:rgba(68,128,255,.06)}.rb-doctor-worklist{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.rb-doctor-original{direction:auto}.rb-doctor-action{position:sticky;inset-inline-end:0;z-index:3;background:var(--panel,#fff);display:flex;gap:6px;min-width:190px}.rb-status{display:inline-flex;padding:4px 9px;border-radius:999px;background:#64748b22;border:1px solid #64748b55;font-size:.82rem;font-weight:700}.rb-status-stat,.rb-status-urgent,.rb-status-breached{background:#ef444422;border-color:#ef444477;color:#ef7777}.rb-status-final,.rb-status-verified,.rb-status-ready,.rb-status-on-time{background:#22c55e22;border-color:#22c55e77;color:#4ade80}.rb-status-near-sla,.rb-status-pending,.rb-status-waiting{background:#f59e0b22;border-color:#f59e0b77;color:#fbbf24}.rb-doctor-detail-row td{white-space:normal!important;max-width:none!important;background:rgba(68,128,255,.05)}.rb-doctor-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:10px;padding:12px}.rb-doctor-detail-item{display:flex;flex-direction:column;gap:3px}.rb-doctor-detail-item span{white-space:normal}
+.rb-doctor-layout-help,.rb-doctor-density{grid-column:1/-1}.rb-doctor-layout-help{color:var(--muted,#64748b);font-size:.82rem;margin:0}.rb-doctor-density{display:flex;gap:8px;align-items:center}.rb-doctor-column-menu label .btn{margin-inline-start:auto}.rb-doctor-table{width:max-content;min-width:100%;table-layout:fixed}.rb-doctor-table th,.rb-doctor-table td{box-sizing:border-box}.rb-doctor-table thead th{user-select:none}.rb-doctor-table thead th[draggable=true]{cursor:grab}.rb-doctor-table thead th.rb-column-dragging{opacity:.45}.rb-doctor-table thead th.rb-column-drop{box-shadow:inset 3px 0 #3b82f6}.rb-column-resizer{position:absolute;inset-block:0;inset-inline-end:-4px;width:9px;cursor:col-resize;touch-action:none;z-index:6}.rb-column-resizer:hover{background:rgba(59,130,246,.28)}.rb-doctor-table td{max-width:none}.rb-doctor-table.rb-density-compact th,.rb-doctor-table.rb-density-compact td{padding-top:7px;padding-bottom:7px}.rb-doctor-table.rb-density-comfortable th,.rb-doctor-table.rb-density-comfortable td{padding-top:13px;padding-bottom:13px}.rb-doctor-pinned{position:sticky!important;z-index:3;background:var(--panel,#fff)}.rb-doctor-table thead .rb-doctor-pinned{z-index:5}.rb-doctor-action{z-index:4}
+.rb-doctor-action{position:static;inset-inline-end:auto;display:table-cell;min-width:0}.rb-doctor-action-buttons{display:flex;gap:6px;align-items:center;white-space:nowrap}
+@media(max-width:1200px){.rb-doctor-searchbar{grid-template-columns:repeat(2,minmax(180px,1fr))}.rb-doctor-filters{grid-template-columns:repeat(3,minmax(150px,1fr))}}@media(max-width:900px){.rb-doctor-column-menu{grid-template-columns:repeat(2,minmax(190px,1fr))}.rb-doctor-detail-grid{grid-template-columns:1fr 1fr}.rb-doctor-filters{grid-template-columns:repeat(2,minmax(150px,1fr))}}@media(max-width:760px){.rb-doctor-table-tools>*{width:100%}.rb-doctor-column-picker .btn{width:100%}.rb-doctor-column-menu{position:static;margin-top:6px;grid-template-columns:1fr}.rb-doctor-detail-grid,.rb-doctor-filters,.rb-doctor-searchbar{grid-template-columns:1fr}.rb-filter-search{grid-column:auto}}
 </style>
 <script src="{{url_for('static',filename='doctor-workspace.js')}}" defer></script>
 {% endblock %}
