@@ -20862,6 +20862,402 @@ def granular_delete_ris_case_only_preview_snapshot(order, dependency_rows, repor
     }
 
 
+# RB_RIS_CASE_DATA_ONLY_EXECUTION_V1
+def _ris_case_only_dependency_rows(order):
+    """Collect direct FK dependencies on order.id without mutating state."""
+    from sqlalchemy import inspect as _ris_inspect, text as _ris_text
+
+    inspector=_ris_inspect(db.engine)
+    order_table=Order.__table__.name
+    preparer=db.engine.dialect.identifier_preparer
+    rows=[]
+
+    for child_table in sorted(inspector.get_table_names()):
+        for fk in inspector.get_foreign_keys(child_table):
+            if fk.get('referred_table') != order_table:
+                continue
+            local_columns=fk.get('constrained_columns') or []
+            if len(local_columns) != 1:
+                rows.append({
+                    'table':child_table,
+                    'column':','.join(local_columns),
+                    'count':None,
+                    'classification':'COMPOSITE_FK_REVIEW',
+                })
+                continue
+            local_column=local_columns[0]
+            qt=preparer.quote(child_table)
+            qc=preparer.quote(local_column)
+            count=db.session.execute(
+                _ris_text('SELECT COUNT(*) FROM '+qt+' WHERE '+qc+' = :order_id'),
+                {'order_id':int(order.id)},
+            ).scalar() or 0
+            rows.append({
+                'table':child_table,
+                'column':local_column,
+                'count':int(count),
+                'classification':'EXECUTION_RESCAN',
+            })
+    return rows
+
+
+def _ris_case_only_second_order_checks(order, policy_rows):
+    """Fail closed when rows selected for deletion have incoming FK dependents."""
+    from sqlalchemy import inspect as _ris_inspect, text as _ris_text
+
+    inspector=_ris_inspect(db.engine)
+    tables=sorted(inspector.get_table_names())
+    preparer=db.engine.dialect.identifier_preparer
+    blockers=[]
+    details=[]
+
+    for policy_row in policy_rows:
+        if not policy_row.get('count') or policy_row.get('action') != 'DELETE_CASE_ROW':
+            continue
+        target_table=str(policy_row.get('table') or '')
+        order_column=str(policy_row.get('column') or '')
+        pk_columns=inspector.get_pk_constraint(target_table).get('constrained_columns') or []
+        if len(pk_columns) != 1:
+            blockers.append('SECOND_ORDER_PK_REVIEW: '+target_table)
+            continue
+        target_pk=pk_columns[0]
+
+        for child_table in tables:
+            for fk in inspector.get_foreign_keys(child_table):
+                if fk.get('referred_table') != target_table:
+                    continue
+                child_columns=fk.get('constrained_columns') or []
+                referred_columns=fk.get('referred_columns') or []
+                label=child_table+'.'+','.join(child_columns)+' -> '+target_table+'.'+','.join(referred_columns)
+                if len(child_columns) != 1 or len(referred_columns) != 1 or referred_columns[0] != target_pk:
+                    blockers.append('SECOND_ORDER_COMPOSITE_FK_REVIEW: '+label)
+                    details.append({'relation':label,'count':None,'blocking':True})
+                    continue
+                qc_table=preparer.quote(child_table)
+                qc_col=preparer.quote(child_columns[0])
+                qt_table=preparer.quote(target_table)
+                qt_pk=preparer.quote(target_pk)
+                qt_order=preparer.quote(order_column)
+                count=db.session.execute(
+                    _ris_text(
+                        'SELECT COUNT(*) FROM '+qc_table+
+                        ' WHERE '+qc_col+' IN ('+
+                        'SELECT '+qt_pk+' FROM '+qt_table+
+                        ' WHERE '+qt_order+' = :order_id)'
+                    ),
+                    {'order_id':int(order.id)},
+                ).scalar() or 0
+                count=int(count)
+                details.append({'relation':label,'count':count,'blocking':bool(count)})
+                if count:
+                    blockers.append('SECOND_ORDER_DEPENDENCY_PRESENT: '+label)
+    return {'blockers':blockers,'rows':details}
+
+
+def granular_delete_ris_case_only_execution_preview_snapshot(order, dependency_rows=None, report_rows=None):
+    """Execution-grade, still read-only preflight for RIS Case Data Only."""
+    from sqlalchemy import inspect as _ris_inspect
+
+    if dependency_rows is None:
+        dependency_rows=_ris_case_only_dependency_rows(order)
+    if report_rows is None:
+        reports=Report.query.filter_by(order_id=order.id).order_by(Report.id).all()
+        report_rows=[{'id':r.id,'status':getattr(r,'status',None)} for r in reports]
+
+    snap=granular_delete_ris_case_only_preview_snapshot(order,dependency_rows,report_rows)
+    blockers=list(snap.get('blockers') or [])
+    warnings=list(snap.get('warnings') or [])
+
+    order_status=str(getattr(order,'status','') or '').strip().upper()
+    if order_status not in ('CANCELLED','CANCELED'):
+        blockers.append('ORDER_NOT_CANCELLED')
+
+    inspector=_ris_inspect(db.engine)
+    nullify_checks=[]
+    for row in snap.get('rows') or []:
+        if not row.get('count') or row.get('action') != 'NULLIFY_ORDER_LINK':
+            continue
+        table=str(row.get('table') or '')
+        column=str(row.get('column') or '')
+        columns={str(c.get('name')):c for c in inspector.get_columns(table)}
+        nullable=bool(columns.get(column,{}).get('nullable'))
+        nullify_checks.append({'table':table,'column':column,'nullable':nullable})
+        if not nullable:
+            blockers.append('NULLIFY_COLUMN_NOT_NULLABLE: '+table+'.'+column)
+
+    second_order=_ris_case_only_second_order_checks(order,snap.get('rows') or [])
+    blockers.extend(second_order.get('blockers') or [])
+
+    # Stable de-duplication for deterministic preview/audit/test output.
+    blockers=list(dict.fromkeys(blockers))
+    warnings=list(dict.fromkeys(warnings))
+    snap['execution_implemented']=True
+    snap['order_cancelled']=order_status in ('CANCELLED','CANCELED')
+    snap['nullify_checks']=nullify_checks
+    snap['second_order']=second_order
+    snap['blockers']=blockers
+    snap['warnings']=warnings
+    snap['can_prepare_execution']=bool(
+        not blockers
+        and int(snap.get('report_count') or 0) == 0
+        and not (snap.get('unknown_active_dependencies') or [])
+        and bool(snap.get('lease',{}).get('verified'))
+        and int(snap.get('lease',{}).get('active_count') or 0) == 0
+    )
+    return snap
+
+
+def _ris_case_only_blocked_response(order, reason, code, blockers, status=409):
+    try:
+        audit(
+            'RIS_CASE_DATA_DELETE_BLOCKED_ADMIN',
+            'order',
+            getattr(order,'id',''),
+            (
+                f"accession={getattr(order,'accession','')}; "
+                f"code={code}; blockers={','.join(str(x) for x in (blockers or []))}; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    return {'ok':False,'deleted':False,'error':code,'blockers':list(blockers or [])},status
+
+
+def granular_delete_ris_case_only_execute(order, typed_accession, reason):
+    """Dependency-safe RIS Case Data Only execution.
+
+    Preserves Patient, PACS images, reports/report files (reports must already be zero),
+    attachments/documents, and audit history. The Order row is deleted last.
+    """
+    from sqlalchemy import inspect as _ris_inspect, text as _ris_text
+
+    user=current_user()
+    reason=str(reason or '').strip()
+    typed_accession=str(typed_accession or '').strip()
+    expected_accession=str(getattr(order,'accession','') or '').strip()
+
+    if not _delete_reports_only_is_super_admin(user):
+        abort(403)
+    if len(reason) < 5:
+        return _ris_case_only_blocked_response(order,reason,'REASON_REQUIRED',['REASON_REQUIRED'],400)
+    if not typed_accession or typed_accession != expected_accession:
+        return _ris_case_only_blocked_response(
+            order,reason,'ACCESSION_CONFIRMATION_MISMATCH',['ACCESSION_CONFIRMATION_MISMATCH'],409
+        )
+
+    initial_patient_id=int(getattr(order,'patient_id',0) or 0)
+    if not initial_patient_id or db.session.get(Patient,initial_patient_id) is None:
+        return _ris_case_only_blocked_response(order,reason,'PATIENT_NOT_FOUND',['PATIENT_NOT_FOUND'],409)
+
+    initial_dependencies=_ris_case_only_dependency_rows(order)
+    initial_reports=Report.query.filter_by(order_id=order.id).order_by(Report.id).all()
+    initial_report_rows=[{'id':r.id,'status':getattr(r,'status',None)} for r in initial_reports]
+    initial_preview=granular_delete_ris_case_only_execution_preview_snapshot(
+        order,initial_dependencies,initial_report_rows
+    )
+    if not initial_preview.get('can_prepare_execution'):
+        return _ris_case_only_blocked_response(
+            order,reason,'RIS_CASE_DATA_PREFLIGHT_BLOCKED',initial_preview.get('blockers') or ['PREFLIGHT_BLOCKED'],409
+        )
+
+    def _signature(preview):
+        return tuple(sorted(
+            (str(r.get('table') or ''),str(r.get('column') or ''),r.get('count'),
+             str(r.get('action') or ''),bool(r.get('blocking')))
+            for r in (preview.get('rows') or [])
+        ))
+
+    initial_signature=_signature(initial_preview)
+    pacs_before={
+        'pacs_study_id':getattr(order,'pacs_study_id',None),
+        'pacs_image_count':getattr(order,'pacs_image_count',None),
+        'pacs_status':getattr(order,'pacs_status',None),
+        'study_instance_uid':getattr(order,'study_instance_uid',None),
+    }
+
+    try:
+        locked_order=(Order.query.filter_by(id=order.id).with_for_update().first())
+        if locked_order is None:
+            raise RuntimeError('ORDER_NOT_FOUND_AFTER_LOCK')
+        if int(getattr(locked_order,'patient_id',0) or 0) != initial_patient_id:
+            raise RuntimeError('PATIENT_CHANGED_AFTER_PREFLIGHT')
+        locked_patient=db.session.get(Patient,initial_patient_id)
+        if locked_patient is None:
+            raise RuntimeError('PATIENT_NOT_FOUND_AFTER_LOCK')
+
+        final_dependencies=_ris_case_only_dependency_rows(locked_order)
+        final_reports=Report.query.filter_by(order_id=locked_order.id).order_by(Report.id).with_for_update().all()
+        final_report_rows=[{'id':r.id,'status':getattr(r,'status',None)} for r in final_reports]
+        final_preview=granular_delete_ris_case_only_execution_preview_snapshot(
+            locked_order,final_dependencies,final_report_rows
+        )
+        final_blockers=list(final_preview.get('blockers') or [])
+        if _signature(final_preview) != initial_signature:
+            final_blockers.append('DEPENDENCY_SET_CHANGED_AFTER_PREFLIGHT')
+        if str(getattr(locked_order,'accession','') or '').strip() != expected_accession:
+            final_blockers.append('ACCESSION_CHANGED_AFTER_PREFLIGHT')
+        for key,value in pacs_before.items():
+            if getattr(locked_order,key,None) != value:
+                final_blockers.append('PACS_LINK_STATE_CHANGED_AFTER_PREFLIGHT')
+                break
+        final_blockers=list(dict.fromkeys(final_blockers))
+        if final_blockers or not final_preview.get('can_prepare_execution'):
+            db.session.rollback()
+            return _ris_case_only_blocked_response(
+                order,reason,'FINAL_REVALIDATION_BLOCKED',final_blockers or ['FINAL_PREFLIGHT_BLOCKED'],409
+            )
+
+        inspector=_ris_inspect(db.engine)
+        preparer=db.engine.dialect.identifier_preparer
+        table_names=set(inspector.get_table_names())
+
+        # Expired report leases are stale operational locks. Active leases already block.
+        expired_lease_deleted=0
+        if 'report_edit_lease' in table_names:
+            lease_result=db.session.execute(
+                _ris_text(
+                    'DELETE FROM report_edit_lease WHERE order_id = :order_id AND expires_at <= :now'
+                ),
+                {'order_id':int(locked_order.id),'now':datetime.utcnow()},
+            )
+            expired_lease_deleted=max(int(getattr(lease_result,'rowcount',0) or 0),0)
+
+        nullified={}
+        deleted={}
+
+        # Use ORM bulk DML for active mapped dependencies so the SQLAlchemy
+        # identity map stays synchronized with the database. The executor may
+        # be invoked in a session that already contains Attachment/ClinicalNote
+        # instances (for example, tests or admin workflows). Raw SQL can leave
+        # those instances stale even when the database row was changed.
+        mapper_registry=getattr(db.Model,'registry',None)
+        mapped_models={}
+        if mapper_registry is not None:
+            for mapper in mapper_registry.mappers:
+                mapped_table=getattr(mapper,'local_table',None)
+                mapped_name=getattr(mapped_table,'name',None)
+                if mapped_name:
+                    mapped_models[str(mapped_name)]=mapper.class_
+
+        for row in sorted(final_preview.get('rows') or [], key=lambda r:(str(r.get('table')),str(r.get('column')))):
+            count=int(row.get('count') or 0)
+            if not count:
+                continue
+            table=str(row.get('table') or '')
+            column=str(row.get('column') or '')
+            action=str(row.get('action') or '')
+            policy=_RIS_CASE_ONLY_DEPENDENCY_POLICY.get((table,column))
+            if policy is None or policy[1] != action:
+                raise RuntimeError('POLICY_CHANGED_DURING_EXECUTION')
+
+            model=mapped_models.get(table)
+            if model is None:
+                raise RuntimeError('ACTIVE_DEPENDENCY_MODEL_NOT_FOUND: '+table)
+            model_column=getattr(model,column,None)
+            if model_column is None:
+                raise RuntimeError('ACTIVE_DEPENDENCY_COLUMN_NOT_FOUND: '+table+'.'+column)
+
+            # Mutate mapped rows as ORM instances instead of issuing bulk DML.
+            # This keeps both scalar FK state and relationship/unit-of-work state
+            # coherent when the request session already contains these objects.
+            # The destructive admin path favors correctness and auditability over
+            # bulk-DML speed; second-order FK checks already fail closed above.
+            matched_rows=(
+                db.session.query(model)
+                .filter(model_column == int(locked_order.id))
+                .all()
+            )
+            affected=len(matched_rows)
+            if affected != count:
+                raise RuntimeError(
+                    'ACTION_ROWCOUNT_MISMATCH: '+table+'.'+column+
+                    ': expected='+str(count)+', actual='+str(affected)
+                )
+
+            if action == 'NULLIFY_ORDER_LINK':
+                for matched_row in matched_rows:
+                    setattr(matched_row,column,None)
+                db.session.flush()
+                nullified[table+'.'+column]=affected
+            elif action == 'DELETE_CASE_ROW':
+                for matched_row in matched_rows:
+                    db.session.delete(matched_row)
+                db.session.flush()
+                deleted[table+'.'+column]=affected
+            elif action == 'BLOCK':
+                raise RuntimeError('BLOCKING_DEPENDENCY_REACHED_EXECUTOR')
+
+        db.session.flush()
+        db.session.expire_all()
+
+        remaining=_ris_case_only_dependency_rows(locked_order)
+        remaining_active=[
+            r for r in remaining
+            if r.get('count') is None or int(r.get('count') or 0) > 0
+        ]
+        if remaining_active:
+            raise RuntimeError(
+                'DIRECT_DEPENDENCY_POSTCHECK_FAILED: '+','.join(
+                    str(r.get('table'))+'.'+str(r.get('column')) for r in remaining_active
+                )
+            )
+
+        order_id=int(locked_order.id)
+        patient_id=int(locked_patient.id)
+        db.session.delete(locked_order)
+        db.session.flush()
+
+        if db.session.get(Order,order_id) is not None:
+            raise RuntimeError('ORDER_DELETE_POSTCHECK_FAILED')
+        if db.session.get(Patient,patient_id) is None:
+            raise RuntimeError('PATIENT_PRESERVATION_POSTCHECK_FAILED')
+
+        audit(
+            'RIS_CASE_DATA_DELETED_ADMIN',
+            'order',
+            order_id,
+            (
+                f"accession={expected_accession}; patient_id={patient_id}; "
+                f"nullified={sum(nullified.values())}; deleted_case_rows={sum(deleted.values())}; "
+                f"expired_leases_deleted={expired_lease_deleted}; "
+                f"pacs_study_id={pacs_before.get('pacs_study_id') or ''}; "
+                f"pacs_image_count={pacs_before.get('pacs_image_count') or 0}; "
+                f"reason={reason}"
+            ),
+        )
+        db.session.commit()
+        return {
+            'ok':True,
+            'deleted':True,
+            'order_id':order_id,
+            'accession':expected_accession,
+            'patient_preserved':True,
+            'pacs_images_preserved':True,
+            'audit_history_preserved':True,
+            'nullified_row_count':sum(nullified.values()),
+            'deleted_case_row_count':sum(deleted.values()),
+            'expired_lease_count_deleted':expired_lease_deleted,
+            'nullified':nullified,
+            'deleted_rows':deleted,
+        },200
+    except Exception as exc:
+        db.session.rollback()
+        try:
+            audit(
+                'RIS_CASE_DATA_DELETE_FAILED_ADMIN','order',getattr(order,'id',''),
+                f"accession={expected_accession}; error={type(exc).__name__}; reason={reason}",
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        return {
+            'ok':False,'deleted':False,'error':'RIS_CASE_DATA_DELETE_FAILED',
+            'failure_type':type(exc).__name__,
+        },500
+
+
 # RB_GRANULAR_DELETE_READONLY_PREVIEW_V1
 def granular_delete_order_preview_snapshot(order):
     """
@@ -20999,7 +21395,7 @@ def granular_delete_order_preview_snapshot(order):
         reports if 'order_id' in Report.__table__.columns else [],
     )
 
-    ris_case_only_preview = granular_delete_ris_case_only_preview_snapshot(
+    ris_case_only_preview = granular_delete_ris_case_only_execution_preview_snapshot(
         order,
         dependency_rows,
         report_rows,
@@ -21304,6 +21700,20 @@ def granular_delete_order_reports_only(order_id):
         typed_accession,
         reason,
     )
+
+
+@app.post(
+    '/admin/cancellation-center/order/<int:order_id>/delete-ris-case-data'
+)
+@require_perm('data.cancel.case')
+def granular_delete_order_ris_case_data_only(order_id):
+    order=Order.query.get_or_404(order_id)
+    user=current_user()
+    if not _delete_reports_only_is_super_admin(user):
+        abort(403)
+    reason=(request.form.get('reason') or '').strip()
+    typed_accession=(request.form.get('confirm_accession') or '').strip()
+    return granular_delete_ris_case_only_execute(order,typed_accession,reason)
 
 
 @app.get(

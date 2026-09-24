@@ -349,8 +349,8 @@
 
     <h3>Delete RIS Case Data Only — Read-Only Preflight</h3>
     <p>
-      No RIS row, PACS image, report file, attachment file, patient, or
-      audit row is deleted by this preflight. Execution is not implemented.
+      This preview is read-only. The protected executor preserves the patient, PACS images,
+      report files, attachment/document files, and audit history. Reports must already be zero.
     </p>
     <table>
       <tr><th>Check</th><th>Result</th></tr>
@@ -365,7 +365,7 @@
         <td>RIS-case preflight</td>
         <td>
           {% if preview.ris_case_only.can_prepare_execution %}
-            READY FOR EXECUTOR DESIGN — NO DELETE ENABLED
+            READY — EXECUTION REQUIRES EXACT ACCESSION + REASON
           {% else %}
             BLOCKED
           {% endif %}
@@ -380,6 +380,28 @@
         <li>{{ blocker }}</li>
       {% endfor %}
       </ul>
+    {% endif %}
+
+    {% if preview.ris_case_only.can_prepare_execution and preview.ris_case_only.execution_implemented %}
+      <div class="danger-zone">
+        <h4>Protected RIS Case Data execution</h4>
+        <p>Order is deleted last. Patient, PACS images, report files, attachment/document files, and audit history are preserved.</p>
+        <form
+          method="post"
+          action="{{ url_for('granular_delete_order_ris_case_data_only', order_id=preview.order.id) }}"
+          onsubmit="return confirm('Delete RIS case data for this order while preserving Patient/PACS/files/audit?');"
+        >
+          <label>
+            Type accession exactly
+            <input type="text" name="confirm_accession" autocomplete="off" required>
+          </label>
+          <label>
+            Reason
+            <textarea name="reason" minlength="5" required></textarea>
+          </label>
+          <button type="submit" class="danger">Delete RIS Case Data Only</button>
+        </form>
+      </div>
     {% endif %}
 
     {% if preview.ris_case_only.warnings %}
