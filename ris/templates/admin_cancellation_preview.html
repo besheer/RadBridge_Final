@@ -169,10 +169,76 @@
         </td>
       </tr>
       <tr>
-        <td>Full Case Purge</td>
-        <td>BLOCKED</td>
+        <td>Full Case Deletion</td>
+        <td>
+          {% if preview.full_case_orchestration.can_execute_full_case %}
+            READ-ONLY PLAN READY — EXECUTION DISABLED
+          {% else %}
+            BLOCKED / REVIEW REQUIRED
+          {% endif %}
+        </td>
       </tr>
     </table>
+
+    <!-- RB_FULL_CASE_ORCHESTRATION_PREVIEW_UI_V1 -->
+    <div class="panel">
+      <h3>Full Case Deletion — Controlled Orchestration Preview</h3>
+      <p>
+        Read-only plan only. No PACS, report, RIS, patient, audit, or file data
+        is changed here. Future execution must stop immediately if any stage fails.
+      </p>
+
+      <table>
+        <tr><th>Sequence</th><th>Stage</th><th>State</th><th>Future confirmation</th></tr>
+        {% for stage in preview.full_case_orchestration.stages %}
+        <tr>
+          <td>{{ stage.sequence }}</td>
+          <td>{{ stage.code }}</td>
+          <td>{{ stage.state }}</td>
+          <td>{{ 'REQUIRED' if stage.future_confirmation_required else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+
+      <p>
+        <strong>Required sequence:</strong>
+        {{ preview.full_case_orchestration.required_sequence | join(' → ') }}
+      </p>
+      <p>
+        <strong>Patient preserved:</strong>
+        {{ 'YES' if preview.full_case_orchestration.patient_preserved else 'NO' }}
+        |
+        <strong>Audit append-only:</strong>
+        {{ 'YES' if preview.full_case_orchestration.audit_append_only else 'NO' }}
+        |
+        <strong>Stop on stage failure:</strong>
+        {{ 'YES' if preview.full_case_orchestration.stop_on_stage_failure else 'NO' }}
+      </p>
+      <p>
+        <strong>Can prepare Full Case execution:</strong>
+        {{ 'YES' if preview.full_case_orchestration.can_execute_full_case else 'NO' }}
+        |
+        <strong>Execution enabled:</strong> NO
+      </p>
+
+      {% if preview.full_case_orchestration.blockers %}
+        <h4>Full Case blockers</h4>
+        <ul>
+        {% for blocker in preview.full_case_orchestration.blockers %}
+          <li>{{ blocker }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if preview.full_case_orchestration.warnings %}
+        <h4>Full Case warnings</h4>
+        <ul>
+        {% for warning in preview.full_case_orchestration.warnings %}
+          <li>{{ warning }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
 
 <!-- RB_GRANULAR_DELETE_IMAGES_ONLY_UI_V2 -->
 {% if preview.kind == 'ORDER'

@@ -19624,7 +19624,12 @@ def cancellation_search_rows(term):
 
 
 # RB_GRANULAR_DELETE_IMAGES_ONLY_V1
-def granular_delete_images_only_preflight(order, typed_accession, reason):
+def granular_delete_images_only_preflight(
+    order,
+    typed_accession,
+    reason,
+    cached_orthanc_response=None,
+):
     blockers=[]
 
     user=current_user()
@@ -19700,10 +19705,14 @@ def granular_delete_images_only_preflight(order, typed_accession, reason):
 
     if study_id:
         try:
-            response=requests.get(
-                f'{PACS_ORTHANC_URL}/studies/{study_id}',
-                auth=_orthanc_auth(),
-                timeout=10,
+            response=(
+                cached_orthanc_response
+                if cached_orthanc_response is not None
+                else requests.get(
+                    f'{PACS_ORTHANC_URL}/studies/{study_id}',
+                    auth=_orthanc_auth(),
+                    timeout=10,
+                )
             )
 
             orthanc_status=response.status_code
@@ -21423,6 +21432,7 @@ def granular_delete_order_preview_snapshot(order):
     #
     # Unknown/error deliberately fails closed for destructive actions.
     pacs_present = False
+    pacs_presence_response = None
 
     if pacs_study_id:
         try:
@@ -21440,6 +21450,23 @@ def granular_delete_order_preview_snapshot(order):
                 pacs_present = None
         except Exception:
             pacs_present = None
+
+    full_case_orchestration = granular_delete_full_case_orchestration_preview_snapshot(
+        order,
+        patient,
+        dependency_rows,
+        report_rows,
+        reports_only_preview,
+        ris_case_only_preview,
+        {
+            'study_id': pacs_study_id,
+            'status': getattr(order, 'pacs_status', None),
+            'image_count': int(pacs_image_count),
+            'linked': bool(pacs_study_id),
+            'present': pacs_present,
+            '_orthanc_response': pacs_presence_response,
+        },
+    )
 
     blockers = []
 
@@ -21514,16 +21541,210 @@ def granular_delete_order_preview_snapshot(order):
             'rows': dependency_rows,
         },
         'ris_case_only': ris_case_only_preview,
+        'full_case_orchestration': full_case_orchestration,
         'safety': {
             'images_only_preview_available': True,
             'reports_only_preview_available': True,
             'reports_only_ready': reports_only_preview['can_delete_reports_only'],
             'ris_case_only_allowed': False,
             'ris_case_only_preflight_ready': ris_case_only_preview['can_prepare_execution'],
+            'full_case_orchestration_preview_ready': full_case_orchestration['can_execute_full_case'],
             'full_case_purge_allowed': False,
             'blockers': blockers,
         },
         'readonly': True,
+    }
+
+
+# RB_FULL_CASE_ORCHESTRATION_PREVIEW_V1
+def granular_delete_full_case_orchestration_preview_snapshot(
+    order,
+    patient,
+    dependency_rows,
+    report_rows,
+    reports_only_preview,
+    ris_case_only_preview,
+    pacs_snapshot,
+):
+    """Read-only staged plan for a future Full Case Deletion orchestrator.
+
+    This function never executes a deletion. It composes the already-reviewed
+    PACS Images Only, Reports Only, and RIS Case Data Only safety contracts and
+    projects whether the three stages could run in the required order.
+    """
+    blockers=[]
+    warnings=[]
+
+    # This preview helper is also called directly by existing unit tests and
+    # other read-only code paths that may have only an application context.
+    # Session-backed actor lookup is valid only while a request context exists.
+    from flask import has_request_context as _has_request_context
+    user=current_user() if _has_request_context() else None
+
+    super_admin=_delete_reports_only_is_super_admin(user)
+    if not super_admin:
+        blockers.append('SUPER_ADMIN_REQUIRED')
+
+    accession=str(getattr(order,'accession','') or '').strip()
+    order_status=str(getattr(order,'status','') or '').strip().upper()
+    if not accession:
+        blockers.append('ORDER_ACCESSION_MISSING')
+    if patient is None:
+        blockers.append('PATIENT_MISSING')
+    if order_status not in ('CANCELLED','CANCELED'):
+        blockers.append('ORDER_NOT_CANCELLED')
+
+    pacs_snapshot=dict(pacs_snapshot or {})
+    pacs_linked=bool(pacs_snapshot.get('linked'))
+    pacs_present=pacs_snapshot.get('present')
+    pacs_status=str(pacs_snapshot.get('status') or '').strip().upper()
+
+    pacs_stage_blockers=[]
+    pacs_stage_warnings=[]
+    pacs_preflight=None
+
+    if not pacs_linked:
+        pacs_stage_state='NOT_REQUIRED'
+    elif pacs_present is True:
+        # The existing PACS destructive-path preflight is request-context aware
+        # because it validates the logged-in SUPER_ADMIN.  Legacy/unit callers of
+        # the order preview may run with only an application context, so do not
+        # invoke that preflight unless the already-resolved actor is SUPER_ADMIN.
+        # This keeps the preview read-only and preserves the historical single
+        # Orthanc probe contract.
+        if not super_admin:
+            pacs_stage_state='BLOCKED'
+            pacs_stage_blockers.append('SUPER_ADMIN_REQUIRED')
+        else:
+            pacs_preflight=granular_delete_images_only_preflight(
+                order,
+                accession,
+                'READ_ONLY_ORCHESTRATION_PREVIEW',
+                cached_orthanc_response=pacs_snapshot.get('_orthanc_response'),
+            )
+            pacs_stage_blockers=list(pacs_preflight.get('blockers') or [])
+            pacs_stage_state='READY' if pacs_preflight.get('allowed') else 'BLOCKED'
+    elif pacs_present is False and pacs_status == 'IMAGES_DELETED':
+        pacs_stage_state='COMPLETE'
+    elif pacs_present is False:
+        pacs_stage_state='BLOCKED'
+        pacs_stage_blockers.append('PACS_STUDY_ABSENT_WITHOUT_DELETE_CONFIRMATION')
+    else:
+        pacs_stage_state='BLOCKED'
+        pacs_stage_blockers.append('PACS_PRESENCE_UNVERIFIED')
+
+    report_count=int((reports_only_preview or {}).get('report_count') or 0)
+    if report_count == 0:
+        reports_stage_state='COMPLETE'
+        reports_stage_blockers=[]
+        reports_stage_warnings=[]
+    else:
+        reports_stage_blockers=list((reports_only_preview or {}).get('blocker_codes') or [])
+        reports_stage_warnings=list((reports_only_preview or {}).get('warnings') or [])
+        reports_stage_state=(
+            'READY'
+            if (reports_only_preview or {}).get('can_delete_reports_only')
+            else 'BLOCKED'
+        )
+
+    # Project the RIS stage after Reports Only succeeds. The live/current RIS
+    # preflight remains untouched and visible separately. Only the report FK and
+    # report rows are removed from this in-memory projection; no database state
+    # is mutated.
+    projected_dependencies=[
+        dict(row)
+        for row in (dependency_rows or [])
+        if not (
+            str(row.get('table') or '') == 'report'
+            and str(row.get('column') or '') == 'order_id'
+        )
+    ]
+    projected_ris=granular_delete_ris_case_only_execution_preview_snapshot(
+        order,
+        projected_dependencies,
+        [],
+    )
+    ris_stage_blockers=list(projected_ris.get('blockers') or [])
+    ris_stage_warnings=list(projected_ris.get('warnings') or [])
+
+    if projected_ris.get('can_prepare_execution'):
+        ris_stage_state='READY_AFTER_REPORTS' if report_count else 'READY'
+    else:
+        ris_stage_state='BLOCKED'
+
+    blockers.extend('PACS: '+str(x) for x in pacs_stage_blockers)
+    blockers.extend('REPORTS: '+str(x) for x in reports_stage_blockers)
+    blockers.extend('RIS: '+str(x) for x in ris_stage_blockers)
+    warnings.extend('PACS: '+str(x) for x in pacs_stage_warnings)
+    warnings.extend('REPORTS: '+str(x) for x in reports_stage_warnings)
+    warnings.extend('RIS: '+str(x) for x in ris_stage_warnings)
+
+    blockers=list(dict.fromkeys(blockers))
+    warnings=list(dict.fromkeys(warnings))
+
+    pacs_ready=pacs_stage_state in ('READY','COMPLETE','NOT_REQUIRED')
+    reports_ready=reports_stage_state in ('READY','COMPLETE')
+    ris_ready=ris_stage_state in ('READY','READY_AFTER_REPORTS')
+    can_execute_full_case=bool(
+        not blockers
+        and super_admin
+        and order_status in ('CANCELLED','CANCELED')
+        and patient is not None
+        and bool(accession)
+        and pacs_ready
+        and reports_ready
+        and ris_ready
+    )
+
+    return {
+        'readonly':True,
+        'execution_enabled':False,
+        'can_execute_full_case':can_execute_full_case,
+        'order_id':int(order.id),
+        'accession':accession,
+        'patient_id':getattr(patient,'patient_id',None) if patient else None,
+        'order_status':getattr(order,'status',None),
+        'patient_preserved':True,
+        'audit_append_only':True,
+        'stop_on_stage_failure':True,
+        'required_sequence':[
+            'PACS_IMAGES_ONLY',
+            'REPORTS_ONLY',
+            'RIS_CASE_DATA_ONLY',
+        ],
+        'stages':[
+            {
+                'sequence':1,
+                'code':'PACS_IMAGES_ONLY',
+                'state':pacs_stage_state,
+                'blockers':pacs_stage_blockers,
+                'warnings':pacs_stage_warnings,
+                'future_confirmation_required':pacs_stage_state == 'READY',
+            },
+            {
+                'sequence':2,
+                'code':'REPORTS_ONLY',
+                'state':reports_stage_state,
+                'blockers':reports_stage_blockers,
+                'warnings':reports_stage_warnings,
+                'future_confirmation_required':reports_stage_state == 'READY',
+            },
+            {
+                'sequence':3,
+                'code':'RIS_CASE_DATA_ONLY',
+                'state':ris_stage_state,
+                'blockers':ris_stage_blockers,
+                'warnings':ris_stage_warnings,
+                'future_confirmation_required':ris_stage_state in ('READY','READY_AFTER_REPORTS'),
+            },
+        ],
+        'current_ris_stage':{
+            'can_prepare_execution':bool((ris_case_only_preview or {}).get('can_prepare_execution')),
+            'blockers':list((ris_case_only_preview or {}).get('blockers') or []),
+        },
+        'projected_ris_stage':projected_ris,
+        'blockers':blockers,
+        'warnings':warnings,
     }
 
 
