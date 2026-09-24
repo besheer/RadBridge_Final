@@ -150,7 +150,13 @@
       </tr>
       <tr>
         <td>Delete Reports Only</td>
-        <td>PREVIEW ONLY — NOT ENABLED</td>
+        <td>
+          {% if preview.reports_only.can_delete_reports_only %}
+            PREFLIGHT READY — EXECUTION NOT ENABLED
+          {% else %}
+            BLOCKED / REVIEW REQUIRED
+          {% endif %}
+        </td>
       </tr>
       <tr>
         <td>Delete RIS Case Data Only</td>
@@ -222,6 +228,65 @@
 </div>
 
 {% endif %}
+
+    <h3>Delete Reports Only — Dependency Preview</h3>
+    <p>
+      Read-only preflight only. This section does not delete reports,
+      files, leases, workflow rows, PACS images, or RIS case data.
+    </p>
+    <table>
+      <tr><th>Check</th><th>Result</th></tr>
+      <tr><td>Report rows</td><td>{{ preview.reports_only.report_count }}</td></tr>
+      <tr><td>ReportVersion rows</td><td>{{ preview.reports_only.version_count }}</td></tr>
+      <tr><td>CoordinatorTask rows</td><td>{{ preview.reports_only.coordinator_task_count }}</td></tr>
+      <tr><td>Active edit leases</td><td>{{ preview.reports_only.lease.active_count }}</td></tr>
+      <tr><td>Expired edit leases</td><td>{{ preview.reports_only.lease.expired_count }}</td></tr>
+      <tr><td>Report artifacts</td><td>{{ preview.reports_only.storage.artifact_count }}</td></tr>
+      <tr><td>Unsafe artifact paths</td><td>{{ preview.reports_only.storage.unsafe_path_count }}</td></tr>
+      <tr><td>Missing artifacts</td><td>{{ preview.reports_only.storage.missing_artifact_count }}</td></tr>
+      <tr>
+        <td>Reports-only readiness</td>
+        <td>
+          {% if preview.reports_only.can_delete_reports_only %}
+            READY FOR FUTURE CONTROLLED EXECUTION
+          {% else %}
+            BLOCKED
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+
+    {% if preview.reports_only.blockers %}
+      <h4>Reports-only blockers</h4>
+      <ul>
+      {% for blocker in preview.reports_only.blockers %}
+        <li>{{ blocker }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if preview.reports_only.warnings %}
+      <h4>Reports-only warnings</h4>
+      <ul>
+      {% for warning in preview.reports_only.warnings %}
+        <li>{{ warning }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if preview.reports_only.storage.artifacts %}
+      <h4>Report artifact inventory</h4>
+      <table>
+        <tr><th>Path</th><th>Exists</th><th>Inside case root</th></tr>
+        {% for artifact in preview.reports_only.storage.artifacts %}
+        <tr>
+          <td>{{ artifact.path }}</td>
+          <td>{{ 'YES' if artifact.exists else 'NO' }}</td>
+          <td>{{ 'YES' if artifact.inside_case_root else 'NO' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
 
     {% if preview.safety.blockers %}
 <h3>Safety Blockers</h3>

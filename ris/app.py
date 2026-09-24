@@ -20089,6 +20089,261 @@ def granular_delete_order_images_only(order_id):
     )
 
 
+# RB_DELETE_REPORTS_ONLY_PREVIEW_V1
+def granular_delete_reports_only_preview_snapshot(order, patient, reports):
+    """Read-only dependency preflight for Delete Reports Only."""
+    from datetime import datetime as _preview_datetime
+    from pathlib import Path as _PreviewPath
+    from sqlalchemy import inspect as _sa_inspect, text as _sa_text
+
+    report_ids=[int(row.id) for row in reports]
+    version_rows=[]
+    coordinator_rows=[]
+    artifacts=[]
+    blockers=[]
+    warnings=[]
+
+    if report_ids:
+        version_rows=(
+            ReportVersion.query
+            .filter(ReportVersion.report_id.in_(report_ids))
+            .order_by(ReportVersion.report_id,ReportVersion.version_no)
+            .all()
+        )
+        coordinator_rows=(
+            CoordinatorTask.query
+            .filter(CoordinatorTask.report_id.in_(report_ids))
+            .order_by(CoordinatorTask.id)
+            .all()
+        )
+
+    report_identity_mismatch=False
+    version_identity_mismatch=False
+
+    for report in reports:
+        if int(getattr(report,'order_id',0) or 0) != int(order.id):
+            report_identity_mismatch=True
+
+    expected_accession=str(getattr(order,'accession','') or '').strip()
+    for version in version_rows:
+        version_accession=str(getattr(version,'accession','') or '').strip()
+        if expected_accession and version_accession != expected_accession:
+            version_identity_mismatch=True
+
+    if report_identity_mismatch:
+        blockers.append('Report/order identity mismatch.')
+    if version_identity_mismatch:
+        blockers.append('ReportVersion accession does not match the selected Order.')
+    if coordinator_rows:
+        blockers.append('CoordinatorTask references the report; Reports Only deletion is blocked.')
+
+    lease_rows=[]
+    lease_table_present=False
+    try:
+        inspector=_sa_inspect(db.engine)
+        lease_table_present=inspector.has_table('report_edit_lease')
+        if lease_table_present and report_ids:
+            placeholders=','.join(str(int(value)) for value in report_ids)
+            lease_rows=db.session.execute(
+                _sa_text(
+                    'SELECT id,order_id,report_id,user_id,editor_type,expires_at '
+                    'FROM report_edit_lease '
+                    'WHERE order_id = :order_id OR report_id IN ('+placeholders+')'
+                ),
+                {'order_id':int(order.id)},
+            ).mappings().all()
+    except Exception as exc:
+        blockers.append('Report edit lease state could not be verified.')
+        warnings.append(type(exc).__name__)
+
+    now=_preview_datetime.utcnow()
+    active_lease_count=0
+    expired_lease_count=0
+    lease_preview=[]
+    for row in lease_rows:
+        expires_at=row.get('expires_at')
+        compare_expiry=expires_at
+
+        # Raw SQL returns native datetimes on PostgreSQL, but SQLite-backed
+        # isolated tests may return DATETIME values as ISO strings. Normalize
+        # both forms without mutating lease state. Fail closed when an expiry
+        # cannot be interpreted safely.
+        if isinstance(compare_expiry,str):
+            raw_expiry=compare_expiry.strip()
+            if raw_expiry.endswith('Z'):
+                raw_expiry=raw_expiry[:-1] + '+00:00'
+            try:
+                compare_expiry=_preview_datetime.fromisoformat(raw_expiry)
+            except ValueError:
+                compare_expiry=None
+                blockers.append('Report edit lease expiry could not be interpreted.')
+
+        if compare_expiry is not None and getattr(compare_expiry,'tzinfo',None) is not None:
+            compare_expiry=compare_expiry.astimezone(
+                __import__('datetime').timezone.utc
+            ).replace(tzinfo=None)
+
+        active=bool(compare_expiry is not None and compare_expiry > now)
+        if active:
+            active_lease_count += 1
+        elif compare_expiry is not None:
+            expired_lease_count += 1
+        lease_preview.append({
+            'id':row.get('id'),
+            'order_id':row.get('order_id'),
+            'report_id':row.get('report_id'),
+            'user_id':row.get('user_id'),
+            'editor_type':row.get('editor_type'),
+            'expires_at':expires_at,
+            'active':active,
+        })
+
+    if active_lease_count:
+        blockers.append('Active report edit lease exists.')
+    if expired_lease_count:
+        warnings.append('Expired report edit lease requires cleanup during execution preflight.')
+
+    if report_ids and not lease_table_present:
+        blockers.append('report_edit_lease table is unavailable; lease safety cannot be verified.')
+
+    case_root=None
+    case_root_error=None
+    try:
+        from report_storage_safety import canonical_case_paths
+        case_root=_PreviewPath(
+            canonical_case_paths(REPORT_DIR,patient,order)['case_root']
+        ).resolve()
+    except Exception as exc:
+        case_root_error=type(exc).__name__
+        blockers.append('Canonical report case root could not be resolved.')
+
+    seen_paths=set()
+    path_sources=[]
+    for report in reports:
+        for field in ('source_path','docx_path','pdf_path'):
+            value=str(getattr(report,field,None) or '').strip()
+            if value:
+                path_sources.append(('REPORT',report.id,None,field,value))
+    for version in version_rows:
+        for field in ('source_path','docx_path','pdf_path'):
+            value=str(getattr(version,field,None) or '').strip()
+            if value:
+                path_sources.append(('REPORT_VERSION',version.report_id,version.id,field,value))
+
+    unsafe_path_count=0
+    missing_artifact_count=0
+    for owner_type,report_id,version_id,field,value in path_sources:
+        try:
+            resolved=_PreviewPath(value).expanduser().resolve()
+            path_key=str(resolved)
+        except Exception:
+            resolved=None
+            path_key=value
+
+        if path_key in seen_paths:
+            continue
+        seen_paths.add(path_key)
+
+        inside_case_root=False
+        if resolved is not None and case_root is not None:
+            try:
+                resolved.relative_to(case_root)
+                inside_case_root=True
+            except ValueError:
+                inside_case_root=False
+
+        exists=bool(resolved is not None and resolved.exists())
+        if not inside_case_root:
+            unsafe_path_count += 1
+        if not exists:
+            missing_artifact_count += 1
+
+        artifacts.append({
+            'path':path_key,
+            'owner_type':owner_type,
+            'report_id':report_id,
+            'version_id':version_id,
+            'field':field,
+            'exists':exists,
+            'inside_case_root':inside_case_root,
+        })
+
+    if unsafe_path_count:
+        blockers.append('One or more report artifact paths are outside the canonical case root.')
+    if missing_artifact_count:
+        warnings.append('One or more referenced report artifacts are missing on disk.')
+
+    if not reports:
+        blockers.append('No Report row exists for this Order.')
+
+    blocker_codes=[]
+    if report_identity_mismatch:
+        blocker_codes.append('REPORT_ORDER_IDENTITY_MISMATCH')
+    if version_identity_mismatch:
+        blocker_codes.append('REPORT_VERSION_ACCESSION_MISMATCH')
+    if coordinator_rows:
+        blocker_codes.append('COORDINATOR_TASK_PRESENT')
+    if active_lease_count:
+        blocker_codes.append('ACTIVE_REPORT_EDIT_LEASE')
+    if 'Report edit lease expiry could not be interpreted.' in blockers:
+        blocker_codes.append('LEASE_EXPIRY_UNPARSEABLE')
+    if report_ids and not lease_table_present:
+        blocker_codes.append('LEASE_STATE_UNAVAILABLE')
+    if case_root_error:
+        blocker_codes.append('REPORT_CASE_ROOT_UNAVAILABLE')
+    if unsafe_path_count:
+        blocker_codes.append('REPORT_ARTIFACT_OUTSIDE_CASE_ROOT')
+    if not reports:
+        blocker_codes.append('NO_REPORT')
+
+    return {
+        'report_count':len(reports),
+        'report_ids':report_ids,
+        'version_count':len(version_rows),
+        'versions':[
+            {
+                'id':row.id,
+                'report_id':row.report_id,
+                'version_no':row.version_no,
+                'accession':row.accession,
+                'status':getattr(row,'status',None),
+                'source_type':getattr(row,'source_type',None),
+            }
+            for row in version_rows
+        ],
+        'coordinator_task_count':len(coordinator_rows),
+        'coordinator_tasks':[
+            {
+                'id':row.id,
+                'report_id':row.report_id,
+                'status':row.status,
+                'assigned_to':row.assigned_to,
+            }
+            for row in coordinator_rows
+        ],
+        'lease':{
+            'table_present':lease_table_present,
+            'active_count':active_lease_count,
+            'expired_count':expired_lease_count,
+            'rows':lease_preview,
+        },
+        'storage':{
+            'report_root':str(_PreviewPath(REPORT_DIR).resolve()),
+            'case_root':str(case_root) if case_root is not None else None,
+            'case_root_error':case_root_error,
+            'artifact_count':len(artifacts),
+            'unsafe_path_count':unsafe_path_count,
+            'missing_artifact_count':missing_artifact_count,
+            'artifacts':artifacts,
+        },
+        'blocker_codes':blocker_codes,
+        'blockers':blockers,
+        'warnings':warnings,
+        'can_delete_reports_only':bool(reports) and not blocker_codes,
+        'readonly':True,
+    }
+
+
 # RB_GRANULAR_DELETE_READONLY_PREVIEW_V1
 def granular_delete_order_preview_snapshot(order):
     """
@@ -20220,6 +20475,12 @@ def granular_delete_order_preview_snapshot(order):
         for row in report_rows
     )
 
+    reports_only_preview = granular_delete_reports_only_preview_snapshot(
+        order,
+        patient,
+        reports if 'order_id' in Report.__table__.columns else [],
+    )
+
     pacs_study_id = (
         getattr(order, 'pacs_study_id', None)
         or ''
@@ -20325,6 +20586,7 @@ def granular_delete_order_preview_snapshot(order):
             'rows': report_rows,
             'final_present': final_report_present,
         },
+        'reports_only': reports_only_preview,
         'ris_dependencies': {
             'table_count': len(dependency_rows),
             'active_table_count': active_dependency_tables,
@@ -20334,6 +20596,7 @@ def granular_delete_order_preview_snapshot(order):
         'safety': {
             'images_only_preview_available': True,
             'reports_only_preview_available': True,
+            'reports_only_ready': reports_only_preview['can_delete_reports_only'],
             'ris_case_only_allowed': False,
             'full_case_purge_allowed': False,
             'blockers': blockers,
