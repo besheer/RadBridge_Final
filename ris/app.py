@@ -19566,19 +19566,58 @@ def cancellation_reason():
     if len(reason)<5:abort(400,'Cancellation reason must contain at least 5 characters.')
     return reason[:1000]
 
+def _cancellation_literal_search_pattern(term):
+    # Cancellation Center search values are identifiers/user text, not
+    # caller-controlled LIKE patterns. Escape SQL LIKE metacharacters so
+    # values such as '%' or '_' cannot broaden candidate selection.
+    term=(term or '').strip()[:120]
+    escaped=(
+        term.replace('\\','\\\\')
+            .replace('%','\\%')
+            .replace('_','\\_')
+    )
+    return term,f'%{escaped}%'
+
+
 def cancellation_search_rows(term):
-    term=(term or '').strip()
+    term,pattern=_cancellation_literal_search_pattern(term)
     if not term:return [],[]
-    orders=Order.query.join(Patient,Order.patient_id==Patient.id).filter(db.or_(
-        Order.accession.ilike(f'%{term}%'),Patient.patient_id.ilike(f'%{term}%'),Patient.name.ilike(f'%{term}%')
-    )).order_by(Order.id.desc()).limit(50).all()
-    appointments=Appointment.query.join(Patient,Appointment.patient_id==Patient.id).filter(db.or_(
-        Patient.patient_id.ilike(f'%{term}%'),Patient.name.ilike(f'%{term}%')
-    )).order_by(Appointment.id.desc()).limit(50).all()
+
+    orders=(
+        Order.query
+        .join(Patient,Order.patient_id==Patient.id)
+        .filter(db.or_(
+            Order.accession.ilike(pattern,escape='\\'),
+            Patient.patient_id.ilike(pattern,escape='\\'),
+            Patient.name.ilike(pattern,escape='\\'),
+            Patient.phone.ilike(pattern,escape='\\'),
+        ))
+        .order_by(Order.id.desc())
+        .limit(50)
+        .all()
+    )
+
+    appointments=(
+        Appointment.query
+        .join(Patient,Appointment.patient_id==Patient.id)
+        .filter(db.or_(
+            Patient.patient_id.ilike(pattern,escape='\\'),
+            Patient.name.ilike(pattern,escape='\\'),
+            Patient.phone.ilike(pattern,escape='\\'),
+        ))
+        .order_by(Appointment.id.desc())
+        .limit(50)
+        .all()
+    )
+
+    # Internal Order ID / Appointment ID are exact-only. Numeric patient IDs
+    # or phone fragments still participate in the text search above.
     if term.isdigit():
-        order=Order.query.get(int(term));appointment=Appointment.query.get(int(term))
+        order=db.session.get(Order,int(term))
+        appointment=db.session.get(Appointment,int(term))
         if order and order not in orders:orders.insert(0,order)
         if appointment and appointment not in appointments:appointments.insert(0,appointment)
+
     return orders[:50],appointments[:50]
 
 
