@@ -20894,6 +20894,15 @@ def granular_delete_ris_case_only_preview_snapshot(order, dependency_rows, repor
         count_value=int(count or 0) if count is not None else None
         policy=_RIS_CASE_ONLY_DEPENDENCY_POLICY.get((table,column))
 
+        # Lease state is verified separately below, including malformed expiry
+        # values. Do not classify these rows as unknown generic dependencies or
+        # send them to the generic ORM action loop. The executor owns expired
+        # lease cleanup; the raw FK scanner and final dependency check stay intact.
+        if (table,column) == ('report_edit_lease','order_id') and count_value is not None:
+            if 'report_edit_lease' not in table_names:
+                blockers.append('REPORT_LEASE_STATE_UNVERIFIED')
+            continue
+
         if count_value is None:
             classification='REVIEW'
             action='BLOCK'
