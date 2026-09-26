@@ -11657,6 +11657,33 @@ def offer_next_doctor(order,created_by=None):
 
     return offer, 'OFFERED'
 
+def assignment_decision_phase1(order,return_open=False):
+    """Evaluate phase-1 policy without changing operational behavior."""
+    from assignment_decision_engine import evaluate_assignment_decision
+
+    readiness=CaseReadiness.query.filter_by(order_id=order.id).first()
+    result=evaluate_assignment_decision(
+        mode=os.environ.get('RADBRIDGE_DECISION_ENGINE_MODE','DISABLED'),
+        facts={
+            'exam_status':order.exam_status,
+            'pacs_status':order.pacs_status,
+            'readiness_status':readiness.status if readiness else 'NOT_CHECKED',
+            'return_open':bool(return_open),
+            'already_assigned':bool(order.assigned_doctor_id),
+        },
+    )
+
+    # RB_DECISION_ENGINE_PHASE1_SHADOW_V1
+    # SHADOW is observational only: no offers, assignments, notifications,
+    # database writes, or changes to the existing coordinator result.
+    if result.mode=='SHADOW':
+        app.logger.info(
+            'Assignment decision shadow order=%s recommendation=%s reasons=%s',
+            order.id,result.recommendation,','.join(result.reasons)
+        )
+    return result
+
+
 def coordinate_post_exam_assignment(order,created_by=None,trigger='POST_EXAM_READINESS'):
     # RB_UNIFIED_ASSIGNMENT_COORDINATOR_V1
     if not order:
@@ -11679,6 +11706,8 @@ def coordinate_post_exam_assignment(order,created_by=None,trigger='POST_EXAM_REA
     pending = AssignmentOffer.query.filter_by(order_id=order.id,status='PENDING').first()
     if pending:
         return pending, 'PENDING_OFFER_EXISTS'
+
+    assignment_decision_phase1(order,return_open=False)
 
     offer,status=offer_next_doctor(order,created_by=created_by)
     app.logger.info(
@@ -12108,21 +12137,31 @@ def case_delay_snapshot(order):
         final=Report.query.filter_by(order_id=order.id,status='FINAL').order_by(Report.id.desc()).first()
     except Exception: pass
     registered=getattr(order,'created_at',None) or getattr(order,'scheduled',None)
-    total_min=int((now-registered).total_seconds()/60) if registered else 0
+    # A finalized report is the terminal TAT event.  Keep historical TAT
+    # stable instead of allowing it to grow on every dashboard refresh.
+    total_end=(
+        final.finalized_at
+        if final and final.finalized_at
+        else now
+    )
+    total_min=max(
+        0,
+        int((total_end-registered).total_seconds()/60)
+    ) if registered else 0
     policy=resolve_tat_policy(
         order.priority,
         order.modality
     )
     overdue=bool(policy and total_min>policy.total_tat_min and not final)
-    if readiness and readiness.status=='BLOCKED':
+    if final:
+        owner='COMPLETE';reason='FINALIZED'
+    elif readiness and readiness.status=='BLOCKED':
         owner='TECHNICIAN' if readiness.incomplete_images or readiness.missing_pacs else 'RECEPTION'
         reason='CASE_INCOMPLETE'
     elif not assignment:
         owner='ASSIGNMENT';reason='WAITING_ASSIGNMENT'
-    elif not final:
-        owner='DOCTOR';reason='WAITING_REPORT'
     else:
-        owner='COMPLETE';reason='FINALIZED'
+        owner='DOCTOR';reason='WAITING_REPORT'
     return {'total_min':total_min,'overdue':overdue,'owner':owner,'reason':reason,
       'readiness':readiness.status if readiness else 'NOT_CHECKED','final':bool(final)}
 
@@ -26482,9 +26521,16 @@ def report_sla_snapshot(order, report=None, now=None):
             'end_at':None,
         }
 
+    report_status=(
+        str(report.status or '').strip().upper()
+        if report else ''
+    )
+
+    # finalized_at is the authoritative terminal timestamp.  It also covers
+    # legacy rows whose status text was not synchronized during finalization.
     is_final=bool(
         report and
-        (report.status or '').upper()=='FINAL'
+        (report_status=='FINAL' or report.finalized_at is not None)
     )
 
     # Once FINAL, SLA clock stops permanently.
