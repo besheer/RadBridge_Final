@@ -254,7 +254,9 @@
           const cell=node('td',undefined,'rb-doctor-action'); cell.dataset.doctorColumn=key;
           const width=layout.widths[key]||390; cell.style.width=`${width}px`; cell.style.minWidth=cell.style.width; cell.style.maxWidth=cell.style.width;
           const controls=node('div',undefined,'rb-doctor-action-buttons'), details=node('button',say('Details','تفاصيل'),'btn small'), link=node('a',say('Open study','فتح الفحص'),'btn primary');
-          details.type='button'; link.href=openLink(c.open_url); link.target='_blank'; link.rel='noopener'; controls.append(details,link);
+          details.type='button'; controls.append(details);
+          if(c.has_linked_study){link.href=openLink(c.open_url);link.target='_blank';link.rel='noopener';controls.append(link);}
+          else controls.append(node('span',say('No linked study','لا توجد دراسة مرتبطة'),'rb-doctor-no-study'));
           if(c.return_allowed&&c.return_url){const returned=node('a',say('Return for review','إرجاع للمراجعة'),'btn small');returned.href=safeReturnLink(c.return_url);controls.append(returned);}
           detailsButton=details; cell.append(controls); row.append(cell); return;
         }

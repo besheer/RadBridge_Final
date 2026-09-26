@@ -7142,6 +7142,7 @@ def doctor_workspace_data():
                 'sla_remaining_minutes':sla['remaining_minutes'],
                 'source':'EXTERNAL' if external else 'INTERNAL',
                 'center':external.center.name if external else '',
+                'has_linked_study':bool(o.pacs_study_id),
                 'open_url':url_for('doctor_workspace_open',order_id=o.id),
                 'return_url':url_for('return_case_form',order_id=o.id),
                 'return_allowed':bool((o.status or '').upper() not in ('FINAL','CANCELLED') and

@@ -87,8 +87,12 @@ def test_foreign_report_and_viewer_denied_before_creation(workspace):
 
 def test_viewer_only_for_owned_linked_case(workspace):
     w=workspace
+    feed=w.client.get('/api/doctor/workspace').json['cases']
+    assert feed[0]['has_linked_study'] is False
     assert w.client.get(f'/doctor/cases/{w.mine.id}/open').status_code==409
     w.mine.pacs_study_id='synthetic';m.db.session.commit()
+    feed=w.client.get('/api/doctor/workspace').json['cases']
+    assert feed[0]['has_linked_study'] is True
     r=w.client.get(f'/doctor/cases/{w.mine.id}/open')
     assert r.status_code==302 and r.location=='https://viewer.invalid/study'
 
