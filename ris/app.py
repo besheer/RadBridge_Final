@@ -5096,13 +5096,23 @@ def friendly_500(error):
         )
 
 
+def _safe_login_next(value):
+    # A login link may return to a local page, never to another site.
+    target = str(value or '').strip()
+    if (target.startswith('/') and not target.startswith('//')
+            and '\\' not in target
+            and not any(ord(ch) < 32 or ord(ch) == 127 for ch in target)):
+        return target
+    return url_for('dashboard')
+
+
 @app.route('/login',methods=['GET','POST'])
 def login():
     if request.method=='POST':
         u=User.query.filter_by(username=request.form.get('username','').strip()).first()
         if u and u.active and check_password_hash(u.password_hash,request.form.get('password','')):
             session['uid']=u.id; audit('LOGIN','user',u.id,'Successful login'); db.session.commit()
-            return redirect(request.args.get('next') or url_for('dashboard'))
+            return redirect(_safe_login_next(request.args.get('next')))
         attempted=(request.form.get('username','').strip()[:80] or 'UNKNOWN')
         db.session.add(AuditLog(
             user_id=(u.id if u else None),username=attempted,
@@ -30626,6 +30636,12 @@ def api_ohif_reporting_agent_download():
 @require_ohif_token
 def api_ohif_report_word(order_id):
     order = Order.query.get_or_404(order_id)
+
+    # The exported clinical document requires the same doctor identity
+    # and order authorization as the report panel.
+    doctor_user, identity_block = require_ohif_doctor_user(order.id)
+    if identity_block:
+        return identity_block
 
     context_block = require_valid_ohif_case_context(order)
     if context_block:
