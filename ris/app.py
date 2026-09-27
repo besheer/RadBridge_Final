@@ -33982,9 +33982,46 @@ def api_ohif_onlyoffice_callback(order_id):
     if not edited_url:
         return jsonify({'error': 1})
 
+    # RB_ONLYOFFICE_TRUSTED_INTERNAL_DOWNLOAD_URL_V1
+    #
+    # ONLYOFFICE may construct callback artifact URLs using the browser-facing
+    # reverse-proxy origin (for example 127.0.0.1:18096 during SSH-tunnel UAT).
+    # That origin is not reachable from the RIS container.
+    #
+    # Never perform a server-side request to the callback-supplied host.
+    # Accept only ONLYOFFICE cache artifacts, preserve their path/query, and
+    # fetch them from the trusted internal Document Server endpoint.
+    from urllib.parse import urlsplit
+
+    edited_parts = urlsplit(edited_url)
+    edited_path = str(edited_parts.path or '')
+
+    if (
+        not edited_path.startswith('/cache/files/')
+        or '..' in edited_path.split('/')
+    ):
+        audit(
+            'ONLYOFFICE_CALLBACK_REJECTED',
+            'order',
+            order.id,
+            'untrusted document download path'
+        )
+        db.session.commit()
+        return jsonify({'error': 1}), 400
+
+    internal_edited_url = (
+        ONLYOFFICE_INTERNAL_URL
+        + edited_path
+        + (
+            '?' + edited_parts.query
+            if edited_parts.query
+            else ''
+        )
+    )
+
     try:
         r = requests.get(
-            edited_url,
+            internal_edited_url,
             timeout=60
         )
         r.raise_for_status()
