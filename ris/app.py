@@ -29508,7 +29508,7 @@ def pacs_unregistered_cases():
 @require_perm('pacs.intake.manage')
 def pacs_unregistered_run():
     result=pacs_auto_intake_once(300)
-    flash(f"PACS intake: seen {result['seen']}, linked {result['linked']}, created {result['created']}, errors {result['errors']}.",'success')
+    flash(f"PACS intake: seen {result['seen']}, linked {result['linked']}, review required {result['review_required']}, errors {result['errors']}. No new RIS order is created by this scan.",'success')
     return redirect(url_for('pacs_unregistered_cases'))
 
 @app.route('/admin/pacs/destinations',methods=['GET','POST'])
