@@ -118,6 +118,16 @@ def _same_origin_unsafe_request_guard():
     origin = (request.headers.get('Origin') or '').rstrip('/')
     if not origin:
         return None
+
+    # Some same-origin browser form navigations can serialize an opaque
+    # origin as the literal value "null".  Do not trust "null" globally:
+    # accept it only when Fetch Metadata confirms a same-origin request.
+    if origin == 'null':
+        fetch_site = (request.headers.get('Sec-Fetch-Site') or '').strip().lower()
+        if fetch_site == 'same-origin':
+            return None
+        abort(403)
+
     allowed = {request.host_url.rstrip('/'), RIS_PUBLIC_URL.rstrip('/') if 'RIS_PUBLIC_URL' in globals() else ''}
     configured = os.getenv('RADBRIDGE_TRUSTED_ORIGINS', '')
     allowed.update(x.strip().rstrip('/') for x in configured.split(',') if x.strip())
