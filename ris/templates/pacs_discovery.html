@@ -50,6 +50,19 @@
     <button class="btn" {% if not ingress_ready or r.id not in managed_ids %}disabled{% endif %}>Disable incoming access</button>
   </form>
   {% endif %}
+  {% set legacy = legacy_nodes.get(r.id) %}
+  {% if legacy %}
+  <form method="post" action="{{url_for('pacs_discovery_legacy_endpoint',node_id=r.id)}}" style="display:grid;gap:5px;margin-top:12px" onsubmit="return confirm('Changing the active source IP may interrupt this device. Continue?');">
+    <strong>Legacy Orthanc endpoint</strong>
+    <small>Active source IP: {{legacy.Host}} · listener port: {{legacy.Port}}. Changes here keep the current Worklist and Store permissions. If this device uses an SSH tunnel, use the IP Orthanc sees through that tunnel.</small>
+    <input type="hidden" name="expected_host" value="{{legacy.Host}}">
+    <input type="hidden" name="expected_port" value="{{legacy.Port}}">
+    <input name="host" value="{{legacy.Host}}" aria-label="Active source IP in Orthanc" required>
+    <input name="port" type="number" min="1" max="65535" value="{{legacy.Port}}" aria-label="Device listener port in Orthanc" required>
+    <button class="btn" type="submit">Update legacy IP / port</button>
+    <small>This does not enable Block. Unknown senders can still C-STORE under the current Live policy.</small>
+  </form>
+  {% endif %}
   {% if r.status in ('PENDING','BLOCKED') %}
   <form method="post" action="{{url_for('pacs_discovery_dismiss',node_id=r.id)}}" style="margin-top:5px" onsubmit="return confirm('Remove this review record? Orthanc and studies will not change.');">
     <button class="btn" type="submit">Remove from review</button>

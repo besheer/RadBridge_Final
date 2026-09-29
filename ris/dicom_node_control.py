@@ -62,6 +62,38 @@ def modality_key(node_id):
     return f'rb-ingress-{int(node_id)}'
 
 
+LEGACY_MODALITY_FIELDS = frozenset({
+    'AET', 'Host', 'Port', 'AllowEcho', 'AllowEventReport', 'AllowFind',
+    'AllowFindWorklist', 'AllowGet', 'AllowMove', 'AllowNAction',
+    'AllowStore', 'AllowTranscoding', 'LocalAet', 'Manufacturer',
+    'RetrieveMethod', 'Timeout', 'UseDicomTls',
+})
+
+
+def legacy_endpoint_payload(current, host, port):
+    """Change only a legacy modality endpoint, preserving every access flag."""
+    if not isinstance(current, dict) or set(current) != LEGACY_MODALITY_FIELDS:
+        raise ValueError('Unreviewed Orthanc modality fields')
+    ae = current.get('AET')
+    if not isinstance(ae, str) or not re.fullmatch(r'[A-Z0-9_ -]{1,16}', ae):
+        raise ValueError('Invalid legacy AE Title')
+    # Reuse the strict numeric source IP and listener port validation.
+    validated = node_payload(ae, host, port, allow_find=True)
+    payload = current.copy()
+    payload['Host'] = validated['Host']
+    payload['Port'] = validated['Port']
+    return payload
+
+
+def legacy_endpoint_matches(before, after, proposed):
+    """Orthanc must retain all fields other than the requested endpoint."""
+    return (isinstance(after, dict) and isinstance(before, dict) and
+            isinstance(proposed, dict) and
+            after == proposed and
+            all(proposed.get(key) == value for key, value in before.items()
+                if key not in ('Host', 'Port')))
+
+
 def delete_modality(url, auth, client):
     """Delete a registration, never a DICOM resource."""
     response = client.delete(url, auth=auth, timeout=10)

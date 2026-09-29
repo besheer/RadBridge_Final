@@ -50,7 +50,9 @@ from procedure_catalog import PROCEDURE_CATALOG
 from sqlalchemy import or_, text, inspect, and_, func
 from sqlalchemy.exc import IntegrityError
 import requests
-from dicom_node_control import policy_ready as dicom_ingress_policy_ready, node_payload, modality_key, delete_modality
+from dicom_node_control import (policy_ready as dicom_ingress_policy_ready,
+                                node_payload, modality_key, delete_modality,
+                                legacy_endpoint_payload, legacy_endpoint_matches)
 from docx import Document
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -29855,17 +29857,23 @@ def pacs_discovery():
     branches=Branch.query.filter_by(active=True).order_by(Branch.name).all()
     ingress_ready=dicom_ingress_policy_ready()
     managed_ids=set()
-    if ingress_ready:
-        try:
-            response=requests.get(f'{PACS_ORTHANC_URL}/modalities?expand',
-                                  auth=_orthanc_auth(),timeout=10)
-            response.raise_for_status()
-            keys=response.json()
-            managed_ids={row.id for row in rows if modality_key(row.id) in keys}
-        except (requests.RequestException,ValueError,TypeError):
-            ingress_ready=False
+    legacy_nodes={}
+    try:
+        response=requests.get(f'{PACS_ORTHANC_URL}/modalities?expand',
+                              auth=_orthanc_auth(),timeout=10)
+        response.raise_for_status()
+        keys=response.json()
+        if not isinstance(keys,dict):raise ValueError('Invalid Orthanc modalities')
+        managed_ids={row.id for row in rows if modality_key(row.id) in keys}
+        legacy_nodes={row.id:keys[row.ae_title] for row in rows
+                      if row.status=='APPROVED' and row.ae_title in keys and
+                      row.id not in managed_ids and
+                      keys[row.ae_title].get('AET')==row.ae_title}
+    except (requests.RequestException,ValueError,TypeError,AttributeError):
+        ingress_ready=False
     return render_template('pacs_discovery.html',rows=rows,branches=branches,
-                           ingress_ready=ingress_ready,managed_ids=managed_ids)
+                           ingress_ready=ingress_ready,managed_ids=managed_ids,
+                           legacy_nodes=legacy_nodes)
 
 
 def _managed_dicom_modality(node_id):
@@ -30431,6 +30439,67 @@ def pacs_discovery_block(node_id):
     row=DiscoveredDicomNode.query.get_or_404(node_id)
     _apply_discovered_node_policy(row,None)
     flash('Orthanc registration removed and incoming access disabled.','warning')
+    return redirect(url_for('pacs_discovery'))
+
+@app.post('/admin/pacs/discovery/<int:node_id>/legacy-endpoint')
+@require_perm('pacs.discovery.manage')
+def pacs_discovery_legacy_endpoint(node_id):
+    """Edit only the endpoint of an existing legacy Orthanc registration.
+
+    This leaves every DICOM permission as it was; it does not claim to block
+    C-STORE while the Live Orthanc default still accepts unknown senders.
+    """
+    row=DiscoveredDicomNode.query.get_or_404(node_id)
+    if row.status!='APPROVED':abort(409,description='Node is not approved')
+    key=row.ae_title
+    if not re.fullmatch(r'[A-Z0-9_ -]{1,16}',key):abort(409)
+    response=requests.get(f'{PACS_ORTHANC_URL}/modalities?expand',
+                          auth=_orthanc_auth(),timeout=10)
+    response.raise_for_status()
+    modalities=response.json()
+    if not isinstance(modalities,dict) or key not in modalities or \
+       modalities[key].get('AET')!=key or modality_key(row.id) in modalities or \
+       sum(node.get('AET')==key for node in modalities.values())!=1:
+        abort(409,description='Legacy Orthanc identity changed')
+    previous=modalities[key]
+    if request.form.get('expected_host')!=previous.get('Host') or \
+       request.form.get('expected_port')!=str(previous.get('Port')):
+        abort(409,description='Orthanc endpoint changed; refresh and review')
+    try:
+        proposed=legacy_endpoint_payload(
+            previous,request.form.get('host'),request.form.get('port'))
+    except ValueError as exc:
+        abort(400,description=str(exc))
+    if proposed==previous:
+        flash('Orthanc endpoint is already set to these values.','info')
+        return redirect(url_for('pacs_discovery'))
+    url=f'{PACS_ORTHANC_URL}/modalities/{key}'
+    try:
+        response=requests.put(url,auth=_orthanc_auth(),json=proposed,timeout=10)
+        response.raise_for_status()
+        after=requests.get(url,auth=_orthanc_auth(),timeout=10)
+        after.raise_for_status()
+        if not legacy_endpoint_matches(previous,after.json(),proposed):
+            raise RuntimeError('Orthanc did not retain the exact endpoint and permissions')
+        row.port=proposed['Port']
+        audit('DICOM_LEGACY_ENDPOINT_EDIT','discovered_dicom_node',row.id,
+              f'{key}:{previous["Host"]}:{previous["Port"]} -> '
+              f'{proposed["Host"]}:{proposed["Port"]};permissions_unchanged=true')
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        try:
+            restore=requests.put(url,auth=_orthanc_auth(),json=previous,timeout=10)
+            restore.raise_for_status()
+            actual=requests.get(url,auth=_orthanc_auth(),timeout=10)
+            actual.raise_for_status()
+            if actual.json()!=previous:raise RuntimeError('Orthanc rollback mismatch')
+        except Exception as restore_error:
+            app.logger.critical('Legacy DICOM node %s rollback failed: %s',
+                                node_id,restore_error)
+            abort(503,description='Orthanc rollback failed; manual review required')
+        raise
+    flash('Legacy Orthanc endpoint updated; Worklist and Store permissions preserved.','success')
     return redirect(url_for('pacs_discovery'))
 
 @app.post('/admin/pacs/discovery/<int:node_id>/dismiss')

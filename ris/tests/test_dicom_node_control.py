@@ -5,7 +5,9 @@ from pathlib import Path
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from dicom_node_control import policy_ready, node_payload, modality_key, delete_modality
+from dicom_node_control import (policy_ready, node_payload, modality_key,
+                                delete_modality, legacy_endpoint_payload,
+                                legacy_endpoint_matches)
 from unittest.mock import Mock
 
 
@@ -77,3 +79,26 @@ class DicomNodeControlTests(unittest.TestCase):
         client.delete.assert_called_once_with(
             url, auth=('user', 'password'), timeout=10)
         client.delete.return_value.raise_for_status.assert_called_once_with()
+
+    def test_legacy_endpoint_edit_preserves_all_permissions_and_options(self):
+        original = {
+            'AET': 'RADBRIDGE_MR', 'Host': '172.18.0.1', 'Port': 5108,
+            'AllowEcho': True, 'AllowEventReport': False,
+            'AllowFind': False, 'AllowFindWorklist': True,
+            'AllowGet': False, 'AllowMove': False, 'AllowNAction': False,
+            'AllowStore': True, 'AllowTranscoding': True,
+            'LocalAet': 'RISPACS', 'Manufacturer': 'Generic',
+            'RetrieveMethod': 'C-MOVE', 'Timeout': 10, 'UseDicomTls': False,
+        }
+        edited = legacy_endpoint_payload(original, '197.35.52.171', '5108')
+        self.assertEqual(original['Host'], '172.18.0.1')
+        self.assertEqual(edited['Host'], '197.35.52.171')
+        self.assertTrue(legacy_endpoint_matches(original, edited, edited))
+        changed_permission = dict(edited, AllowStore=False)
+        self.assertFalse(legacy_endpoint_matches(original, changed_permission, edited))
+        for bad in ('example.com', '999.999.999.999'):
+            with self.assertRaises(ValueError):
+                legacy_endpoint_payload(original, bad, 5108)
+        with self.assertRaises(ValueError):
+            legacy_endpoint_payload(dict(original, FutureAccessFlag=True),
+                                    '197.35.52.171', 5108)
