@@ -12680,7 +12680,17 @@ def call_ocr_provider(doc):
         conf=float(payload.get('confidence') or 0)
         if doc.document_type=='IDENTITY':
             base=_simple_identity_extract(text)
-            base.update(fields);fields=base
+            base.update(fields)
+
+            # RB_FULL_REG_OCR_DEMOGRAPHICS_V1
+            # Keep provider values, but enrich a valid Egyptian
+            # National ID with its encoded DOB and sex for registration.
+            normalized=normalize_intake_identity(base)
+            for field_key in ('national_id','dob','sex'):
+                if normalized.get(field_key) and not base.get(field_key):
+                    base[field_key]=normalized[field_key]
+
+            fields=base
         return {'text':text,'fields':fields,'confidence':conf},''
     except OCRProviderError as e:
         return None,f'{e.code}: {e.message}'[:500]
