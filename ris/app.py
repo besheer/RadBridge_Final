@@ -3757,6 +3757,8 @@ def discover_dicom_node_from_tags(tags):
                 source_description=(tags.get('study_description') or '')[:255],
                 status='PENDING',studies_seen=0)
             db.session.add(row);db.session.flush()
+    if row.status=='DISMISSED':
+        return row
     row.last_seen_at=datetime.utcnow()
     row.studies_seen=int(row.studies_seen or 0)+1
     if tags.get('modality'):
@@ -29838,7 +29840,8 @@ def api_ops_health():
 @app.get('/admin/pacs/discovery')
 @require_perm('pacs.discovery.view')
 def pacs_discovery():
-    rows=DiscoveredDicomNode.query.order_by(DiscoveredDicomNode.last_seen_at.desc()).limit(500).all()
+    rows=DiscoveredDicomNode.query.filter(DiscoveredDicomNode.status!='DISMISSED').order_by(
+        DiscoveredDicomNode.last_seen_at.desc()).limit(500).all()
     branches=Branch.query.filter_by(active=True).order_by(Branch.name).all()
     ingress_ready=dicom_ingress_policy_ready()
     managed_ids=set()
@@ -30420,6 +30423,23 @@ def pacs_discovery_block(node_id):
     flash('Orthanc registration removed and incoming access disabled.','warning')
     return redirect(url_for('pacs_discovery'))
 
+@app.post('/admin/pacs/discovery/<int:node_id>/dismiss')
+@require_perm('pacs.discovery.manage')
+def pacs_discovery_dismiss(node_id):
+    row=DiscoveredDicomNode.query.get_or_404(node_id)
+    if row.status not in ('PENDING','BLOCKED'):
+        abort(409,description='Disable approved access before removing the record')
+    if _managed_dicom_modality(row.id) is not None:
+        abort(409,description='Managed Orthanc registration still exists')
+    # A legacy Orthanc registration with the same AE Title is independent.
+    # Removing a review record must never change any DICOM access or study.
+    row.status='DISMISSED'
+    audit('DICOM_DISCOVERY_DISMISS','discovered_dicom_node',row.id,
+          f'{row.ae_title}@{row.host}')
+    db.session.commit()
+    flash('Node removed from review. Orthanc and studies were not changed.','success')
+    return redirect(url_for('pacs_discovery'))
+
 @app.post('/admin/pacs/discovery/manual')
 @require_perm('pacs.discovery.manage')
 def pacs_discovery_manual():
@@ -30440,6 +30460,8 @@ def pacs_discovery_manual():
     else:
         if row.status=='APPROVED':
             abort(409,description='Edit approved nodes through Orthanc access controls')
+        if row.status=='DISMISSED':
+            row.status='PENDING'
         row.port=port or row.port;row.node_type=node_type;row.last_seen_at=datetime.utcnow()
     db.session.commit()
     return redirect(url_for('pacs_discovery'))

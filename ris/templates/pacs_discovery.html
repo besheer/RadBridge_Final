@@ -50,6 +50,11 @@
     <button class="btn" {% if not ingress_ready or r.id not in managed_ids %}disabled{% endif %}>Disable incoming access</button>
   </form>
   {% endif %}
+  {% if r.status in ('PENDING','BLOCKED') %}
+  <form method="post" action="{{url_for('pacs_discovery_dismiss',node_id=r.id)}}" style="margin-top:5px" onsubmit="return confirm('Remove this review record? Orthanc and studies will not change.');">
+    <button class="btn" type="submit">Remove from review</button>
+  </form>
+  {% endif %}
 </td>
 </tr>
 {% endfor %}
