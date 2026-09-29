@@ -36,7 +36,7 @@ class DicomNodeControlTests(unittest.TestCase):
         node = node_payload('radbridge_mr', '197.35.52.171', 5108, allow_find=True)
         self.assertEqual(node, {
             'AET': 'RADBRIDGE_MR', 'Host': '197.35.52.171', 'Port': 5108,
-            'AllowEcho': True, 'AllowFind': True, 'AllowFindWorklist': True,
+            'AllowEcho': True, 'AllowFind': False, 'AllowFindWorklist': True,
             'AllowStore': False,
             'AllowMove': False, 'AllowGet': False,
         })
@@ -45,6 +45,15 @@ class DicomNodeControlTests(unittest.TestCase):
         self.assertFalse(store_only['AllowFind'])
         self.assertFalse(store_only['AllowFindWorklist'])
         self.assertEqual(modality_key(12), 'rb-ingress-12')
+
+    def test_worklist_and_store_never_grant_study_find(self):
+        node = node_payload('RADBRIDGE_MR', '197.35.52.171', 5108,
+                            allow_find=True, allow_store=True)
+        self.assertTrue(node['AllowFindWorklist'])
+        self.assertTrue(node['AllowStore'])
+        self.assertFalse(node['AllowFind'])
+        self.assertFalse(node['AllowMove'])
+        self.assertFalse(node['AllowGet'])
 
     def test_invalid_identity_is_rejected(self):
         for ae, host, port in (

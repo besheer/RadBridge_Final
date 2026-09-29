@@ -51,7 +51,8 @@ def node_payload(ae, host, port, *, allow_find=False, allow_store=False):
         raise ValueError('Select at least one incoming permission')
     return {
         'AET': ae, 'Host': host, 'Port': port,
-        'AllowEcho': True, 'AllowFind': bool(allow_find),
+        # MWL queries have their own permission. Do not expose patient/study C-FIND.
+        'AllowEcho': True, 'AllowFind': False,
         'AllowFindWorklist': bool(allow_find),
         'AllowStore': bool(allow_store), 'AllowMove': False, 'AllowGet': False,
     }
