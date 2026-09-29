@@ -3796,7 +3796,7 @@ def approve_discovered_node(row,branch_id=None,node_type=None,port=None,notes=''
 def sync_destination_to_orthanc(dest):
     # Outbound destinations never grant incoming C-FIND/C-STORE permissions.
     payload={'AET':dest.ae_title,'Host':dest.host,'Port':int(dest.port),
-             'AllowEcho':True,'AllowFind':False,'AllowStore':False,
+             'AllowEcho':True,'AllowFind':False,'AllowFindWorklist':False,'AllowStore':False,
              'AllowMove':False,'AllowGet':False}
     r=requests.put(f'{PACS_ORTHANC_URL}/modalities/{dest.key}',auth=_orthanc_auth(),json=payload,timeout=15)
     r.raise_for_status()

@@ -14,8 +14,12 @@ import re
 
 REQUIRED_POLICY = {
     'DicomCheckModalityHost': True,
+    'DicomAlwaysAllowEcho': False,
     'DicomAlwaysAllowStore': False,
+    'DicomAlwaysAllowFind': False,
     'DicomAlwaysAllowFindWorklist': False,
+    'DicomAlwaysAllowGet': False,
+    'DicomAlwaysAllowMove': False,
     'DicomModalitiesInDatabase': True,
 }
 
@@ -48,6 +52,7 @@ def node_payload(ae, host, port, *, allow_find=False, allow_store=False):
     return {
         'AET': ae, 'Host': host, 'Port': port,
         'AllowEcho': True, 'AllowFind': bool(allow_find),
+        'AllowFindWorklist': bool(allow_find),
         'AllowStore': bool(allow_store), 'AllowMove': False, 'AllowGet': False,
     }
 
