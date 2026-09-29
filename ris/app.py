@@ -30477,7 +30477,7 @@ def pacs_discovery_legacy_endpoint(node_id):
     try:
         response=requests.put(url,auth=_orthanc_auth(),json=proposed,timeout=10)
         response.raise_for_status()
-        after=requests.get(url,auth=_orthanc_auth(),timeout=10)
+        after=requests.get(url+'/configuration',auth=_orthanc_auth(),timeout=10)
         after.raise_for_status()
         if not legacy_endpoint_matches(previous,after.json(),proposed):
             raise RuntimeError('Orthanc did not retain the exact endpoint and permissions')
@@ -30491,7 +30491,7 @@ def pacs_discovery_legacy_endpoint(node_id):
         try:
             restore=requests.put(url,auth=_orthanc_auth(),json=previous,timeout=10)
             restore.raise_for_status()
-            actual=requests.get(url,auth=_orthanc_auth(),timeout=10)
+            actual=requests.get(url+'/configuration',auth=_orthanc_auth(),timeout=10)
             actual.raise_for_status()
             if actual.json()!=previous:raise RuntimeError('Orthanc rollback mismatch')
         except Exception as restore_error:

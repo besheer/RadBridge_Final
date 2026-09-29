@@ -49,6 +49,8 @@ def test_legacy_edit_updates_endpoint_and_preserves_permissions(app_ctx, monkeyp
         assert result.status_code == 302
     assert put.call_count == 1
     assert put.call_args.kwargs['json'] == updated
+    assert get.call_args_list[1].args[0].endswith(
+        '/modalities/' + row.ae_title + '/configuration')
     assert m.db.session.get(m.DiscoveredDicomNode, row.id).port == 5109
     assert m.AuditLog.query.filter_by(action='DICOM_LEGACY_ENDPOINT_EDIT',
                                       entity_id=str(row.id)).count() == 1
@@ -73,6 +75,8 @@ def test_legacy_edit_rolls_back_if_orthanc_changes_permissions(app_ctx, monkeypa
         with pytest.raises(RuntimeError):
             m.pacs_discovery_legacy_endpoint.__wrapped__(row.id)
     assert [call.kwargs['json'] for call in put.call_args_list] == [updated, old]
+    assert all(call.args[0].endswith('/configuration')
+               for call in get.call_args_list[1:])
     assert m.db.session.get(m.DiscoveredDicomNode, row.id).port == 0
     assert m.AuditLog.query.filter_by(action='DICOM_LEGACY_ENDPOINT_EDIT',
                                       entity_id=str(row.id)).count() == 0
