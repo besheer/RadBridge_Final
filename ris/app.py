@@ -50,6 +50,7 @@ from procedure_catalog import PROCEDURE_CATALOG
 from sqlalchemy import or_, text, inspect, and_, func
 from sqlalchemy.exc import IntegrityError
 import requests
+from dicom_node_control import policy_ready as dicom_ingress_policy_ready, node_payload, modality_key, delete_modality
 from docx import Document
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -3793,7 +3794,10 @@ def approve_discovered_node(row,branch_id=None,node_type=None,port=None,notes=''
     return row
 
 def sync_destination_to_orthanc(dest):
-    payload={'AET':dest.ae_title,'Host':dest.host,'Port':int(dest.port)}
+    # Outbound destinations never grant incoming C-FIND/C-STORE permissions.
+    payload={'AET':dest.ae_title,'Host':dest.host,'Port':int(dest.port),
+             'AllowEcho':True,'AllowFind':False,'AllowStore':False,
+             'AllowMove':False,'AllowGet':False}
     r=requests.put(f'{PACS_ORTHANC_URL}/modalities/{dest.key}',auth=_orthanc_auth(),json=payload,timeout=15)
     r.raise_for_status()
     return True
@@ -29535,6 +29539,8 @@ def pacs_destinations():
           branch_id=request.form.get('branch_id',type=int),
           allow_manual_send=request.form.get('allow_manual_send')=='1',active=True)
         if not row.key or not row.name or not row.ae_title or not row.host:abort(400)
+        if DiscoveredDicomNode.query.filter_by(ae_title=row.ae_title,status='APPROVED').first():
+            abort(409,description='An approved incoming node already uses this AE Title')
         db.session.add(row);db.session.flush()
         try:sync_destination_to_orthanc(row)
         except Exception as exc:flash('Saved, but Orthanc sync failed: '+str(exc),'warning')
@@ -29834,7 +29840,83 @@ def api_ops_health():
 def pacs_discovery():
     rows=DiscoveredDicomNode.query.order_by(DiscoveredDicomNode.last_seen_at.desc()).limit(500).all()
     branches=Branch.query.filter_by(active=True).order_by(Branch.name).all()
-    return render_template('pacs_discovery.html',rows=rows,branches=branches)
+    ingress_ready=dicom_ingress_policy_ready()
+    managed_ids=set()
+    if ingress_ready:
+        try:
+            response=requests.get(f'{PACS_ORTHANC_URL}/modalities?expand',
+                                  auth=_orthanc_auth(),timeout=10)
+            response.raise_for_status()
+            keys=response.json()
+            managed_ids={row.id for row in rows if modality_key(row.id) in keys}
+        except (requests.RequestException,ValueError,TypeError):
+            ingress_ready=False
+    return render_template('pacs_discovery.html',rows=rows,branches=branches,
+                           ingress_ready=ingress_ready,managed_ids=managed_ids)
+
+
+def _managed_dicom_modality(node_id):
+    key=modality_key(node_id)
+    response=requests.get(f'{PACS_ORTHANC_URL}/modalities/{key}',
+                          auth=_orthanc_auth(),timeout=10)
+    if response.status_code==404:return None
+    response.raise_for_status()
+    return response.json()
+
+
+def _write_managed_dicom_modality(node_id,payload):
+    key=modality_key(node_id)
+    url=f'{PACS_ORTHANC_URL}/modalities/{key}'
+    if payload is None:
+        delete_modality(url,_orthanc_auth(),requests)
+        response=None
+    else:
+        response=requests.put(url,auth=_orthanc_auth(),json=payload,timeout=10)
+    if response is not None:response.raise_for_status()
+    actual=_managed_dicom_modality(node_id)
+    if payload is None and actual is not None:
+        raise RuntimeError('Orthanc did not remove the modality')
+    if payload is not None and (actual is None or
+            any(actual.get(k)!=v for k,v in payload.items())):
+        raise RuntimeError('Orthanc did not retain the requested modality policy')
+
+
+def _apply_discovered_node_policy(row,payload):
+    if not dicom_ingress_policy_ready():
+        abort(409,description='Orthanc ingress enforcement is not verified')
+    # Never take over a pre-existing or independently administered modality.
+    previous=_managed_dicom_modality(row.id)
+    if previous is not None and previous.get('AET')!=row.ae_title:
+        abort(409,description='Managed modality identity changed in Orthanc')
+    if payload is not None:
+        response=requests.get(f'{PACS_ORTHANC_URL}/modalities?expand',
+                              auth=_orthanc_auth(),timeout=10)
+        response.raise_for_status()
+        for key,other in response.json().items():
+            if key!=modality_key(row.id) and other.get('AET')==payload['AET']:
+                abort(409,description='AE Title already belongs to another modality')
+    elif previous is None:
+        abort(409,description='Node is not registered under RadBridge control')
+    try:
+        _write_managed_dicom_modality(row.id,payload)
+        if payload is None:
+            row.status='BLOCKED'
+            audit('DICOM_INGRESS_BLOCK','discovered_dicom_node',row.id,
+                  f'{row.ae_title}@{row.host}')
+        else:
+            row.ae_title=payload['AET'];row.host=payload['Host'];row.port=payload['Port']
+            row.status='APPROVED';row.approved_at=datetime.utcnow()
+            row.approved_by=current_user().id
+            audit('DICOM_INGRESS_APPROVE','discovered_dicom_node',row.id,
+                  f'{row.ae_title}@{row.host};find={payload["AllowFind"]};store={payload["AllowStore"]}')
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        try:
+            _write_managed_dicom_modality(row.id,previous)
+        except Exception as rollback_error:
+            app.logger.critical('DICOM node rollback failed for id %s: %s',row.id,rollback_error)
+        raise
 
 
 def external_reporting_setting():
@@ -30317,27 +30399,25 @@ def admin_external_intake_decision(intake_id):
 @require_perm('pacs.discovery.manage')
 def pacs_discovery_approve(node_id):
     row=DiscoveredDicomNode.query.get_or_404(node_id)
-    approve_discovered_node(
-        row,
-        branch_id=request.form.get('branch_id',type=int),
-        node_type=request.form.get('node_type') or row.node_type,
-        port=request.form.get('port',type=int),
-        notes=(request.form.get('notes') or '').strip()
-    )
-    audit('DICOM_DISCOVERY_APPROVE','discovered_dicom_node',row.id,f'{row.ae_title}@{row.host}')
-    db.session.commit()
-    flash('DICOM node approved. If IP and port were supplied, it was also registered as a DICOM destination.','success')
+    try:
+        payload=node_payload(
+            request.form.get('ae_title') or row.ae_title,
+            request.form.get('host') or row.host,
+            request.form.get('port') or row.port,
+            allow_find=request.form.get('allow_find')=='1',
+            allow_store=request.form.get('allow_store')=='1')
+    except ValueError as exc:
+        abort(400,description=str(exc))
+    _apply_discovered_node_policy(row,payload)
+    flash('Incoming DICOM permissions applied and verified in Orthanc.','success')
     return redirect(url_for('pacs_discovery'))
 
 @app.post('/admin/pacs/discovery/<int:node_id>/block')
 @require_perm('pacs.discovery.manage')
 def pacs_discovery_block(node_id):
     row=DiscoveredDicomNode.query.get_or_404(node_id)
-    row.status='BLOCKED'
-    row.notes=(request.form.get('notes') or row.notes or '').strip()
-    audit('DICOM_DISCOVERY_BLOCK','discovered_dicom_node',row.id,f'{row.ae_title}@{row.host}')
-    db.session.commit()
-    flash('DICOM node marked BLOCKED in RadBridge discovery registry.','warning')
+    _apply_discovered_node_policy(row,None)
+    flash('Orthanc registration removed and incoming access disabled.','warning')
     return redirect(url_for('pacs_discovery'))
 
 @app.post('/admin/pacs/discovery/manual')
@@ -30347,13 +30427,19 @@ def pacs_discovery_manual():
     host=(request.form.get('host') or '').strip()
     port=request.form.get('port',type=int) or 0
     node_type=(request.form.get('node_type') or 'VIEWER').upper()
-    if not ae:
-        abort(400)
+    try:
+        # Validate identity without authorizing either operation yet.
+        node_payload(ae,host,port,allow_find=True)
+    except ValueError as exc:
+        abort(400,description=str(exc))
+    if node_type not in ('VIEWER','MODALITY','UNKNOWN'):abort(400)
     row=DiscoveredDicomNode.query.filter_by(ae_title=ae,host=host).first()
     if not row:
         row=DiscoveredDicomNode(ae_title=ae,host=host,port=port,node_type=node_type,status='PENDING')
         db.session.add(row);db.session.flush()
     else:
+        if row.status=='APPROVED':
+            abort(409,description='Edit approved nodes through Orthanc access controls')
         row.port=port or row.port;row.node_type=node_type;row.last_seen_at=datetime.utcnow()
     db.session.commit()
     return redirect(url_for('pacs_discovery'))

@@ -1,25 +1,34 @@
 {% extends "base.html" %}
-{% block page_title %}DICOM Auto Discovery{% endblock %}
-{% block subtitle %}Automatically discover new AE Titles seen by PACS Auto Intake; approve, classify or block them{% endblock %}
+{% block page_title %}DICOM Nodes{% endblock %}
+{% block subtitle %}Review devices and control incoming Worklist and image access{% endblock %}
 {% block content %}
 <div class="panel">
-  <h3>Register Viewer / Node Manually</h3>
+  {% if ingress_ready %}
+  <strong>Orthanc ingress policy is configured.</strong>
+  <p>Changes are applied to Orthanc and checked before the RIS status is saved. Verify the policy file matches the running Orthanc container during deployment.</p>
+  {% else %}
+  <strong>Incoming access controls are unavailable.</strong>
+  <p>Orthanc must check source IP, reject unknown image senders and persist registrations. Approve and Block are disabled until this policy is verified. A RIS status alone cannot stop DICOM traffic.</p>
+  {% endif %}
+</div>
+<div class="panel">
+  <h3>Add node for review</h3>
   <form method="post" action="{{url_for('pacs_discovery_manual')}}" class="form-grid">
-    <input name="ae_title" placeholder="AE Title (e.g. RADIANT)" required>
-    <input name="host" placeholder="IP / hostname (optional)">
-    <input name="port" type="number" placeholder="Listener port (for C-MOVE / resend)">
+    <input name="ae_title" placeholder="AE Title" maxlength="16" required>
+    <input name="host" placeholder="Source IP address" required>
+    <input name="port" type="number" min="1" max="65535" placeholder="Device listener port" required>
     <select name="node_type"><option>VIEWER</option><option>MODALITY</option><option>UNKNOWN</option></select>
-    <button class="btn primary">Add to Discovery Registry</button>
+    <button class="btn primary">Add for review</button>
   </form>
-  <small>Any viewer can still use C-FIND/C-GET when Orthanc is configured permissively; a routable IP/port is required for C-MOVE destinations.</small>
+  <small>Adding a record for review does not authorize the device in Orthanc.</small>
 </div>
 
 <div class="panel">
 <table>
-<tr><th>Status</th><th>AE Title</th><th>Host</th><th>Port</th><th>Type</th><th>Modality</th><th>Studies</th><th>Last Seen</th><th>Action</th></tr>
+<tr><th>Status</th><th>AE Title</th><th>Source IP</th><th>Port</th><th>Type</th><th>Modality</th><th>Studies</th><th>Last Seen</th><th>Access control</th></tr>
 {% for r in rows %}
 <tr>
-<td><span class="badge">{{r.status}}</span></td>
+<td><span class="badge">{{r.status}}</span>{% if r.status=='APPROVED' and r.id not in managed_ids %}<small>RIS record only; no managed Orthanc registration</small>{% endif %}</td>
 <td><b>{{r.ae_title}}</b></td>
 <td>{{r.host or 'Not reported by study metadata'}}</td>
 <td>{{r.port or '-'}}</td>
@@ -28,18 +37,17 @@
 <td>{{r.studies_seen}}</td>
 <td>{{r.last_seen_at}}</td>
 <td>
-  {% if r.status != 'APPROVED' %}
   <form method="post" action="{{url_for('pacs_discovery_approve',node_id=r.id)}}" style="display:grid;gap:5px">
-    <select name="node_type"><option {% if r.node_type=='MODALITY' %}selected{% endif %}>MODALITY</option><option {% if r.node_type=='VIEWER' %}selected{% endif %}>VIEWER</option><option>UNKNOWN</option></select>
-    <select name="branch_id"><option value="">No branch</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select>
-    <input name="port" type="number" value="{{r.port or ''}}" placeholder="Port if needed">
-    <input name="notes" placeholder="Notes">
-    <button class="btn primary">Approve</button>
+    <input name="ae_title" value="{{r.ae_title}}" maxlength="16" aria-label="AE Title" required>
+    <input name="host" value="{{r.host}}" aria-label="Source IP" required>
+    <input name="port" type="number" min="1" max="65535" value="{{r.port or ''}}" aria-label="Listener port" required>
+    <label><input name="allow_find" type="checkbox" value="1"> Allow Worklist / C-FIND</label>
+    <label><input name="allow_store" type="checkbox" value="1"> Allow incoming images / C-STORE</label>
+    <button class="btn primary" {% if not ingress_ready %}disabled{% endif %}>{{'Update permissions' if r.status=='APPROVED' else 'Approve in Orthanc'}}</button>
   </form>
-  {% endif %}
-  {% if r.status != 'BLOCKED' %}
+  {% if r.status == 'APPROVED' %}
   <form method="post" action="{{url_for('pacs_discovery_block',node_id=r.id)}}" style="margin-top:5px">
-    <button class="btn">Block</button>
+    <button class="btn" {% if not ingress_ready or r.id not in managed_ids %}disabled{% endif %}>Disable incoming access</button>
   </form>
   {% endif %}
 </td>
