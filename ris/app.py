@@ -2893,6 +2893,64 @@ class ReportVersion(db.Model):
     )
 
 
+# RB_REPORT_EDIT_LEASE_FRESH_BOOTSTRAP_MODEL_V1
+# Keep this SQLAlchemy metadata contract aligned with migration
+# 20260901_001_report_edit_lease.py. Fresh bootstrap uses db.create_all(),
+# so this table must be registered in application metadata as well.
+class ReportEditLease(db.Model):
+    __tablename__ = 'report_edit_lease'
+    __table_args__ = (
+        db.UniqueConstraint(
+            'order_id',
+            name='uq_report_edit_lease_order_id',
+        ),
+        db.Index(
+            'ix_report_edit_lease_expires_at',
+            'expires_at',
+        ),
+    )
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True,
+    )
+    order_id = db.Column(
+        db.Integer,
+        db.ForeignKey('order.id'),
+        nullable=False,
+    )
+    report_id = db.Column(
+        db.Integer,
+        db.ForeignKey('report.id'),
+        nullable=False,
+    )
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id'),
+        nullable=False,
+    )
+    editor_type = db.Column(
+        db.String(32),
+        nullable=False,
+    )
+    lease_token_hash = db.Column(
+        db.String(80),
+        nullable=False,
+    )
+    acquired_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+    )
+    renewed_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+    )
+    expires_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+    )
+
+
 class DoctorSigningKey(db.Model):
     __tablename__ = 'doctor_signing_key'
 
