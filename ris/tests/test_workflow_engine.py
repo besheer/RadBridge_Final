@@ -14,4 +14,4 @@ def test_reception_only_books_to_order():
     assert not can_transition("RECEPTION","ORDERED","IN_PROGRESS").allowed
 
 def test_supervisor_override():
-    assert can_transition("SUPER_ADMIN","FINAL","BOOKED",override=True).allowed
+    assert can_transition("SUPER_ADMIN","EXAM_COMPLETED","BOOKED",override=True).allowed

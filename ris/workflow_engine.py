@@ -17,6 +17,7 @@ Callers remain responsible for transactions, audit records and external I/O.
 """
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Dict, Iterable, Set, Tuple
 
 
@@ -152,8 +153,14 @@ def can_transition(
     state machine and cannot be written through the exam endpoint.
     """
     role_code = _upper(role_code)
-    current = normalize_state(current)
-    target = normalize_state(target)
+    current = _upper(current, "ORDERED")
+    target = _upper(target)
+
+    # Display normalization must never turn an invalid transition into a valid one.
+    if current not in EXAM_STATES:
+        return TransitionDecision(False, "invalid_current_exam_state")
+    if target not in EXAM_STATES:
+        return TransitionDecision(False, "invalid_target_exam_state")
 
     if target == "CANCELLED":
         return TransitionDecision(False, "cancellation_requires_cancellation_workflow")
@@ -212,8 +219,13 @@ def work_order_gate(
     dob = str(patient_dob or "").strip()
     if not dob:
         blockers.append("PATIENT_DOB_REQUIRED_FOR_PACS_MATCH")
-    elif len(dob) != 8 or not dob.isdigit():
+    elif len(dob) != 8 or not dob.isascii() or not dob.isdigit():
         blockers.append("PATIENT_DOB_INVALID_FOR_DICOM")
+    else:
+        try:
+            date(int(dob[:4]), int(dob[4:6]), int(dob[6:8]))
+        except ValueError:
+            blockers.append("PATIENT_DOB_INVALID_FOR_DICOM")
 
     if not str(accession or "").strip():
         blockers.append("ACCESSION_REQUIRED")
@@ -262,8 +274,8 @@ def exam_transition_gate(
     pacs_gate_ok=False,
 ) -> TransitionDecision:
     """Combine role/sequence policy with cross-domain prerequisites."""
-    current = normalize_state(current_exam_status)
-    target = normalize_state(target_exam_status)
+    current = _upper(current_exam_status, "ORDERED")
+    target = _upper(target_exam_status)
     status = _upper(order_status)
 
     decision = can_transition(
