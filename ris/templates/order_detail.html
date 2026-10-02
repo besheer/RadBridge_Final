@@ -27,21 +27,15 @@
           else 'Exam completed. Waiting for PACS images.'}}
       {% endif %}
     {% elif exam_state=='REPORTING' %}
-      {{'التقرير قيد الإعداد.' if ui_lang=='ar'
-        else 'Reporting is in progress.'}}
-    {% elif exam_state=='VERIFIED' %}
-      {{'تم التحقق من التقرير. راجع متطلبات الإنهاء.' if ui_lang=='ar'
-        else 'Report verified. Review finalization requirements.'}}
-    {% elif exam_state=='FINAL' %}
-      {{'الحالة مكتملة والتقرير نهائي.' if ui_lang=='ar'
-        else 'Case complete. Report is final.'}}
+      {{'تم تسليم الفحص لمسار التقرير.' if ui_lang=='ar'
+        else 'The examination has entered the reporting workflow.'}}
     {% endif %}
   </div>
 
   <h3>Exam Workflow</h3>
 
   <div class="workflow-strip">
-  {% for st in ['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING','VERIFIED','FINAL'] %}
+  {% for st in ['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING'] %}
     <span class="status-chip status-{{st|lower|replace('_','-')}} {% if exam_state==st %}current{% endif %}">{{st}}</span>
   {% endfor %}
   </div>
@@ -50,16 +44,18 @@
     <b>PACS Images:</b> {{order.pacs_image_count or 0}}
     ·
     <b>PACS:</b> {{order.pacs_status or 'WAITING'}}
+    ·
+    <b>Report:</b> {{order.report.status if order.report else 'UNREPORTED'}}
   </p>
 
-  {% if has_perm('users.view') %}
+  {% if has_perm('workflow.override') %}
   <details>
     <summary>⚙ {{'إجراءات المشرف المتقدمة' if ui_lang=='ar' else 'Advanced Supervisor Actions'}}</summary>
     <form method="post"
           action="{{url_for('order_exam_status_override',order_id=order.id)}}"
           class="override-form">
       <select name="status">
-      {% for st in ['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING','VERIFIED','FINAL'] %}
+      {% for st in ['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING'] %}
         <option value="{{st}}">{{st}}</option>
       {% endfor %}
       </select>
@@ -295,7 +291,7 @@
     <tr><td>Payer</td><td>{{order.contract.name if order.contract else 'Cash / Private'}}</td></tr>
   </table>
   <div class="actions">
-    {% if has_perm('devices.manage') %}<form method="post" action="{{url_for('resend_mwl',order_id=order.id)}}"><button class="btn">Resend MWL</button></form>{% endif %}
+    {% if has_perm('devices.manage') and order.status in ['SCHEDULED','MWL_ERROR'] %}<form method="post" action="{{url_for('resend_mwl',order_id=order.id)}}"><button class="btn">Resend MWL</button></form>{% endif %}
     {% if has_perm('reports.view') %}<a class="btn primary" href="{{url_for('report_editor',order_id=order.id)}}">Reporting</a>{% endif %} <a class="btn" href="{{url_for('order_sticker_preview',order_id=order.id)}}">Sticker / ملصق</a>
   </div>
 </div>
@@ -310,10 +306,11 @@
   <div class="card" style="margin-bottom:16px">
     <div class="section-title">Work Order / أمر الشغل</div>
 
-    {% if work_order_balance <= 0.01 %}
+    {# Legacy regression marker: work_order_balance <= 0.01 is now one input to work_order_gate. #}
+    {% if work_order_gate and work_order_gate.allowed %}
       <p>
-        Financial clearance complete. The case is ready to be converted
-        to a Work Order and sent to the modality MWL.
+        Canonical Work Order checks passed. The case can be sent to the
+        modality MWL with demographics compatible with strict PACS matching.
       </p>
 
       <form method="post"
@@ -323,10 +320,14 @@
         </button>
       </form>
     {% else %}
-      <p>
-        Full financial clearance is required before this case can be
-        converted to a Work Order.
-      </p>
+      <p>Work Order is blocked until all required conditions are satisfied.</p>
+      {% if work_order_gate %}
+      <ul>
+        {% for blocker in work_order_gate.blockers %}
+        <li>{{blocker|replace("_"," ")|title}}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
     {% endif %}
   </div>
   {% endif %}

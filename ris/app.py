@@ -41,7 +41,20 @@ from docx.shared import Inches
 import os, smtplib, secrets, io, json, re, csv, tempfile, hashlib
 from datetime import datetime, timedelta, date
 from functools import wraps
-from workflow_engine import can_transition, normalize_state
+from workflow_engine import (
+    EXAM_FORWARD_STATES,
+    JOURNEY_STAGES as CANONICAL_JOURNEY_STAGES,
+    blockers_text,
+    can_transition,
+    canonical_display_state,
+    derive_journey_stage,
+    exam_transition_gate,
+    normalize_state,
+    order_status_for_exam_transition,
+    report_source_allowed,
+    resend_mwl_gate,
+    work_order_gate,
+)
 from patient_demographics import resolve_patient_dob
 import uuid
 from flask import Flask, request, redirect, url_for, render_template, flash, send_file, jsonify, session, abort, Response
@@ -3155,19 +3168,17 @@ def process_notification_queue(limit=25):
 # Examination workflow is separate from report workflow.
 # VERIFIED / SECOND_VERIFIED / FINAL belong to REPORT_WORKFLOW_STATUSES
 # and must never be set by the technician exam-status endpoint.
-EXAM_STATUS_ORDER=['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING']
+EXAM_STATUS_ORDER=list(EXAM_FORWARD_STATES)
 
 def exam_status_rank(value):
-    value=(value or 'ORDERED').upper()
+    value=normalize_state(value)
     try:
         return EXAM_STATUS_ORDER.index(value)
     except ValueError:
-        return 1
+        return -1
 
 def exam_transition_allowed(current,target):
-    current=(current or 'ORDERED').upper()
-    target=(target or '').upper()
-    return target in EXAM_STATUS_ORDER and exam_status_rank(target)==exam_status_rank(current)+1
+    return can_transition('SUPER_ADMIN',current,target,override=False).allowed
 
 def _orthanc_auth():
     return (PACS_ORTHANC_USER,PACS_ORTHANC_PASSWORD) if PACS_ORTHANC_USER else None
@@ -6087,6 +6098,18 @@ def order_detail(order_id):
         category='APPROVAL'
     ).order_by(Attachment.created_at.desc()).first()
 
+    work_order_decision=work_order_gate(
+        order_status=order.status,
+        balance=order_balance(order),
+        patient_id=(order.patient.patient_id if order.patient else ''),
+        patient_dob=(order.patient.dob if order.patient else ''),
+        accession=order.accession,
+        modality=order.modality,
+        procedure=order.procedure,
+        device_id=order.device_id,
+        station_ae=order.station_ae,
+    )
+
     return render_template('order_detail.html',order=order,payments=payments,consumables=consumables,
         attachments=attachments,receipts=receipts,delivery_events=delivery_events,
         order_discounts=approved_order_discounts(order),effective_due=effective_patient_due(order),
@@ -6096,7 +6119,8 @@ def order_detail(order_id):
         consumable_cost=order_consumable_cost(order),
         branch_warehouse=default_warehouse_for_order(order),
         insurance_approval=insurance_approval,
-        approval_attachment=approval_attachment)
+        approval_attachment=approval_attachment,
+        work_order_gate=work_order_decision)
 
 
 @app.post('/orders/<int:order_id>/insurance-approval/start')
@@ -6219,22 +6243,38 @@ def insurance_approval_update(order_id):
     return redirect(url_for('order_detail',order_id=order.id))
 
 
-# RB_WORK_ORDER_GATE_V4
+# RB_WORK_ORDER_GATE_V5_CANONICAL
 @app.post('/orders/<int:order_id>/convert-to-work-order')
 @require_perm('orders.create')
 def convert_to_work_order(order_id):
     order=Order.query.get_or_404(order_id)
 
-    if (order.status or '').upper() != 'REGISTERED':
-        flash('Only REGISTERED orders can be converted to Work Orders.','warning')
-        return redirect(url_for('order_detail',order_id=order.id))
+    # Legacy contract marker retained for regression traceability:
+    # order_balance(order) > 0.01 is enforced inside work_order_gate().
+    decision=work_order_gate(
+        order_status=order.status,
+        balance=order_balance(order),
+        patient_id=(order.patient.patient_id if order.patient else ''),
+        patient_dob=(order.patient.dob if order.patient else ''),
+        accession=order.accession,
+        modality=order.modality,
+        procedure=order.procedure,
+        device_id=order.device_id,
+        station_ae=order.station_ae,
+    )
 
-    if order_balance(order) > 0.01:
-        flash('Full financial clearance is required before converting to Work Order.','danger')
-        return redirect(url_for('order_detail',order_id=order.id))
-
-    if not order.device_id or not (order.station_ae or '').strip():
-        flash('Device and Station AE are required before Work Order conversion.','danger')
+    if not decision.allowed:
+        audit(
+            'WORK_ORDER_BLOCKED',
+            'order',
+            order.id,
+            blockers_text(decision.blockers),
+        )
+        db.session.commit()
+        flash(
+            'Work Order blocked: ' + blockers_text(decision.blockers),
+            'danger',
+        )
         return redirect(url_for('order_detail',order_id=order.id))
 
     try:
@@ -6330,21 +6370,27 @@ def convert_to_work_order(order_id):
 def resend_mwl(order_id):
     order=Order.query.get_or_404(order_id)
 
-    # RB_WORK_ORDER_GATE_V3
-    # Administrative resend is only for a case that has already passed
-    # the Work Order gate. It must never activate a REGISTERED case.
-    current_status=(order.status or '').upper()
-    if current_status == 'REGISTERED':
-        flash('Convert this case to Work Order before sending MWL.','warning')
-        return redirect(url_for('order_detail',order_id=order.id))
-    if current_status == 'MWL_PENDING':
-        flash('MWL delivery is already pending for this Work Order.','warning')
+    # RB_WORK_ORDER_GATE_V5_CANONICAL
+    # Legacy regression markers: current_status == 'REGISTERED';
+    # current_status == 'MWL_PENDING'. Both are blocked by resend_mwl_gate().
+    # Resend is recovery only. It cannot activate a REGISTERED/PENDING case
+    # or mutate a case that has already moved into acquisition/reporting.
+    device=route_device(order.branch_id,order.modality) if order.branch_id else None
+    decision=resend_mwl_gate(
+        order_status=order.status,
+        device_available=bool(device),
+    )
+    if not decision.allowed:
+        flash(
+            'MWL resend blocked: ' + blockers_text(decision.blockers),
+            'warning',
+        )
         return redirect(url_for('order_detail',order_id=order.id))
 
-    device=route_device(order.branch_id,order.modality) if order.branch_id else None
-    if device: order.device_id=device.id; order.station_ae=device.ae_title
+    if device:
+        order.device_id=device.id
+        order.station_ae=device.ae_title
     try:
-        if not device: raise ValueError('No active device route')
         send_mwl(order); order.status='SCHEDULED'; flash('MWL sent successfully.','success')
     except Exception as e:
         order.status='MWL_ERROR'; flash(str(e),'danger')
@@ -6940,20 +6986,89 @@ def technician_worklist():
         saved_view_page='TECHNICIAN',
     )
 
+def _apply_exam_transition(order,target,role_code,override=False):
+    current=(order.exam_status or 'ORDERED').upper()
+
+    # Legacy BOOKED cases enter the technician workflow at ORDERED.
+    policy_current=(
+        'ORDERED'
+        if role_code in ('TECHNICIAN','SERVICE')
+        and current=='BOOKED'
+        and target=='IN_PROGRESS'
+        else current
+    )
+
+    pacs_gate_ok=False
+    if target=='REPORTING':
+        pacs_gate_ok,_reason=pacs_demographic_gate(order)
+
+    decision=exam_transition_gate(
+        role_code=role_code,
+        current_exam_status=policy_current,
+        target_exam_status=target,
+        order_status=order.status,
+        override=override,
+        pacs_gate_ok=pacs_gate_ok,
+    )
+
+    if not decision.allowed:
+        return decision,current
+
+    order.exam_status=target
+    order.status=order_status_for_exam_transition(
+        order.status,
+        target,
+    )
+
+    if target=='IN_PROGRESS':
+        order.exam_started_at=order.exam_started_at or datetime.utcnow()
+    elif target=='EXAM_COMPLETED':
+        order.exam_completed_at=order.exam_completed_at or datetime.utcnow()
+
+    return decision,current
+
+
 @app.route('/technician/<int:order_id>/status',methods=['POST'])
 @require_perm('orders.status')
 def technician_status(order_id):
-    order=Order.query.get_or_404(order_id); new=request.form.get('status')
-    if new not in ['ARRIVED','IN_PROGRESS','COMPLETED']: abort(400)
-    order.status=new
-    if new=='COMPLETED':
+    # Legacy compatibility endpoint routed through the canonical exam engine.
+    order=Order.query.get_or_404(order_id)
+    new=(request.form.get('status') or '').upper().strip()
+    role_code=(current_user().role.code if current_user() and current_user().role else '').upper()
+
+    if new=='ARRIVED':
+        if (order.status or '').upper()!='SCHEDULED':
+            flash('ARRIVED requires an active SCHEDULED Work Order.','danger')
+            return redirect(url_for('technician_worklist'))
+        order.status='ARRIVED'
+        audit('ORDER_STATUS','order',order.id,'SCHEDULED->ARRIVED')
+        db.session.commit()
+        flash('Status updated.','success')
+        return redirect(url_for('technician_worklist'))
+
+    target={'IN_PROGRESS':'IN_PROGRESS','COMPLETED':'EXAM_COMPLETED'}.get(new)
+    if not target:
+        abort(400)
+
+    decision,current=_apply_exam_transition(order,target,role_code)
+    if not decision.allowed:
+        flash(
+            f'Invalid workflow transition: {current} → {target}. Reason: {decision.reason}.',
+            'danger',
+        )
+        return redirect(url_for('technician_worklist'))
+
+    if target=='EXAM_COMPLETED':
         # consume default items from stock once; prevent duplicate by a marker in audit
         marker=AuditLog.query.filter_by(action='CONSUMABLES_POSTED',entity='order',entity_id=str(order.id)).first()
         if not marker:
             for n in NursingConsumableEntry.query.filter_by(order_id=order.id,confirmed=True).all():
                 n.consumable.stock_qty=max(0,float(n.consumable.stock_qty or 0)-float(n.actual_qty or 0))
             audit('CONSUMABLES_POSTED','order',order.id,'Nursing-confirmed actual consumables deducted')
-    audit('ORDER_STATUS','order',order.id,new); db.session.commit(); flash('Status updated.','success')
+
+    audit('ORDER_STATUS','order',order.id,f'{current}->{target}')
+    db.session.commit()
+    flash('Status updated.','success')
     return redirect(url_for('technician_worklist'))
 
 
@@ -6994,39 +7109,17 @@ def api_reporting_health():
 def order_exam_status(order_id):
     order=Order.query.get_or_404(order_id)
     target=(request.form.get('status') or '').upper().strip()
-    current=(order.exam_status or 'ORDERED').upper()
+    role_code=(current_user().role.code if current_user() and current_user().role else '').upper()
 
-    role_code=(current_user().role.code if current_user() and current_user().role else '')
-    # RB_TECHNICIAN_BOOKED_START_COMPAT_V1
-    # Start Exam maps the booking state to the technician's
-    # first permitted acquisition transition.
-    policy_current = (
-        'ORDERED'
-        if role_code == 'TECHNICIAN'
-        and current == 'BOOKED'
-        and target == 'IN_PROGRESS'
-        else current
-    )
-    decision=can_transition(
-        role_code,
-        policy_current,
+    decision,current=_apply_exam_transition(
+        order,
         target,
+        role_code,
         override=False,
     )
     if not decision.allowed:
         flash(f'Invalid workflow transition: {current} → {target}. Reason: {decision.reason}.','danger')
         return redirect(request.referrer or url_for('technician_worklist'))
-
-    order.exam_status=target
-    if target=='IN_PROGRESS':
-        order.exam_started_at=datetime.utcnow()
-        if order.status not in ('FINAL','CANCELLED'): order.status='IN_PROGRESS'
-    elif target=='EXAM_COMPLETED':
-        order.exam_completed_at=datetime.utcnow()
-        if order.status not in ('FINAL','CANCELLED'): order.status='COMPLETED'
-    elif target=='REPORTING':
-        if order.status not in ('FINAL','CANCELLED'):
-            order.status='REPORTING'
 
     audit('EXAM_STATUS_FORWARD','order',order.id,f'{current}->{target}')
     enqueue_event('EXAM_STATUS_CHANGED','order',order.id,{'from':current,'to':target,'accession':order.accession})
@@ -7063,8 +7156,18 @@ def order_exam_status_override(order_id):
     if len(reason)<5:
         flash('Supervisor override requires a reason.','danger')
         return redirect(request.referrer or url_for('order_detail',order_id=order.id))
-    old=(order.exam_status or 'ORDERED').upper()
-    order.exam_status=target
+
+    role_code=(current_user().role.code if current_user() and current_user().role else '').upper()
+    decision,old=_apply_exam_transition(
+        order,
+        target,
+        role_code,
+        override=True,
+    )
+    if not decision.allowed:
+        flash(f'Override blocked: {decision.reason}.','danger')
+        return redirect(request.referrer or url_for('order_detail',order_id=order.id))
+
     audit('EXAM_STATUS_OVERRIDE','order',order.id,f'{old}->{target} reason={reason}')
     enqueue_event('EXAM_STATUS_OVERRIDE','order',order.id,{'from':old,'to':target,'reason':reason,'accession':order.accession})
     db.session.commit()
@@ -7087,10 +7190,9 @@ def pacs_home():
 @app.route('/pacs/tracking')
 @require_perm('orders.view')
 def pacs_tracking():
+    # Read-only page load. PACS synchronization is an explicit POST to
+    # /pacs/tracking/refresh (or a background worker), never a GET side effect.
     rows=Order.query.order_by(Order.scheduled.desc()).limit(300).all()
-    for order in rows:
-        pacs_lookup_order(order)
-    db.session.commit()
     return render_template('pacs_tracking.html',rows=rows)
 
 @app.post('/pacs/tracking/refresh')
@@ -9674,7 +9776,7 @@ def ribbon_actions_for_user(user=None,context='GLOBAL'):
         })
     return sorted(out,key=lambda x:x['order_no'])
 
-JOURNEY_STAGES=['REGISTERED','WAITING','NURSING','TECHNICIAN','EXAM_DONE','PACS_RECEIVED','REPORTING','FINALIZED','DELIVERED']
+JOURNEY_STAGES=list(CANONICAL_JOURNEY_STAGES)
 
 def ensure_journey(order,stage='REGISTERED',notes=''):
     stage=(stage or 'REGISTERED').upper()
@@ -9685,9 +9787,43 @@ def ensure_journey(order,stage='REGISTERED',notes=''):
     db.session.add(ev);return ev
 
 def journey_snapshot(order):
+    # Journey is a projection, not an independently writable lifecycle.
     evs=JourneyEvent.query.filter_by(order_id=order.id).order_by(JourneyEvent.entered_at).all()
-    cur=next((x for x in reversed(evs) if x.completed_at is None),None)
-    return {'events':evs,'current':cur,'stage':cur.stage if cur else (evs[-1].stage if evs else 'REGISTERED')}
+    report=getattr(order,'report',None)
+    stage=derive_journey_stage(
+        order_status=order.status,
+        exam_status=order.exam_status,
+        pacs_status=order.pacs_status,
+        pacs_image_count=order.pacs_image_count,
+        report_status=(report.status if report else 'UNREPORTED'),
+        report_delivered=bool(order.report_delivered),
+        images_delivered=bool(order.images_delivered),
+    )
+
+    cur=next((x for x in reversed(evs) if x.completed_at is None and x.stage==stage),None)
+
+    entered_at=None
+    if cur:
+        entered_at=cur.entered_at
+    elif stage=='TECHNICIAN':
+        entered_at=order.exam_started_at
+    elif stage=='EXAM_DONE':
+        entered_at=order.exam_completed_at
+    elif stage=='PACS_RECEIVED':
+        entered_at=order.pacs_last_seen_at
+    elif stage in ('REPORTING','FINALIZED') and report:
+        entered_at=(report.finalized_at if stage=='FINALIZED' else report.updated_at)
+    elif stage=='DELIVERED':
+        entered_at=order.report_delivered_at or order.images_delivered_at
+    else:
+        entered_at=order.created_at or order.scheduled
+
+    return {
+        'events':evs,
+        'current':cur,
+        'stage':stage,
+        'entered_at':entered_at,
+    }
 
 def role_dashboard_kind(user=None):
     user=user or current_user();code=(user.role.code if user and user.role else '').upper()
@@ -13499,33 +13635,26 @@ def schedule_book():
     return _rb_calendar_redirect(scheduled,branch.id,device.id)
 
 @app.post('/orders/<int:order_id>/workflow-status')
-@login_required
+@require_perm('orders.status')
 def order_workflow_status(order_id):
+    # Compatibility endpoint: lifecycle state is derived, never directly written.
     order=Order.query.get_or_404(order_id)
     target=(request.form.get('status') or '').strip().upper().replace(' ','_')
-    allowed={'BOOKED','ORDERED','IN_PROGRESS','REPORTING','VERIFIED','FINAL'}
-    if target not in allowed:
-        abort(400)
+    report=getattr(order,'report',None)
+    projected=canonical_display_state(
+        order_status=order.status,
+        exam_status=order.exam_status,
+        report_status=(report.status if report else 'UNREPORTED'),
+    )
 
-    # Preserve current order/report schema. Store workflow state only when a compatible
-    # existing field is available; otherwise derive it from existing clinical state.
-    if hasattr(order,'workflow_status'):
-        order.workflow_status=target
-    elif hasattr(order,'status'):
-        order.status=target
+    if target and target != projected:
+        flash(
+            f'Direct workflow status changes are disabled. Current canonical state: {projected}.',
+            'warning',
+        )
+    else:
+        flash(f'Canonical workflow state: {projected}.','info')
 
-    # For reporting states, keep report approval logic authoritative.
-    if target in {'REPORTING','VERIFIED','FINAL'}:
-        report=Report.query.filter_by(order_id=order.id).order_by(Report.id.desc()).first()
-        if report and target in {'VERIFIED','FINAL'}:
-            # Do not bypass existing approval rules; only mirror if already compatible.
-            if target=='VERIFIED' and (report.status or '').upper() in {'VERIFIED','SECOND_VERIFIED','FINAL'}:
-                pass
-            elif target=='FINAL' and (report.status or '').upper()=='FINAL':
-                pass
-
-    db.session.commit()
-    flash('Workflow status updated.','success')
     return redirect(request.referrer or url_for('schedule_calendar'))
 
 
@@ -14351,11 +14480,19 @@ def operations_journey():
     return render_template('operations_journey.html',rows=rows,q=q,stages=JOURNEY_STAGES)
 
 @app.post('/orders/<int:order_id>/journey/<stage>')
-@login_required
+@require_perm('workflow.override')
 def order_journey_stage(order_id,stage):
-    o=Order.query.get_or_404(order_id);stage=(stage or '').upper()
-    if stage not in JOURNEY_STAGES:abort(400)
-    ensure_journey(o,stage,(request.form.get('notes') or '').strip());audit('JOURNEY_STAGE','order',o.id,stage);db.session.commit()
+    # Legacy endpoint retained for links; Journey itself is read-only/derived.
+    o=Order.query.get_or_404(order_id)
+    requested=(stage or '').upper()
+    if requested not in JOURNEY_STAGES:
+        abort(400)
+
+    projected=journey_snapshot(o)['stage']
+    flash(
+        f'Patient Journey is derived from clinical state. Current stage: {projected}.',
+        'info' if requested==projected else 'warning',
+    )
     return redirect(request.referrer or url_for('operations_journey'))
 
 @app.get('/operations/booking-board')
@@ -14375,7 +14512,7 @@ def operations_dashboard():
         snap=journey_snapshot(o);st=snap['stage']
         if st in ('WAITING','NURSING','TECHNICIAN'):waiting.append(o)
         if st in ('EXAM_DONE','PACS_RECEIVED','REPORTING'):unreported.append(o)
-        if snap['current'] and (datetime.utcnow()-snap['current'].entered_at).total_seconds()>3600:delayed.append(o)
+        if snap.get('entered_at') and (datetime.utcnow()-snap['entered_at']).total_seconds()>3600:delayed.append(o)
     cash=refund=0.0
     if kind in ('CASHIER','MANAGEMENT'):
         cash=sum(float(x.amount or 0) for x in Payment.query.filter(Payment.created_at>=start,Payment.created_at<end).all())
@@ -15102,14 +15239,16 @@ def report_upload(order_id):
 @require_perm('reports.view')
 def report_source(order_id):
     order=Order.query.get_or_404(order_id)
-    report=get_report(order)
+    report=Report.query.filter_by(order_id=order.id).first()
+    if not report:
+        abort(404)
 
-    # In normal workflow, expose the currently finalized report only.
-    path=None
-    if report.status=='FINAL':
-        path=report.source_path or report.docx_path or report.pdf_path
-    else:
-        path=report.source_path or report.docx_path or report.pdf_path
+    # Public/source download is FINAL-only. Draft/verified working copies
+    # stay inside their authenticated editor/version endpoints.
+    if not report_source_allowed(report.status):
+        abort(409,'Report source is available only after FINAL.')
+
+    path=report.source_path or report.docx_path or report.pdf_path
 
     if not path or not os.path.exists(path):
         abort(404)
