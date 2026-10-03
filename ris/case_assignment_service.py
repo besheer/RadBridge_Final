@@ -164,6 +164,8 @@ def assign_case_atomically(
     order = _lock_order(session, Order, order_id)
     _assert_assignable_lifecycle(session, Report, order)
     doctor = _load_assignable_doctor(session, User, doctor_user_id)
+    from assignment_distribution import validate_special_doctor
+    validate_special_doctor(order,doctor)
     active_rows = _locked_active_assignments(session, CaseAssignment, order.id)
 
     synchronized = (
@@ -172,6 +174,9 @@ def assign_case_atomically(
         and getattr(order, "assigned_doctor_id", None) == doctor.id
     )
     if synchronized:
+        if _upper(assignment_type) == 'MANUAL':
+            active_rows[0].assignment_type = 'MANUAL'
+            active_rows[0].start_deadline_at = None
         _cancel_pending_offers(
             session,
             AssignmentOffer,
@@ -189,6 +194,9 @@ def assign_case_atomically(
     occupied = bool(active_rows or getattr(order, "assigned_doctor_id", None))
     if require_unassigned and occupied:
         raise CaseAssignmentServiceError("CASE_ALREADY_ASSIGNED")
+
+    from assignment_distribution import prepare_auto_assignment
+    deadline = prepare_auto_assignment(order, doctor, _upper(assignment_type), now)
 
     _cancel_pending_offers(
         session,
@@ -210,6 +218,7 @@ def assign_case_atomically(
         active=True,
         assigned_at=now,
         notes=str(notes or "")[:500],
+        **deadline,
     )
     session.add(assignment)
 
@@ -248,6 +257,8 @@ def accept_offer_atomically(
     if probe is None:
         raise CaseAssignmentServiceError("ASSIGNMENT_OFFER_NOT_FOUND")
 
+    from assignment_visit_grouping import group_members
+    group_members(session.query(Order).filter(Order.id == probe.order_id).one(), lock=True)
     order = _lock_order(session, Order, probe.order_id)
     offer = (
         session.query(AssignmentOffer)
@@ -268,7 +279,8 @@ def accept_offer_atomically(
         offer.responded_at = now
         raise CaseAssignmentServiceError("ASSIGNMENT_OFFER_EXPIRED")
 
-    result = assign_case_atomically(
+    from assignment_visit_grouping import assign_visit_atomically
+    result = assign_visit_atomically(
         db=db,
         Order=Order,
         User=User,

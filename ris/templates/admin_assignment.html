@@ -2,7 +2,9 @@
 {% from "_action_guidance.html" import action_info %}
 {% block page_title %}Assignment Engine{% endblock %}
 {% block subtitle %}Doctor availability, modalities, workload and auto-assignment rules{% endblock %}
-{% block content %}
+{% block content %}<div class="panel"><a class="btn" href="{{url_for('admin_assignment_monitor')}}">{{'متابعة الأطباء والحالات' if ui_lang=='ar' else 'Doctors & Cases Monitor'}}</a> <a class="btn" href="{{url_for('coordinator_assignments')}}">{{'منسق التوزيع' if ui_lang=='ar' else 'Assignment Coordinator'}}</a></div>
+<div class="panel"><a class="btn" href="{{url_for('admin_assignment_visits')}}">{{'ربط فحوصات الزيارة واختيار الطبيب' if ui_lang=='ar' else 'Link Visit Examinations & Choose Doctor'}}</a></div>
+<div class="panel"><a class="btn primary" href="{{url_for('admin_assignment_distribution')}}">{{'التوزيع العادل ومهلة بدء القراءة' if ui_lang=='ar' else 'Configure Round-Robin & Reading Deadlines'}}</a></div>
 <div class="panel">
   <table>
     <thead><tr><th>Doctor</th><th>Modalities</th><th>Specialties</th><th>Branches</th><th>Max Active</th><th>Auto</th><th>Available</th><th>Weight</th><th></th></tr></thead>

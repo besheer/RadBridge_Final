@@ -163,6 +163,14 @@ def acquire_or_renew_lease(
 
     now = _utcnow()
     expires = now + timedelta(seconds=int(lease_seconds))
+    from assignment_visit_grouping import group_members
+    group_members(order,lock=True)
+    db.session.execute(text('SELECT id FROM "order" WHERE id = :id FOR UPDATE'), {'id': int(order.id)})
+    # Refresh ownership after acquiring the lock: the deadline worker may
+    # have won the race before this edit session began.
+    owner = db.session.execute(text('SELECT assigned_doctor_id FROM "order" WHERE id = :id'), {'id': int(order.id)}).scalar()
+    if _role_code(user) in ('RADIOLOGIST', 'DOCTOR') and owner != int(user.id):
+        raise ReportRoleDenied('REPORT_CASE_NOT_ASSIGNED')
 
     db.session.execute(
         text("""
@@ -247,6 +255,9 @@ def acquire_or_renew_lease(
             "expires": expires,
         },
     )
+
+    from assignment_distribution import mark_reading_started
+    mark_reading_started(order.id, user.id)
 
     return LeaseState(
         order_id=int(order.id),

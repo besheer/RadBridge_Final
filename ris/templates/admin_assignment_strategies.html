@@ -10,6 +10,8 @@ Configure, edit and clone assignment behavior without changing code
 {% endblock %}
 
 {% block content %}
+<div class="panel"><a class="btn" href="{{url_for('admin_assignment_visits')}}">{{'ربط فحوصات الزيارة واختيار الطبيب' if ui_lang=='ar' else 'Link Visit Examinations & Choose Doctor'}}</a></div>
+<div class="panel"><a class="btn primary" href="{{url_for('admin_assignment_distribution')}}">{{'التوزيع العادل ومهلة بدء القراءة' if ui_lang=='ar' else 'Configure Round-Robin & Reading Deadlines'}}</a></div>
 
 <div class="panel">
 

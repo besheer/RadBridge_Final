@@ -122,6 +122,7 @@
   }
   function card(c) {
     const el = node('article', undefined, 'rb-case-card');
+    if(c.linked_visit){el.classList.add('rb-linked-visit');el.append(node('strong',say('Linked visit · ','زيارة مرتبطة · ')+c.visit_exam_count+say(' examinations',' فحوصات')));}
     const copy = node('div', undefined, 'rb-case-copy');
     copy.append(node('strong', c.accession + ' · ' + c.patient));
     if (c.source === 'EXTERNAL') copy.append(node('small', say('External center: ', 'مركز خارجي: ') + c.center));
@@ -245,6 +246,7 @@
     head.append(headRow); table.append(head);
     scoped.forEach(c => {
       const row = document.createElement('tr');
+      if(c.linked_visit){row.classList.add('rb-linked-visit');row.title=say('Linked patient visit: ','زيارة مريض مرتبطة: ')+c.visit_exam_count;}
       const minutes = value => value === null || value === undefined ? '-' : `${value}m`;
       const yesNo = value => value ? say('Yes','نعم') : say('No','لا');
       const values = {priority:c.priority,accession:c.accession,patient_id:c.patient_id,patient:c.patient,patient_worklist:c.patient_worklist||'-',dob:c.dob||'-',sex:c.sex||'-',procedure:c.procedure,modality:c.modality,body_part:c.body_part||'-',contrast:yesNo(c.contrast),branch:c.branch||'-',device:c.device||'-',room:c.room||'-',station_ae:c.station_ae||'-',referring_doctor:c.referring_doctor||'-',assigned_doctor:c.assigned_doctor||'-',performing_doctor:c.performing_doctor||'-',clinical_indication:c.clinical_indication||'-',clinical_history:c.clinical_history||'-',clinical_diagnosis:c.clinical_diagnosis||'-',allergy_notes:c.allergy_notes||'-',status:c.status,exam_status:c.exam_status||'-',pacs_status:c.pacs_status||'-',images:String(c.images),attachment_count:String(c.attachment_count??0),prior_count:String(c.prior_count??0),study_instance_uid:c.study_instance_uid||'-',report_status:c.report_status||'UNREPORTED',reported_by:c.reported_by||'-',verified_by:c.verified_by||'-',verified_at:c.verified_at||'-',second_verified_by:c.second_verified_by||'-',second_verified_at:c.second_verified_at||'-',finalized_by:c.finalized_by||'-',finalized_at:c.finalized_at||'-',report_updated_at:c.report_updated_at||'-',report_delivered:yesNo(c.report_delivered),images_delivered:yesNo(c.images_delivered),sla_status:c.sla_status||'-',sla_elapsed_minutes:minutes(c.sla_elapsed_minutes),sla_remaining_minutes:minutes(c.sla_remaining_minutes),scheduled_at:c.scheduled_at||'-',assigned_at:c.assigned_at||'-',exam_started_at:c.exam_started_at||'-',exam_completed_at:c.exam_completed_at||'-',pacs_last_seen_at:c.pacs_last_seen_at||'-',center:c.source==='EXTERNAL'?(c.center||say('External','خارجي')):say('Internal','داخلي')};
@@ -255,7 +257,13 @@
           const width=layout.widths[key]||390; cell.style.width=`${width}px`; cell.style.minWidth=cell.style.width; cell.style.maxWidth=cell.style.width;
           const controls=node('div',undefined,'rb-doctor-action-buttons'), details=node('button',say('Details','تفاصيل'),'btn small'), link=node('a',say('Open study','فتح الفحص'),'btn primary');
           details.type='button'; controls.append(details);
-          if(c.has_linked_study){link.href=openLink(c.open_url);link.target='_blank';link.rel='noopener';controls.append(link);}
+          if(c.has_linked_study){
+            link.href=openLink(c.open_url);link.target='_blank';link.rel='noopener';controls.append(link);
+            if(c.start_url && !['VERIFIED','FINAL','CANCELLED'].includes(c.status)){
+              const startForm=document.createElement('form');startForm.method='POST';startForm.action=c.start_url;startForm.target='_blank';
+              const startButton=document.createElement('button');startButton.className='btn primary';startButton.textContent=say('Start Reading','بدء القراءة');startForm.append(startButton);controls.append(startForm);
+            }
+          }
           else controls.append(node('span',say('No linked study','لا توجد دراسة مرتبطة'),'rb-doctor-no-study'));
           if(c.return_allowed&&c.return_url){const returned=node('a',say('Return for review','إرجاع للمراجعة'),'btn small');returned.href=safeReturnLink(c.return_url);controls.append(returned);}
           detailsButton=details; cell.append(controls); row.append(cell); return;

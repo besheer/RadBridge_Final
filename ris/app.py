@@ -1323,6 +1323,31 @@ class AssignmentStrategyVersion(db.Model):
     )
 
 
+class AssignmentVisit(db.Model):
+    __tablename__ = 'assignment_visit'
+    sequence_id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String(36), nullable=False, unique=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'))
+    visit_date = db.Column(db.Date, nullable=False)
+    preferred_doctor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+
+class AssignmentDistributionPolicy(db.Model):
+    __tablename__ = 'assignment_distribution_policy'
+    id = db.Column(db.Integer, primary_key=True)
+    selection_mode = db.Column(db.String(30), nullable=False, default='LEAST_ACTIVE')
+    max_active_cases = db.Column(db.Integer, nullable=False, default=20)
+    reclaim_enabled = db.Column(db.Boolean, nullable=False, default=True)
+    urgent_percent = db.Column(db.Integer, nullable=False, default=50)
+    stat_percent = db.Column(db.Integer, nullable=False, default=25)
+    rules_json = db.Column(db.Text, nullable=False)
+    special_rules_json = db.Column(db.Text, nullable=False, default='[]')
+    version_no = db.Column(db.Integer, nullable=False, default=1)
+    updated_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class AssignmentOffer(db.Model):
     id=db.Column(db.Integer,primary_key=True)
     order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
@@ -1802,6 +1827,10 @@ class CaseAssignment(db.Model):
     assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
     unassigned_at = db.Column(db.DateTime)
     notes = db.Column(db.String(500), default='')
+    start_deadline_at = db.Column(db.DateTime, index=True)
+    start_timeout_seconds = db.Column(db.Integer)
+    reading_started_at = db.Column(db.DateTime)
+    distribution_snapshot_json = db.Column(db.Text)
     order = db.relationship('Order', foreign_keys=[order_id])
     doctor = db.relationship('User', foreign_keys=[doctor_user_id])
     __table_args__ = (
@@ -1815,6 +1844,8 @@ class CaseAssignment(db.Model):
     )
 
 class Appointment(db.Model):
+    assignment_visit_id = db.Column(db.String(36), db.ForeignKey('assignment_visit.id'), index=True)
+    assignment_special_code = db.Column(db.String(80), default='')
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
     branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'), nullable=False)
@@ -1849,6 +1880,8 @@ class Appointment(db.Model):
     )
 
 class Order(db.Model):
+    assignment_visit_id = db.Column(db.String(36), db.ForeignKey('assignment_visit.id'), index=True)
+    assignment_special_code = db.Column(db.String(80), default='')
     id = db.Column(db.Integer, primary_key=True)
     accession = db.Column(db.String(40), unique=True, nullable=False)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
@@ -4701,7 +4734,7 @@ def auto_assign_order(order, assigned_by=None):
     eligible.sort(key=lambda x:(x[2], -int(x[0].priority_weight or 100), x[1].id))
     profile,user,active_count=eligible[0]
 
-    from case_assignment_service import assign_case_atomically
+    from assignment_visit_grouping import assign_visit_atomically as assign_case_atomically
 
     result=assign_case_atomically(
         db=db,
@@ -4727,7 +4760,7 @@ def manual_assign_order(
     assignment_type='MANUAL',
     require_unassigned=False,
 ):
-    from case_assignment_service import assign_case_atomically
+    from assignment_visit_grouping import assign_visit_atomically as assign_case_atomically
 
     result=assign_case_atomically(
         db=db,
@@ -7332,6 +7365,8 @@ def doctor_workspace_data():
                 'center':external.center.name if external else '',
                 'has_linked_study':bool(o.pacs_study_id),
                 'open_url':url_for('doctor_workspace_open',order_id=o.id),
+                'start_url':url_for('doctor_reading_start',order_id=o.id),
+                **assignment_visit_summary(o),
                 'return_url':url_for('return_case_form',order_id=o.id),
                 'return_allowed':bool((o.status or '').upper() not in ('FINAL','CANCELLED') and
                     (getattr(report,'status','') or '').upper() not in ('VERIFIED','FINAL'))}
@@ -7451,6 +7486,168 @@ def doctor_workspace_open(order_id):
     response=redirect(viewer)
     response.headers['Cache-Control']='no-store'
     return response
+
+
+@app.route('/admin/assignment-visits',methods=['GET','POST'])
+@require_perm('assignment.manage')
+def admin_assignment_visits():
+    from assignment_visit_grouping import create_visit
+    if request.method=='POST':
+        reference=Order.query.get_or_404(request.form.get('reference_id',type=int))
+        ids=request.form.getlist('order_ids',type=int)
+        if not ids or reference.id not in ids:
+            flash('Include the reference examination and at least one case.','warning')
+            return redirect(url_for('admin_assignment_visits',order_id=reference.id))
+        rows=Order.query.filter(Order.id.in_(ids)).order_by(Order.id).populate_existing().with_for_update().all()
+        if len(rows)!=len(set(ids)) or any(o.patient_id!=reference.patient_id or o.branch_id!=reference.branch_id or o.scheduled.date()!=reference.scheduled.date() for o in rows):
+            db.session.rollback();abort(422,description='Visit grouping requires the same patient, branch and visit date.')
+        existing={o.assignment_visit_id for o in rows if o.assignment_visit_id}
+        # An existing visit must be moved as a whole; partial merges could silently
+        # leave hidden siblings assigned under a different preference.
+        if existing:
+            siblings=Order.query.filter(Order.assignment_visit_id.in_(existing)).all()
+            if any(o.id not in ids for o in siblings):
+                db.session.rollback();abort(422,description='Include every examination in the existing visit before merging.')
+        doctor_id=request.form.get('preferred_doctor_id',type=int)
+        if doctor_id and doctor_id not in {u.id for u in assignable_doctors()}:
+            db.session.rollback();abort(422,description='Choose an active reporting doctor.')
+        visit_id=next(iter(existing)) if len(existing)==1 else create_visit(reference.patient_id,reference.branch_id,reference.scheduled)
+        visit=AssignmentVisit.query.filter_by(id=visit_id).with_for_update().first()
+        if visit.patient_id!=reference.patient_id or visit.branch_id!=reference.branch_id: abort(422)
+        from assignment_distribution import policy_snapshot
+        special_code=(request.form.get('special_code') or '').upper()
+        if special_code and special_code not in {r['code'] for r in policy_snapshot()['special_rules'] if r['enabled']}:
+            db.session.rollback();abort(422,description='Choose an enabled special-case rule.')
+        owners={o.assigned_doctor_id for o in rows if o.assigned_doctor_id}
+        if len(owners)>1:
+            db.session.rollback();abort(422,description='Examinations have different owners. Resolve ownership before grouping.')
+        visit.preferred_doctor_id=doctor_id
+        for o in rows:
+            o.assignment_special_code=special_code
+            o.assignment_visit_id=visit_id
+            if o.appointment: o.appointment.assignment_visit_id=visit_id
+        audit('ASSIGNMENT_VISIT_SAVE','assignment_visit',visit_id,f'order_ids={sorted(ids)};preferred_doctor={doctor_id};existing ownership unchanged')
+        db.session.commit()
+        flash('Visit linked. Future eligible examinations prefer the selected doctor.','success')
+        return redirect(url_for('admin_assignment_visits',order_id=reference.id))
+    reference=Order.query.get_or_404(request.args.get('order_id',type=int)) if request.args.get('order_id') else None
+    orders=[];visit=None
+    if reference:
+        orders=Order.query.filter_by(patient_id=reference.patient_id,branch_id=reference.branch_id).filter(func.date(Order.scheduled)==reference.scheduled.date()).order_by(Order.scheduled,Order.id).all()
+        if reference.assignment_visit_id: visit=AssignmentVisit.query.filter_by(id=reference.assignment_visit_id).first()
+    return render_template('admin_assignment_visits.html',reference=reference,orders=orders,visit=visit,doctors=assignable_doctors(),special_rules=__import__('assignment_distribution').policy_snapshot()['special_rules'])
+
+
+@app.get('/admin/assignment-monitor')
+@require_perm('assignment.manage')
+def admin_assignment_monitor():
+    from assignment_monitor import snapshot
+    return render_template('assignment_monitor.html', coordinator=False, **snapshot())
+
+
+@app.get('/coordinator/assignments')
+@require_perm('assignment.manage')
+def coordinator_assignments():
+    from assignment_monitor import snapshot
+    return render_template('assignment_monitor.html', coordinator=True, **snapshot())
+
+
+
+@app.route('/admin/assignment-distribution', methods=['GET', 'POST'])
+@require_perm('assignment.manage')
+def admin_assignment_distribution():
+    from assignment_distribution import policy_snapshot, SELECTION_MODES
+    user = current_user()
+    if not user or not user.role or user.role.code.upper() not in ('SUPER_ADMIN', 'ADMIN'):
+        abort(403)
+    if request.method == 'POST':
+        try:
+            # Serialize first creation as well as updates and reject stale forms.
+            if db.engine.dialect.name == 'postgresql':
+                db.session.execute(text('SELECT pg_advisory_xact_lock(20261003, 1)'))
+            row = AssignmentDistributionPolicy.query.filter_by(id=1).populate_existing().with_for_update().first()
+            before = policy_snapshot()
+            if int(request.form.get('version_no', '-1')) != before['version_no']:
+                raise ValueError('Settings changed in another session. Reload before saving.')
+            mode = request.form.get('selection_mode', '')
+            if mode not in SELECTION_MODES:
+                raise ValueError('Choose a valid distribution method.')
+            def number(name, low, high):
+                value = int(request.form.get(name, ''))
+                if not low <= value <= high:
+                    raise ValueError(f'{name} must be between {low} and {high}.')
+                return value
+            values = dict(selection_mode=mode, max_active_cases=number('max_active_cases',1,1000),
+                urgent_percent=number('urgent_percent',1,100), stat_percent=number('stat_percent',1,100),
+                reclaim_enabled=request.form.get('reclaim_enabled')=='1')
+            columns = [request.form.getlist(name) for name in ('rule_modality','rule_priority','rule_min_images','rule_minutes')]
+            if len(set(map(len,columns))) != 1 or not 1 <= len(columns[0]) <= 100:
+                raise ValueError('Add 1 to 100 complete deadline rules.')
+            rules=[]; seen=set()
+            for modality, priority, threshold, minutes in zip(*columns):
+                modality=modality.strip().upper(); priority=priority.strip().upper()
+                threshold=int(threshold); minutes=int(minutes)
+                if (not re.fullmatch(r'[A-Z0-9]{1,8}|\*',modality)
+                    or priority not in ('*','ROUTINE','URGENT','STAT')
+                    or not 0 <= threshold <= 1000000 or not 1 <= minutes <= 1440):
+                    raise ValueError('Invalid modality, priority, image threshold or deadline (1–1440 minutes).')
+                key=(modality,priority,threshold)
+                if key in seen:
+                    raise ValueError('Duplicate deadline rule. Use a different scope or image threshold.')
+                seen.add(key)
+                rules.append(dict(modality=modality,priority=priority,min_images=threshold,minutes=minutes))
+            if ('*','*',0) not in seen:
+                raise ValueError('Keep a default rule: * modality, * priority, 0 images.')
+            special_rules=[]
+            allowed_ids={u.id for u in assignable_doctors()}
+            special_codes=set()
+            for index in request.form.getlist('special_index'):
+                if not index.isdigit(): raise ValueError('Invalid special rule.')
+                code=(request.form.get('special_code_'+index) or '').strip().upper()
+                label=(request.form.get('special_label_'+index) or '').strip()
+                priority=request.form.get('special_priority_'+index,'*')
+                pattern=(request.form.get('special_pattern_'+index) or '').strip()
+                enabled=request.form.get('special_enabled_'+index)=='1'
+                doctors=request.form.getlist('special_doctors_'+index,type=int)
+                if (not re.fullmatch(r'[A-Z0-9_]{1,80}',code) or code in special_codes
+                    or not label or len(label)>120 or priority not in ('*','ROUTINE','URGENT','STAT')
+                    or len(pattern)>180 or not set(doctors).issubset(allowed_ids)
+                    or (enabled and not doctors)):
+                    raise ValueError('Special rules need a unique code, label and eligible doctors before enabling.')
+                special_codes.add(code)
+                special_rules.append(dict(code=code,label=label,priority=priority,procedure_pattern=pattern,enabled=enabled,doctor_ids=doctors))
+            if len(special_rules)>50: raise ValueError('Use at most 50 special rules.')
+            if row is None:
+                row=AssignmentDistributionPolicy(id=1)
+                db.session.add(row)
+            for name,value in values.items(): setattr(row,name,value)
+            row.rules_json=json.dumps(rules,sort_keys=True)
+            row.special_rules_json=json.dumps(special_rules,sort_keys=True)
+            row.version_no=before['version_no']+1
+            row.updated_by=user.id
+            audit('ASSIGNMENT_DISTRIBUTION_SAVE','assignment_distribution_policy',1,
+                  json.dumps({'before':before,'after':dict(values,rules=rules,special_rules=special_rules,version_no=row.version_no)},sort_keys=True))
+            db.session.commit()
+            flash('Distribution settings saved. New assignments use these deadlines.','success')
+            return redirect(url_for('admin_assignment_distribution'))
+        except (ValueError, TypeError) as exc:
+            db.session.rollback()
+            flash(str(exc) if str(exc) and not str(exc).startswith('invalid literal') else 'Enter valid numbers for limits and deadlines.','warning')
+            return render_template('admin_assignment_distribution.html',policy=policy_snapshot(),doctors=assignable_doctors()),422
+    return render_template('admin_assignment_distribution.html',policy=policy_snapshot(),doctors=assignable_doctors())
+
+
+@app.post('/doctor/cases/<int:order_id>/start-reading')
+@require_perm('reports.view')
+def doctor_reading_start(order_id):
+    from assignment_distribution import mark_reading_started
+    user=current_user()
+    if not doctor_workspace_user(user): abort(403)
+    order=Order.query.get_or_404(order_id)
+    if order.assigned_doctor_id != user.id or not doctor_case_access_allowed(user,order): abort(403)
+    if not mark_reading_started(order.id,user.id): abort(409)
+    db.session.commit()
+    return redirect(url_for('doctor_workspace_open',order_id=order.id))
 
 
 @app.route('/reports')
@@ -11287,7 +11484,7 @@ def assignment_timeout_for(order,policy):
     return max(30,int(policy.routine_timeout_seconds or 300))
 
 def assignment_candidate_users(order,policy):
-    q=User.query.join(Role).filter(User.active.is_(True))
+    q=User.query.filter(User.active.is_(True)).order_by(User.id).with_for_update()
     external_intake=ExternalIntakeCase.query.filter_by(order_id=order.id).first()
     external_doctor_ids=None
     if external_intake:
@@ -11330,15 +11527,16 @@ def assignment_candidate_users(order,policy):
         online=doctor_is_online(u)
         if policy.mode=='ONLINE_ONLY' and not online:
             continue
-        active_cases=CaseAssignment.query.filter_by(doctor_user_id=u.id,active=True).count()
+        from assignment_distribution import active_case_count
+        active_cases=active_case_count(u.id)
         max_cases=(prof.max_active_cases if prof else 20) or 20
         if active_cases>=max_cases:
             continue
         weight=(prof.priority_weight if prof else 100) or 100
         candidates.append((u,online,active_cases,weight))
-    # online first, then lowest load, then highest priority weight
-    candidates.sort(key=lambda x:(0 if x[1] else 1,x[2],-x[3],x[0].id))
-    return [x[0] for x in candidates]
+    from assignment_distribution import rank_candidates
+    from assignment_visit_grouping import prefer_visit_doctor
+    return prefer_visit_doctor(order, rank_candidates(candidates, order=order))
 
 def assignment_offer_channels(policy):
     return [x.strip().upper() for x in (policy.notification_channels or '').split(',') if x.strip()]
@@ -11469,6 +11667,10 @@ def offer_next_doctor(order,created_by=None):
       HYBRID
       MANUAL_ONLY
     """
+
+    from assignment_visit_grouping import visit_ready_for_offer
+    order, visit_reason = visit_ready_for_offer(order)
+    if visit_reason: return None, visit_reason
 
     # RB_UNIFIED_ASSIGNMENT_GUARD_V1
     order = (
@@ -11803,7 +12005,7 @@ def offer_next_doctor(order,created_by=None):
             return None, 'NO_POLICY'
 
 
-        from case_assignment_service import assign_case_atomically
+        from assignment_visit_grouping import assign_visit_atomically as assign_case_atomically
 
         now = datetime.utcnow()
         result = assign_case_atomically(
@@ -11941,6 +12143,8 @@ def coordinate_post_exam_assignment(order,created_by=None,trigger='POST_EXAM_REA
 
 
 def expire_assignment_offers():
+    from assignment_distribution import expire_unstarted_assignments
+    expire_unstarted_assignments()
     now=datetime.utcnow()
     rows=AssignmentOffer.query.filter(
       AssignmentOffer.status=='PENDING',
@@ -13468,6 +13672,8 @@ def schedule_unified_submit():
         priority=(request.form.get('priority') or 'ROUTINE').upper()
         waiting=request.form.get('waiting_list')=='1'
         cursor=scheduled
+        from assignment_visit_grouping import create_visit
+        visit_id=create_visit(patient.id,branch.id,scheduled)
 
         if action=='BOOK':
             for p in procs:
@@ -13484,7 +13690,7 @@ def schedule_unified_submit():
                     patient_id=patient.id,branch_id=branch.id,procedure_id=p.id,
                     device_id=device.id,scheduled=cursor,
                     status='WAITING' if waiting else 'BOOKED',
-                    source='FULL_REGISTRATION_WORKSPACE',
+                    source='FULL_REGISTRATION_WORKSPACE',assignment_visit_id=visit_id,
                     duration_min=duration,priority=priority,waiting_list=waiting,
                     notes=(request.form.get('notes') or '').strip(),
                     created_by=current_user().id
@@ -13516,7 +13722,7 @@ def schedule_unified_submit():
                 referring_doctor_id=referrer or None,scheduled=cursor,
                 status='REGISTERED',gross_price=gross,contract_price=effective,
                 patient_share=patient_share,company_share=company_share,
-                created_by=current_user().id,priority=priority
+                created_by=current_user().id,priority=priority,assignment_visit_id=visit_id
             )
             db.session.add(o); db.session.flush()
             a=Appointment(
@@ -13527,7 +13733,7 @@ def schedule_unified_submit():
                 order_id=o.id,
                 scheduled=cursor,
                 status='REGISTERED',
-                source='FULL_REGISTRATION_WORKSPACE',
+                source='FULL_REGISTRATION_WORKSPACE',assignment_visit_id=visit_id,
                 duration_min=duration,
                 priority=priority,
                 waiting_list=False,
@@ -13614,6 +13820,8 @@ def schedule_book():
     waiting=request.form.get('waiting_list')=='1';priority=(request.form.get('priority') or 'NORMAL').upper();notes=(request.form.get('notes') or '').strip()
     cursor=scheduled;created=[]
     try:
+        from assignment_visit_grouping import create_visit
+        visit_id=create_visit(patient.id,branch.id,scheduled)
         for proc in procedures:
             duration=max(5,int(proc.duration_min or 20))
             if not waiting:
@@ -13623,7 +13831,7 @@ def schedule_book():
             duplicate=Appointment.query.filter_by(patient_id=patient.id,procedure_id=proc.id,scheduled=cursor).filter(Appointment.status!='CANCELLED').first()
             if duplicate:raise ValueError(f'Duplicate booking exists for {proc.name} at {cursor.strftime("%H:%M")}.')
             appt=Appointment(patient_id=patient.id,branch_id=branch.id,procedure_id=proc.id,device_id=device.id,scheduled=cursor,
-                status='WAITING' if waiting else 'BOOKED',source='UNIFIED_CALENDAR',duration_min=duration,priority=priority,waiting_list=waiting,notes=notes,created_by=current_user().id)
+                status='WAITING' if waiting else 'BOOKED',source='UNIFIED_CALENDAR',assignment_visit_id=visit_id,duration_min=duration,priority=priority,waiting_list=waiting,notes=notes,created_by=current_user().id)
             db.session.add(appt);db.session.flush()
             audit('APPOINTMENT_CREATE_UNIFIED','appointment',appt.id,f'{patient.patient_id}; device={device.id}; procedure={proc.id}; {cursor.isoformat()}; duration={duration}')
             created.append(appt);cursor+=timedelta(minutes=duration)
@@ -13723,6 +13931,8 @@ def appointment_action(appointment_id, action):
         order=Order(
             accession=new_accession(),
             patient_id=a.patient_id,
+            assignment_visit_id=a.assignment_visit_id,
+            assignment_special_code=a.assignment_special_code,
             procedure_id=proc.id,
             branch_id=a.branch_id,
             device_id=device.id,
@@ -18509,7 +18719,7 @@ def _strategy_change_summary(before, after):
     if not changes:
         return 'No functional changes'
 
-    return '; '.join(changes)[:1500]
+    return '; '.join(changes)[:500]
 
 
 
@@ -18765,6 +18975,10 @@ def admin_assignment_strategies():
             after_snapshot
         )
 
+        if len(manual_note)>500:
+            db.session.rollback()
+            flash('Change note must be 500 characters or fewer.','warning')
+            return redirect(url_for('admin_assignment_strategies'))
         final_note=manual_note or auto_note
 
         db.session.add(
@@ -30744,6 +30958,15 @@ def pacs_discovery_manual():
 
 
 
+def assignment_visit_summary(order):
+    from assignment_visit_grouping import group_members
+    members=group_members(order)
+    return {'visit_id':order.assignment_visit_id or '', 'visit_exam_count':len(members),
+            'linked_visit':len(members)>1,
+            'special_code':order.assignment_special_code or '',
+            'visit_examinations':[{'order_id':o.id,'modality':o.modality,'procedure':o.procedure} for o in members]}
+
+
 @app.get('/api/assignment/offers/pending')
 @login_required
 def api_assignment_offer_pending():
@@ -30764,6 +30987,7 @@ def api_assignment_offer_pending():
     return jsonify({
         'pending': True,
         'offer_id': row.id,
+        **assignment_visit_summary(o),
         'accession': o.accession,
         'modality': o.modality,
         'procedure': o.procedure,

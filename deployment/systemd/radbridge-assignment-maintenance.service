@@ -1,0 +1,9 @@
+[Unit]
+Description=RadBridge automatic assignment deadline maintenance
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec -e PYTHONDONTWRITEBYTECODE=1 radbridge-ris-95fee0e-canary python /app/assignment_maintenance.py
+TimeoutStartSec=50

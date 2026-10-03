@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block page_title %}{{'مساحة عمل الطبيب' if ui_lang=='ar' else 'Doctor Workspace'}}{% endblock %}
 {% block content %}
+<style>.rb-linked-visit{background:#7c3aed18!important;border-inline-start:4px solid #7c3aed!important}.rb-linked-visit>strong{color:#6d28d9;padding:6px}.rb-linked-offer{border:3px solid #7c3aed!important;background:#f5f3ff!important}</style>
 <main id="rbUnifiedDoctorWorkspace" data-api="{{url_for('doctor_workspace_data')}}"
  data-column-layout-api="{{url_for('doctor_workspace_column_layout_save')}}"
  data-heartbeat="{{url_for('doctor_presence_heartbeat') if me and me.role and me.role.code.upper() in ('RADIOLOGIST','DOCTOR') else ''}}" data-ar="{{'yes' if ui_lang=='ar' else 'no'}}">
