@@ -131,3 +131,17 @@ def assign_reserved_visit(order):
             doctor_user_id=visit.preferred_doctor_id,assignment_type='MANUAL',assigned_by=m.current_user().id,
             notes='Doctor selected during registration; excluded from automatic assignment and withdrawal')
     except CaseAssignmentServiceError as exc: raise ValueError(str(exc)) from exc
+
+
+def allowed_registration_branches():
+    """None means all active branches; ordinary staff use their assigned branch."""
+    import app as m
+    user=m.current_user()
+    if user and user.role and user.role.code in ('SUPER_ADMIN','CALL_CENTER'):
+        return None
+    return [user.branch_id] if user and getattr(user,'branch_id',None) else []
+
+def require_registration_branch(branch_id):
+    import app as m
+    allowed=allowed_registration_branches()
+    if allowed is not None and branch_id not in allowed:m.abort(403)

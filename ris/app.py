@@ -7571,6 +7571,8 @@ def api_registration_visits():
     try: day=datetime.strptime(request.args.get('date',''),'%Y-%m-%d').date()
     except ValueError: return jsonify(error='Invalid visit date'),400
     patient_id=request.args.get('patient_id',type=int);branch_id=request.args.get('branch_id',type=int)
+    from registration_policy import require_registration_branch
+    require_registration_branch(branch_id)
     rows=AssignmentVisit.query.filter_by(patient_id=patient_id,branch_id=branch_id,visit_date=day).order_by(AssignmentVisit.sequence_id.desc()).limit(50).all()
     return jsonify(visits=[dict(id=v.id,label=f'Visit #{v.sequence_id} · {v.visit_date}',assignment_mode=v.assignment_mode or 'AUTO',doctor_id=v.preferred_doctor_id,registration_open=bool(v.registration_open)) for v in rows])
 
@@ -13327,6 +13329,8 @@ def rebuild_intake_summary(intake,commit=True):
 @require_perm('appointments.manage')
 def api_slots():
     device=Device.query.get_or_404(request.args.get('device_id',type=int))
+    from registration_policy import require_registration_branch
+    require_registration_branch(device.branch_id)
     proc=Procedure.query.get_or_404(request.args.get('procedure_id',type=int))
     day_s=request.args.get('date','')
     try:
@@ -13354,10 +13358,21 @@ def schedule_calendar():
     start=datetime.combine(selected,datetime.min.time())
     end=start+timedelta(days=1)
 
+    from registration_policy import allowed_registration_branches,require_registration_branch
+    allowed_branches=allowed_registration_branches()
+    branches_q=Branch.query.filter_by(active=True)
+    if allowed_branches is not None:
+        branches_q=branches_q.filter(Branch.id.in_(allowed_branches))
+    visible_branches=branches_q.order_by(Branch.name).all()
     branch_id=request.args.get('branch_id',type=int)
+    if branch_id:require_registration_branch(branch_id)
+    if not branch_id and allowed_branches is not None:
+        if not visible_branches:abort(403)
+        branch_id=visible_branches[0].id
     selected_device_id=request.args.get('device_id',type=int)
 
     devices_q=Device.query.filter_by(active=True)
+    if allowed_branches is not None:devices_q=devices_q.filter(Device.branch_id.in_(allowed_branches))
     if branch_id:
         devices_q=devices_q.filter(Device.branch_id==branch_id)
     if selected_device_id:
@@ -13398,9 +13413,9 @@ def schedule_calendar():
         slots=slots,
         appointments=appointments,
         calendar_cells=calendar_cells,
-        branches=Branch.query.filter_by(active=True).order_by(Branch.name).all(),
+        branches=visible_branches,
         devices=devices,
-        all_devices=Device.query.filter_by(active=True).order_by(Device.modality,Device.name).all(),
+        all_devices=Device.query.filter_by(active=True).filter(Device.branch_id.in_([b.id for b in visible_branches])).order_by(Device.modality,Device.name).all(),
         procedures=Procedure.query.filter_by(active=True).order_by(Procedure.modality,Procedure.name).all(),
         patients=Patient.query.order_by(Patient.name).limit(1000).all(),
         contracts=Contract.query.filter_by(active=True).order_by(Contract.name).all(),
@@ -13717,6 +13732,8 @@ def schedule_unified_submit():
             raise ValueError('Invalid appointment date/time.')
 
         branch=Branch.query.get_or_404(request.form.get('branch_id',type=int))
+        from registration_policy import require_registration_branch
+        require_registration_branch(branch.id)
         device=Device.query.get_or_404(request.form.get('device_id',type=int))
         if device.branch_id!=branch.id:
             raise ValueError('Selected device does not belong to this branch.')
@@ -13853,6 +13870,8 @@ def schedule_book():
     if not branch_id or not device_id:
         flash('Branch and device are required.','danger');return _rb_calendar_redirect(scheduled,branch_id,device_id)
     branch=Branch.query.get_or_404(branch_id);device=Device.query.get_or_404(device_id)
+    from registration_policy import require_registration_branch
+    require_registration_branch(branch.id)
     if device.branch_id!=branch.id:
         flash('Selected device does not belong to the selected branch.','danger');return _rb_calendar_redirect(scheduled,branch.id,device.id)
     procedure_ids=[]
@@ -13935,7 +13954,10 @@ def order_workflow_status(order_id):
 @app.route('/appointments', methods=['GET','POST'])
 @require_perm('appointments.manage')
 def appointments():
+    from registration_policy import allowed_registration_branches,require_registration_branch
+    allowed=allowed_registration_branches()
     if request.method=='POST':
+        require_registration_branch(request.form.get('branch_id',type=int))
         scheduled=datetime.fromisoformat(request.form['scheduled'])
         a=Appointment(
             patient_id=int(request.form['patient_id']),
@@ -13954,14 +13976,14 @@ def appointments():
         flash('Appointment booked.','success')
         return redirect(url_for('appointments'))
 
-    rows=Appointment.query.order_by(Appointment.scheduled.desc()).limit(500).all()
+    rows=Appointment.query.filter(Appointment.branch_id.in_(allowed) if allowed is not None else True).order_by(Appointment.scheduled.desc()).limit(500).all()
     return render_template(
         'appointments.html',
         rows=rows,
         patients=Patient.query.order_by(Patient.name).all(),
-        branches=Branch.query.filter_by(active=True).order_by(Branch.name).all(),
+        branches=Branch.query.filter_by(active=True).filter(Branch.id.in_(allowed) if allowed is not None else True).order_by(Branch.name).all(),
         procedures=Procedure.query.filter_by(active=True).order_by(Procedure.modality,Procedure.name).all(),
-        devices=Device.query.filter_by(active=True).order_by(Device.modality,Device.name).all()
+        devices=Device.query.filter_by(active=True).filter(Device.branch_id.in_(allowed) if allowed is not None else True).order_by(Device.modality,Device.name).all()
     )
 
 
@@ -13969,6 +13991,8 @@ def appointments():
 @require_perm('appointments.manage')
 def appointment_action(appointment_id, action):
     a=Appointment.query.filter_by(id=appointment_id).with_for_update().first_or_404()
+    from registration_policy import require_registration_branch
+    require_registration_branch(a.branch_id)
     if a.order_id:
         if action=='checkin': return redirect(url_for('order_detail',order_id=a.order_id))
         abort(409)
@@ -14057,6 +14081,8 @@ def appointment_action(appointment_id, action):
 @require_perm('appointments.manage')
 def appointment_edit(appointment_id):
     a=Appointment.query.filter_by(id=appointment_id).with_for_update().first_or_404()
+    from registration_policy import require_registration_branch
+    require_registration_branch(a.branch_id)
     if a.order_id or a.status not in ('BOOKED','CONFIRMED','WAITING'): abort(409)
     patient=Patient.query.filter_by(id=a.patient_id).with_for_update().first_or_404()
     # Patient demographics are shared by visits: never rewrite a converted case.
@@ -14114,6 +14140,8 @@ def appointment_edit(appointment_id):
 @require_perm('appointments.manage')
 def appointment_reschedule(appointment_id):
     a=Appointment.query.filter_by(id=appointment_id).with_for_update().first_or_404()
+    from registration_policy import require_registration_branch
+    require_registration_branch(a.branch_id)
     if a.order_id or a.status not in ('BOOKED','CONFIRMED','WAITING'):
         return jsonify({'ok':False,'error':'Clinical workflow already started'}),409
     try:new_time=datetime.fromisoformat(request.form.get('scheduled',''))
@@ -14141,6 +14169,8 @@ def appointment_reschedule(appointment_id):
 @require_perm('appointments.manage')
 def appointment_status(appointment_id):
     a=Appointment.query.get_or_404(appointment_id)
+    from registration_policy import require_registration_branch
+    require_registration_branch(a.branch_id)
     target=(request.form.get('status') or '').upper()
     allowed={'WAITING','BOOKED','CONFIRMED','CANCELLED','NO_SHOW'}
     if target not in allowed:abort(400)

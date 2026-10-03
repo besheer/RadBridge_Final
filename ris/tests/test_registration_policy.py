@@ -261,3 +261,34 @@ def test_shared_patient_with_converted_order_demographics_locked(monkeypatch):
     response=client.post(f'/appointments/{a.id}/edit',data=dict(name='CODEX UAT forbidden'))
     assert response.status_code==422 and patient.name==original
     assert b'Patient data is locked' in response.data
+
+
+def test_employee_branch_scope_and_call_center_can_choose_other_branch(monkeypatch):
+    admin,branch,device,proc,patient=setup(monkeypatch)
+    other=m.Branch(code='CODEX-UAT-OTHER',name='CODEX UAT Other Branch',active=True)
+    m.db.session.add(other);m.db.session.flush()
+    receptionist=doctor('registration-branch-reception','RECEPTION');receptionist.branch_id=branch.id
+    caller=doctor('registration-branch-callcenter','CALL_CENTER');caller.branch_id=branch.id
+    m.db.session.flush()
+    with m.app.test_request_context('/'):
+        monkeypatch.setattr(m,'current_user',lambda:receptionist)
+        assert policy.allowed_registration_branches()==[branch.id]
+        policy.require_registration_branch(branch.id)
+        from werkzeug.exceptions import Forbidden
+        with pytest.raises(Forbidden):policy.require_registration_branch(other.id)
+        monkeypatch.setattr(m,'current_user',lambda:caller)
+        assert policy.allowed_registration_branches() is None
+        policy.require_registration_branch(other.id)
+
+def test_branch_scope_blocks_forged_calendar_and_registration_requests(monkeypatch):
+    admin,branch,device,proc,patient=setup(monkeypatch)
+    other=m.Branch(code='CODEX-UAT-FORBIDDEN',name='CODEX UAT Forbidden Branch',active=True)
+    m.db.session.add(other);m.db.session.flush()
+    staff=doctor('registration-branch-scoped','RECEPTION');staff.branch_id=branch.id
+    monkeypatch.setattr(m,'current_user',lambda:staff)
+    client=m.app.test_client()
+    with client.session_transaction() as session:session['uid']=staff.id
+    assert client.get(f'/schedule/calendar?branch_id={other.id}').status_code==403
+    before=m.Appointment.query.count()
+    assert client.post('/schedule/unified-submit',data=dict(registration_action='BOOK',scheduled='2037-02-03T10:00:00',branch_id=other.id,device_id=device.id,patient_mode='existing',patient_id=patient.id,procedure_ids=proc.id)).status_code==403
+    assert m.Appointment.query.count()==before
