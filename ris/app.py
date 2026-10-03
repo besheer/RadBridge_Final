@@ -1324,6 +1324,8 @@ class AssignmentStrategyVersion(db.Model):
 
 
 class AssignmentVisit(db.Model):
+    assignment_mode = db.Column(db.String(20), default='AUTO')
+    registration_open = db.Column(db.Boolean, default=False)
     __tablename__ = 'assignment_visit'
     sequence_id = db.Column(db.Integer, primary_key=True)
     id = db.Column(db.String(36), nullable=False, unique=True)
@@ -4927,6 +4929,9 @@ def _rb_registration_v2_create_patient(form,audit_action='PATIENT_CREATE_FROM_CA
     dob=dob_resolution.dob
     phone=(form.get('new_phone') or '').strip()
     national=(form.get('new_national_id') or '').strip()
+    from registration_policy import validate_patient_fields
+    validate_patient_fields(dict(name=name,phone=phone,national_id=national,
+        email=form.get('new_email',''),address=form.get('new_address',''),nationality=form.get('new_nationality','')))
     duplicates=find_duplicate_patients(name,dob,phone,national)
     if duplicates:
         d=duplicates[0]
@@ -4936,8 +4941,10 @@ def _rb_registration_v2_create_patient(form,audit_action='PATIENT_CREATE_FROM_CA
         dob_estimated=dob_resolution.estimated,
         sex=(form.get('new_sex') or '').strip(),phone=phone,national_id=national,
         address=(form.get('new_address') or '').strip(),
+        email=(form.get('new_email') or '').strip(),
         worklist_name=_rb_registration_v2_worklist_name(form))
     db.session.add(patient);db.session.flush()
+    db.session.add(PatientDemographicsExtra(patient_id=patient.id,nationality=(form.get('new_nationality') or '').strip()))
     try: patient.patient_id=generate_patient_id(patient)
     except Exception: patient.patient_id=next_patient_id()
     audit(audit_action,'patient',patient.id,f'{patient.patient_id} {patient.name}')
@@ -5379,6 +5386,12 @@ def new_patient():
         dob=dob_resolution.dob
         phone=request.form.get('phone','').strip()
         national_id=request.form.get('national_id','').strip()
+        from registration_policy import validate_patient_fields
+        try:
+            validate_patient_fields(dict(name=name,phone=phone,national_id=national_id,
+                email=request.form.get('email',''),address=request.form.get('address',''),nationality=request.form.get('nationality','')))
+        except ValueError as exc:
+            return render_template('patient_form.html',duplicates=[],form_data=request.form,error=str(exc)),422
         duplicates=find_duplicate_patients(name,dob,phone,national_id)
         if duplicates and request.form.get('confirm_duplicate')!='1':
             return render_template('patient_form.html',duplicates=duplicates,form_data=request.form),409
@@ -5390,6 +5403,7 @@ def new_patient():
                   email=request.form.get('email','').strip(),
                   worklist_name=(request.form.get('worklist_name','').strip() or arabic_to_latin_name(name)))
         db.session.add(p); db.session.flush(); p.patient_id=generate_patient_id(p)
+        db.session.add(PatientDemographicsExtra(patient_id=p.id,nationality=request.form.get('nationality','').strip()))
         audit('PATIENT_CREATE','patient',p.id,f'{p.patient_id} {p.name}'); db.session.commit()
         flash(
             f'PATIENT_CREATED|{p.patient_id}|{p.name}',
@@ -5502,6 +5516,10 @@ def new_order():
                     request.form
                 )
             p=Patient.query.get_or_404(pid)
+            from registration_policy import validate_patient
+            try: validate_patient(p)
+            except ValueError as exc:
+                return registration_validation_error(str(exc),request.form)
 
         proc_id=request.form.get('procedure_id',type=int)
         branch_id=request.form.get('branch_id',type=int)
@@ -7537,6 +7555,32 @@ def admin_assignment_visits():
         if reference.assignment_visit_id: visit=AssignmentVisit.query.filter_by(id=reference.assignment_visit_id).first()
     return render_template('admin_assignment_visits.html',reference=reference,orders=orders,visit=visit,doctors=assignable_doctors(),special_rules=__import__('assignment_distribution').policy_snapshot()['special_rules'])
 
+
+@app.get('/api/registration/visits')
+@login_required
+def api_registration_visits():
+    _rb_v5462_allow_registration()
+    try: day=datetime.strptime(request.args.get('date',''),'%Y-%m-%d').date()
+    except ValueError: return jsonify(error='Invalid visit date'),400
+    patient_id=request.args.get('patient_id',type=int);branch_id=request.args.get('branch_id',type=int)
+    rows=AssignmentVisit.query.filter_by(patient_id=patient_id,branch_id=branch_id,visit_date=day).order_by(AssignmentVisit.sequence_id.desc()).limit(50).all()
+    return jsonify(visits=[dict(id=v.id,label=f'Visit #{v.sequence_id} · {v.visit_date}',assignment_mode=v.assignment_mode or 'AUTO',doctor_id=v.preferred_doctor_id,registration_open=bool(v.registration_open)) for v in rows])
+
+@app.post('/admin/assignment-visits/<visit_id>/complete-registration')
+@login_required
+def complete_visit_registration(visit_id):
+    _rb_v5462_allow_registration()
+    visit=AssignmentVisit.query.filter_by(id=visit_id).first_or_404()
+    if db.engine.dialect.name=='postgresql':
+        db.session.execute(text('SELECT pg_advisory_xact_lock(20261003, :id)'),{'id':visit.sequence_id})
+    db.session.refresh(visit);visit.registration_open=False
+    audit('VISIT_REGISTRATION_COMPLETE','assignment_visit',visit.id,'Explicit registration completion')
+    db.session.commit()
+    anchor=Order.query.filter_by(assignment_visit_id=visit.id).order_by(Order.id).first()
+    if anchor and visit.assignment_mode!='MANUAL':
+        offer_next_doctor(anchor,created_by=current_user().id)
+    flash('Visit registration complete. Automatic visits still require examination readiness.','success')
+    return redirect(url_for('schedule_calendar',date=visit.visit_date.isoformat(),branch_id=visit.branch_id))
 
 @app.get('/admin/assignment-monitor')
 @require_perm('assignment.manage')
@@ -13351,6 +13395,8 @@ def schedule_calendar():
         contracts=Contract.query.filter_by(active=True).order_by(Contract.name).all(),
         referrers=ReferringDoctor.query.filter_by(active=True).order_by(ReferringDoctor.name).all(),
         document_types=SMART_DOCUMENT_TYPES,
+        registration_field_rules=__import__('registration_policy').field_rules_for_ui(),
+        registration_doctors=assignable_doctors(),
         can_take_payment=has_perm('payments.create'),
         branch_id=branch_id,
         selected_device_id=selected_device_id,
@@ -13416,7 +13462,10 @@ def _rb_v5462_patient(form):
         pid=form.get('patient_id',type=int) or form.get('patient',type=int)
         if not pid:
             raise ValueError('Choose an existing patient.')
-        return Patient.query.get_or_404(pid)
+        patient=Patient.query.get_or_404(pid)
+        from registration_policy import validate_patient
+        validate_patient(patient)
+        return patient
     return _rb_registration_v2_create_patient(
         form,
         audit_action='PATIENT_CREATE_FROM_FULL_REGISTRATION'
@@ -13675,8 +13724,8 @@ def schedule_unified_submit():
         priority=(request.form.get('priority') or 'ROUTINE').upper()
         waiting=request.form.get('waiting_list')=='1'
         cursor=scheduled
-        from assignment_visit_grouping import create_visit
-        visit_id=create_visit(patient.id,branch.id,scheduled)
+        from registration_policy import select_visit
+        visit_id=select_visit(patient,branch,scheduled,procs,request.form)
 
         if action=='BOOK':
             for p in procs:
@@ -13758,6 +13807,8 @@ def schedule_unified_submit():
             orders.append(o); cursor+=timedelta(minutes=duration)
 
         first=orders[0]
+        from registration_policy import assign_reserved_visit
+        assign_reserved_visit(first)
         saved+=_rb_v5462_direct_attachments(patient,order=first)
         _rb_v5462_attach_ocr(patient,request.form.get('ocr_intake_id',type=int),order=first)
         _rb_v5462_payment(orders,request.form)
@@ -13823,8 +13874,9 @@ def schedule_book():
     waiting=request.form.get('waiting_list')=='1';priority=(request.form.get('priority') or 'NORMAL').upper();notes=(request.form.get('notes') or '').strip()
     cursor=scheduled;created=[]
     try:
-        from assignment_visit_grouping import create_visit
-        visit_id=create_visit(patient.id,branch.id,scheduled)
+        from registration_policy import select_visit,validate_patient
+        validate_patient(patient)
+        visit_id=select_visit(patient,branch,scheduled,procedures,request.form)
         for proc in procedures:
             duration=max(5,int(proc.duration_min or 20))
             if not waiting:
@@ -13925,6 +13977,7 @@ def appointment_action(appointment_id, action):
         # Prevent accidental duplicate order from repeated Check-in.
         existing=Order.query.filter_by(patient_id=a.patient_id,procedure_id=a.procedure_id,scheduled=a.scheduled).first()
         if existing:
+            a.order_id=existing.id
             a.status='ARRIVED'
             a.checked_in_at=a.checked_in_at or datetime.utcnow()
             db.session.commit()
@@ -13956,6 +14009,13 @@ def appointment_action(appointment_id, action):
         )
         db.session.add(order)
         db.session.flush()
+
+        from registration_policy import assign_reserved_visit
+        try:
+            a.order_id=order.id
+            assign_reserved_visit(order)
+        except ValueError as exc:
+            db.session.rollback();flash(str(exc),'danger');return redirect(url_for('appointments'))
 
         # RB_WORK_ORDER_GATE_V2
         # Patient arrival is retained on the appointment,
@@ -25025,7 +25085,17 @@ def my_registration_style():
 def admin_field_rules():
     if request.method=='POST':
         row=FieldRule.query.get_or_404(request.form.get('rule_id',type=int))
-        row.data_type=(request.form.get('data_type') or 'ANY').upper()
+        dtype=(request.form.get('data_type') or 'ANY').upper()
+        required=request.form.get('required')=='1';visible=request.form.get('visible')=='1'
+        lengths=[request.form.get(k,type=int) for k in ('min_length','max_length','exact_length')]
+        if dtype not in ('ANY','NUMBERS','LETTERS','ALPHANUM') or (required and not visible) or any(v is not None and v<0 for v in lengths) or (lengths[0] is not None and lengths[1] is not None and lengths[0]>lengths[1]):
+            flash('Invalid rule: a required field must be visible; lengths must be consistent.','danger')
+            return redirect(url_for('admin_field_rules'))
+        if row.field_key=='patient.name' and (not required or not visible):
+            flash('Patient identity name must remain visible and required.','danger')
+            return redirect(url_for('admin_field_rules'))
+        audit('REGISTRATION_FIELD_RULE_UPDATE','field_rule',row.id,f'field={row.field_key};required={required};visible={visible};type={dtype}')
+        row.data_type=dtype
         row.min_length=request.form.get('min_length',type=int); row.max_length=request.form.get('max_length',type=int)
         row.exact_length=request.form.get('exact_length',type=int); row.required=request.form.get('required')=='1'
         row.visible=request.form.get('visible')=='1'; row.updated_by=current_user().id

@@ -467,6 +467,8 @@
  <div><label>Mobile</label><input name="new_phone"></div>
  <div><label>National ID</label><input name="new_national_id"></div>
  <div><label>Address (optional)</label><input name="new_address"></div>
+ <div><label>Email</label><input type="email" name="new_email"></div>
+ <div><label>Nationality</label><input name="new_nationality"></div>
 </div><div class="notice info" style="margin-top:6px"><span id="nameView">—</span> <span class="rb-small">DICOM: <span id="dicomView">—</span></span></div></div>
 
 <div id="existingPane" class="rb-hidden"><label>Search Patient</label><input id="patientSearch"><input type="hidden" name="patient_id" id="patientId"><div class="rb-results" id="patientResults">{% for p in patients %}<button class="rb-result" type="button" data-id="{{p.id}}" data-q="{{(p.patient_id or '')|lower}} {{(p.name or '')|lower}} {{(p.phone or '')|lower}} {{(p.national_id or '')|lower}}"><b>{{p.patient_id}} — {{p.name}}</b><div class="rb-small">{{p.phone or ''}} {{p.national_id or ''}}</div></button>{% endfor %}</div><div id="selectedPatient" class="notice info rb-hidden"></div></div>
@@ -476,6 +478,7 @@
 
 <section class="rb-pane">
 <h3>Visit & Examinations</h3>
+{% include '_registration_assignment_controls.html' %}
 <div class="rb-grid3"><div><label>Priority</label><select name="priority"><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select></div><div><label>Referring Doctor</label><select name="referring_doctor_id"><option value="">—</option>{% for r in referrers %}<option value="{{r.id}}">{{r.name}}</option>{% endfor %}</select></div><div><label>Booking Type</label><select name="waiting_list"><option value="0">Scheduled</option><option value="1">Waiting List</option></select></div></div>
 <div id="examRows" style="margin-top:7px"></div><button class="btn" type="button" id="addExam">+ Add Examination</button>
 
@@ -534,7 +537,7 @@ document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{setMode(b.dat
 function recalc(){let n=0,m=0;examRows.querySelectorAll('select').forEach(s=>{if(s.value){n++;m+=Number(s.selectedOptions[0]?.dataset.duration||0)}});document.getElementById('sCount').textContent=n;document.getElementById('sDuration').textContent=m}
 function addExam(id){const row=document.createElement('div');row.className='rb-exam';const s=document.createElement('select');s.name='procedure_ids';s.required=true;const list=procedures.filter(p=>(p.modality||'').toUpperCase()===modality);s.innerHTML='<option value="">Choose examination...</option>'+list.map(p=>`<option value="${p.id}" data-duration="${p.duration}">${p.name} (${p.duration}m)</option>`).join('');if(id)s.value=String(id);const dur=document.createElement('span'),x=document.createElement('button');x.type='button';x.className='btn';x.textContent='×';function sync(){dur.textContent=(s.selectedOptions[0]?.dataset.duration||'—')+'m';recalc()}s.onchange=()=>{sync();dirty=true};x.onclick=()=>{if(examRows.children.length>1){row.remove();recalc()}};row.append(s,dur,x);examRows.append(row);sync()}
 function addDoc(){const row=document.createElement('div');row.className='rb-doc';row.innerHTML='<input type="file" name="attachment_files"><select name="attachment_categories"><option value="PRESCRIPTION">Prescription</option><option value="APPROVAL">Approval</option><option value="INSURANCE_CARD">Insurance Card</option><option value="IDENTITY">ID</option><option value="PREVIOUS_REPORT">Previous Report</option><option value="QUESTIONNAIRE">Questionnaire</option><option value="OTHER">Other</option></select><input name="attachment_notes" placeholder="Notes"><button type="button" class="btn">×</button>';row.querySelector('button').onclick=()=>row.remove();docRows.append(row)}
-function openWs(cell){const dt=cell.dataset.dt;modality=(cell.dataset.modality||'').toUpperCase();document.getElementById('fScheduled').value=dt;document.getElementById('fDevice').value=cell.dataset.device;document.getElementById('fBranch').value=cell.dataset.branch;document.getElementById('metaDevice').textContent=cell.dataset.name+' · '+modality;document.getElementById('metaDt').textContent=dt.replace('T',' ');document.getElementById('sDevice').textContent=cell.dataset.name;document.getElementById('sStart').textContent=dt.replace('T',' ');examRows.innerHTML='';docRows.innerHTML='';addExam();addDoc();setMode('new');dirty=false;overlay.hidden=false;rbRegistrationValidation()}
+function openWs(cell){const dt=cell.dataset.dt;modality=(cell.dataset.modality||'').toUpperCase();document.getElementById('fScheduled').value=dt;document.getElementById('fDevice').value=cell.dataset.device;document.getElementById('fBranch').value=cell.dataset.branch;document.getElementById('metaDevice').textContent=cell.dataset.name+' · '+modality;document.getElementById('metaDt').textContent=dt.replace('T',' ');document.getElementById('sDevice').textContent=cell.dataset.name;document.getElementById('sStart').textContent=dt.replace('T',' ');examRows.innerHTML='';docRows.innerHTML='';addExam();addDoc();setMode('new');registrationVisit.value='';registrationMultiple.checked=false;document.getElementById('visitLinkControls').classList.add('rb-hidden');document.getElementById('registrationOpen').checked=false;registrationMode.value='AUTO';registrationDoctor.value='';registrationMode.onchange();dirty=false;overlay.hidden=false;loadRegistrationVisits();rbRegistrationValidation()}
 document.querySelectorAll('.rb-add').forEach(b=>b.onclick=()=>openWs(b.closest('.rb-cell')));
 function closeWs(){if(dirty&&!confirm('Discard unsaved changes?'))return;overlay.hidden=true;dirty=false}
 document.getElementById('closeWs').onclick=closeWs;document.getElementById('cancelWs').onclick=closeWs;document.getElementById('addExam').onclick=()=>{addExam();dirty=true};document.getElementById('addDoc').onclick=()=>{addDoc();dirty=true};
@@ -572,7 +575,17 @@ function rbRegistrationValidation(){
    }
  }
 
- const exams=[...examRows.querySelectorAll('select')];
+ if(document.getElementById('fMode').value!=='existing'){
+ for(const [key,rule] of Object.entries(registrationRules)){
+  if(key==='name'||!rule.visible)continue;
+  const input=form.elements['new_'+key];if(!input)continue;const value=input.value.trim();
+  let error=rule.required&&!value?'required':'';
+  if(value){if(rule.exact_length&&value.length!==rule.exact_length)error='invalid length';if(rule.min_length&&value.length<rule.min_length)error='too short';if(rule.max_length&&value.length>rule.max_length)error='too long';if(rule.data_type==='NUMBERS'&&!/^\d+$/.test(value))error='numbers only';}
+  if(error){problems.push(rule.label+': '+error);first=first||input;}
+ }
+}
+if(registrationMode.value==='MANUAL'&&!registrationDoctor.value){problems.push('Choose the reporting doctor.');first=first||registrationDoctor;}
+const exams=[...examRows.querySelectorAll('select')];
  if(!exams.some(x=>x.value)){
    problems.push('Choose at least one examination.');
    first=first||(exams[0]||document.getElementById('addExam'));
@@ -634,6 +647,38 @@ form.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{
  dirty=false
 });
 document.getElementById('calDate').onchange=e=>{const u=new URL(location.href);u.searchParams.set('date',e.target.value);location.href=u};
+// Shared registration field rules; the server repeats every validation.
+const registrationRules={{registration_field_rules|tojson}};
+const registrationMultiple=document.getElementById('visitMultiple');
+const registrationVisit=document.getElementById('registrationVisit');
+const registrationMode=document.getElementById('registrationAssignmentMode');
+const registrationDoctor=document.getElementById('registrationDoctor');
+let registrationVisitRows=[];
+let registrationVisitGeneration=0;
+registrationMultiple.onchange=()=>{document.getElementById('visitLinkControls').classList.toggle('rb-hidden',!registrationMultiple.checked);if(!registrationMultiple.checked){registrationVisit.value='';document.getElementById('registrationOpen').checked=false}loadRegistrationVisits()};
+registrationMode.onchange=()=>{document.getElementById('registrationDoctorBox').classList.toggle('rb-hidden',registrationMode.value!=='MANUAL');rbRegistrationValidation()};
+registrationVisit.onchange=()=>{const v=registrationVisitRows.find(v=>v.id===registrationVisit.value);if(v){registrationMode.value=v.assignment_mode;registrationDoctor.value=v.doctor_id?String(v.doctor_id):'';document.getElementById('registrationOpen').checked=v.registration_open;registrationMode.onchange()}};
+async function loadRegistrationVisits(){
+ const generation=++registrationVisitGeneration;
+ const previous=registrationVisit.value;
+ registrationVisitRows=[];registrationVisit.replaceChildren(new Option('زيارة جديدة / New visit',''));
+ if(document.getElementById('fMode').value!=='existing'||!document.getElementById('patientId').value)return;
+ const params=new URLSearchParams({patient_id:document.getElementById('patientId').value,branch_id:document.getElementById('fBranch').value,date:document.getElementById('fScheduled').value.slice(0,10)});
+ try{const response=await fetch('{{url_for("api_registration_visits")}}?'+params);if(!response.ok)throw new Error();const data=await response.json();if(generation!==registrationVisitGeneration)return;registrationVisitRows=data.visits;
+ for(const v of registrationVisitRows)registrationVisit.add(new Option(v.label,v.id));if(registrationVisitRows.some(v=>v.id===previous))registrationVisit.value=previous;
+ }catch(e){if(generation===registrationVisitGeneration){registrationVisit.replaceChildren(new Option('تعذر تحميل الزيارات؛ حاول مجددًا / Could not load visits',''));}}
+}
+for(const [key,rule] of Object.entries(registrationRules)){
+ if(key==='name')continue;
+ const input=form.elements['new_'+key];if(!input)continue;
+ const container=input.closest('div');if(container)container.classList.toggle('rb-hidden',!rule.visible);
+ input.dataset.registrationRequired=rule.required?'1':'0';
+ if(rule.visible && rule.required && container?.querySelector('label'))container.querySelector('label').textContent+=' *';
+ if(rule.max_length)input.maxLength=rule.max_length;
+}
+document.getElementById('patientResults').addEventListener('click',()=>{loadRegistrationVisits()});
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>loadRegistrationVisits()));
+
 // RB_CALENDAR_EXISTING_PATIENT_DEEP_LINK_V1
 // RB_CALENDAR_MODALITY_DEEP_LINK_V1
 const qs=new URLSearchParams(location.search);

@@ -195,7 +195,12 @@ def assign_case_atomically(
     if require_unassigned and occupied:
         raise CaseAssignmentServiceError("CASE_ALREADY_ASSIGNED")
 
-    from assignment_distribution import prepare_auto_assignment
+    from assignment_distribution import prepare_auto_assignment, AUTO_TYPES
+    if _upper(assignment_type) in AUTO_TYPES and order.assignment_visit_id:
+        import app as m
+        visit=m.AssignmentVisit.query.filter_by(id=order.assignment_visit_id).first()
+        if visit and (visit.assignment_mode=='MANUAL' or visit.registration_open):
+            raise CaseAssignmentServiceError('VISIT_AUTOMATIC_ASSIGNMENT_DISABLED')
     deadline = prepare_auto_assignment(order, doctor, _upper(assignment_type), now)
 
     _cancel_pending_offers(

@@ -1,0 +1,4 @@
+BEGIN;
+ALTER TABLE assignment_visit ADD COLUMN IF NOT EXISTS assignment_mode VARCHAR(20) DEFAULT 'AUTO';
+ALTER TABLE assignment_visit ADD COLUMN IF NOT EXISTS registration_open BOOLEAN DEFAULT FALSE;
+COMMIT;

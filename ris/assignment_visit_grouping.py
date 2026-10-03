@@ -34,6 +34,12 @@ def group_members(order, lock=False):
 def visit_ready_for_offer(order):
     import app as m
     members=group_members(order,lock=True)
+    visit=m.AssignmentVisit.query.filter_by(id=order.assignment_visit_id).first() if order.assignment_visit_id else None
+    if visit:
+        if visit.assignment_mode=='MANUAL': return members[0],'VISIT_MANUAL_RESERVATION'
+        if visit.registration_open: return members[0],'VISIT_REGISTRATION_OPEN'
+        if m.Appointment.query.filter_by(assignment_visit_id=visit.id).filter(m.Appointment.order_id.is_(None),m.Appointment.status.notin_(['CANCELLED','NO_SHOW'])).first():
+            return members[0],'VISIT_BOOKINGS_NOT_CHECKED_IN'
     if len(members)==1: return members[0],None
     if any(o.assigned_doctor_id for o in members):
         return members[0],'VISIT_ALREADY_ASSIGNED'
