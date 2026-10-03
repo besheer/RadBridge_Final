@@ -100,6 +100,21 @@ def assign_reserved_visit(order):
     visit = m.AssignmentVisit.query.filter_by(id=order.assignment_visit_id).first() if order.assignment_visit_id else None
     if not visit or visit.assignment_mode != 'MANUAL': return
     try:
+        doctor=m.User.query.filter_by(id=visit.preferred_doctor_id,active=True).with_for_update().first()
+        if not doctor or not doctor.role or doctor.role.code not in ('RADIOLOGIST','DOCTOR'):
+            raise ValueError('The reserved reporting doctor is no longer active.')
+        profile=m.DoctorAssignmentProfile.query.filter_by(user_id=doctor.id).first()
+        allowed={x.strip().upper() for x in (profile.modalities or '').split(',') if x.strip()} if profile else set()
+        branches={x.strip() for x in (profile.branches or '').split(',') if x.strip()} if profile else set()
+        members=m.Order.query.filter_by(assignment_visit_id=visit.id).all()
+        appointments=m.Appointment.query.filter_by(assignment_visit_id=visit.id).filter(m.Appointment.status.notin_(['CANCELLED','NO_SHOW'])).all()
+        modalities={o.modality.upper() for o in members}|{a.procedure.modality.upper() for a in appointments}
+        if (allowed and not modalities.issubset(allowed)) or (branches and str(visit.branch_id) not in branches):
+            raise ValueError('Reserved doctor must still qualify for every examination in this visit.')
+        from assignment_distribution import validate_special_doctor
+        for a in appointments:
+            planned=m.Order(modality=a.procedure.modality,procedure=a.procedure.name,priority=a.priority,assignment_special_code=a.assignment_special_code)
+            validate_special_doctor(planned,doctor)
         assign_visit_atomically(db=m.db,Order=m.Order,User=m.User,CaseAssignment=m.CaseAssignment,
             Report=m.Report,AssignmentOffer=m.AssignmentOffer,order_id=order.id,
             doctor_user_id=visit.preferred_doctor_id,assignment_type='MANUAL',assigned_by=m.current_user().id,

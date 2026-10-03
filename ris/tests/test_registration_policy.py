@@ -161,3 +161,15 @@ def test_selected_doctor_must_cover_whole_visit(monkeypatch):
     with m.app.test_request_context('/'):
         with pytest.raises(ValueError, match='qualify for every'):
             policy.select_visit(patient, branch, datetime(2037, 2, 3), [proc], MultiDict({'assignment_mode': 'MANUAL', 'selected_doctor_id': u.id}))
+
+
+def test_manual_reservation_rechecks_doctor_scope_before_checkin(monkeypatch):
+    admin,branch,device,proc,patient=setup(monkeypatch)
+    u=doctor('reservation-scope-change')
+    with m.app.test_request_context('/'):
+        vid=policy.select_visit(patient,branch,datetime(2037,2,3),[proc],MultiDict(dict(assignment_mode='MANUAL',selected_doctor_id=u.id)))
+        o=m.Order(accession='CODEX-UAT-SCOPE-CHANGE',patient_id=patient.id,branch_id=branch.id,modality='CT',procedure='Synthetic',scheduled=datetime(2037,2,3),status='REGISTERED',assignment_visit_id=vid)
+        m.db.session.add(o);m.db.session.add(m.DoctorAssignmentProfile(user_id=u.id,modalities='MR',max_active_cases=20));m.db.session.flush()
+        with pytest.raises(ValueError,match='still qualify'):
+            policy.assign_reserved_visit(o)
+        assert o.assigned_doctor_id is None
