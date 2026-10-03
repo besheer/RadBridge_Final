@@ -4,6 +4,13 @@
 {% block subtitle %}One-screen booking, registration, OCR, insurance, documents and payment{% endblock %}
 {% block content %}
 <style>
+@media(max-width:600px){
+ .rb-age-dob{min-width:0;max-width:100%}
+ .rb-age-dob>div:first-child{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+ .rb-age-dob>div:first-child>div:first-child{grid-column:1/-1}
+ .rb-age-dob input:not([type=checkbox]),.rb-age-dob select{min-width:0;max-width:100%;box-sizing:border-box}
+}
+
 .rb-scheduler{
   display:flex;
   flex-direction:column;
