@@ -22,7 +22,7 @@ def setup(monkeypatch):
     m.db.session.add(patient);m.db.session.flush()
     monkeypatch.setattr(m, 'current_user', lambda: admin)
     monkeypatch.setattr(m, 'acquire_booking_slot_lock', lambda *a: None)
-    monkeypatch.setattr(m, 'booking_restriction_reason', lambda *a: None)
+    monkeypatch.setattr(m, 'booking_restriction_reason', lambda *a,**kw: None)
     monkeypatch.setattr(m, 'procedure_available_in_branch', lambda *a: True)
     monkeypatch.setattr(m, 'ensure_journey', lambda *a: None)
     return (admin, branch, device, proc, patient)
@@ -173,3 +173,91 @@ def test_manual_reservation_rechecks_doctor_scope_before_checkin(monkeypatch):
         with pytest.raises(ValueError,match='still qualify'):
             policy.assign_reserved_visit(o)
         assert o.assigned_doctor_id is None
+
+
+@pytest.mark.parametrize('dob,sex', [('', 'M'), ('20000101', ''), ('20000230', 'F'), ('29990101', 'M'), ('20000101', 'INVALID')])
+def test_required_demographics_reject_missing_invalid_values(dob, sex):
+    rule('patient.dob',data_type='ANY',exact_length=None,min_length=0,max_length=None)
+    rule('patient.sex',data_type='ANY',exact_length=None,min_length=0,max_length=None)
+    with m.app.test_request_context('/'), pytest.raises(ValueError):
+        policy.validate_patient_fields(dict(dob=dob,sex=sex))
+
+def test_required_demographics_calendar_exact_and_estimated_dob():
+    rule('patient.dob',data_type='ANY',exact_length=None,min_length=0,max_length=None)
+    rule('patient.sex',data_type='ANY',exact_length=None,min_length=0,max_length=None)
+    with m.app.test_request_context('/'):
+        form=MultiDict(dict(new_first_name='CODEX-UAT',new_middle_name='BirthRequired'))
+        before=m.Patient.query.count()
+        with pytest.raises(ValueError): m._rb_registration_v2_create_patient(form)
+        assert m.Patient.query.count()==before
+        form.update(dict(new_dob='2000-01-01',new_sex='F'))
+        patient=m._rb_registration_v2_create_patient(form)
+        assert patient.dob=='20000101' and patient.sex=='F'
+        form=MultiDict(dict(new_first_name='CODEX-UAT',new_middle_name='AgeRequired',new_age_value='20',new_age_unit='YEARS',new_sex='M'))
+        patient=m._rb_registration_v2_create_patient(form)
+        assert patient.dob and patient.dob_estimated
+
+def test_existing_patient_missing_demographics_cannot_register(monkeypatch):
+    admin,branch,device,proc,patient=setup(monkeypatch)
+    rule('patient.dob',data_type='ANY',exact_length=None,min_length=0,max_length=None)
+    rule('patient.sex',data_type='ANY',exact_length=None,min_length=0,max_length=None)
+    with m.app.test_request_context('/'):
+        with pytest.raises(ValueError): policy.validate_patient(patient)
+        patient.dob='20000101';patient.sex='M'
+        policy.validate_patient(patient)
+
+
+def test_order_linked_booking_cannot_be_edited_or_reopened(monkeypatch):
+    admin,branch,device,proc,patient=setup(monkeypatch)
+    client=m.app.test_client()
+    with client.session_transaction() as session: session['uid']=admin.id
+    client.post('/schedule/unified-submit',data=dict(registration_action='BOOK',scheduled='2037-02-03T10:00:00',branch_id=branch.id,device_id=device.id,patient_mode='existing',patient_id=patient.id,procedure_ids=proc.id))
+    a=m.Appointment.query.filter_by(patient_id=patient.id).one()
+    assert client.post(f'/appointments/{a.id}/checkin').status_code==302
+    order_id=a.order_id
+    a.status='BOOKED';m.db.session.flush()
+    assert client.post(f'/appointments/{a.id}/reschedule',data=dict(scheduled='2037-02-03T12:00:00')).status_code==409
+    assert client.post(f'/appointments/{a.id}/status',data=dict(status='BOOKED')).status_code==409
+    for action in ('confirm','cancel','noshow'):
+        assert client.post(f'/appointments/{a.id}/{action}').status_code==409
+    response=client.post(f'/appointments/{a.id}/checkin')
+    assert response.status_code==302 and response.location.endswith(f'/orders/{order_id}')
+    assert m.Order.query.filter_by(patient_id=patient.id).count()==1
+
+
+def test_three_part_name_required_by_registration_policy():
+    rule('patient.name',data_type='ANY',exact_length=None,min_length=0,max_length=None,regex_pattern=r'\S+(?:\s+\S+){2,}')
+    with m.app.test_request_context('/'):
+        for name in ('CODEX','CODEX UAT'):
+            with pytest.raises(ValueError):policy.validate_patient_fields(dict(name=name))
+        policy.validate_patient_fields(dict(name='CODEX UAT Registration'))
+
+def test_booking_edit_allowed_before_order_and_denied_after(monkeypatch):
+    admin,branch,device,proc,patient=setup(monkeypatch)
+    monkeypatch.setattr(m,'appointment_overlap',lambda *a,**kw: None)
+    client=m.app.test_client()
+    with client.session_transaction() as session:session['uid']=admin.id
+    client.post('/schedule/unified-submit',data=dict(registration_action='BOOK',scheduled='2037-02-03T10:00:00',branch_id=branch.id,device_id=device.id,patient_mode='existing',patient_id=patient.id,procedure_ids=proc.id))
+    a=m.Appointment.query.filter_by(patient_id=patient.id).one()
+    assert client.get(f'/appointments/{a.id}/edit').status_code==200
+    response=client.post(f'/appointments/{a.id}/edit',data=dict(name='CODEX UAT Changed',phone='01012345678',dob='2000-01-01',sex='F',scheduled='2037-02-03T10:30:00',procedure_id=proc.id,device_id=device.id))
+    assert response.status_code==302
+    assert patient.name=='CODEX UAT Changed' and patient.dob=='20000101' and patient.sex=='F'
+    assert a.scheduled.hour==10 and a.scheduled.minute==30
+    assert client.post(f'/appointments/{a.id}/checkin').status_code==302
+    assert client.get(f'/appointments/{a.id}/edit').status_code==409
+    assert client.post(f'/appointments/{a.id}/edit',data=dict(name='CODEX UAT forbidden')).status_code==409
+    assert patient.name=='CODEX UAT Changed'
+
+def test_shared_patient_with_converted_order_demographics_locked(monkeypatch):
+    admin,branch,device,proc,patient=setup(monkeypatch)
+    order=m.Order(accession='CODEX-UAT-LOCKED',patient_id=patient.id,branch_id=branch.id,device_id=device.id,modality=proc.modality,procedure=proc.name,procedure_id=proc.id,scheduled=datetime(2037,2,2),status='SCHEDULED')
+    m.db.session.add(order);m.db.session.flush()
+    client=m.app.test_client()
+    with client.session_transaction() as session:session['uid']=admin.id
+    client.post('/schedule/unified-submit',data=dict(registration_action='BOOK',scheduled='2037-02-03T10:00:00',branch_id=branch.id,device_id=device.id,patient_mode='existing',patient_id=patient.id,procedure_ids=proc.id))
+    a=m.Appointment.query.filter_by(patient_id=patient.id).one()
+    original=patient.name
+    response=client.post(f'/appointments/{a.id}/edit',data=dict(name='CODEX UAT forbidden'))
+    assert response.status_code==422 and patient.name==original
+    assert b'Patient data is locked' in response.data

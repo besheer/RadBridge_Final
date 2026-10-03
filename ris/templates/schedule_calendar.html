@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block page_title %}Scheduler & Registration{% endblock %}
+{% block page_title %}Scheduler & Registration
+{% endblock %}
 {% block subtitle %}One-screen booking, registration, OCR, insurance, documents and payment{% endblock %}
 {% block content %}
 <style>
@@ -433,7 +434,10 @@
    {% set outside_hours=(slot_hm < work_start or slot_hm >= work_end) %}
    <div class="rb-cell{% if cell and cell.occupied %} rb-occupied{% endif %}{% if outside_hours %} rb-outside-hours{% endif %}" data-device="{{d.id}}" data-branch="{{d.branch_id}}" data-name="{{d.name}}" data-modality="{{d.modality}}" data-work-start="{{work_start}}" data-work-end="{{work_end}}" data-dt="{{slot.strftime('%Y-%m-%dT%H:%M')}}" {% if outside_hours %}title="{{'خارج ساعات العمل' if ui_lang=='ar' else 'Outside working hours'}} · {{work_start}}-{{work_end}}"{% endif %}>
     {% if cell and cell.starts %}
-      {% for a in cell.starts %}<div class="rb-appt">{% if a.order_id %}<a href="{{url_for('order_detail',order_id=a.order_id)}}">{% endif %}<b>{{a.patient.name}}</b><div>{{a.procedure.name}} · {{a.duration_min or 20}}m · {{a.status}}</div>{% if a.order_id %}</a>{% endif %}</div>{% endfor %}
+      {% for a in cell.starts %}<div class="rb-appt">{% if a.order_id %}<a href="{{url_for('order_detail',order_id=a.order_id)}}">{% endif %}<b>{{a.patient.name}}</b><div>{{a.procedure.name}} · {{a.duration_min or 20}}m · {{a.status}}</div>{% if a.order_id %}</a><a class="btn" href="{{url_for('order_detail',order_id=a.order_id)}}">أمر الشغل / Work Order</a>{% elif a.status in ['BOOKED','CONFIRMED','WAITING'] and has_perm('appointments.manage') %}
+<a class="btn" href="{{url_for('appointment_edit',appointment_id=a.id)}}">تعديل البيانات والفحص / Edit booking and patient</a><details><summary>تعديل الموعد / Change time</summary><form class="rb-booking-edit" method="post" action="{{url_for('appointment_reschedule',appointment_id=a.id)}}"><label>الموعد / Time</label><input type="datetime-local" name="scheduled" value="{{a.scheduled.strftime('%Y-%m-%dT%H:%M')}}" required><input type="hidden" name="device_id" value="{{a.device_id}}"><button class="btn" type="submit">حفظ / Save</button><span aria-live="polite"></span></form></details>
+<form method="post" action="{{url_for('appointment_action',appointment_id=a.id,action='checkin')}}"><button class="btn" type="submit">تسجيل الحضور / Check-in</button></form>
+{% endif %}</div>{% endfor %}
     {% elif cell and cell.occupied %}
       <div class="rb-occupied-tail">{{'محجوز' if ui_lang=='ar' else 'Occupied'}}</div>
     {% elif outside_hours %}
@@ -490,7 +494,7 @@
 <div style="margin-top:7px"><label>General Notes</label><textarea name="notes" rows="2"></textarea></div>
 </section>
 
-<aside class="rb-pane rb-summary-pane"><h3>Summary</h3><div class="rb-summary"><span>Patient</span><b id="sPatient">New Patient</b></div><div class="rb-summary"><span>Device</span><b id="sDevice">—</b></div><div class="rb-summary"><span>Start</span><b id="sStart">—</b></div><div class="rb-summary"><span>Exams</span><b id="sCount">0</b></div><div class="rb-summary"><span>Duration</span><b><span id="sDuration">0</span>m</b></div><div class="rb-summary"><span>OCR Docs</span><b id="sOcr">0</b></div><div id="rbValidationGuide" class="notice" style="margin-top:10px" aria-live="polite"><b id="rbValidationTitle">Complete required information</b><div id="rbValidationItems" class="rb-small"></div></div><p class="rb-small">Book Only = appointment. Register & Save = orders + accessions + MWL + insurance + documents + clinical notes + first payment.</p></aside>
+<aside class="rb-pane rb-summary-pane"><h3>Summary</h3><div class="rb-summary"><span>Patient</span><b id="sPatient">New Patient</b></div><div class="rb-summary"><span>Device</span><b id="sDevice">—</b></div><div class="rb-summary"><span>Start</span><b id="sStart">—</b></div><div class="rb-summary"><span>Exams</span><b id="sCount">0</b></div><div class="rb-summary"><span>Duration</span><b><span id="sDuration">0</span>m</b></div><div class="rb-summary"><span>OCR Docs</span><b id="sOcr">0</b></div><div id="rbValidationGuide" class="notice" style="margin-top:10px" aria-live="polite"><b id="rbValidationTitle">Complete required information</b><div id="rbValidationItems" class="rb-small"></div></div><p class="rb-small">Book Only = editable booking. Register & Save = registration and accession. Convert to Work Order from the order page after financial clearance. / الحجز قابل للتعديل؛ التحويل إلى أمر شغل من صفحة الطلب بعد التسوية المالية.</p></aside>
 </div>
 
 <div class="rb-ws-foot"><span class="rb-small">Optional missing data does not block. Duplicate/safety checks remain active.</span><div class="rb-actions"><button type="button" class="btn" id="cancelWs">Cancel</button><button type="submit" class="btn" data-action="BOOK" id="rbBookBtn">Book Only</button><button type="submit" class="btn primary" data-action="REGISTER" id="rbRegisterBtn">Register & Save</button></div></div>
@@ -569,6 +573,10 @@ function rbRegistrationValidation(){
      first=first||firstName;
    }
 
+   const fullName=[firstName,...extraNames].map(x=>x?.value.trim()||'').filter(Boolean).join(' ');
+   if(registrationRules.name?.regex_pattern && !new RegExp('^(?:'+registrationRules.name.regex_pattern+')$','u').test(fullName)){
+     problems.push('الاسم ثلاثي على الأقل / Enter at least three patient name parts.');first=first||firstName;
+   }
    if(!extraNames.some(x=>x && x.value.trim())){
      problems.push('Enter at least one additional patient name.');
      first=first||form.elements['new_middle_name'];
@@ -739,5 +747,12 @@ if(qs.get('open_registration')==='1'){
   }
 }
 })();
+</script>
+<script>
+document.querySelectorAll('.rb-booking-edit').forEach(f=>f.addEventListener('submit',async e=>{
+ e.preventDefault();const button=f.querySelector('button'),status=f.querySelector('span');button.disabled=true;
+ try{const r=await fetch(f.action,{method:'POST',body:new FormData(f)});const result=await r.json();if(!r.ok||!result.ok)throw new Error(result.error||'Could not update booking');location.reload();}
+ catch(error){status.textContent=error.message;button.disabled=false;}
+}));
 </script>
 {% endblock %}

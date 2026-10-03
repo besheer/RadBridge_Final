@@ -1,9 +1,9 @@
 """Shared registration validation and explicit visit assignment choices."""
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy import text
 
 
-FIELDS = ('name', 'phone', 'national_id', 'address', 'email', 'nationality')
+FIELDS = ('name', 'phone', 'national_id', 'address', 'email', 'nationality', 'dob', 'sex')
 
 
 def validate_patient_fields(values):
@@ -13,6 +13,17 @@ def validate_patient_fields(values):
         ok, message = m.validate_registration_value(rules.get('patient.'+key), values.get(key, ''))
         if not ok:
             raise ValueError(message)
+
+    dob = (values.get('dob') or '').strip()
+    if dob:
+        try:
+            parsed = datetime.strptime(dob, '%Y%m%d').date()
+            if len(dob) != 8 or parsed > date.today():
+                raise ValueError()
+        except ValueError:
+            raise ValueError('Enter a valid date of birth that is not in the future.')
+    if (values.get('sex') or '').strip() not in ('', 'M', 'F', 'O'):
+        raise ValueError('Choose a valid patient sex.')
 
 
 def validate_patient(patient):
@@ -27,7 +38,7 @@ def field_rules_for_ui():
     import app as m
     return {key.split('.', 1)[1]: dict(required=bool(row.required), visible=bool(row.visible),
             data_type=row.data_type, min_length=row.min_length, max_length=row.max_length,
-            exact_length=row.exact_length, label=row.label_en or key)
+            exact_length=row.exact_length, regex_pattern=row.regex_pattern, label=row.label_en or key)
             for key, row in m.registration_rule_map().items() if key.startswith('patient.')}
 
 

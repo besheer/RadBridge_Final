@@ -4930,7 +4930,7 @@ def _rb_registration_v2_create_patient(form,audit_action='PATIENT_CREATE_FROM_CA
     phone=(form.get('new_phone') or '').strip()
     national=(form.get('new_national_id') or '').strip()
     from registration_policy import validate_patient_fields
-    validate_patient_fields(dict(name=name,phone=phone,national_id=national,
+    validate_patient_fields(dict(name=name,phone=phone,national_id=national,dob=dob,sex=form.get('new_sex',''),
         email=form.get('new_email',''),address=form.get('new_address',''),nationality=form.get('new_nationality','')))
     duplicates=find_duplicate_patients(name,dob,phone,national)
     if duplicates:
@@ -5388,7 +5388,7 @@ def new_patient():
         national_id=request.form.get('national_id','').strip()
         from registration_policy import validate_patient_fields
         try:
-            validate_patient_fields(dict(name=name,phone=phone,national_id=national_id,
+            validate_patient_fields(dict(name=name,phone=phone,national_id=national_id,dob=dob,sex=request.form.get('sex',''),
                 email=request.form.get('email',''),address=request.form.get('address',''),nationality=request.form.get('nationality','')))
         except ValueError as exc:
             return render_template('patient_form.html',duplicates=[],form_data=request.form,error=str(exc)),422
@@ -5475,6 +5475,13 @@ def new_order():
                     request.form,
                 )
             dob=dob_resolution.dob
+            from registration_policy import validate_patient_fields
+            try:
+                validate_patient_fields(dict(name=name,phone=phone,national_id=national_id,
+                    dob=dob,sex=request.form.get('new_sex',''),nationality=nationality,
+                    email=request.form.get('new_email',''),address=request.form.get('new_address','')))
+            except ValueError as exc:
+                return registration_validation_error(str(exc),request.form)
             duplicates=find_duplicate_patients(name,dob,phone,national_id)
 
             if duplicates and request.form.get('confirm_duplicate')!='1':
@@ -6298,7 +6305,8 @@ def insurance_approval_update(order_id):
 @app.post('/orders/<int:order_id>/convert-to-work-order')
 @require_perm('orders.create')
 def convert_to_work_order(order_id):
-    order=Order.query.get_or_404(order_id)
+    order=Order.query.filter_by(id=order_id).with_for_update().first_or_404()
+    Patient.query.filter_by(id=order.patient_id).with_for_update().first_or_404()
 
     # Legacy contract marker retained for regression traceability:
     # order_balance(order) > 0.01 is enforced inside work_order_gate().
@@ -10182,6 +10190,8 @@ def build_document_matches(doc):
 
 
 DEFAULT_V521_FIELD_RULES=[
+ ('patient.dob','Date of Birth','تاريخ الميلاد','ANY',0,None,None,True,True),
+ ('patient.sex','Sex','النوع','ANY',0,None,None,True,True),
  ('patient.name','Patient Name','اسم المريض','LETTERS',3,100,None,True,True),
  ('patient.phone','Mobile','الموبايل','NUMBERS',10,11,None,True,True),
  ('patient.national_id','National ID','الرقم القومي','NUMBERS',14,14,14,False,True),
@@ -10197,7 +10207,8 @@ def seed_v521_functional_defaults():
             db.session.add(FieldRule(
                 field_key=key,label_en=en,label_ar=ar,data_type=dtype,
                 min_length=minl,max_length=maxl,exact_length=exact,
-                required=required,visible=visible,read_only=False,allow_spaces=True
+                required=required,visible=visible,read_only=False,allow_spaces=True,
+                regex_pattern=r'\S+(?:\s+\S+){2,}' if key=='patient.name' else None
             ))
     db.session.commit()
 
@@ -13957,7 +13968,12 @@ def appointments():
 @app.route('/appointments/<int:appointment_id>/<action>', methods=['POST'])
 @require_perm('appointments.manage')
 def appointment_action(appointment_id, action):
-    a=Appointment.query.get_or_404(appointment_id)
+    a=Appointment.query.filter_by(id=appointment_id).with_for_update().first_or_404()
+    if a.order_id:
+        if action=='checkin': return redirect(url_for('order_detail',order_id=a.order_id))
+        abort(409)
+    if a.status not in ('BOOKED','CONFIRMED','WAITING'):
+        abort(409)
 
     if action=='confirm':
         a.status='CONFIRMED'
@@ -14036,11 +14052,69 @@ def appointment_action(appointment_id, action):
 
 
 
+
+@app.route('/appointments/<int:appointment_id>/edit',methods=['GET','POST'])
+@require_perm('appointments.manage')
+def appointment_edit(appointment_id):
+    a=Appointment.query.filter_by(id=appointment_id).with_for_update().first_or_404()
+    if a.order_id or a.status not in ('BOOKED','CONFIRMED','WAITING'): abort(409)
+    patient=Patient.query.filter_by(id=a.patient_id).with_for_update().first_or_404()
+    # Patient demographics are shared by visits: never rewrite a converted case.
+    locked=Order.query.filter(Order.patient_id==patient.id,Order.status.notin_(['REGISTERED','CANCELLED'])).first() is not None
+    error=''
+    if request.method=='POST':
+        savepoint=db.session.begin_nested()
+        try:
+            if locked: raise ValueError('Patient data is locked because a visit has already been converted to a Work Order.')
+            resolution=resolve_patient_dob(request.form,prefix='')
+            values={key:(request.form.get(key) or '').strip() for key in ('name','phone','national_id','address','email','nationality','sex')}
+            values['dob']=resolution.dob
+            from registration_policy import validate_patient_fields
+            validate_patient_fields(values)
+            if not values['name']:raise ValueError('Patient name is required.')
+            scheduled=datetime.fromisoformat(request.form.get('scheduled',''))
+            proc=Procedure.query.filter_by(id=request.form.get('procedure_id',type=int),active=True).first()
+            device=Device.query.filter_by(id=request.form.get('device_id',type=int),active=True).first()
+            if not proc or not device or device.branch_id!=a.branch_id or device.modality.upper()!=proc.modality.upper():
+                raise ValueError('Choose an active examination and matching device in this branch.')
+            if not procedure_available_in_branch(proc.id,a.branch_id):raise ValueError('Examination is not available in this branch.')
+            visit=AssignmentVisit.query.filter_by(id=a.assignment_visit_id).first() if a.assignment_visit_id else None
+            if visit and scheduled.date()!=visit.visit_date:raise ValueError('Keep the linked visit date; create a separate visit for another date.')
+            if visit and visit.assignment_mode=='MANUAL':
+                doctor=User.query.filter_by(id=visit.preferred_doctor_id,active=True).first()
+                profile=DoctorAssignmentProfile.query.filter_by(user_id=visit.preferred_doctor_id).first()
+                allowed={x.strip().upper() for x in (profile.modalities or '').split(',') if x.strip()} if profile else set()
+                if not doctor or (allowed and proc.modality.upper() not in allowed):raise ValueError('Reserved doctor is not qualified for this examination.')
+                from assignment_distribution import validate_special_doctor
+                validate_special_doctor(Order(modality=proc.modality,procedure=proc.name,priority=a.priority,assignment_special_code=a.assignment_special_code),doctor)
+            reason=booking_restriction_reason(a.branch,proc,device,scheduled,proc.duration_min or 20,exclude_appointment_id=a.id)
+            if reason:raise ValueError(reason)
+            acquire_booking_slot_lock(device.id,scheduled)
+            if appointment_overlap(device.id,scheduled,proc.duration_min or 20,exclude_id=a.id):raise ValueError('The selected time conflicts with another booking.')
+            for key in ('name','phone','national_id','address','email','sex'):setattr(patient,key,values[key])
+            patient.dob=resolution.dob;patient.dob_estimated=resolution.estimated
+            patient.worklist_name=arabic_to_latin_name(patient.name)
+            extra=PatientDemographicsExtra.query.filter_by(patient_id=patient.id).first()
+            if not extra:extra=PatientDemographicsExtra(patient_id=patient.id);db.session.add(extra)
+            extra.nationality=values['nationality']
+            a.scheduled=scheduled;a.procedure_id=proc.id;a.device_id=device.id;a.duration_min=proc.duration_min or 20
+            audit('BOOKING_EDIT','appointment',a.id,'Booking and patient data updated before work-order conversion')
+            savepoint.commit()
+            db.session.commit()
+            flash('Booking updated. / تم تعديل الحجز.','success')
+            return redirect(url_for('schedule_calendar',date=scheduled.date().isoformat()))
+        except (ValueError,TypeError) as exc:
+            savepoint.rollback();error=str(exc)
+    extra=PatientDemographicsExtra.query.filter_by(patient_id=patient.id).first()
+    return render_template('booking_edit.html',booking=a,patient=patient,extra=extra,locked=locked,error=error,
+        procedures=Procedure.query.filter_by(active=True).order_by(Procedure.name).all(),
+        devices=Device.query.filter_by(active=True,branch_id=a.branch_id).order_by(Device.name).all()),422 if error else 200
+
 @app.post('/appointments/<int:appointment_id>/reschedule')
 @require_perm('appointments.manage')
 def appointment_reschedule(appointment_id):
-    a=Appointment.query.get_or_404(appointment_id)
-    if a.status in ('ARRIVED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING','VERIFIED','FINAL'):
+    a=Appointment.query.filter_by(id=appointment_id).with_for_update().first_or_404()
+    if a.order_id or a.status not in ('BOOKED','CONFIRMED','WAITING'):
         return jsonify({'ok':False,'error':'Clinical workflow already started'}),409
     try:new_time=datetime.fromisoformat(request.form.get('scheduled',''))
     except Exception:return jsonify({'ok':False,'error':'Invalid date/time'}),400
@@ -14048,6 +14122,12 @@ def appointment_reschedule(appointment_id):
     device=Device.query.get_or_404(device_id)
     if device.branch_id!=a.branch_id or device.modality.upper()!=a.procedure.modality.upper():
         return jsonify({'ok':False,'error':'Device/branch/modality mismatch'}),400
+    if a.assignment_visit_id:
+        visit=AssignmentVisit.query.filter_by(id=a.assignment_visit_id).first()
+        if visit and new_time.date()!=visit.visit_date:
+            return jsonify({'ok':False,'error':'Keep the linked visit date. Register a separate visit for another date.'}),409
+    reason=booking_restriction_reason(a.branch,a.procedure,device,new_time,a.duration_min or a.procedure.duration_min,exclude_appointment_id=a.id)
+    if reason:return jsonify({'ok':False,'error':reason}),409
     acquire_booking_slot_lock(device.id,new_time)
     conflict=appointment_overlap(device.id,new_time,a.duration_min or a.procedure.duration_min,exclude_id=a.id)
     if conflict:return jsonify({'ok':False,'error':f'Conflicts with appointment #{conflict.id}'}),409
@@ -14064,7 +14144,7 @@ def appointment_status(appointment_id):
     target=(request.form.get('status') or '').upper()
     allowed={'WAITING','BOOKED','CONFIRMED','CANCELLED','NO_SHOW'}
     if target not in allowed:abort(400)
-    if a.status in ('ARRIVED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING','VERIFIED','FINAL'):
+    if a.order_id or a.status not in ('BOOKED','CONFIRMED','WAITING'):
         abort(409)
     a.status=target;a.waiting_list=(target=='WAITING')
     audit('APPOINTMENT_STATUS','appointment',a.id,target);db.session.commit()
@@ -35044,6 +35124,13 @@ def voice_api_patient_create():
         worklist_name=arabic_to_latin_name(name),
     )
 
+    from registration_policy import validate_patient_fields
+    try:
+        validate_patient_fields(dict(name=patient.name,phone=patient.phone,dob=patient.dob,sex=patient.sex,
+            national_id=patient.national_id,address=patient.address,email=patient.email,
+            nationality=str(data.get('nationality') or '').strip()))
+    except ValueError as exc:
+        return jsonify(ok=False,error=str(exc)),422
     db.session.add(patient)
     db.session.flush()
 

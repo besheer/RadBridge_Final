@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block page_title %}تعديل الحجز / Edit booking{% endblock %}
+{% block content %}<div class="panel form-card">
+<p>التعديل متاح أثناء الحجز فقط. بيانات المريض تُقفل إذا كانت مرتبطة بأمر شغل سابق. / Editing is available during booking only. Shared patient data is locked after work-order conversion.</p>
+{% if error %}<div class="notice">{{error}}</div>{% endif %}
+{% if locked %}<div class="notice">بيانات المريض مقفلة لارتباطها بأمر شغل. / Patient data is locked by an existing Work Order.</div>{% endif %}
+<form method="post"><fieldset {% if locked %}disabled{% endif %}><div class="grid3">
+<div><label>الاسم / Name</label><input name="name" value="{{request.form.get('name',patient.name)}}" required></div>
+<div><label>تاريخ الميلاد / Date of Birth *</label><input type="date" name="dob" value="{{request.form.get('dob',patient.dob[:4]+'-'+patient.dob[4:6]+'-'+patient.dob[6:] if patient.dob and patient.dob|length==8 else '')}}" required><input type="hidden" name="dob_estimated" value="{{'1' if patient.dob_estimated else '0'}}"></div>
+<div><label>النوع / Sex *</label><select name="sex" required>{% for value,label in [('', 'اختر / Choose'),('M','ذكر / Male'),('F','أنثى / Female'),('O','آخر / Other')] %}<option value="{{value}}" {% if request.form.get('sex',patient.sex)==value %}selected{% endif %}>{{label}}</option>{% endfor %}</select></div>
+{% for key,label in [('phone','الموبايل / Phone'),('national_id','الرقم القومي / National ID'),('address','العنوان / Address'),('email','البريد / Email')] %}<div><label>{{label}}</label><input name="{{key}}" value="{{request.form.get(key,patient|attr(key) or '')}}"></div>{% endfor %}
+<div><label>الجنسية / Nationality</label><input name="nationality" value="{{request.form.get('nationality',extra.nationality if extra else '')}}"></div>
+<div><label>الفحص / Examination</label><select name="procedure_id" required>{% for proc in procedures %}<option value="{{proc.id}}" {% if proc.id==booking.procedure_id %}selected{% endif %}>{{proc.modality}} — {{proc.name}}</option>{% endfor %}</select></div>
+<div><label>الجهاز / Device</label><select name="device_id" required>{% for device in devices %}<option value="{{device.id}}" {% if device.id==booking.device_id %}selected{% endif %}>{{device.modality}} — {{device.name}}</option>{% endfor %}</select></div>
+<div><label>الموعد / Time</label><input type="datetime-local" name="scheduled" value="{{request.form.get('scheduled',booking.scheduled.strftime('%Y-%m-%dT%H:%M'))}}" required></div>
+</div><button class="btn primary">حفظ التعديلات / Save changes</button></fieldset></form>
+<a class="btn" href="{{url_for('schedule_calendar')}}">رجوع / Back</a></div>{% endblock %}
