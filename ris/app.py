@@ -7542,14 +7542,17 @@ def admin_assignment_visits():
 @require_perm('assignment.manage')
 def admin_assignment_monitor():
     from assignment_monitor import snapshot
-    return render_template('assignment_monitor.html', coordinator=False, **snapshot())
+    return render_template('assignment_monitor.html', coordinator=False, can_manage=True, **snapshot())
 
 
 @app.get('/coordinator/assignments')
-@require_perm('assignment.manage')
 def coordinator_assignments():
+    if not current_user():
+        return redirect(url_for('login', next=request.path))
+    if not (has_perm('assignment.manage') or has_perm('reports.coordinate')):
+        abort(403)
     from assignment_monitor import snapshot
-    return render_template('assignment_monitor.html', coordinator=True, **snapshot())
+    return render_template('assignment_monitor.html', coordinator=True, can_manage=has_perm('assignment.manage'), **snapshot())
 
 
 

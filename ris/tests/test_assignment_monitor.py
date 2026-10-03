@@ -62,3 +62,17 @@ def test_monitor_renders_for_authorized_admin(path):
     response = client.get(path)
     assert response.status_code == 200
     assert b'monitor-admin' in response.data
+
+
+def test_report_coordinator_can_monitor_but_cannot_assign():
+    import json
+    u=doctor('monitor-readonly-coordinator','COORDINATOR')
+    u.role.permissions_json=json.dumps(['reports.coordinate'])
+    waiting=order('MONITOR-READONLY');m.db.session.flush()
+    client=m.app.test_client()
+    with client.session_transaction() as s:s['uid']=u.id
+    response=client.get('/coordinator/assignments')
+    assert response.status_code==200
+    assert b'MONITOR-READONLY' in response.data
+    assert ('/orders/%s/assign' % waiting.id).encode() not in response.data
+    assert client.get('/admin/assignment-monitor').status_code==403
