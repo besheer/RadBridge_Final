@@ -6178,7 +6178,8 @@ def order_detail(order_id):
         branch_warehouse=default_warehouse_for_order(order),
         insurance_approval=insurance_approval,
         approval_attachment=approval_attachment,
-        work_order_gate=work_order_decision)
+        work_order_gate=work_order_decision,
+        delivery_readiness=__import__('delivery_policy').snapshot(order))
 
 
 @app.post('/orders/<int:order_id>/insurance-approval/start')
@@ -18542,24 +18543,38 @@ def receipt_view(receipt_id):
 @app.route('/orders/<int:order_id>/delivery/<item_type>',methods=['POST'])
 @require_perm('delivery.manage')
 def mark_delivery(order_id,item_type):
-    o=Order.query.get_or_404(order_id)
+    from delivery_policy import METHODS,delivery_readiness
+    from registration_policy import require_registration_branch
+    o=Order.query.filter_by(id=order_id).with_for_update().first_or_404()
+    require_registration_branch(o.branch_id)
     item=item_type.upper()
-    if item not in ('REPORT','IMAGES'): abort(400)
-    ev=DeliveryEvent(order_id=o.id,item_type=item,
-        delivery_method=request.form.get('delivery_method','IN_PERSON'),
-        recipient_name=request.form.get('recipient_name',''),
-        recipient_phone=request.form.get('recipient_phone',''),
-        delivered_by=current_user().id,notes=request.form.get('notes',''))
+    if item not in METHODS:abort(400)
+    method=(request.form.get('delivery_method') or '').strip().upper()
+    recipient=(request.form.get('recipient_name') or '').strip()
+    if method not in METHODS[item]:abort(400,description='Invalid delivery method')
+    if len(recipient)>160 or len(request.form.get('recipient_phone',''))>40 or len(request.form.get('notes',''))>500:abort(400,description='Delivery details are too long')
+    if not recipient:
+        flash('Recipient name is required. / اسم المستلم مطلوب.','danger')
+        return redirect(url_for('order_detail',order_id=o.id)),303
+    if getattr(o,item.lower()+'_delivered',False):
+        flash('This item has already been recorded as delivered. / تم تسجيل تسليم هذا العنصر بالفعل.','warning')
+        return redirect(url_for('order_detail',order_id=o.id)),303
+    Report.query.filter_by(order_id=o.id).with_for_update().all()
+    allowed,reason=delivery_readiness(o,item,live=True)
+    if not allowed:
+        flash(reason,'danger')
+        return redirect(url_for('order_detail',order_id=o.id)),303
+    ev=DeliveryEvent(order_id=o.id,item_type=item,delivery_method=method,
+        recipient_name=recipient,recipient_phone=(request.form.get('recipient_phone') or '').strip(),
+        delivered_by=current_user().id,notes=(request.form.get('notes') or '').strip())
     db.session.add(ev)
     now=datetime.utcnow()
-    if item=='REPORT':
-        o.report_delivered=True; o.report_delivered_at=now
-    else:
-        o.images_delivered=True; o.images_delivered_at=now
-    audit('DELIVERY_'+item,'order',o.id,ev.delivery_method)
+    if item=='REPORT':o.report_delivered=True;o.report_delivered_at=now
+    else:o.images_delivered=True;o.images_delivered_at=now
+    audit('DELIVERY_'+item,'order',o.id,method)
     db.session.commit()
-    flash(f'{item.title()} marked as delivered.','success')
-    return redirect(url_for('order_detail',order_id=o.id))
+    flash('Delivery recorded. / تم تسجيل التسليم.','success')
+    return redirect(url_for('order_detail',order_id=o.id)),303
 
 
 @app.route('/cashier')

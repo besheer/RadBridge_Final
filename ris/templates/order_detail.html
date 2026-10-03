@@ -12,7 +12,17 @@
 
   {% set exam_state=(order.exam_status or 'ORDERED') %}
   <div class="notice info">
-    {% if exam_state in ['BOOKED','ORDERED'] %}
+    {% if order.status=='CANCELLED' %}
+      {{'الفحص ملغى؛ لا يمكن تسجيل التسليم.' if ui_lang=='ar' else 'Examination cancelled; delivery is blocked.'}}
+    {% elif order.report and order.report.status=='FINAL' and order.report_delivered and order.images_delivered %}
+      {{'التقرير نهائي وتم تسجيل تسليم التقرير والصور.' if ui_lang=='ar' else 'Report is FINAL; report and image handovers have been recorded.'}}
+    {% elif order.report and order.report.status=='FINAL' %}
+      {{'التقرير نهائي. راجع جاهزية الملفات والتسليم أدناه.' if ui_lang=='ar' else 'Report is FINAL. Review file availability and delivery below.'}}
+    {% elif order.report and order.report.status=='VERIFIED' %}
+      {{'التقرير تمت مراجعته وينتظر الاعتماد النهائي؛ التسليم غير متاح.' if ui_lang=='ar' else 'Report is verified and awaiting finalization; report delivery is blocked.'}}
+    {% elif order.status=='REGISTERED' %}
+      {{'أكمل التسوية المالية ثم حوّل الطلب إلى أمر شغل.' if ui_lang=='ar' else 'Complete financial clearance, then convert to Work Order.'}}
+    {% elif exam_state in ['BOOKED','ORDERED'] %}
       {{'الخطوة التالية: بدء الفحص عند جاهزية المريض والجهاز.' if ui_lang=='ar'
         else 'Next step: Start the examination when the patient and device are ready.'}}
     {% elif exam_state=='IN_PROGRESS' %}
@@ -410,7 +420,7 @@
 </div>
 
 <div class="panel rb-order-delivery">
-  <div class="section-title">Delivery / التسليم</div>
+  <div class="section-title">Delivery / التسليم</div><p>تسجيل التسليم يوثّق التسليم الذي تم فعليًا؛ لا يرسل بريدًا أو واتساب تلقائيًا. / Record only completed handover. This action does not send email or WhatsApp automatically.</p>
   <div class="pricing-preview">
     <div><small>Report</small><b>{{'Delivered' if order.report_delivered else 'Pending'}}</b></div>
     <div><small>Images</small><b>{{'Delivered' if order.images_delivered else 'Pending'}}</b></div>
@@ -418,13 +428,13 @@
   {% if has_perm('delivery.manage') %}
   <form method="post" action="{{url_for('mark_delivery',order_id=order.id,item_type='REPORT')}}" class="grid2">
     <div><label>Report method</label><select name="delivery_method"><option>IN_PERSON</option><option>EMAIL</option><option>PORTAL</option><option>WHATSAPP</option></select></div>
-    <div><label>Recipient</label><input name="recipient_name"></div>
-    <div><button class="btn primary">Mark Report Delivered</button></div>
+    <div><label>Recipient / المستلم *</label><input name="recipient_name" required maxlength="160"></div>
+    <div><button class="btn primary" {% if order.report_delivered or not delivery_readiness.REPORT.allowed %}disabled{% endif %}>{{'تسجيل تسليم التقرير' if ui_lang=='ar' else 'Record report handover'}}</button><small>{{'تم التسليم بالفعل / Already delivered' if order.report_delivered else delivery_readiness.REPORT.reason}}</small></div>
   </form>
   <form method="post" action="{{url_for('mark_delivery',order_id=order.id,item_type='IMAGES')}}" class="grid2">
     <div><label>Images method</label><select name="delivery_method"><option>CD</option><option>FILM</option><option>PORTAL</option><option>LINK</option></select></div>
-    <div><label>Recipient</label><input name="recipient_name"></div>
-    <div><button class="btn">Mark Images Delivered</button></div>
+    <div><label>Recipient / المستلم *</label><input name="recipient_name" required maxlength="160"></div>
+    <div><button class="btn" {% if order.images_delivered or not delivery_readiness.IMAGES.allowed %}disabled{% endif %}>{{'تسجيل تسليم الصور' if ui_lang=='ar' else 'Record image handover'}}</button><small>{{'تم التسليم بالفعل / Already delivered' if order.images_delivered else delivery_readiness.IMAGES.reason}}</small></div>
   </form>
   {% endif %}
   {% if delivery_events %}
