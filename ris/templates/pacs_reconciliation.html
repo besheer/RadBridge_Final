@@ -32,7 +32,7 @@ the automatic safety match.
 </form>
 </div>{% endif %}
 
-<div class="panel" style="margin:20px 0;border-left:4px solid #2563eb">
+{% if not demo_mode %}<div class="panel" style="margin:20px 0;border-left:4px solid #2563eb">
 <h3>Exam Linking</h3>
 {{ action_info(
   'Exam Linking',
@@ -60,8 +60,8 @@ No safe same-patient editable Order pairs are currently eligible for Exam Linkin
   <option value="">Select confirmed same-patient Orders</option>
   {% for pair in eligible_exam_pairs %}
   <option value="{{ pair.primary.id }}:{{ pair.secondary.id }}">
-    {{ pair.patient.name if pair.patient else 'Patient' }} â€”
-    Primary #{{ pair.primary.id }} {{ pair.primary.accession }} â†’
+    {{ pair.patient.name if pair.patient else 'Patient' }} —
+    Primary #{{ pair.primary.id }} {{ pair.primary.accession }} →
     Secondary #{{ pair.secondary.id }} {{ pair.secondary.accession }}
   </option>
   {% endfor %}
@@ -89,8 +89,8 @@ placeholder="Explain why the same PACS acquisition belongs to both RIS Orders"><
 {% for item in active_exam_links %}
 <tr>
 <td>{{ item.link.orthanc_study_id }}</td>
-<td>{% if item.primary %}#{{ item.primary.id }} â€” {{ item.primary.accession }}{% else %}-{% endif %}</td>
-<td>{% if item.secondary %}#{{ item.secondary.id }} â€” {{ item.secondary.accession }}{% else %}-{% endif %}</td>
+<td>{% if item.primary %}#{{ item.primary.id }} — {{ item.primary.accession }}{% else %}-{% endif %}</td>
+<td>{% if item.secondary %}#{{ item.secondary.id }} — {{ item.secondary.accession }}{% else %}-{% endif %}</td>
 <td>{{ item.link.reason }}</td>
 <td>
 {% if can_exam_link %}
@@ -115,6 +115,7 @@ placeholder="Explain why the same PACS acquisition belongs to both RIS Orders"><
 {% endif %}
 </div>
 
+{% endif %}
 {% if not exceptions %}
 <div class="success">
 No PACS demographic exceptions are waiting for review.
@@ -130,7 +131,7 @@ No PACS demographic exceptions are waiting for review.
 
 <h3>
 Study Exception #{{ x.id }}
-â€”
+—
 <span class="warn">{{ x.match_method }}</span>
 </h3>
 
@@ -206,7 +207,7 @@ placeholder="Reason for quarantine"></textarea>
 Quarantine Study
 </button>
 </form>
-{% else %}
+{% elif not demo_mode %}
 <div class="warn">
 View only. Manual PACS matching and quarantine require the
 <strong>pacs.reconcile</strong> permission.
