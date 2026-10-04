@@ -14,6 +14,12 @@ CLINICIANS={'RADIOLOGIST','CONSULTANT','RADIOLOGY_CONSULTANT','SUPER_ADMIN','ADM
 
 class TemplateError(ValueError):pass
 
+def add_heading(doc,text):
+    if 'Heading 1' in doc.styles:return doc.add_heading(text,1)
+    paragraph=doc.add_paragraph(text)
+    paragraph.runs[0].bold=True;paragraph.runs[0].font.size=Pt(14)
+    return paragraph
+
 def manager(user):
     return bool(user and user.active and user.role and (user.role.code=='SUPER_ADMIN' or '*' in user.role.permissions() or 'users.manage' in user.role.permissions()))
 
@@ -59,10 +65,10 @@ def normalize_upload(blob):
     doc.sections[0].header.add_paragraph('Patient: {{PATIENT_NAME}} | Patient ID: {{PATIENT_ID}} | Accession: {{ACCESSION}}')
     headings={p.text.strip().upper() for p in doc.paragraphs}
     if 'FINDINGS' not in headings:
-        heading=doc.add_heading('FINDINGS',1)
+        heading=add_heading(doc,'FINDINGS')
         doc._element.body.insert(0,heading._p)
     if 'IMPRESSION' not in headings:
-        doc.add_heading('IMPRESSION',1);doc.add_paragraph('')
+        add_heading(doc,'IMPRESSION');doc.add_paragraph('')
     out=io.BytesIO();doc.save(out);result=out.getvalue()
     validate_docx(result)
     return result
@@ -160,7 +166,8 @@ def apply_header(doc,m,layout,values,uploaded):
                 for k in ('subtitle','address','phone'):
                     if layout.get(k):header.add_paragraph(layout[k])
             width=section.page_width-section.left_margin-section.right_margin
-            table=header.add_table(rows=3,cols=2,width=width);table.style='Table Grid'
+            table=header.add_table(rows=3,cols=2,width=width)
+            if 'Table Grid' in doc.styles:table.style='Table Grid'
             for r,(label,value) in zip(table.rows,[('Patient Name',values['PATIENT_NAME']),('Patient ID',values['PATIENT_ID']),('Accession',values['ACCESSION'])]):r.cells[0].text=label;r.cells[1].text=value
             for flag,key,label in [('show_dob','DOB','DOB'),('show_sex','SEX','Sex'),('show_study_date','STUDY_DATE','Study Date'),('show_referrer','REFERRING_DOCTOR','Referring Doctor')]:
                 if layout.get(flag):header.add_paragraph(label+': '+values[key])

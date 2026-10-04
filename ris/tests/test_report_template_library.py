@@ -45,6 +45,15 @@ def test_normalization_rejects_an_existing_patient_report_marker():
     doc=Document();doc.add_paragraph('RIS_ACCESSION: REAL-EXISTING-REPORT')
     with pytest.raises(lib.TemplateError,match='fixed'):lib.normalize_upload(doc_bytes(doc))
 
+def test_legacy_template_without_standard_styles_can_be_used(tmp_path):
+    doc=Document();doc.add_paragraph('Synthetic legacy normal text.')
+    doc.styles['Heading 1'].delete();doc.styles['Table Grid'].delete()
+    normalized=lib.normalize_upload(doc_bytes(doc))
+    result=Document(io.BytesIO(normalized))
+    lib.apply_header(result,NS(REPORT_DIR=str(tmp_path)),dict(lib.DEFAULT_HEADER,show_dob=False,show_sex=False,show_study_date=False),{'PATIENT_NAME':'Synthetic','PATIENT_ID':'SYN','ACCESSION':'SYN-ACC'},True)
+    assert [p.text for p in result.paragraphs][:2]==['FINDINGS','Synthetic legacy normal text.']
+    assert result.sections[0].header.tables[0].rows[1].cells[1].text=='SYN'
+
 def test_split_placeholder_preserves_surrounding_run_formatting():
     doc=Document();p=doc.add_paragraph();p.add_run('Before ').italic=True
     p.add_run('{{PATIENT_').bold=True;p.add_run('NAME}} / {{PATIENT_ID}}');p.add_run(' after').italic=True
