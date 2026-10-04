@@ -22,7 +22,7 @@
         <td>#{{r.id}}<br><small>{{r.created_at}}</small></td>
         <td>Order #{{r.order_id}}<br><b>{{r.order.accession if r.order else '—'}}</b><br>{{r.order.patient.patient_id if r.order and r.order.patient else '—'}} — {{r.order.patient.name if r.order and r.order.patient else '—'}}<br><small>{{r.branch.name if r.branch else 'No branch'}}</small></td>
         <td>{{r.requester.full_name if r.requester else r.requested_by}}</td>
-        <td><b>{{r.request_type}}</b><br>{{r.reason}}</td>
+        <td><b>{{r.request_type}}{% if r.demographic_detail %}<br><a href="{{url_for('patient_demographics_correction_view',request_id=r.id)}}">القيم والتأثير / Values and impact</a>{% endif %}</b><br>{{r.reason}}</td>
         <td>{{r.status}}<br><small>{{r.assignee.full_name if r.assignee else 'Unassigned'}}</small></td>
         <td>
           <form method="post" action="{{url_for('correction_request_action',request_id=r.id)}}">

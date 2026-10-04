@@ -18,7 +18,7 @@
 {% if q %}
 <div class="panel">
   <h3>Matching Orders</h3>
-  <table>
+  <div style="overflow-x:auto"><table>
     <thead><tr><th>Order / Accession</th><th>Patient</th><th>Exam</th><th>Branch</th><th>Workflow</th><th>PACS / Report</th><th>Request correction</th></tr></thead>
     <tbody>
     {% for o in orders %}
@@ -33,9 +33,9 @@
           {% if has_perm('correction.request') %}
           <form method="post" action="{{url_for('correction_request_submit')}}">
             <input type="hidden" name="order_id" value="{{o.id}}">
-            <select name="request_type" required>
+            <a class="btn" href="{{url_for('patient_demographics_correction',order_id=o.id)}}">تصحيح بيانات المريض / Patient demographics</a><select name="request_type" required>
               <option value="">Problem type…</option>
-              {% for code,label in request_types %}<option value="{{code}}">{{label}}</option>{% endfor %}
+              {% for code,label in request_types if code!='WRONG_DEMOGRAPHICS' %}<option value="{{code}}">{{label}}</option>{% endfor %}
             </select>
             <input name="reason" minlength="5" required placeholder="What is wrong?">
             <button class="btn primary">Submit Request</button>
@@ -49,20 +49,20 @@
       <tr><td colspan="7">No matching orders in your permitted scope.</td></tr>
     {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 {% endif %}
 
 <div class="panel">
   <h3>My Requests</h3>
-  <table>
+  <div style="overflow-x:auto"><table>
     <thead><tr><th>ID</th><th>Order</th><th>Problem</th><th>Status</th><th>Coordinator</th><th>Created</th></tr></thead>
     <tbody>
     {% for r in my_requests %}
       <tr>
         <td>#{{r.id}}</td>
         <td>#{{r.order_id}} — {{r.order.accession if r.order else '—'}}</td>
-        <td>{{r.request_type}}<br><small>{{r.reason}}</small></td>
+        <td>{{r.request_type}}<br><small>{{r.reason}}</small>{% if r.demographic_detail %}<br><a href="{{url_for('patient_demographics_correction_view',request_id=r.id)}}">الحقل والقيم والتأثير / Field and impact</a>{% endif %}</td>
         <td>{{r.status}}</td>
         <td>{{r.assignee.full_name if r.assignee else 'Unassigned'}}{% if r.review_note %}<br><small>{{r.review_note}}</small>{% endif %}</td>
         <td>{{r.created_at}}</td>
@@ -71,7 +71,7 @@
       <tr><td colspan="6">No correction requests submitted yet.</td></tr>
     {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 
 <div class="panel danger-zone-note">

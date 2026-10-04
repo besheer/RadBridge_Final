@@ -2441,6 +2441,18 @@ class CorrectionRequest(db.Model):
     assignee=db.relationship('User',foreign_keys=[assigned_to])
 
 
+class PatientDemographicsCorrection(db.Model):
+    __tablename__='patient_demographics_correction'
+    id=db.Column(db.Integer,primary_key=True)
+    correction_request_id=db.Column(db.Integer,db.ForeignKey('correction_request.id'),nullable=False,unique=True)
+    patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),nullable=False,index=True)
+    field_name=db.Column(db.String(40),nullable=False)
+    old_value=db.Column(db.Text,nullable=False)
+    proposed_value=db.Column(db.Text,nullable=False)
+    snapshot_hash=db.Column(db.String(64),nullable=False)
+    impact_json=db.Column(db.Text,nullable=False)
+    request=db.relationship('CorrectionRequest',backref=db.backref('demographic_detail',uselist=False))
+
 # RB_CORRECTION_EXECUTION_LEDGER_PHASE2A_V1
 class CorrectionExecution(db.Model):
     __tablename__='correction_execution'
@@ -23755,6 +23767,37 @@ def correction_center():
     )
 
 
+@app.route('/correction-center/orders/<int:order_id>/demographics',methods=['GET','POST'])
+@require_perm('correction.request')
+def patient_demographics_correction(order_id):
+    from patient_correction_policy import FIELDS,current_value,snapshot,impact,normalize,submit
+    order=Order.query.filter_by(id=order_id).with_for_update().first_or_404()
+    if not correction_branch_allowed(order):abort(403)
+    patient=Patient.query.filter_by(id=order.patient_id).with_for_update().first_or_404()
+    field=(request.form.get('field_name') if request.method=='POST' else request.args.get('field_name')) or 'name'
+    if field not in FIELDS:abort(400)
+    if request.method=='POST':
+        try:row=submit(order,field,request.form.get('proposed_value',''),request.form.get('reason',''),request.form.get('snapshot_hash',''))
+        except ValueError as exc:
+            db.session.rollback();flash(str(exc),'danger')
+            return redirect(url_for('patient_demographics_correction',order_id=order_id,field_name=field))
+        db.session.commit();flash('Structured correction request submitted. / تم إرسال طلب التصحيح.','success')
+        return redirect(url_for('patient_demographics_correction_view',request_id=row.id))
+    return render_template('patient_demographics_correction.html',order=order,fields=FIELDS,field=field,current=current_value(patient,field),snapshot_hash=snapshot(patient),impact=impact(patient,field))
+
+@app.get('/correction-center/requests/<int:request_id>/demographics')
+@login_required
+def patient_demographics_correction_view(request_id):
+    from patient_correction_policy import snapshot,impact,FIELDS
+    row=CorrectionRequest.query.get_or_404(request_id)
+    if not (correction_can_request() or correction_can_review()):abort(403)
+    if not correction_branch_allowed(row.order):abort(403)
+    if row.requested_by!=current_user().id and not correction_can_review():abort(403)
+    detail=row.demographic_detail
+    if not detail:abort(404)
+    patient=Patient.query.get_or_404(detail.patient_id)
+    return render_template('patient_demographics_correction_view.html',row=row,detail=detail,fields=FIELDS,impact=json.loads(detail.impact_json),current_impact=impact(patient,detail.field_name),stale=snapshot(patient)!=detail.snapshot_hash)
+
 @app.post('/correction-center/request')
 @require_perm('correction.request')
 def correction_request_submit():
@@ -23766,6 +23809,8 @@ def correction_request_submit():
         abort(400,'Order is required.')
     if request_type not in CORRECTION_REQUEST_TYPE_CODES:
         abort(400,'Invalid correction request type.')
+    if request_type=='WRONG_DEMOGRAPHICS':
+        return redirect(url_for('patient_demographics_correction',order_id=order_id))
     if len(reason)<5:
         abort(400,'Correction reason must contain at least 5 characters.')
     order=Order.query.get_or_404(order_id)
@@ -24787,6 +24832,9 @@ def correction_request_action(request_id):
         abort(400,'Review note must contain at least 5 characters.')
     if row.assigned_to and row.assigned_to!=u.id and not (u.role and u.role.code=='SUPER_ADMIN'):
         abort(403)
+    if action=='APPROVE' and row.request_type=='WRONG_DEMOGRAPHICS':
+        from patient_correction_policy import assert_approvable
+        assert_approvable(row)
     if action=='CLAIM':
         if row.status not in ('NEW','NEED_INFO','UNDER_REVIEW'):
             abort(409,'This request cannot be claimed in its current state.')
