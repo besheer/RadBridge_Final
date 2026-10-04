@@ -43,6 +43,11 @@ export default function OnlyOfficeReportEditor({
   const [editorReloadToken, setEditorReloadToken] =
     useState(0);
 
+  const [templateOptions, setTemplateOptions] = useState<any[]>([]);
+  const [chooseTemplate, setChooseTemplate] = useState(false);
+  const [templateChoice, setTemplateChoice] = useState<number | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(0);
+
   function configUrl() {
     const query = new URLSearchParams();
 
@@ -52,6 +57,8 @@ export default function OnlyOfficeReportEditor({
         studyInstanceUID
       );
     }
+
+    if (templateChoice !== null) query.set('template_id', String(templateChoice));
 
     return (
       `/radbridge-api/api/ohif/report/` +
@@ -329,8 +336,6 @@ export default function OnlyOfficeReportEditor({
         setLoading(true);
         setError('');
 
-        await loadOnlyOfficeApi();
-
         const headers: Record<string, string> = {};
 
         if (identity) {
@@ -338,8 +343,29 @@ export default function OnlyOfficeReportEditor({
             identity;
         }
 
+        if (leaseToken) headers['X-RadBridge-Report-Lease'] = leaseToken;
+        const optionsResponse = await fetch(workflowUrl('template-options'), {
+          credentials: 'omit', headers,
+        });
+        const options = await optionsResponse.json();
+        if (!optionsResponse.ok || options?.ok === false) {
+          throw new Error(options?.error || 'Cannot load report templates');
+        }
+        if (cancelled) return;
+        setTemplateOptions(options.templates || []);
+        setReportStatus(String(options.report_status || 'DRAFT').toUpperCase());
+        if (options.can_initialize && templateChoice === null) {
+          setChooseTemplate(true);
+          setLoading(false);
+          return;
+        }
+        setChooseTemplate(false);
+        await loadOnlyOfficeApi();
+
+        const editorUrl = new URL(configUrl(), window.location.origin);
+        if (!options.can_initialize) editorUrl.searchParams.delete('template_id');
         const response = await fetch(
-          configUrl(),
+          editorUrl.pathname + editorUrl.search,
           {
             credentials: 'omit',
             headers,
@@ -501,6 +527,8 @@ export default function OnlyOfficeReportEditor({
     studyInstanceUID,
     identity,
     editorReloadToken,
+    templateChoice,
+    leaseToken,
   ]);
 
   return (
@@ -519,8 +547,9 @@ export default function OnlyOfficeReportEditor({
     >
       <div
         style={{
-          height: '48px',
-          flex: '0 0 48px',
+          minHeight: '48px',
+          flex: '0 0 auto',
+          flexWrap: 'wrap',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -579,6 +608,7 @@ export default function OnlyOfficeReportEditor({
             type="button"
             disabled={
               workflowBusy ||
+              chooseTemplate ||
               loading ||
               reportStatus !== 'DRAFT'
             }
@@ -603,6 +633,7 @@ export default function OnlyOfficeReportEditor({
             type="button"
             disabled={
               workflowBusy ||
+              chooseTemplate ||
               loading ||
               reportStatus !== 'DRAFT'
             }
@@ -627,6 +658,7 @@ export default function OnlyOfficeReportEditor({
             type="button"
             disabled={
               workflowBusy ||
+              chooseTemplate ||
               loading ||
               reportStatus !== 'VERIFIED'
             }
@@ -667,6 +699,28 @@ export default function OnlyOfficeReportEditor({
         </div>
       </div>
 
+      {chooseTemplate && (
+        <div style={{ padding: '20px', color: '#fff', background: '#10232e' }}>
+          <h3>Choose a report template</h3>
+          <p>The selected template will be filled with patient and examination data. This choice is available before writing starts.</p>
+          <label htmlFor="report-template-choice">Template </label>
+          <select id="report-template-choice" value={selectedTemplate}
+            onChange={event => setSelectedTemplate(Number(event.target.value))}
+            style={{ padding: '8px', color: '#111', maxWidth: '100%' }}>
+            <option value={0}>Standard report with branch header</option>
+            {templateOptions.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}
+          </select>
+          <button type="button" disabled={!leaseToken} onClick={() => setTemplateChoice(selectedTemplate)}
+            style={{ padding: '8px 14px', margin: '8px', color: '#fff', background: '#2563eb' }}>Open report</button>
+          {!leaseToken && <p>Acquire the report editing lock before starting.</p>}
+          <p><a href="/doctor/templates" target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd' }}>Upload and manage report templates</a></p>
+        </div>
+      )}
+      {!chooseTemplate && reportStatus === 'DRAFT' && (
+        <div style={{ padding: '6px 14px', color: '#cbd5e1', fontSize: '12px' }}>
+          Edit this report’s header from Insert → Header &amp; Footer. Templates are selected before writing starts.
+        </div>
+      )}
       {workflowMessage && (
         <div
           style={{

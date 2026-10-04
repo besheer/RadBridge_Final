@@ -25628,6 +25628,7 @@ def studio_templates(template_type):
 @require_perm('users.view')
 def studio_template_publish(template_id):
     row=StudioTemplate.query.get_or_404(template_id)
+    if row.template_type=='REPORT_HEADER': abort(403)
     db.session.add(StudioTemplateVersion(template_id=row.id,version_no=row.version_no,
       snapshot_json=json.dumps({'layout_json':row.layout_json,'notes':row.notes,'status':row.status},ensure_ascii=False),
       created_by=current_user().id))
@@ -33820,10 +33821,21 @@ def api_ohif_onlyoffice_config(order_id):
 
         path = authoritative['path']
     else:
-        path = _onlyoffice_prepare_document(
-            order,
-            report
-        )
+        from report_template_library import initialize, TemplateError
+        import sys as _report_template_sys
+        try:
+            template_id = request.args.get('template_id', type=int)
+            if request.args.get('template_id') and (template_id is None or template_id < 0):
+                raise TemplateError('Invalid template selection.')
+            # Template selection changes a draft document and requires its edit lock.
+            if template_id is not None:
+                assert_role_allowed(doctor_user, 'DRAFT')
+                assert_lease_owner(db=db, order=order, report=report, user=doctor_user,
+                    lease_token=str(request.headers.get('X-RadBridge-Report-Lease') or ''))
+            path = initialize(_report_template_sys.modules[__name__], order, report, doctor_user, template_id)
+        except (TemplateError, ReportEditControlError) as exc:
+            db.session.rollback()
+            return jsonify(ok=False, error=str(exc)), 409
 
     doc_token = _onlyoffice_link_token(
         order.id,
@@ -38377,3 +38389,7 @@ from analytics_reference_routes import register_analytics_reference_routes
 analytics_reference_blueprint = register_analytics_reference_routes(
     _reporting_support_sys.modules[__name__]
 )
+
+
+from report_template_routes import register as register_report_template_routes
+register_report_template_routes(_reporting_support_sys.modules[__name__])

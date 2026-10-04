@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Report header{% endblock %}
+{% block content %}
+<h2>Report header</h2>
+<p>Publish a default header for new ONLYOFFICE reports. Earlier documents and final reports retain their existing header.</p>
+<p><a class="btn btn-outline-primary" href="{{ url_for('doctor_templates') }}">Report templates</a></p>
+<form method="get" class="card p-3 mb-3"><label for="scope">Scope</label><select id="scope" name="branch_id" class="form-select"><option value="">All branches — default</option>{% for b in branches %}<option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select><button class="btn btn-outline-primary mt-2">Load header</button></form>
+<form method="post" enctype="multipart/form-data" class="card p-3">
+<input type="hidden" name="csrf_token" value="{{ template_csrf }}"><input type="hidden" name="branch_id" value="{{ branch_id or '' }}">
+<p>Current published version: {{ profile.version_no if profile else 'Default' }}</p>
+{% for key,label in [('title','Report title'),('subtitle','Subtitle / facility name'),('address','Address'),('phone','Contact details'),('footer','Footer')] %}<label class="mt-2" for="{{key}}">{{label}}</label><input class="form-control" maxlength="500" id="{{key}}" name="{{key}}" value="{{layout[key]}}">{% endfor %}
+<label class="mt-3" for="logo">Logo — PNG or JPEG, up to 2 MB</label><input id="logo" name="logo" type="file" accept="image/png,image/jpeg" class="form-control">
+{% if layout.logo_path %}<label class="mt-2"><input type="checkbox" name="remove_logo" value="1"> Remove current logo</label>{% endif %}
+{% for key,label in [('preserve_template_header','Keep the uploaded template header and add patient identity'),('show_dob','Show date of birth'),('show_sex','Show sex'),('show_study_date','Show examination date'),('show_referrer','Show referring doctor')] %}<label class="mt-2"><input type="checkbox" name="{{key}}" value="1" {% if layout[key] %}checked{% endif %}> {{label}}</label>{% endfor %}
+<p class="mt-3">Patient name, Patient ID and Accession always appear for identification. Inside a draft report, use ONLYOFFICE Insert → Header &amp; Footer to edit its layout.</p>
+<button class="btn btn-primary">Publish header</button>
+</form>
+{% endblock %}
