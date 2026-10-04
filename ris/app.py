@@ -326,6 +326,24 @@ class Patient(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     worklist_name = db.Column(db.String(180), default='')
 
+class DicomEndpoint(db.Model):
+    __tablename__='dicom_endpoint'
+    id=db.Column(db.Integer,primary_key=True)
+    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),nullable=False,index=True)
+    kind=db.Column(db.String(20),nullable=False)
+    ae_title=db.Column(db.String(16),nullable=False)
+    calling_ae=db.Column(db.String(16),nullable=False,default='RADBRIDGERIS')
+    host=db.Column(db.String(253),nullable=False,default='')
+    port=db.Column(db.Integer,nullable=False,default=104)
+    active=db.Column(db.Boolean,nullable=False,default=False)
+    echo_result=db.Column(db.String(20),nullable=False,default='NOT_TESTED')
+    echo_message=db.Column(db.String(240),nullable=False,default='')
+    echo_checked_at=db.Column(db.DateTime)
+    echo_elapsed_ms=db.Column(db.Integer)
+    branch=db.relationship('Branch')
+    __table_args__=(db.UniqueConstraint('branch_id','kind',name='uq_dicom_endpoint_branch_kind'),)
+
+
 class Device(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'), nullable=False)
@@ -20148,6 +20166,80 @@ def admin_device_blocks():
     db.session.commit()
     flash('Device time blocked.','success')
     return redirect(url_for('admin_device_schedules'))
+
+@app.get('/admin/dicom-connections')
+@require_perm('devices.manage')
+def dicom_connections_page():
+    from dicom_connections import branch_allowed,KINDS
+    branches=[b for b in Branch.query.order_by(Branch.code).all() if branch_allowed(b.id)]
+    if not branches and not has_perm('*'):abort(403)
+    branch_id=request.args.get('branch_id',type=int)
+    if branch_id and not branch_allowed(branch_id):abort(403)
+    if branch_id:branches=[b for b in branches if b.id==branch_id]
+    ids=[b.id for b in branches]
+    endpoints=DicomEndpoint.query.filter(DicomEndpoint.branch_id.in_(ids)).order_by(DicomEndpoint.branch_id,DicomEndpoint.kind).all()
+    devices=Device.query.filter(Device.branch_id.in_(ids)).order_by(Device.branch_id,Device.name).all()
+    central=None
+    try:
+        response=requests.get(ORTHANC+'/system',auth=AUTH,timeout=2)
+        if response.ok:central={key:response.json().get(key) for key in ('DicomAet','DicomPort')}
+    except requests.RequestException:pass
+    return render_template('dicom_connections.html',central=central,branches=branches,endpoints=endpoints,devices=devices,kinds=KINDS)
+
+@app.route('/admin/dicom-connections/branches/<int:branch_id>',methods=['GET','POST'])
+@require_perm('devices.manage')
+def dicom_connection_edit(branch_id):
+    from dicom_connections import branch_allowed,KINDS,ae_title,host,port
+    if not branch_allowed(branch_id):abort(403)
+    branch=Branch.query.get_or_404(branch_id)
+    if request.method=='POST':
+        kind=request.form.get('kind')
+        if kind not in KINDS:abort(400)
+        try:
+            values={'ae_title':ae_title(request.form.get('ae_title')),'calling_ae':ae_title(request.form.get('calling_ae')),'host':host(request.form.get('host')),'port':port(request.form.get('port')),'active':request.form.get('active')=='1'}
+            if values['active'] and (not values['host'] or not branch.active):raise ValueError('Activate the branch and configure its host before enabling this connection.')
+        except ValueError as exc:
+            flash(str(exc),'danger');return redirect(url_for('dicom_connection_edit',branch_id=branch_id))
+        row=DicomEndpoint.query.filter_by(branch_id=branch_id,kind=kind).with_for_update().first()
+        if not row:row=DicomEndpoint(branch_id=branch_id,kind=kind);db.session.add(row)
+        changed=any(getattr(row,key)!=value for key,value in values.items())
+        for key,value in values.items():setattr(row,key,value)
+        if changed:row.echo_result='NOT_TESTED';row.echo_message='';row.echo_checked_at=None;row.echo_elapsed_ms=None
+        audit('DICOM_ENDPOINT_CONFIGURED','branch',branch_id,'kind='+kind+'; connection metadata only; listener and routing unchanged')
+        db.session.commit();flash('Connection saved. / تم حفظ بيانات الاتصال.','success')
+        return redirect(url_for('dicom_connection_edit',branch_id=branch_id))
+    return render_template('dicom_connection_edit.html',branch=branch,kinds=KINDS,endpoints={e.kind:e for e in DicomEndpoint.query.filter_by(branch_id=branch_id).all()})
+
+@app.post('/admin/dicom-connections/<int:endpoint_id>/echo')
+@require_perm('devices.manage')
+def dicom_connection_echo(endpoint_id):
+    from dicom_connections import branch_allowed,echo
+    row=DicomEndpoint.query.filter_by(id=endpoint_id).with_for_update().first_or_404()
+    if not branch_allowed(row.branch_id):abort(403)
+    if not row.active or not row.branch.active or not row.host:abort(409,'Configure and activate the connection first.')
+    result=echo(row.host,row.port,row.ae_title,row.calling_ae)
+    row.echo_result=result['result'];row.echo_message=result['message'];row.echo_elapsed_ms=result['elapsed_ms'];row.echo_checked_at=datetime.utcnow()
+    audit('DICOM_CECHO','dicom_endpoint',row.id,'result='+row.echo_result+'; no image transfer')
+    db.session.commit();flash(row.echo_message,'success' if row.echo_result=='SUCCESS' else 'warning')
+    return redirect(url_for('dicom_connections_page',branch_id=row.branch_id))
+
+@app.route('/admin/branches/<int:branch_id>/edit',methods=['GET','POST'])
+@require_perm('branches.manage')
+def admin_branch_edit(branch_id):
+    b=Branch.query.get_or_404(branch_id)
+    if request.method=='POST':
+        import re
+        code=(request.form.get('code') or '').strip().upper();name=(request.form.get('name') or '').strip()
+        if not re.fullmatch(r'[A-Z0-9_-]{1,20}',code) or not name or len(name)>120:
+            flash('Valid branch code and name are required.','danger');return redirect(url_for('admin_branch_edit',branch_id=b.id))
+        if Branch.query.filter(Branch.code==code,Branch.id!=b.id).first():
+            flash('Branch code already exists.','danger');return redirect(url_for('admin_branch_edit',branch_id=b.id))
+        b.code=code;b.name=name;b.active=request.form.get('active')=='1'
+        b.reception_collection_enabled=request.form.get('reception_collection_enabled')=='1'
+        audit('BRANCH_EDIT','branch',b.id,'code='+code+'; active='+str(b.active))
+        db.session.commit();flash('Branch saved. / تم حفظ الفرع.','success');return redirect(url_for('admin_branches'))
+    return render_template('admin_branch_edit.html',branch=b)
+
 
 @app.route('/admin/devices',methods=['GET','POST'])
 @require_perm('devices.manage')
