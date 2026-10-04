@@ -2227,6 +2227,24 @@ class PacsResolutionEvent(db.Model):
     created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
 
 
+class DicomCorrection(db.Model):
+    __tablename__='dicom_correction'
+    id=db.Column(db.Integer,primary_key=True)
+    source_study_id=db.Column(db.String(120),nullable=False,unique=True)
+    new_study_id=db.Column(db.String(120),default='',index=True)
+    new_uid=db.Column(db.String(180),default='')
+    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
+    actor_user_id=db.Column(db.Integer,nullable=False)
+    status=db.Column(db.String(30),nullable=False,index=True)
+    reason=db.Column(db.String(500),nullable=False)
+    before_json=db.Column(db.Text,nullable=False)
+    after_json=db.Column(db.Text,nullable=False)
+    error_code=db.Column(db.String(80),default='')
+    created_at=db.Column(db.DateTime,default=datetime.utcnow,nullable=False)
+    finished_at=db.Column(db.DateTime)
+
+
+
 class PacsStudyInbox(db.Model):
     __tablename__='pacs_study_inbox'
     id=db.Column(db.Integer,primary_key=True)
@@ -3272,6 +3290,14 @@ def pacs_lookup_order(order):
         order.pacs_last_seen_at=datetime.utcnow()
         return {'count':0,'status':'WAITING','study_id':''}
 
+    blocked=DicomCorrection.query.filter(
+        db.or_(DicomCorrection.status.in_(['PENDING','CREATED']),
+               db.and_(DicomCorrection.status=='NEEDS_REVIEW',DicomCorrection.new_study_id==''))).first()
+    if blocked:
+        return {'count':int(order.pacs_image_count or 0),'status':'REVIEW_REQUIRED','study_id':order.pacs_study_id or ''}
+    excluded={row.source_study_id for row in DicomCorrection.query.all()}
+    excluded.update(row.new_study_id for row in DicomCorrection.query.filter(DicomCorrection.status!='COMPLETED').all())
+    studies=[st for st in studies if st.get('ID') not in excluded]
     count=0
     study_id=''
     for st in studies:
@@ -3804,6 +3830,13 @@ def pacs_auto_intake_once(limit=200):
             else:
                 inbox.last_seen_at=datetime.utcnow()
                 inbox.image_count=int(tags.get('instances') or inbox.image_count or 0)
+
+            if DicomCorrection.query.filter(
+                db.or_(DicomCorrection.source_study_id==sid,
+                       db.and_(DicomCorrection.new_study_id==sid,DicomCorrection.status!='COMPLETED'))
+            ).first() or DicomCorrection.query.filter(db.or_(DicomCorrection.status.in_(['PENDING','CREATED']),db.and_(DicomCorrection.status=='NEEDS_REVIEW',DicomCorrection.new_study_id==''))).first():
+                db.session.rollback()
+                continue
 
             # Known external sources never enter the internal auto-match path.
             # The master/center switches control capture, while disabled known
@@ -15848,6 +15881,74 @@ def admin_sticker_templates():
     return render_template('admin_sticker_templates.html',template=t,fields=_sticker_fields(t),labels=_sticker_labels(t))
 
 
+@app.get('/pacs/reconciliation/<study_id>/preview')
+@require_perm('pacs.reconcile')
+def pacs_reconciliation_preview(study_id):
+    import sys
+    from dicom_reconciliation import preview, CorrectionError
+    inbox=PacsStudyInbox.query.filter_by(orthanc_study_id=study_id).first_or_404()
+    order=Order.query.get_or_404(request.args.get('order_id',type=int))
+    try:
+        before,after,token=preview(sys.modules[__name__],inbox,order)
+    except CorrectionError as exc:
+        return jsonify(error=str(exc)),409
+    except requests.RequestException:
+        return jsonify(error='PACS unavailable; preview cannot be verified.'),503
+    response=jsonify(before=before['tags'],after=after,images=before['count'],
+        study_uid=before['study_uid'],token=token,order_id=order.id,
+        branch=order.branch.name if order.branch else '',procedure=order.procedure)
+    response.headers['Cache-Control']='no-store'
+    return response
+
+
+@app.post('/pacs/reconciliation/<study_id>/correct-dicom')
+@require_perm('pacs.reconcile')
+def pacs_reconciliation_correct_dicom(study_id):
+    import sys
+    from dicom_reconciliation import execute,CorrectionError
+    # DICOM mutation is restricted to administrators, beyond ordinary match permission.
+    if not has_perm('correction.review'):abort(403)
+    if request.form.get('identity_confirmed')!='1':abort(400)
+    reason=(request.form.get('reason') or '').strip()
+    if not 5<=len(reason)<=500 or not request.form.get('preview_token'):abort(400)
+    inbox=PacsStudyInbox.query.filter_by(orthanc_study_id=study_id).first_or_404()
+    order=Order.query.get_or_404(request.form.get('order_id',type=int))
+    try:
+        job=execute(sys.modules[__name__],inbox,order,request.form['preview_token'],reason)
+        flash('DICOM corrected and verified. Original retained. Audit correction #'+str(job.id),'success')
+    except (CorrectionError,requests.RequestException) as exc:
+        db.session.rollback()
+        flash(str(exc) if isinstance(exc,CorrectionError) else 'PACS unavailable; correction blocked.','danger')
+    return redirect(url_for('pacs_reconciliation'))
+
+
+@app.get('/pacs/reconciliation/audit')
+@require_perm('audit.view')
+def pacs_reconciliation_audit():
+    q=DicomCorrection.query.join(Order,DicomCorrection.order_id==Order.id)
+    if not has_perm('*'):
+        u=current_user()
+        if not u.branch_id:abort(403)
+        q=q.filter(Order.branch_id==u.branch_id)
+    rows=q.order_by(DicomCorrection.id.desc()).limit(200).all()
+    return render_template('dicom_correction_audit.html',rows=rows,json=json)
+
+
+@app.get('/pacs/reconciliation/example')
+@require_perm('pacs.reconcile')
+def pacs_reconciliation_example():
+    from types import SimpleNamespace as Obj
+    fields=['PatientID','PatientName','PatientBirthDate','PatientSex','AccessionNumber']
+    before=dict(zip(fields,['CODEX-UAT-WRONG','CODEX UAT Wrong','19800101','F','UAT-WRONG']))
+    after=dict(zip(fields,['CODEX-UAT-CORRECT','CODEX UAT Correct','19900101','M','UAT-CORRECT']))
+    patient=Obj(patient_id='CODEX-UAT-CORRECT',name='CODEX UAT Correct')
+    order=Obj(id='EXAMPLE',procedure='Synthetic X-ray',branch=Obj(name='Example branch'))
+    inbox=Obj(id='EXAMPLE',match_method='EXAMPLE ONLY',orthanc_study_id='example')
+    row={'inbox':inbox,'candidate':None,'ris_patient':patient,
+         'preview':{'before':{'tags':before,'count':2,'study_uid':'Synthetic example'},'after':after,'order':order}}
+    return render_template('pacs_reconciliation.html',exceptions=[row],eligible_exam_pairs=[],
+        active_exam_links=[],can_exam_link=False,can_reconcile=False,target_options=[],search_query='',demo_mode=True)
+
 @app.route('/pacs/reconciliation')
 @require_perm('orders.view')
 def pacs_reconciliation():
@@ -15957,9 +16058,27 @@ def pacs_reconciliation():
             'secondary':secondary,
         })
 
+    import sys
+    from dicom_reconciliation import preview,CorrectionError
+    q=(request.args.get('q') or '').strip()[:100]
+    target_options=correction_search_orders(q,limit=20) if q else []
+    if not has_perm('*'):
+        u=current_user()
+        target_options=[o for o in target_options if u.branch_id and o.branch_id==u.branch_id]
+        rows=[row for row in rows if row['candidate'] and u.branch_id and row['candidate'].branch_id==u.branch_id]
+    for row in rows:
+        row['preview']=None
+        if row['inbox'].orthanc_study_id==request.args.get('study_id') and request.args.get('order_id') and has_perm('pacs.reconcile'):
+            selected=Order.query.get_or_404(request.args.get('order_id',type=int))
+            try:
+                before,after,token=preview(sys.modules[__name__],row['inbox'],selected)
+                row['preview']={'before':before,'after':after,'token':token,'order':selected}
+            except CorrectionError as exc:flash(str(exc),'danger')
+            except requests.RequestException:flash('PACS unavailable; preview blocked.','danger')
+
     return render_template(
         'pacs_reconciliation.html',
-        exceptions=rows,
+        exceptions=rows,target_options=target_options,search_query=q,correction_paused=bool(DicomCorrection.query.filter(db.or_(DicomCorrection.status.in_(['PENDING','CREATED']),db.and_(DicomCorrection.status=='NEEDS_REVIEW',DicomCorrection.new_study_id==''))).first()),
         eligible_exam_pairs=eligible_exam_pairs,
         active_exam_links=active_exam_links,
         can_exam_link=has_perm('pacs.exam_link'),
@@ -16088,10 +16207,20 @@ def pacs_reconciliation_match(study_id):
         return redirect(url_for('pacs_reconciliation'))
     order_id=request.form.get('order_id',type=int)
     reason=(request.form.get('reason') or '').strip()
-    if not order_id or len(reason)<5:
+    if not order_id or not 5<=len(reason)<=500:
         flash('RIS Order ID and documented reason are required.','danger')
         return redirect(url_for('pacs_reconciliation'))
     order=Order.query.get_or_404(order_id)
+    import sys
+    from dicom_reconciliation import preview,validate_token,CorrectionError
+    if request.form.get('identity_confirmed')!='1':abort(400)
+    try:
+        before,after,_=preview(sys.modules[__name__],inbox,order)
+        validate_token(sys.modules[__name__],request.form.get('preview_token',''),inbox,order,before,after)
+    except CorrectionError as exc:
+        flash(str(exc),'danger');return redirect(url_for('pacs_reconciliation'))
+    except requests.RequestException:
+        flash('PACS unavailable; match blocked.','danger');return redirect(url_for('pacs_reconciliation'))
     st=next((x for x in _orthanc_recent_studies(300) if x.get('ID')==study_id),None)
     if not st: abort(404)
     tags=_study_tags_extended(st)
@@ -16109,7 +16238,7 @@ def pacs_reconciliation_match(study_id):
             pacs_accession=tags.get('accession',''),inbox_state='MANUALLY_MATCHED')
         evaluate_case_readiness(order)
         audit('PACS_DEMOGRAPHIC_MANUAL_RECONCILIATION','order',order.id,
-              'study=%s reason=%s' % (study_id,reason))
+              json.dumps({'study':study_id,'reason':reason,'before':before['tags'],'target':after,'dicom_changed':False},ensure_ascii=False))
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
@@ -16169,6 +16298,11 @@ def pacs_reconciliation_auto_safe():
     try:
         for st in _orthanc_recent_studies(200):
             tags=_study_tags_extended(st);sid=tags.get('study_id')
+            if DicomCorrection.query.filter(
+                db.or_(DicomCorrection.source_study_id==sid,
+                       db.and_(DicomCorrection.new_study_id==sid,DicomCorrection.status!='COMPLETED'))
+            ).first() or DicomCorrection.query.filter(db.or_(DicomCorrection.status.in_(['PENDING','CREATED']),db.and_(DicomCorrection.status=='NEEDS_REVIEW',DicomCorrection.new_study_id==''))).first():
+                continue
             existing=PacsStudyMatch.query.filter_by(orthanc_study_id=sid).first()
             if existing: continue
             order,method,decision=strict_pacs_demographic_match(tags)

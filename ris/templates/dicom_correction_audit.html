@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block page_title %}DICOM Correction Audit{% endblock %}
+{% block content %}
+<h2>سجل تصحيح DICOM / DICOM correction audit</h2>
+<p><a class="btn" href="{{url_for('pacs_reconciliation')}}">العودة للمطابقة / Back to reconciliation</a></p>
+<p>الأصل محفوظ. العمليات غير المكتملة تحتاج مراجعة متخصصة؛ لا تعِد تنفيذها. التصحيح هنا داخل PACS المركزي، ولا يؤكد تحديث أي نسخة في الفروع.</p>
+{% for row in rows %}
+<section class="panel" style="margin:16px 0;overflow-wrap:anywhere">
+<h3>#{{row.id}} — {{row.status}}</h3>
+<p>Order #{{row.order_id}} · User #{{row.actor_user_id}} · {{row.created_at}} UTC</p>
+<p>Reason: {{row.reason}}</p>
+<p>Source retained: {{row.source_study_id}}<br>Corrected: {{row.new_study_id or 'Not confirmed'}}<br>Completed: {{row.finished_at or 'Not completed'}} UTC</p>
+{% set before=json.loads(row.before_json).get('tags',{}) %}{% set after=json.loads(row.after_json) %}
+<div style="overflow:auto"><table><tr><th>Field</th><th>Original</th><th>Corrected target</th></tr>
+{% for field,value in after.items() %}<tr><td>{{field}}</td><td>{{before.get(field,'—')}}</td><td>{{value}}</td></tr>{% endfor %}</table></div>
+{% if row.error_code %}<p class="warn">{{row.error_code}} — RIS link was not approved by this operation. Inspect the source and any generated copy.</p>{% endif %}
+</section>
+{% else %}<div class="panel">لا توجد عمليات تصحيح مسجلة / No DICOM corrections recorded.</div>{% endfor %}
+{% endblock %}
