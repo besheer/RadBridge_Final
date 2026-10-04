@@ -38393,3 +38393,6 @@ analytics_reference_blueprint = register_analytics_reference_routes(
 
 from report_template_routes import register as register_report_template_routes
 register_report_template_routes(_reporting_support_sys.modules[__name__])
+
+from readiness_operations import register as register_readiness_operations
+register_readiness_operations(_reporting_support_sys.modules[__name__])
