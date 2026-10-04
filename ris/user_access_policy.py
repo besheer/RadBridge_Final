@@ -68,3 +68,15 @@ def page_access(role,row):
         if '*' in perms or 'payments.create' in perms:perms.add('cashier.workstation')
         return 'BRANCH_DEPENDENT' if all('*' in perms or p in perms for p in row['permissions']) else 'DENIED'
     return 'ROLE_ALLOWED' if all('*' in perms or p in perms for p in row['permissions']) else 'DENIED'
+
+
+def permission_catalog():
+    import app as m
+    names=set(m.ALL_PERMISSIONS)
+    for values in m.ROLE_PERMS.values():names.update(values)
+    for role in m.Role.query.all():names.update(role.permissions())
+    tree=ast.parse(Path(m.__file__).read_text())
+    for node in ast.walk(tree):
+        if isinstance(node,ast.Call) and isinstance(node.func,ast.Name) and node.func.id=='require_perm' and node.args and isinstance(node.args[0],ast.Constant):
+            names.add(node.args[0].value)
+    return sorted(name for name in names if isinstance(name,str) and name!='*')

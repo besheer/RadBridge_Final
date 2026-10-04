@@ -24901,7 +24901,8 @@ def admin_roles():
         return redirect(url_for('admin_roles',role=role.id))
     roles=Role.query.order_by(Role.name).all()
     selected=Role.query.get(request.args.get('role',type=int)) if request.args.get('role') else (roles[0] if roles else None)
-    return render_template('admin_roles.html',roles=roles,selected=selected,all_permissions=ALL_PERMISSIONS)
+    from user_access_policy import permission_catalog
+    return render_template('admin_roles.html',roles=roles,selected=selected,all_permissions=permission_catalog())
 
 @app.get('/admin/access-review')
 @require_perm('roles.manage')

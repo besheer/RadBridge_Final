@@ -138,3 +138,15 @@ def test_reception_review_requires_base_collection_permission(monkeypatch):
     assert policy.page_access(u.role,row)=='BRANCH_DEPENDENT'
     u.role.permissions_json='[]'
     assert policy.page_access(u.role,row)=='DENIED'
+
+
+def test_role_form_includes_cashier_receipt_and_all_existing_permissions(monkeypatch):
+    c,admin=client(monkeypatch)
+    role=m.Role(code='CASHIER',name='Cashier',permissions_json=json.dumps(m.ROLE_PERMS['CASHIER']))
+    m.db.session.add(role);m.db.session.flush()
+    response=c.get('/admin/roles?role='+str(role.id))
+    assert response.status_code==200
+    assert b'value="cashier.workstation"' in response.data and b'value="receipts.print"' in response.data
+    assert set(role.permissions()).issubset(set(policy.permission_catalog()))
+    c.post('/admin/roles',data={'role_id':role.id,'permissions':role.permissions()})
+    assert 'cashier.workstation' in role.permissions() and 'receipts.print' in role.permissions()
