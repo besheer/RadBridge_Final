@@ -4845,6 +4845,8 @@ def has_perm(perm):
     if u.role and u.role.code == 'SUPER_ADMIN':
         return True
 
+    from user_access_policy import NO_REPORT_EDIT
+    if u.role and u.role.code in NO_REPORT_EDIT and perm=='reports.edit':return False
     perms = u.role.permissions() if u.role else []
     if u.role and u.role.code == 'RECEPTION' and perm in ('payments.create','cashier.workstation'):
         from collection_policy import reception_collection_allowed
@@ -4854,7 +4856,8 @@ def has_perm(perm):
 def login_required(fn):
     @wraps(fn)
     def w(*a, **kw):
-        if not current_user(): return redirect(url_for('login', next=request.path))
+        u=current_user()
+        if not u or not u.active: return redirect(url_for('login', next=request.path))
         return fn(*a, **kw)
     return w
 
@@ -20017,8 +20020,13 @@ def admin_home():
 @app.route('/admin/users',methods=['GET','POST'])
 @require_perm('users.view')
 def admin_users():
+    from user_access_policy import CONTACT_FIELDS,contacts,parse_contacts,save_contacts,require_manage_target
     if request.method=='POST':
         if not (has_perm('*') or has_perm('users.manage')): abort(403)
+        try:data=parse_contacts(request.form)
+        except ValueError as exc:flash(str(exc),'danger');return redirect(url_for('admin_users'))
+        role=Role.query.get_or_404(request.form.get('role_id',type=int))
+        require_manage_target(role=role)
         username=request.form['username'].strip()
         password=request.form.get('password','')
         if User.query.filter_by(username=username).first():
@@ -20029,13 +20037,15 @@ def admin_users():
                password_hash=generate_password_hash(password),
                role_id=int(request.form['role_id']),branch_id=(int(request.form['branch_id']) if request.form.get('branch_id') else None),
                active=True,must_change_password=True)
-        db.session.add(u); audit('USER_CREATE','user','',u.username); db.session.commit(); flash('User created. Temporary password must be changed at first login.','success')
-    return render_template('admin_users.html',users=User.query.order_by(User.username).all(),roles=Role.query.order_by(Role.name).all(),branches=Branch.query.order_by(Branch.name).all())
+        db.session.add(u); db.session.flush(); save_contacts(u,data,request.form); audit('USER_CONTACTS_SAVE','user',u.id,'Contact fields updated'); audit('USER_CREATE','user','',u.username); db.session.commit(); flash('User created. Temporary password must be changed at first login.','success')
+    return render_template('admin_users.html',users=User.query.order_by(User.username).all(),roles=Role.query.order_by(Role.name).all(),branches=Branch.query.order_by(Branch.name).all(),contact_fields=CONTACT_FIELDS,user_contacts=contacts,user_profiles={x.user_id:x for x in UserProfile.query.all()})
 
 @app.post('/admin/users/<int:user_id>/toggle')
 @require_perm('users.manage')
 def admin_user_toggle(user_id):
     u=User.query.get_or_404(user_id)
+    from user_access_policy import require_manage_target
+    require_manage_target(user=u)
     if u.id==current_user().id and u.active:
         flash('You cannot disable your own account.','danger'); return redirect(url_for('admin_users'))
     u.active=not u.active; audit('USER_TOGGLE','user',u.id,str(u.active)); db.session.commit()
@@ -20045,11 +20055,22 @@ def admin_user_toggle(user_id):
 @require_perm('users.manage')
 def admin_user_edit(user_id):
     u=User.query.get_or_404(user_id)
+    from user_access_policy import require_manage_target
+    require_manage_target(user=u)
+    from user_access_policy import parse_contacts,save_contacts,contacts
+    try:data=parse_contacts(request.form,contacts(u))
+    except ValueError as exc:flash(str(exc),'danger');return redirect(url_for('admin_users'))
+    role=Role.query.get_or_404(request.form.get('role_id',type=int))
+    require_manage_target(role=role)
+    if u.id==current_user().id and (request.form.get('active')!='1' or (u.role and u.role.code=='SUPER_ADMIN' and role.code!='SUPER_ADMIN')):
+        flash('Cannot disable or demote your own administrator session.','danger');return redirect(url_for('admin_users'))
     old_role=u.role.code if u.role else ''
     u.full_name=request.form.get('full_name',u.full_name).strip() or u.full_name
     u.role_id=int(request.form['role_id'])
     u.branch_id=int(request.form['branch_id']) if request.form.get('branch_id') else None
     u.active=request.form.get('active')=='1'
+    save_contacts(u,data,request.form)
+    audit('USER_CONTACTS_SAVE','user',u.id,'Contact fields updated')
     audit('USER_EDIT','user',u.id,f'role {old_role}->{Role.query.get(u.role_id).code if u.role_id else ""}; active={u.active}')
     db.session.commit(); flash('User updated.','success')
     return redirect(url_for('admin_users'))
@@ -20058,6 +20079,8 @@ def admin_user_edit(user_id):
 @require_perm('users.manage')
 def admin_user_reset_password(user_id):
     u=User.query.get_or_404(user_id)
+    from user_access_policy import require_manage_target
+    require_manage_target(user=u)
     password=request.form.get('new_password','')
     if len(password)<10:
         flash('Temporary password must be at least 10 characters.','danger'); return redirect(url_for('admin_users'))
@@ -24865,13 +24888,32 @@ def admin_remove_order_referral(order_id):
 def admin_roles():
     if request.method=='POST':
         role=Role.query.get_or_404(int(request.form['role_id']))
-        role.permissions_json=json.dumps(request.form.getlist('permissions'))
+        from user_access_policy import NO_REPORT_EDIT,require_manage_target
+        require_manage_target(role=role)
+        proposed=request.form.getlist('permissions')
+        actor=current_user()
+        if actor.role.code!='SUPER_ADMIN' and not set(proposed).issubset(set(actor.role.permissions())):abort(403)
+        if role.code in NO_REPORT_EDIT and ('reports.edit' in proposed or '*' in proposed):
+            flash('This department must not receive report editing permission.','danger');return redirect(url_for('admin_roles',role=role.id))
+        role.permissions_json=json.dumps(proposed)
         audit('ROLE_PERMISSIONS_EDIT','role',role.id,role.code)
         db.session.commit(); flash('Role permissions updated.','success')
         return redirect(url_for('admin_roles',role=role.id))
     roles=Role.query.order_by(Role.name).all()
     selected=Role.query.get(request.args.get('role',type=int)) if request.args.get('role') else (roles[0] if roles else None)
     return render_template('admin_roles.html',roles=roles,selected=selected,all_permissions=ALL_PERMISSIONS)
+
+@app.get('/admin/access-review')
+@require_perm('roles.manage')
+def admin_access_review():
+    from user_access_policy import route_catalog,page_access
+    roles=Role.query.order_by(Role.name).all()
+    selected=Role.query.get_or_404(request.args.get('role',type=int)) if request.args.get('role') else roles[0]
+    rows=route_catalog()
+    sections=sorted({row['section'] for row in rows})
+    section=request.args.get('section','')
+    if section:rows=[row for row in rows if row['section']==section]
+    return render_template('admin_access_review.html',roles=roles,selected=selected,rows=rows,page_access=page_access,sections=sections,section=section)
 
 @app.route('/admin/branches',methods=['GET','POST'])
 @require_perm('branches.manage')
