@@ -107,3 +107,14 @@ def test_other_branch_receipt_denied_for_reception(monkeypatch):
     m.db.session.add(r);m.db.session.flush()
     assert c.get('/receipts/'+str(r.id)).status_code==403
     assert c.get('/receipts/'+str(r.id)+'/studio-print').status_code==403
+
+
+@pytest.mark.parametrize('method',['VISA','MASTERCARD','WALLET','BANK_TRANSFER'])
+def test_supported_non_cash_methods_record_receipt_and_payment(monkeypatch,method):
+    c,u,b,o,x=setup(monkeypatch)
+    assert c.post('/orders/'+str(o.id)+'/payment',data={'amount':'40','payment_method':method,'reference_no':'CODEX-UAT-REF'}).status_code==302
+    receipt=m.Receipt.query.filter_by(order_id=o.id).one()
+    payment=m.Payment.query.filter_by(order_id=o.id).one()
+    assert receipt.payment_method==payment.method==method
+    assert receipt.reference_no==payment.reference=='CODEX-UAT-REF'
+    assert o.paid_amount==40 and float(receipt.amount)==payment.amount==40
