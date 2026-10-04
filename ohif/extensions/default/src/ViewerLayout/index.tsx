@@ -31,10 +31,12 @@ function ViewerLayout({
 }: withAppTypes): React.FunctionComponent {
   const [appConfig] = useAppConfig();
   const [reportViewerPercent, setReportViewerPercent] = useState(0);
+  const [reportEditorActive, setReportEditorActive] = useState(false);
   useEffect(() => {
     const onReportLayout = (event: Event) => {
       const value = Number((event as CustomEvent).detail?.viewerPercent);
       setReportViewerPercent([30, 50, 70].includes(value) ? value : 0);
+      setReportEditorActive((event as CustomEvent).detail?.active === true);
     };
     window.addEventListener('radbridge-report-layout', onReportLayout);
     return () => window.removeEventListener('radbridge-report-layout', onReportLayout);
@@ -228,7 +230,7 @@ function ViewerLayout({
                 <ResizablePanel {...resizableRightPanelProps}>
                   <SidePanelWithServices
                     side="right"
-                    isExpanded={!rightPanelClosedState}
+                    isExpanded={reportEditorActive || !rightPanelClosedState}
                     servicesManager={servicesManager}
                     {...rightPanelProps}
                   />

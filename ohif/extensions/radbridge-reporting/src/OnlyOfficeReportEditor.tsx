@@ -64,10 +64,10 @@ export default function OnlyOfficeReportEditor({
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('radbridge-report-layout', {
-      detail: { viewerPercent },
+      detail: { viewerPercent, active: true },
     }));
     return () => window.dispatchEvent(new CustomEvent('radbridge-report-layout', {
-      detail: { viewerPercent: 0 },
+      detail: { viewerPercent: 0, active: false },
     }));
   }, [viewerPercent]);
 
