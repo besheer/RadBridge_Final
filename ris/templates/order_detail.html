@@ -3,6 +3,14 @@
 {% block subtitle %}{{order.modality}} · {{order.proc.name_ar if ui_lang=='ar' and order.proc and order.proc.name_ar else (order.proc.name if order.proc else order.procedure)}} · {{order.status}}{% endblock %}
 
 {% block content %}
+<style>
+@media (max-width: 720px) {
+  .rb-order-workspace .workflow-strip { min-width: 0; flex-wrap: wrap; }
+  body:has(.rb-order-workspace) .app-header .header-left { min-width: 0; flex: 1; }
+  body:has(.rb-order-workspace) .app-header .breadcrumb { min-width: 0; flex-wrap: wrap; overflow-wrap: anywhere; }
+  body:has(.rb-order-workspace) .app-header .header-actions { flex-shrink: 0; }
+}
+</style>
 <div class="rb-case-workspace rb-order-workspace">
 
 <div class="panel rb-order-workflow-overview">
