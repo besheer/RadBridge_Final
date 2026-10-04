@@ -1,18 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import EmbeddedReportEditor from './EmbeddedReportEditor';
 import OnlyOfficeReportEditor from './OnlyOfficeReportEditor';
 
 export default function RadBridgeReportingPanel() {
   const [data, setData] = useState<any>(null);
-  const [findings, setFindings] = useState('');
-  const [impression, setImpression] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [returnNote, setReturnNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [selectedWordFile, setSelectedWordFile] = useState<File | null>(null);
-  const [embeddedEditorOpen, setEmbeddedEditorOpen] = useState(false);
   const [onlyOfficeEditorOpen, setOnlyOfficeEditorOpen] = useState(false);
   const [preferredEditor, setPreferredEditor] = useState('ONLYOFFICE');
   const [preferredLayout, setPreferredLayout] = useState('50_50');
@@ -24,7 +20,7 @@ export default function RadBridgeReportingPanel() {
   // Keep the active token available to async close handlers.
   const leaseTokenRef = useRef('');
   const [leaseExpiresAt, setLeaseExpiresAt] = useState('');
-  const [leaseEditorType, setLeaseEditorType] = useState('BROWSER');
+  const [leaseEditorType, setLeaseEditorType] = useState('ONLYOFFICE');
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
   const params = useMemo(
@@ -333,14 +329,10 @@ export default function RadBridgeReportingPanel() {
       return;
     }
 
-    // FINAL reports remain immutable, but the authoritative
-    // document may still be opened in ONLYOFFICE view mode.
-    // Do not acquire or renew an edit lease for this path.
+    // Both browser placements use the same DOCX editor and workflow.
+    // Verified/final documents open read-only without an editing lease.
     if (locked) {
-      if (editorType === 'ONLYOFFICE') {
-        setOnlyOfficeEditorOpen(true);
-      }
-
+      setOnlyOfficeEditorOpen(true);
       return;
     }
 
@@ -349,13 +341,8 @@ export default function RadBridgeReportingPanel() {
     setMessage('');
 
     try {
-      await acquireReportLease(editorType);
-
-      if (editorType === 'ONLYOFFICE') {
-        setOnlyOfficeEditorOpen(true);
-      } else {
-        setEmbeddedEditorOpen(true);
-      }
+      await acquireReportLease('ONLYOFFICE');
+      setOnlyOfficeEditorOpen(true);
     } catch (e: any) {
       setError(e?.message || String(e));
     } finally {
@@ -368,11 +355,7 @@ export default function RadBridgeReportingPanel() {
   ) {
     const token = leaseTokenRef.current || leaseToken;
 
-    if (editorType === 'ONLYOFFICE') {
-      setOnlyOfficeEditorOpen(false);
-    } else {
-      setEmbeddedEditorOpen(false);
-    }
+    setOnlyOfficeEditorOpen(false);
 
     if (token) {
       await releaseReportLease(token);
@@ -383,13 +366,13 @@ export default function RadBridgeReportingPanel() {
       dedicatedOnlyOfficeWindow
     ) {
       window.close();
+    } else {
+      await loadReport();
     }
   }
 
   function applyData(d: any) {
     setData(d);
-    setFindings(d?.report?.findings || '');
-    setImpression(d?.report?.impression || '');
   }
 
   async function loadPreferences() {
@@ -471,7 +454,7 @@ export default function RadBridgeReportingPanel() {
   useEffect(() => {
     if (
       !leaseToken ||
-      (!onlyOfficeEditorOpen && !embeddedEditorOpen)
+      !onlyOfficeEditorOpen
     ) {
       return;
     }
@@ -490,7 +473,6 @@ export default function RadBridgeReportingPanel() {
     leaseToken,
     leaseEditorType,
     onlyOfficeEditorOpen,
-    embeddedEditorOpen,
   ]);
 
   async function loadReport() {
@@ -548,75 +530,6 @@ export default function RadBridgeReportingPanel() {
           setOnlyOfficeEditorOpen(true);
         }
       }
-    } catch (e: any) {
-      setError(e?.message || String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveReport(action: 'draft' | 'finalize') {
-    if (!orderId || locked) return;
-
-    if (
-      action === 'finalize' &&
-      !window.confirm(
-        'Finalize this report? It will be locked.'
-      )
-    ) {
-      return;
-    }
-
-    setBusy(true);
-    setError('');
-    setMessage('');
-
-    try {
-      const activeToken =
-        leaseToken ||
-        await acquireReportLease(
-          onlyOfficeEditorOpen
-            ? 'ONLYOFFICE'
-            : 'BROWSER'
-        );
-
-      const r = await fetch(
-        reportApiUrl(`/${action}`),
-        {
-          method: 'POST',
-          credentials: 'omit',
-          headers: headers(
-            true,
-            true,
-            activeToken
-          ),
-          body: JSON.stringify({
-            findings,
-            impression,
-            radiologist:
-              data?.report?.radiologist || '',
-          }),
-        }
-      );
-
-      const d = await r.json();
-
-      if (!r.ok || d?.ok === false) {
-        throw new Error(
-          d?.message ||
-          d?.reason ||
-          d?.error ||
-          `HTTP ${r.status}`
-        );
-      }
-
-      applyData(d);
-
-      setMessage(
-        action === 'finalize'
-          ? 'Report finalized successfully.'
-          : 'Draft saved successfully.'
-      );
     } catch (e: any) {
       setError(e?.message || String(e));
     } finally {
@@ -1086,7 +999,7 @@ export default function RadBridgeReportingPanel() {
           style={buttonStyle}
           onClick={() => openReportEditor('BROWSER')}
         >
-          🌐 Browser Report Editor
+          🌐 Open ONLYOFFICE Here
         </button>
 
         <div
@@ -1254,59 +1167,12 @@ export default function RadBridgeReportingPanel() {
 
       <hr style={{ margin: '18px 0', opacity: .2 }} />
 
-      <div>Findings</div>
-
-      <textarea
-        value={findings}
-        disabled={busy || locked}
-        onChange={e => setFindings(e.target.value)}
-        style={{
-          ...fieldStyle,
-          minHeight: '170px',
-          marginTop: '6px'
-        }}
-      />
-
-      <div style={{ marginTop: '14px' }}>
-        Impression
+      <div style={{ fontSize: '12px', lineHeight: 1.5 }}>
+        Edit the report document in ONLYOFFICE above. Both opening options use
+        the same document, templates and version history. Save Draft, Verify
+        and Finalize are available inside the editor.
+        {locked && <div>{status} report content is read only.</div>}
       </div>
-
-      <textarea
-        value={impression}
-        disabled={busy || locked}
-        onChange={e => setImpression(e.target.value)}
-        style={{
-          ...fieldStyle,
-          minHeight: '100px',
-          marginTop: '6px'
-        }}
-      />
-
-      <button
-        disabled={busy || locked}
-        style={buttonStyle}
-        onClick={() => saveReport('draft')}
-      >
-        Save Draft
-      </button>
-
-      <button
-        disabled={busy || locked}
-        style={buttonStyle}
-        onClick={() => saveReport('finalize')}
-      >
-        Finalize Report
-      </button>
-
-      {locked && (
-        <div style={{
-          fontSize: '12px',
-          marginTop: '8px',
-          opacity: .7
-        }}>
-          FINAL report is locked.
-        </div>
-      )}
 
       <hr style={{ margin: '22px 0', opacity: .2 }} />
 
@@ -1371,23 +1237,6 @@ export default function RadBridgeReportingPanel() {
         />
       )}
 
-      {embeddedEditorOpen && (
-        <EmbeddedReportEditor
-          data={data}
-          findings={findings}
-          impression={impression}
-          busy={busy}
-          message={message}
-          error={error}
-          onFindingsChange={setFindings}
-          onImpressionChange={setImpression}
-          onSaveDraft={() => saveReport('draft')}
-          onFinalize={() => saveReport('finalize')}
-          onClose={() => {
-            void closeReportEditor('BROWSER');
-          }}
-        />
-      )}
     </div>
   );
 }
