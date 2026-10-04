@@ -109,3 +109,50 @@ def test_invalid_logo_clearance_cannot_publish():
         assert any('40 mm' in message for category,message in session.get('_flashes',[])) or b'40 mm' in result.data, result.data[result.data.find(b'<main'):result.data.find(b'<main')+1400]
     assert m.StudioTemplate.query.filter_by(template_type='REPORT_HEADER').count()==0
     assert m.AuditLog.query.filter_by(action='REPORT_HEADER_PUBLISHED').count()==0
+
+def test_bulk_upload_keeps_valid_files_and_lists_each_result():
+    c,u=client('RADIOLOGIST');token=csrf(c)
+    response=c.post('/doctor/templates',data={'csrf_token':token,'modality':'CT','name':'Normal','file':[(io.BytesIO(doc_bytes()),'Brain.docx'),(io.BytesIO(b'bad'),'Broken.docx'),(io.BytesIO(doc_bytes()),'Chest.docx')]},follow_redirects=True)
+    assert response.status_code==200 and b'2 of 3 files uploaded' in response.data
+    rows=m.DoctorWordTemplate.query.order_by(m.DoctorWordTemplate.id).all()
+    assert [r.name for r in rows]==['Normal — Brain','Normal — Chest']
+    assert all(r.owner_user_id==u.id and r.modality=='CT' and r.visibility=='PERSONAL' for r in rows)
+    assert m.AuditLog.query.filter_by(action='REPORT_TEMPLATE_UPLOADED').count()==2
+    assert len(list(Path(m.REPORT_DIR).rglob('*.docx')))==2
+    assert b'Broken.docx' in response.data and b'Cannot read' in response.data
+    assert b'Upload results' not in c.get('/doctor/templates').data
+
+def test_bulk_names_default_to_filenames_and_input_supports_multiple():
+    c,u=client();token=csrf(c)
+    assert b'multiple required' in c.get('/doctor/templates').data
+    assert c.post('/doctor/templates',data={'csrf_token':token,'file':[(io.BytesIO(doc_bytes()),'Normal.docx'),(io.BytesIO(doc_bytes()),'Follow-up.docx')]}).status_code==302
+    assert {r.name for r in m.DoctorWordTemplate.query.all()}=={'Normal','Follow-up'}
+
+@pytest.mark.parametrize('count,size',[(11,1),(6,4*1024*1024+512*1024)])
+def test_bulk_limits_reject_entire_batch_before_writing(count,size):
+    c,u=client();token=csrf(c)
+    response=c.post('/doctor/templates',data={'csrf_token':token,'file':[(io.BytesIO(b'x'*size),f'{i}.docx') for i in range(count)]})
+    assert response.status_code==302
+    assert m.DoctorWordTemplate.query.count()==0
+    assert not list(Path(m.REPORT_DIR).rglob('*.docx'))
+
+def test_bulk_permission_failure_precedes_writing():
+    c,u=client('RADIOLOGIST');token=csrf(c)
+    assert c.post('/doctor/templates',data={'csrf_token':token,'visibility':'SHARED','file':[(io.BytesIO(doc_bytes()),'one.docx'),(io.BytesIO(doc_bytes()),'two.docx')]}).status_code==403
+    assert m.DoctorWordTemplate.query.count()==0
+    assert not list(Path(m.REPORT_DIR).rglob('*.docx'))
+
+def test_bulk_database_failure_removes_only_failed_file(monkeypatch):
+    c,u=client();token=csrf(c)
+    audit=m.audit_as_user
+    counter={'calls':0}
+    def fail_middle(*args,**kwargs):
+        counter['calls']+=1
+        if counter['calls']==2:raise RuntimeError('Synthetic failure')
+        return audit(*args,**kwargs)
+    monkeypatch.setattr(m,'audit_as_user',fail_middle)
+    response=c.post('/doctor/templates',data={'csrf_token':token,'file':[(io.BytesIO(doc_bytes()),f'{i}.docx') for i in range(3)]},follow_redirects=True)
+    assert response.status_code==200 and b'2 of 3 files uploaded' in response.data
+    assert {r.name for r in m.DoctorWordTemplate.query.all()}=={'0','2'}
+    assert len(list(Path(m.REPORT_DIR).rglob('*.docx')))==2
+    assert m.AuditLog.query.filter_by(action='REPORT_TEMPLATE_UPLOADED').count()==2

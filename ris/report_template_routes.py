@@ -31,44 +31,61 @@ def register(m):
     def library():
         user=user_access();csrf_token=csrf()
         if request.method=='POST':
-            path=None
-            try:
-                f=request.files.get('file')
-                if not f or not f.filename.lower().endswith(('.doc','.docx')):raise lib.TemplateError('Select a DOC or DOCX template.')
-                blob=f.stream.read(5*1024*1024+1)
-                source_sha=hashlib.sha256(blob).hexdigest()
-                if f.filename.lower().endswith('.doc'):blob=convert_doc(m,blob)
-                blob=lib.normalize_upload(blob)
-                sha=lib.validate_docx(blob)
-                visibility=str(request.form.get('visibility') or 'PERSONAL').upper()
-                if visibility not in ('PERSONAL','DEPARTMENT','SHARED'):abort(400)
-                if visibility!='PERSONAL' and not lib.manager(user):abort(403)
-                owner_id=request.form.get('owner_user_id',type=int) or user.id
-                if owner_id!=user.id and not lib.manager(user):abort(403)
-                owner=m.db.session.get(m.User,owner_id)
-                if not lib.clinician(owner):raise lib.TemplateError('Choose an active reporting doctor.')
-                proc=request.form.get('procedure_id',type=int)
-                if proc and not m.db.session.get(m.Procedure,proc):abort(400)
-                modality=str(request.form.get('modality') or '').strip().upper()
-                if len(modality)>30:abort(400)
-                folder=Path(m.REPORT_DIR)/'doctor-templates'/str(owner_id);folder.mkdir(parents=True,exist_ok=True)
-                path=folder/(uuid.uuid4().hex+'.docx')
-                with path.open('xb') as out:out.write(blob)
-                row=m.DoctorWordTemplate(owner_user_id=owner_id,name=(request.form.get('name') or f.filename).strip()[:180],modality=modality,procedure_id=proc,visibility=visibility,file_path=str(path),original_name=Path(f.filename).name[:255])
-                m.db.session.add(row);m.db.session.flush()
-                m.audit_as_user(user,'REPORT_TEMPLATE_UPLOADED','doctor_word_template',row.id,json.dumps({'sha256':sha,'source_sha256':source_sha,'source_format':Path(f.filename).suffix.lower(),'owner_user_id':owner_id,'visibility':visibility,'procedure_id':proc,'modality':modality}))
-                m.db.session.commit();flash('Template uploaded. Select it before starting a new ONLYOFFICE report.','success')
+            visibility=str(request.form.get('visibility') or 'PERSONAL').upper()
+            if visibility not in ('PERSONAL','DEPARTMENT','SHARED'):abort(400)
+            if visibility!='PERSONAL' and not lib.manager(user):abort(403)
+            owner_id=request.form.get('owner_user_id',type=int) or user.id
+            if owner_id!=user.id and not lib.manager(user):abort(403)
+            owner=m.db.session.get(m.User,owner_id)
+            if not lib.clinician(owner):abort(400)
+            proc=request.form.get('procedure_id',type=int)
+            if proc and not m.db.session.get(m.Procedure,proc):abort(400)
+            modality=str(request.form.get('modality') or '').strip().upper()
+            if len(modality)>30:abort(400)
+            files=[f for f in request.files.getlist('file') if f.filename]
+            if not files or len(files)>10:
+                flash('Select between 1 and 10 DOC or DOCX files.','danger')
                 return redirect(url_for('doctor_templates'))
-            except lib.TemplateError as exc:
-                m.db.session.rollback()
-                if path and path.exists():path.unlink()
-                flash(str(exc),'danger')
-            except Exception:
-                m.db.session.rollback()
-                if path and path.exists():path.unlink()
-                raise
+            # Bound the entire batch before committing any file; each file also has a 5 MB limit.
+            uploads=[(f,f.stream.read(5*1024*1024+1)) for f in files]
+            if sum(len(blob) for f,blob in uploads)>25*1024*1024:
+                flash('A batch must not exceed 25 MB. Split it into smaller batches.','danger')
+                return redirect(url_for('doctor_templates'))
+            results=[]
+            prefix=str(request.form.get('name') or '').strip()
+            for f,blob in uploads:
+                path=None
+                filename=f.filename.replace('\\','/').rsplit('/',1)[-1]
+                try:
+                    if not filename.lower().endswith(('.doc','.docx')):raise lib.TemplateError('Select a DOC or DOCX template.')
+                    if len(blob)>5*1024*1024:raise lib.TemplateError('Each file must be at most 5 MB.')
+                    source_sha=hashlib.sha256(blob).hexdigest()
+                    if filename.lower().endswith('.doc'):blob=convert_doc(m,blob)
+                    blob=lib.normalize_upload(blob)
+                    sha=lib.validate_docx(blob)
+                    folder=Path(m.REPORT_DIR)/'doctor-templates'/str(owner_id);folder.mkdir(parents=True,exist_ok=True)
+                    path=folder/(uuid.uuid4().hex+'.docx')
+                    with path.open('xb') as out:out.write(blob)
+                    stem=Path(filename).stem
+                    name=(prefix if len(files)==1 and prefix else (prefix+' — '+stem if prefix else stem))[:180]
+                    row=m.DoctorWordTemplate(owner_user_id=owner_id,name=name,modality=modality,procedure_id=proc,visibility=visibility,file_path=str(path),original_name=filename[:255])
+                    m.db.session.add(row);m.db.session.flush()
+                    m.audit_as_user(user,'REPORT_TEMPLATE_UPLOADED','doctor_word_template',row.id,json.dumps({'sha256':sha,'source_sha256':source_sha,'source_format':Path(filename).suffix.lower(),'owner_user_id':owner_id,'visibility':visibility,'procedure_id':proc,'modality':modality}))
+                    m.db.session.commit()
+                    results.append({'filename':filename[:80],'ok':True,'message':'Uploaded: '+name[:100]})
+                except lib.TemplateError as exc:
+                    m.db.session.rollback()
+                    if path and path.exists():path.unlink()
+                    results.append({'filename':filename[:80],'ok':False,'message':str(exc)[:160]})
+                except Exception as exc:
+                    m.db.session.rollback()
+                    if path and path.exists():path.unlink()
+                    m.app.logger.error('Report template upload failed: %s',type(exc).__name__)
+                    results.append({'filename':filename[:80],'ok':False,'message':'Upload failed. Try this file again or contact the administrator.'})
+            session['report_template_upload_results']=results
+            return redirect(url_for('doctor_templates'))
         doctors=[u for u in m.User.query.order_by(m.User.username).all() if lib.clinician(u)] if lib.manager(user) else [user]
-        return render_template('doctor_templates.html',rows=lib.available(m,user),procedures=m.Procedure.query.filter_by(active=True).order_by(m.Procedure.name).all(),doctors=doctors,can_manage=lib.manager(user),placeholders=lib.PLACEHOLDERS,user=user,template_csrf=csrf_token)
+        return render_template('doctor_templates.html',rows=lib.available(m,user),procedures=m.Procedure.query.filter_by(active=True).order_by(m.Procedure.name).all(),doctors=doctors,can_manage=lib.manager(user),placeholders=lib.PLACEHOLDERS,user=user,template_csrf=csrf_token,upload_results=session.pop('report_template_upload_results',[]))
 
     m.app.view_functions['doctor_templates']=library
 
