@@ -20,7 +20,7 @@ def manager(user):
 def clinician(user):
     return bool(user and user.active and user.role and user.role.code in CLINICIANS)
 
-def validate_docx(blob):
+def validate_docx(blob,require_fields=True):
     if not blob or len(blob)>5*1024*1024:raise TemplateError('Upload a DOCX of at most 5 MB.')
     try:
         with zipfile.ZipFile(io.BytesIO(blob)) as z:
@@ -41,16 +41,31 @@ def validate_docx(blob):
             text=' '.join(x.text or '' for name in names if re.fullmatch(r'word/(document|header\d+|footer\d+)\.xml',name) for x in ET.fromstring(z.read(name)).iter() if x.tag.endswith('}t'))
             # Identity in reusable templates must be patient-independent.
             full=''.join(x.text or '' for name in names if re.fullmatch(r'word/(document|header\d+|footer\d+)\.xml',name) for x in ET.fromstring(z.read(name)).iter() if x.tag.endswith('}t'))
-            if any('{{'+k+'}}' not in full for k in ('PATIENT_NAME','PATIENT_ID','ACCESSION')):
+            if require_fields and any('{{'+k+'}}' not in full for k in ('PATIENT_NAME','PATIENT_ID','ACCESSION')):
                 raise TemplateError('Use {{PATIENT_NAME}}, {{PATIENT_ID}} and {{ACCESSION}} placeholders. Download the sample template.')
             for marker in re.findall(r'RIS_ACCESSION:\s*(\S+)',text):
                 if marker!='{{ACCESSION}}':raise TemplateError('Remove fixed patient accession data from this reusable template.')
         document=Document(io.BytesIO(blob))
         headings={p.text.strip().upper() for p in document.paragraphs}
-        if not {'FINDINGS','IMPRESSION'}.issubset(headings):raise TemplateError('Keep separate FINDINGS and IMPRESSION headings in the template body.')
+        if require_fields and not {'FINDINGS','IMPRESSION'}.issubset(headings):raise TemplateError('Keep separate FINDINGS and IMPRESSION headings in the template body.')
     except TemplateError:raise
     except Exception:raise TemplateError('Cannot read this DOCX template.') from None
     return hashlib.sha256(blob).hexdigest()
+
+def normalize_upload(blob):
+    """Retain reusable text/layout and add missing identity/report sections."""
+    validate_docx(blob,require_fields=False)
+    doc=Document(io.BytesIO(blob))
+    doc.sections[0].header.add_paragraph('Patient: {{PATIENT_NAME}} | Patient ID: {{PATIENT_ID}} | Accession: {{ACCESSION}}')
+    headings={p.text.strip().upper() for p in doc.paragraphs}
+    if 'FINDINGS' not in headings:
+        heading=doc.add_heading('FINDINGS',1)
+        doc._element.body.insert(0,heading._p)
+    if 'IMPRESSION' not in headings:
+        doc.add_heading('IMPRESSION',1);doc.add_paragraph('')
+    out=io.BytesIO();doc.save(out);result=out.getvalue()
+    validate_docx(result)
+    return result
 
 def visible(m,t,user,order=None):
     if not t.active:return False

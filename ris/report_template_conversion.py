@@ -30,7 +30,7 @@ def convert_doc(m,blob):
             for chunk in download.iter_content(65536):
                 converted.extend(chunk)
                 if len(converted)>5*1024*1024:raise TemplateError('Converted DOCX exceeds the 5 MB limit.')
-        validate_docx(bytes(converted))
+        validate_docx(bytes(converted),require_fields=False)
         return bytes(converted)
     except TemplateError:raise
     except Exception:raise TemplateError('Cannot convert DOC now. Upload DOCX or try again later.') from None

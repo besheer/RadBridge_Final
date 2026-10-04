@@ -38,6 +38,7 @@ def register(m):
                 blob=f.stream.read(5*1024*1024+1)
                 source_sha=hashlib.sha256(blob).hexdigest()
                 if f.filename.lower().endswith('.doc'):blob=convert_doc(m,blob)
+                blob=lib.normalize_upload(blob)
                 sha=lib.validate_docx(blob)
                 visibility=str(request.form.get('visibility') or 'PERSONAL').upper()
                 if visibility not in ('PERSONAL','DEPARTMENT','SHARED'):abort(400)

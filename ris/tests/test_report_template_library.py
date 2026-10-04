@@ -33,6 +33,18 @@ def test_missing_report_sections_rejected():
     doc=Document();doc.add_paragraph('{{PATIENT_NAME}} {{PATIENT_ID}} {{ACCESSION}}')
     with pytest.raises(lib.TemplateError,match='headings'):lib.validate_docx(doc_bytes(doc))
 
+def test_plain_normal_template_is_prepared_without_losing_text():
+    doc=Document();doc.add_paragraph('Synthetic reusable normal findings.')
+    normalized=lib.normalize_upload(doc_bytes(doc))
+    assert lib.validate_docx(normalized)
+    result=Document(io.BytesIO(normalized))
+    assert [p.text for p in result.paragraphs][:2]==['FINDINGS','Synthetic reusable normal findings.']
+    assert 'IMPRESSION' in [p.text for p in result.paragraphs]
+
+def test_normalization_rejects_an_existing_patient_report_marker():
+    doc=Document();doc.add_paragraph('RIS_ACCESSION: REAL-EXISTING-REPORT')
+    with pytest.raises(lib.TemplateError,match='fixed'):lib.normalize_upload(doc_bytes(doc))
+
 def test_split_placeholder_preserves_surrounding_run_formatting():
     doc=Document();p=doc.add_paragraph();p.add_run('Before ').italic=True
     p.add_run('{{PATIENT_').bold=True;p.add_run('NAME}} / {{PATIENT_ID}}');p.add_run(' after').italic=True
