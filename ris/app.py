@@ -277,6 +277,7 @@ class Branch(db.Model):
     code = db.Column(db.String(20), unique=True, nullable=False)
     name = db.Column(db.String(120), nullable=False)
     active = db.Column(db.Boolean, default=True)
+    reception_collection_enabled = db.Column(db.Boolean, default=False, nullable=False)
 
 class Role(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -4845,6 +4846,9 @@ def has_perm(perm):
         return True
 
     perms = u.role.permissions() if u.role else []
+    if u.role and u.role.code == 'RECEPTION' and perm in ('payments.create','cashier.workstation'):
+        from collection_policy import reception_collection_allowed
+        return ('*' in perms or 'payments.create' in perms) and reception_collection_allowed(u)
     return '*' in perms or perm in perms
 
 def login_required(fn):
@@ -6460,13 +6464,8 @@ def resend_mwl(order_id):
 @app.route('/payments/<int:order_id>',methods=['POST'])
 @require_perm('payments.create')
 def add_payment(order_id):
-    order=Order.query.get_or_404(order_id)
-    amount=float(request.form.get('amount') or 0); method=request.form.get('method','')
-    if amount<=0: flash('Invalid payment amount.','danger'); return redirect(url_for('order_detail',order_id=order.id))
-    db.session.add(Payment(order_id=order.id, amount=amount, method=method, reference=request.form.get('reference', ''), created_by=current_user().id))
-    order.paid_amount=round(float(order.paid_amount or 0)+amount,2)
-    audit('PAYMENT_CREATE','order',order.id,f'{amount} {method}'); db.session.commit(); flash('Payment saved.','success')
-    return redirect(url_for('order_detail',order_id=order.id))
+    # Both collection entrances issue an auditable receipt through one handler.
+    return receive_payment(order_id)
 
 
 @app.route('/nursing')
@@ -13620,11 +13619,15 @@ def _rb_v5462_notes(order,form):
         ))
 
 def _rb_v5462_payment(orders,form):
+    import math
+    from collection_policy import require_collection_branch
     amount=float(form.get('payment_amount') or 0)
+    if not math.isfinite(amount):raise ValueError('Invalid payment amount.')
     if amount<=0: return
     if not has_perm('payments.create'): abort(403)
+    for o in orders:require_collection_branch(o.branch_id)
     method=(form.get('payment_method') or '').strip().upper()
-    if not method: raise ValueError('Select payment method.')
+    if method not in ('CASH','VISA','MASTERCARD','WALLET','BANK_TRANSFER'):raise ValueError('Select payment method.')
     total_due=sum(max(0,float(o.patient_share or 0)) for o in orders)
     if amount>total_due+0.01:
         raise ValueError(f'Payment exceeds patient total due ({total_due:.2f}).')
@@ -13639,6 +13642,9 @@ def _rb_v5462_payment(orders,form):
             reference=(form.get('payment_reference') or '').strip(),
             created_by=current_user().id
         ))
+        db.session.add(Receipt(receipt_no=next_receipt_no(),order_id=o.id,amount=part,payment_method=method,reference_no=(form.get('payment_reference') or '').strip(),created_by=current_user().id))
+        db.session.flush()
+        audit('PAYMENT_RECEIVED','order',o.id,'Registration collection; amount='+str(part))
         o.paid_amount=float(o.paid_amount or 0)+part
         left=round(left-part,2)
 
@@ -18503,8 +18509,13 @@ def receivables_csv():
 @app.route('/orders/<int:order_id>/payment',methods=['POST'])
 @require_perm('payments.create')
 def receive_payment(order_id):
-    o=Order.query.get_or_404(order_id)
+    from collection_policy import require_collection_branch
+    o=Order.query.filter_by(id=order_id).with_for_update().first_or_404()
+    require_collection_branch(o.branch_id)
     discount_percent=float(request.form.get('discount_percent') or 0)
+    import math
+    if not math.isfinite(discount_percent) or discount_percent<0 or discount_percent>100:
+        abort(400,description='Invalid discount')
     discount_reason=(request.form.get('discount_reason') or '').strip()
     if discount_percent>0:
         status,obj=apply_or_request_discount(o,discount_percent,discount_reason)
@@ -18518,16 +18529,18 @@ def receive_payment(order_id):
 
     amount=float(request.form.get('amount') or 0)
     balance=max(0.0,order_balance(o))
-    if amount<=0:
+    if not math.isfinite(amount) or amount<=0:
         flash('Payment amount must be greater than zero.','danger'); db.session.rollback(); return redirect(request.referrer or url_for('order_detail',order_id=o.id))
     if amount>balance+0.01:
         flash(f'Payment exceeds current balance ({balance:.2f}).','danger'); db.session.rollback(); return redirect(request.referrer or url_for('order_detail',order_id=o.id))
-    method=request.form.get('payment_method','CASH').upper()
-    ref=request.form.get('reference_no','').strip()
+    method=(request.form.get('payment_method') or request.form.get('method') or 'CASH').upper()
+    if method not in ('CASH','VISA','MASTERCARD','WALLET','BANK_TRANSFER'):abort(400)
+    ref=(request.form.get('reference_no') or request.form.get('reference') or '').strip()
     r=Receipt(receipt_no=next_receipt_no(),order_id=o.id,amount=amount,payment_method=method,
         reference_no=ref,created_by=current_user().id,notes=request.form.get('notes',''))
     db.session.add(r)
-    o.paid_amount=float(o.paid_amount or 0)+amount
+    db.session.add(Payment(order_id=o.id,amount=amount,method=method,reference=ref,created_by=current_user().id))
+    o.paid_amount=round(float(o.paid_amount or 0)+amount,2)
     audit('PAYMENT_RECEIVED','order',o.id,f'{r.receipt_no} {amount} {method}; discount={discount_percent}')
     db.session.commit()
     flash(f'Payment received. Receipt {r.receipt_no}','success')
@@ -18537,6 +18550,8 @@ def receive_payment(order_id):
 @login_required
 def receipt_view(receipt_id):
     r=Receipt.query.get_or_404(receipt_id)
+    from collection_policy import require_collection_branch
+    require_collection_branch(r.order.branch_id)
     if not (has_perm('receipts.print') or has_perm('payments.create') or has_perm('financial.view') or has_perm('*')): abort(403)
     return render_template('receipt.html',receipt=r,order=r.order)
 
@@ -18582,6 +18597,10 @@ def mark_delivery(order_id,item_type):
 def cashier_workstation():
     q=(request.args.get('q') or '').strip()
     query=Order.query.join(Patient)
+    user=current_user()
+    if user.role and user.role.code in ('RECEPTION','CASHIER'):
+        if not user.branch_id:abort(403)
+        query=query.filter(Order.branch_id==user.branch_id)
     if q:
         query=query.filter(or_(
             Order.accession.ilike(f'%{q}%'),
@@ -24857,9 +24876,16 @@ def admin_roles():
 @app.route('/admin/branches',methods=['GET','POST'])
 @require_perm('branches.manage')
 def admin_branches():
+    if request.method=='POST' and request.form.get('action')=='collection_policy':
+        b=Branch.query.filter_by(id=request.form.get('branch_id',type=int)).with_for_update().first_or_404()
+        b.reception_collection_enabled=request.form.get('reception_collection_enabled')=='1'
+        audit('BRANCH_RECEPTION_COLLECTION','branch',b.id,'enabled='+str(b.reception_collection_enabled))
+        db.session.commit()
+        flash('Reception collection policy saved. / تم حفظ إعداد تحصيل الاستقبال.','success')
+        return redirect(url_for('admin_branches'))
     if request.method=='POST':
-        b=Branch(code=request.form['code'].strip().upper(),name=request.form['name'].strip(),active=True)
-        db.session.add(b); audit('BRANCH_CREATE','branch','',b.code); db.session.commit(); flash('Branch added.','success')
+        b=Branch(code=request.form['code'].strip().upper(),name=request.form['name'].strip(),active=True,reception_collection_enabled=request.form.get('reception_collection_enabled')=='1')
+        db.session.add(b); audit('BRANCH_CREATE','branch','',b.code+'; reception_collection='+str(b.reception_collection_enabled)); db.session.commit(); flash('Branch added.','success')
     return render_template('admin_branches.html',branches=Branch.query.order_by(Branch.name).all())
 
 @app.route('/admin/devices/<int:device_id>',methods=['GET','POST'])
@@ -24880,6 +24906,8 @@ def migrate_existing_schema():
     # SQLAlchemy create_all creates new tables but does not alter old Order/Patient tables.
     inspector=inspect(db.engine)
     tables=set(inspector.get_table_names())
+    if 'branch' in tables and 'reception_collection_enabled' not in {c['name'] for c in inspector.get_columns('branch')}:
+        db.session.execute(text('ALTER TABLE branch ADD COLUMN reception_collection_enabled BOOLEAN DEFAULT FALSE NOT NULL'))
     if 'patient' in tables:
         cols={c['name'] for c in inspector.get_columns('patient')}
         additions={
@@ -25311,6 +25339,8 @@ def doctor_templates():
 def receipt_studio_print(receipt_id):
     receipt=Receipt.query.get_or_404(receipt_id)
     order=receipt.order
+    from collection_policy import require_collection_branch
+    require_collection_branch(order.branch_id)
     template=receipt_studio_template(order)
     legal=company_legal_for_order(order)
     layout={}
