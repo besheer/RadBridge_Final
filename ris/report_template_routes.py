@@ -105,7 +105,10 @@ def register(m):
             try:
                 layout=dict(layout)
                 for key in ('title','subtitle','address','phone','footer'):layout[key]=str(request.form.get(key) or '').strip()[:500]
-                for key in ('preserve_template_header','show_dob','show_sex','show_study_date','show_referrer'):layout[key]=request.form.get(key)=='1'
+                for key in ('preserve_template_header','show_dob','show_sex','show_study_date','show_referrer','preprinted_letterhead'):layout[key]=request.form.get(key)=='1'
+                for key in lib.PAGE_DEFAULTS:
+                    if key!='preprinted_letterhead':layout[key]=request.form.get(key,layout.get(key,lib.PAGE_DEFAULTS[key]))
+                lib.validate_page_layout(layout)
                 if request.form.get('remove_logo')=='1':layout['logo_path']=''
                 logo=request.files.get('logo')
                 if logo and logo.filename:

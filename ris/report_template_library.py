@@ -2,12 +2,14 @@
 import hashlib
 import io
 import json
+import math
 import re
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 from docx import Document
-from docx.shared import Inches,Pt
+from docx.shared import Inches,Pt,Mm
+from docx.enum.section import WD_ORIENT
 
 PLACEHOLDERS=('PATIENT_NAME','PATIENT_ID','DOB','SEX','ACCESSION','MODALITY','EXAM','STUDY_DATE','REFERRING_DOCTOR','RADIOLOGIST','FINDINGS','IMPRESSION')
 CLINICIANS={'RADIOLOGIST','CONSULTANT','RADIOLOGY_CONSULTANT','SUPER_ADMIN','ADMIN'}
@@ -127,6 +129,26 @@ def substitute(doc,values):
     return doc
 
 DEFAULT_HEADER={'title':'RADIOLOGY REPORT','subtitle':'','address':'','phone':'','footer':'','logo_path':'','preserve_template_header':True,'show_dob':True,'show_sex':True,'show_study_date':True,'show_referrer':False}
+PAGE_DEFAULTS={'preprinted_letterhead':False,'letterhead_space_mm':20,'top_margin_mm':60,'bottom_margin_mm':25,'footer_space_mm':10,'left_margin_mm':15,'right_margin_mm':15}
+DEFAULT_HEADER.update(PAGE_DEFAULTS)
+
+def validate_page_layout(layout):
+    for key,default in PAGE_DEFAULTS.items():
+        if key=='preprinted_letterhead':continue
+        try:value=float(layout.get(key,default))
+        except (ValueError,TypeError):raise TemplateError('Page measurements must be numbers in millimetres.') from None
+        if not math.isfinite(value) or not 0<=value<=120:raise TemplateError('Page measurements must be between 0 and 120 mm.')
+        layout[key]=value
+    if min(layout['left_margin_mm'],layout['right_margin_mm'])<5 or layout['left_margin_mm']+layout['right_margin_mm']>110:
+        raise TemplateError('Use side margins of at least 5 mm and leave at least 100 mm for report text.')
+    if layout['top_margin_mm']+layout['bottom_margin_mm']>197:
+        raise TemplateError('Leave at least 100 mm of page height for report text.')
+    if layout.get('preprinted_letterhead'):
+        if layout['top_margin_mm']<layout['letterhead_space_mm']+40:
+            raise TemplateError('The text start must leave 40 mm below the blank logo area for patient identification.')
+        if layout['bottom_margin_mm']<layout['footer_space_mm']+10:
+            raise TemplateError('The bottom margin must leave 10 mm above the blank footer area.')
+    return layout
 
 def header_profile(m,order=None,branch_id=None):
     branch_id=order.branch_id if order else branch_id
@@ -149,14 +171,27 @@ def values_for(order,report,user):
             'FINDINGS':report.findings or '', 'IMPRESSION':report.impression or ''}
 
 def apply_header(doc,m,layout,values,uploaded):
+    layout=validate_page_layout(dict(DEFAULT_HEADER,**layout))
+    preprinted=layout.get('preprinted_letterhead')
     seen=set()
     for section in doc.sections:
+        section.orientation=WD_ORIENT.PORTRAIT
+        section.page_width=Mm(210);section.page_height=Mm(297)
+        if preprinted:
+            section.top_margin=Mm(layout['top_margin_mm']);section.bottom_margin=Mm(layout['bottom_margin_mm'])
+            section.left_margin=Mm(layout['left_margin_mm']);section.right_margin=Mm(layout['right_margin_mm'])
+            section.header_distance=Mm(layout['letterhead_space_mm'])
+            section.footer_distance=Mm(layout['footer_space_mm'])
+            # A preprinted sheet already contains its branding; clear every header/footer variant.
+            for footer in (section.footer,section.first_page_footer,section.even_page_footer):
+                for child in list(footer._element):footer._element.remove(child)
+                footer.add_paragraph('')
         for header in (section.header,section.first_page_header,section.even_page_header):
             if id(header.part) in seen:continue
             seen.add(id(header.part))
-            if not uploaded or not layout.get('preserve_template_header'):
+            if preprinted or not uploaded or not layout.get('preserve_template_header'):
                 for child in list(header._element):header._element.remove(child)
-            if not uploaded or not layout.get('preserve_template_header'):
+            if not preprinted and (not uploaded or not layout.get('preserve_template_header')):
                 logo=layout.get('logo_path')
                 if logo:
                     root=(Path(m.REPORT_DIR)/'report-header-assets').resolve();path=Path(logo).resolve()
@@ -169,9 +204,17 @@ def apply_header(doc,m,layout,values,uploaded):
             table=header.add_table(rows=3,cols=2,width=width)
             if 'Table Grid' in doc.styles:table.style='Table Grid'
             for r,(label,value) in zip(table.rows,[('Patient Name',values['PATIENT_NAME']),('Patient ID',values['PATIENT_ID']),('Accession',values['ACCESSION'])]):r.cells[0].text=label;r.cells[1].text=value
+            details=[]
             for flag,key,label in [('show_dob','DOB','DOB'),('show_sex','SEX','Sex'),('show_study_date','STUDY_DATE','Study Date'),('show_referrer','REFERRING_DOCTOR','Referring Doctor')]:
-                if layout.get(flag):header.add_paragraph(label+': '+values[key])
-        if layout.get('footer'):
+                if layout.get(flag):
+                    if preprinted:details.append(label+': '+values[key])
+                    else:header.add_paragraph(label+': '+values[key])
+            if preprinted:
+                header.add_paragraph(' | '.join(details))
+                for p in paragraphs(header):
+                    p.paragraph_format.space_before=Pt(0);p.paragraph_format.space_after=Pt(0)
+                    for run in p.runs:run.font.size=Pt(9)
+        if layout.get('footer') and not preprinted:
             for footer in (section.footer,section.first_page_footer,section.even_page_footer):
                 if id(footer.part) in seen:continue
                 seen.add(id(footer.part));footer.add_paragraph(layout['footer'])

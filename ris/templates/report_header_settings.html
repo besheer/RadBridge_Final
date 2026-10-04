@@ -8,6 +8,11 @@
 <form method="post" enctype="multipart/form-data" class="card p-3">
 <input type="hidden" name="csrf_token" value="{{ template_csrf }}"><input type="hidden" name="branch_id" value="{{ branch_id or '' }}">
 <p>Current published version: {{ profile.version_no if profile else 'Default' }}</p>
+<fieldset class="border rounded p-3 mb-3"><legend>A4 printing — 210 × 297 mm</legend>
+<label><input type="checkbox" name="preprinted_letterhead" value="1" {% if layout.preprinted_letterhead %}checked{% endif %}> Print on preprinted logo / letterhead paper</label>
+<p>Enable this to leave blank logo and footer areas on every page. Digital branding and uploaded template headers/footers are omitted; patient identification remains below the logo area. Measurements below apply when enabled.</p>
+<div class="row">{% for key,label in [('letterhead_space_mm','Blank logo area from page top'),('top_margin_mm','Report text starts from page top'),('footer_space_mm','Blank footer area from page bottom'),('bottom_margin_mm','Report bottom margin'),('left_margin_mm','Left margin'),('right_margin_mm','Right margin')] %}<div class="col-md-6 mb-2"><label for="{{key}}">{{label}} (mm)</label><input class="form-control" type="number" min="0" max="120" step="0.5" required id="{{key}}" name="{{key}}" value="{{layout[key]}}"></div>{% endfor %}</div>
+<p>Allow at least 40 mm between the blank logo area and report text for patient details. Use A4 and actual size / 100% in the printer settings. Measure your paper before publishing.</p></fieldset>
 {% for key,label in [('title','Report title'),('subtitle','Subtitle / facility name'),('address','Address'),('phone','Contact details'),('footer','Footer')] %}<label class="mt-2" for="{{key}}">{{label}}</label><input class="form-control" maxlength="500" id="{{key}}" name="{{key}}" value="{{layout[key]}}">{% endfor %}
 <label class="mt-3" for="logo">Logo — PNG or JPEG, up to 2 MB</label><input id="logo" name="logo" type="file" accept="image/png,image/jpeg" class="form-control">
 {% if layout.logo_path %}<label class="mt-2"><input type="checkbox" name="remove_logo" value="1"> Remove current logo</label>{% endif %}

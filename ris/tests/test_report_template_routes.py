@@ -88,3 +88,24 @@ def test_initialization_is_case_scoped_and_never_replaces_existing_document():
     assert path.read_bytes()==before
     details=json.loads(m.AuditLog.query.filter_by(action='ONLYOFFICE_TEMPLATE_INITIALIZED').one().details)
     assert details['template_id'] is None and details['document_sha256']
+
+def test_letterhead_settings_publish_audited_geometry():
+    c,u=client();token=csrf(c)
+    data={'csrf_token':token,'preprinted_letterhead':'1','letterhead_space_mm':'30','top_margin_mm':'70','left_margin_mm':'17.5'}
+    assert c.post('/admin/report-header',data=data).status_code==302
+    row=m.StudioTemplate.query.filter_by(template_type='REPORT_HEADER').one()
+    layout=json.loads(row.layout_json)
+    assert layout['preprinted_letterhead'] is True
+    assert layout['letterhead_space_mm']==30 and layout['top_margin_mm']==70 and layout['left_margin_mm']==17.5
+    audit=json.loads(m.AuditLog.query.filter_by(action='REPORT_HEADER_PUBLISHED').one().details)
+    assert audit['layout']==layout
+    assert json.loads(m.StudioTemplateVersion.query.filter_by(template_id=row.id).one().snapshot_json)==layout
+
+def test_invalid_logo_clearance_cannot_publish():
+    c,u=client();token=csrf(c)
+    result=c.post('/admin/report-header',data={'csrf_token':token,'preprinted_letterhead':'1','letterhead_space_mm':'50','top_margin_mm':'60'})
+    assert result.status_code==200
+    with c.session_transaction() as session:
+        assert any('40 mm' in message for category,message in session.get('_flashes',[])) or b'40 mm' in result.data, result.data[result.data.find(b'<main'):result.data.find(b'<main')+1400]
+    assert m.StudioTemplate.query.filter_by(template_type='REPORT_HEADER').count()==0
+    assert m.AuditLog.query.filter_by(action='REPORT_HEADER_PUBLISHED').count()==0

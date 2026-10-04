@@ -6,6 +6,39 @@ import pytest
 from docx import Document
 import report_template_library as lib
 
+def test_preprinted_a4_reserves_logo_and_footer_on_all_sections(tmp_path):
+    doc=Document();doc.add_paragraph('FINDINGS');doc.add_section()
+    for section in doc.sections:
+        section.header.add_paragraph('UPLOADED LOGO')
+        section.footer.add_paragraph('UPLOADED FOOTER')
+    layout=dict(lib.DEFAULT_HEADER,preprinted_letterhead=True,title='DIGITAL BRAND',footer='DIGITAL FOOTER',letterhead_space_mm=30,top_margin_mm=70)
+    values={'PATIENT_NAME':'Synthetic test','PATIENT_ID':'TEST','ACCESSION':'TEST-ACC','DOB':'19900101','SEX':'M','STUDY_DATE':'2026-10-04'}
+    lib.apply_header(doc,NS(REPORT_DIR=str(tmp_path)),layout,values,True)
+    out=io.BytesIO();doc.save(out);loaded=Document(io.BytesIO(out.getvalue()))
+    for section in loaded.sections:
+        assert section.page_width.mm==pytest.approx(210,abs=.03)
+        assert section.page_height.mm==pytest.approx(297,abs=.03)
+        assert section.header_distance.mm==pytest.approx(30,abs=.03)
+        assert section.top_margin.mm==pytest.approx(70,abs=.03)
+        assert section.bottom_margin.mm==pytest.approx(25,abs=.03)
+        assert section.left_margin.mm==pytest.approx(15,abs=.03)
+        for header in (section.header,section.first_page_header,section.even_page_header):
+            text=' '.join(p.text for p in lib.paragraphs(header))
+            assert 'Synthetic test' in text and 'TEST-ACC' in text
+            assert 'UPLOADED LOGO' not in text and 'DIGITAL BRAND' not in text
+        for footer in (section.footer,section.first_page_footer,section.even_page_footer):
+            assert not any(p.text for p in lib.paragraphs(footer))
+
+@pytest.mark.parametrize('changes',[{'top_margin_mm':'nan'},{'left_margin_mm':-1},{'right_margin_mm':130},{'left_margin_mm':2},{'top_margin_mm':120,'bottom_margin_mm':100},{'preprinted_letterhead':True,'letterhead_space_mm':40},{'preprinted_letterhead':True,'footer_space_mm':20}])
+def test_invalid_letterhead_geometry_is_rejected(changes):
+    with pytest.raises(lib.TemplateError):lib.validate_page_layout(dict(lib.DEFAULT_HEADER,**changes))
+
+def test_non_letterhead_keeps_uploaded_branding(tmp_path):
+    doc=Document();doc.sections[0].header.add_paragraph('KEEP BRAND')
+    lib.apply_header(doc,NS(REPORT_DIR=str(tmp_path)),dict(lib.DEFAULT_HEADER,show_dob=False,show_sex=False,show_study_date=False),{'PATIENT_NAME':'TEST','PATIENT_ID':'TEST','ACCESSION':'TEST'},True)
+    assert 'KEEP BRAND' in [p.text for p in doc.sections[0].header.paragraphs]
+    assert doc.sections[0].page_width.mm==pytest.approx(210,abs=.03)
+
 def doc_bytes(doc=None):
     doc=doc or Document()
     if not doc.paragraphs:
