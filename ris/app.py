@@ -9623,6 +9623,8 @@ def user_profile_settings(profile):
 def user_reporting_preferences(profile):
     settings=user_profile_settings(profile)
     reporting=settings.get('reporting') or {}
+    if not isinstance(reporting,dict):
+        reporting={}
 
     editor=str(
         reporting.get('preferred_editor') or 'ONLYOFFICE'
@@ -9646,7 +9648,9 @@ def user_reporting_preferences(profile):
         '30_70',
         'FULL_EDITOR',
         'FULL_VIEWER',
-        'DUAL_MONITOR'
+        'DUAL_MONITOR',
+        'CASCADE',
+        'NEW_WINDOW'
     }
 
     if editor not in allowed_editors:
@@ -9655,16 +9659,21 @@ def user_reporting_preferences(profile):
     if layout not in allowed_layouts:
         layout='50_50'
 
+    display=str(reporting.get('preferred_display') or 'CURRENT').upper()
+    if display not in {'CURRENT','OTHER'}:
+        display='CURRENT'
     return {
         'preferred_editor':editor,
-        'preferred_layout':layout
+        'preferred_layout':layout,
+        'preferred_display':display
     }
 
 
 def set_user_reporting_preferences(
     profile,
     preferred_editor,
-    preferred_layout
+    preferred_layout,
+    preferred_display=None
 ):
     settings=user_profile_settings(profile)
 
@@ -9695,7 +9704,9 @@ def set_user_reporting_preferences(
         '30_70',
         'FULL_EDITOR',
         'FULL_VIEWER',
-        'DUAL_MONITOR'
+        'DUAL_MONITOR',
+        'CASCADE',
+        'NEW_WINDOW'
     }
 
     if editor not in allowed_editors:
@@ -9704,6 +9715,10 @@ def set_user_reporting_preferences(
     if layout not in allowed_layouts:
         layout='50_50'
 
+    display=str(preferred_display if preferred_display is not None else reporting.get('preferred_display') or 'CURRENT').upper()
+    if display not in {'CURRENT','OTHER'}:
+        display='CURRENT'
+    reporting['preferred_display']=display
     reporting['preferred_editor']=editor
     reporting['preferred_layout']=layout
 
@@ -9716,7 +9731,8 @@ def set_user_reporting_preferences(
 
     return {
         'preferred_editor':editor,
-        'preferred_layout':layout
+        'preferred_layout':layout,
+        'preferred_display':display
     }
 
 
@@ -14671,7 +14687,8 @@ def my_profile():
         prefs=set_user_reporting_preferences(
             p,
             request.form.get('preferred_editor'),
-            request.form.get('preferred_layout')
+            request.form.get('preferred_layout'),
+            request.form.get('preferred_display')
         )
 
         audit(
@@ -14682,7 +14699,8 @@ def my_profile():
                 'editor=' +
                 prefs['preferred_editor'] +
                 '; layout=' +
-                prefs['preferred_layout']
+                prefs['preferred_layout'] +
+                '; display=' + prefs['preferred_display']
             )
         )
 
@@ -33720,7 +33738,8 @@ def api_ohif_reporting_preferences(order_id):
             'editor=' +
             prefs['preferred_editor'] +
             '; layout=' +
-            prefs['preferred_layout']
+            prefs['preferred_layout'] +
+            '; display=' + prefs['preferred_display']
         )
     )
 
@@ -33732,8 +33751,10 @@ def api_ohif_reporting_preferences(order_id):
         'preferred_editor': (
             prefs['preferred_editor']
         ),
+        'preferred_display': prefs['preferred_display'],
         'preferred_layout': (
-            prefs['preferred_layout']
+            prefs['preferred_layout'] +
+            '; display=' + prefs['preferred_display']
         )
     })
 

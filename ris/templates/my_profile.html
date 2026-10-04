@@ -181,7 +181,7 @@
           value="BROWSER"
           {% if editor == 'BROWSER' %}selected{% endif %}
         >
-          RadBridge Browser Editor
+          ONLYOFFICE in Browser (same DOCX)
         </option>
 
         <option
@@ -211,7 +211,7 @@
     <label>
       Preferred Reporting Layout
 
-      <select name="preferred_layout">
+      <select name="preferred_layout" id="reporting-layout">
 
         {% set layout =
           reporting_preferences.preferred_layout
@@ -221,7 +221,7 @@
           value="50_50"
           {% if layout == '50_50' %}selected{% endif %}
         >
-          50 / 50
+          Side by side: 50% Viewer / 50% Editor
         </option>
 
         <option
@@ -249,20 +249,51 @@
           value="FULL_VIEWER"
           {% if layout == 'FULL_VIEWER' %}selected{% endif %}
         >
-          Full Viewer + Editor Panel
+          Full Viewer + separate report window
         </option>
 
         <option
           value="DUAL_MONITOR"
           {% if layout == 'DUAL_MONITOR' %}selected{% endif %}
         >
-          Dual Monitor / Pop-out
+          Other display / Pop-out
         </option>
 
+        <option value="NEW_WINDOW" {% if layout == 'NEW_WINDOW' %}selected{% endif %}>Separate window</option>
+        <option value="CASCADE" {% if layout == 'CASCADE' %}selected{% endif %}>Cascade windows</option>
       </select>
     </label>
-
+    <label>
+      Report window display
+      <select name="preferred_display">
+        <option value="CURRENT" {% if reporting_preferences.preferred_display == 'CURRENT' %}selected{% endif %}>Current display</option>
+        <option value="OTHER" {% if reporting_preferences.preferred_display == 'OTHER' %}selected{% endif %}>Other display (when available)</option>
+      </select>
+    </label>
   </div>
+  <p>Saved for your account only. Applied when you choose <strong>Open Report</strong> in the viewer.
+    Split layouts use ONLYOFFICE and expand to full screen on narrow displays.
+    Separate windows require pop-ups; automatic screen placement depends on browser permission.
+    Word and LibreOffice require the installed RadBridge desktop reporting agent.</p>
+  <div id="report-layout-preview" aria-label="Window layout preview"
+    style="display:flex;gap:8px;height:100px;max-width:560px;margin:14px 0"></div>
+  <script>
+    (() => {
+      const select = document.getElementById('reporting-layout');
+      const preview = document.getElementById('report-layout-preview');
+      const render = () => {
+        const ratio = {'50_50':[50,50], '70_30':[70,30], '30_70':[30,70], 'FULL_EDITOR':[0,100]}[select.value] || [50,50];
+        preview.replaceChildren();
+        ['Viewer / الصور', 'Report / التقرير'].forEach((label, i) => {
+          if (!ratio[i]) return;
+          const box = document.createElement('div'); box.textContent = label;
+          box.style.cssText = `flex:${ratio[i]};display:flex;align-items:center;justify-content:center;border-radius:8px;background:${i ? '#e7f1ff' : '#12233c'};color:${i ? '#142c4c' : '#fff'};border:1px solid #b7cce7`;
+          preview.appendChild(box);
+        });
+      };
+      select.addEventListener('change',render); render();
+    })();
+  </script>
 
   <div style="margin-top:24px">
 

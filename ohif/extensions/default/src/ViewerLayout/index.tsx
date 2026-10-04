@@ -30,6 +30,16 @@ function ViewerLayout({
   rightPanelMinimumExpandedWidth,
 }: withAppTypes): React.FunctionComponent {
   const [appConfig] = useAppConfig();
+  const [reportViewerPercent, setReportViewerPercent] = useState(0);
+  useEffect(() => {
+    const onReportLayout = (event: Event) => {
+      const value = Number((event as CustomEvent).detail?.viewerPercent);
+      setReportViewerPercent([30, 50, 70].includes(value) ? value : 0);
+    };
+    window.addEventListener('radbridge-report-layout', onReportLayout);
+    return () => window.removeEventListener('radbridge-report-layout', onReportLayout);
+  }, []);
+
 
   const { panelService, hangingProtocolService, customizationService } = servicesManager.services;
   const [showLoadingIndicator, setShowLoadingIndicator] = useState(appConfig.showLoadingIndicator);
@@ -150,7 +160,18 @@ function ViewerLayout({
   const viewportComponents = viewports.map(getViewportComponentData);
 
   return (
-    <div>
+    <div data-radbridge-docked={reportViewerPercent > 0 ? 'true' : undefined}
+      style={{ width: reportViewerPercent > 0 ? `${reportViewerPercent}%` : undefined }}>
+      {reportViewerPercent > 0 && <style>{`
+        [data-radbridge-docked="true"] [data-panel-id]:not([data-panel-id="viewerLayoutResizableViewportGridPanel"]) {
+          flex: 0 0 0px !important; min-width: 0 !important; max-width: 0 !important;
+          overflow: hidden !important; visibility: hidden; pointer-events: none;
+        }
+        [data-radbridge-docked="true"] [data-panel-id="viewerLayoutResizableViewportGridPanel"] {
+          flex: 1 1 100% !important; min-width: 0 !important; max-width: none !important;
+        }
+        [data-radbridge-docked="true"] [data-panel-resize-handle-id] { display: none; }
+      `}</style>}
       <ViewerHeader
         hotkeysManager={hotkeysManager}
         extensionManager={extensionManager}

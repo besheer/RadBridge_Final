@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 declare global {
   interface Window {
@@ -12,6 +13,7 @@ type Props = {
   identity: string;
   leaseToken: string;
   onClose: () => void;
+  layout?: string;
 };
 
 const API_SCRIPT =
@@ -23,6 +25,7 @@ export default function OnlyOfficeReportEditor({
   identity,
   leaseToken,
   onClose,
+  layout = 'FULL_EDITOR',
 }: Props) {
   const editorRef = useRef<any>(null);
 
@@ -47,6 +50,26 @@ export default function OnlyOfficeReportEditor({
   const [chooseTemplate, setChooseTemplate] = useState(false);
   const [templateChoice, setTemplateChoice] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState(0);
+
+  const [narrowScreen, setNarrowScreen] = useState(window.innerWidth < 1000);
+  const viewerPercent = narrowScreen ? 0 : ({
+    '50_50': 50, '70_30': 70, '30_70': 30,
+  }[layout] || 0);
+
+  useEffect(() => {
+    const resize = () => setNarrowScreen(window.innerWidth < 1000);
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('radbridge-report-layout', {
+      detail: { viewerPercent },
+    }));
+    return () => window.dispatchEvent(new CustomEvent('radbridge-report-layout', {
+      detail: { viewerPercent: 0 },
+    }));
+  }, [viewerPercent]);
 
   function configUrl() {
     const query = new URLSearchParams();
@@ -531,14 +554,17 @@ export default function OnlyOfficeReportEditor({
     leaseToken,
   ]);
 
-  return (
+  return createPortal(
     <div
       role="dialog"
-      aria-modal="true"
+      aria-modal={viewerPercent === 0}
       aria-label="RadBridge ONLYOFFICE Editor"
       style={{
         position: 'fixed',
-        inset: 0,
+        top: 0,
+        bottom: 0,
+        right: 0,
+        left: `${viewerPercent}%`,
         zIndex: 10020,
         display: 'flex',
         flexDirection: 'column',
@@ -759,7 +785,10 @@ export default function OnlyOfficeReportEditor({
           <div
             style={{
               position: 'absolute',
-              inset: 0,
+              top: 0,
+        bottom: 0,
+        right: 0,
+        left: `${viewerPercent}%`,
               zIndex: 2,
               display: 'flex',
               alignItems: 'center',
@@ -781,6 +810,7 @@ export default function OnlyOfficeReportEditor({
           }}
         />
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

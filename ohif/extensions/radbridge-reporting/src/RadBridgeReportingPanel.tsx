@@ -12,6 +12,8 @@ export default function RadBridgeReportingPanel() {
   const [onlyOfficeEditorOpen, setOnlyOfficeEditorOpen] = useState(false);
   const [preferredEditor, setPreferredEditor] = useState('ONLYOFFICE');
   const [preferredLayout, setPreferredLayout] = useState('50_50');
+  const [preferredDisplay, setPreferredDisplay] = useState('CURRENT');
+  const [editorLayout, setEditorLayout] = useState('FULL_EDITOR');
 
   // RadBridge report edit lease.
   // The backend requires a valid lease for every clinical write.
@@ -195,10 +197,6 @@ export default function RadBridgeReportingPanel() {
   // RB_DEDICATED_WINDOW_LEASE_RELEASE_V1
   // Release the lease when the dedicated browser window is closed.
   useEffect(() => {
-    if (!dedicatedOnlyOfficeWindow) {
-      return;
-    }
-
     const releaseLeaseOnPageHide = () => {
       const token = leaseTokenRef.current;
 
@@ -253,7 +251,7 @@ export default function RadBridgeReportingPanel() {
     dedicatedOnlyOfficeWindowName,
   ]);
 
-  function openOnlyOfficeWindow() {
+  async function openOnlyOfficeWindow(layout = 'NEW_WINDOW') {
     setError('');
 
     const trackedWindow = onlyOfficeWindowRef.current;
@@ -269,10 +267,17 @@ export default function RadBridgeReportingPanel() {
       'ONLYOFFICE'
     );
 
+    const available = window.screen as any;
+    const width = Math.min(layout === 'CASCADE' ? 1200 : 1400, layout === 'CASCADE' ? Math.max(320, available.availWidth - 96) : available.availWidth);
+    const height = Math.min(layout === 'CASCADE' ? 850 : 900, layout === 'CASCADE' ? Math.max(320, available.availHeight - 96) : available.availHeight);
+    const left = layout === 'CASCADE' ? Math.max(available.availLeft || 0,
+      Math.min(window.screenX + 48, (available.availLeft || 0) + available.availWidth - width)) : (available.availLeft || 0);
+    const top = layout === 'CASCADE' ? Math.max(available.availTop || 0,
+      Math.min(window.screenY + 48, (available.availTop || 0) + available.availHeight - height)) : (available.availTop || 0);
     const editorWindow = window.open(
       '',
       dedicatedOnlyOfficeWindowName,
-      'popup=yes,width=1400,height=900,resizable=yes,scrollbars=yes'
+      `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
     );
 
     if (!editorWindow) {
@@ -310,10 +315,36 @@ export default function RadBridgeReportingPanel() {
     }
 
     editorWindow.focus();
+    if (layout === 'DUAL_MONITOR' || preferredDisplay === 'OTHER') {
+      try {
+        const screenDetails = await (window as any).getScreenDetails?.();
+        const other = screenDetails?.screens?.find((s: any) => s !== screenDetails.currentScreen);
+        if (other) {
+          editorWindow.moveTo(other.availLeft, other.availTop);
+          editorWindow.resizeTo(other.availWidth, other.availHeight);
+        } else {
+          setMessage('Move the report window to the other display. Automatic placement is unavailable in this browser.');
+        }
+      } catch {
+        setMessage('Move the report window to the other display. Browser screen permission was not granted.');
+      }
+    }
+  }
+
+  async function openPreferredReport() {
+    if (preferredEditor === 'WORD' || preferredEditor === 'LIBREOFFICE') {
+      if (!accession) return;
+      window.location.href = `risreport://open?accession=${encodeURIComponent(accession)}&editor=${preferredEditor === 'WORD' ? 'word' : 'libreoffice'}`;
+      setMessage('Opening the configured desktop reporting agent. DOCX download/upload is also available below.');
+      return;
+    }
+    const popout = ['DUAL_MONITOR', 'CASCADE', 'NEW_WINDOW', 'FULL_VIEWER'].includes(preferredLayout);
+    await openReportEditor(popout ? 'ONLYOFFICE' : 'BROWSER', preferredLayout);
   }
 
   async function openReportEditor(
-    editorType: 'ONLYOFFICE' | 'BROWSER'
+    editorType: 'ONLYOFFICE' | 'BROWSER',
+    layout = 'FULL_EDITOR'
   ) {
     if (!orderId) {
       return;
@@ -325,9 +356,11 @@ export default function RadBridgeReportingPanel() {
       editorType === 'ONLYOFFICE' &&
       !dedicatedOnlyOfficeWindow
     ) {
-      openOnlyOfficeWindow();
+      await openOnlyOfficeWindow(layout);
       return;
     }
+
+    setEditorLayout(dedicatedOnlyOfficeWindow ? 'FULL_EDITOR' : layout);
 
     // Both browser placements use the same DOCX editor and workflow.
     // Verified/final documents open read-only without an editing lease.
@@ -421,6 +454,8 @@ export default function RadBridgeReportingPanel() {
         'FULL_EDITOR',
         'FULL_VIEWER',
         'DUAL_MONITOR',
+        'CASCADE',
+        'NEW_WINDOW',
       ];
 
       setPreferredEditor(
@@ -428,6 +463,8 @@ export default function RadBridgeReportingPanel() {
           ? editor
           : 'ONLYOFFICE'
       );
+
+      setPreferredDisplay(payload?.preferred_display === 'OTHER' ? 'OTHER' : 'CURRENT');
 
       setPreferredLayout(
         allowedLayouts.includes(layout)
@@ -979,6 +1016,16 @@ export default function RadBridgeReportingPanel() {
           REPORT EDITOR
         </div>
 
+        <button disabled={busy || !orderId || !preferencesLoaded}
+          style={{ ...buttonStyle, background: '#14532d', fontWeight: 800 }}
+          onClick={() => void openPreferredReport()}>
+          Open Report · {preferredEditor === 'ASK' ? 'ONLYOFFICE' : preferredEditor} · {preferredLayout}
+        </button>
+        <a href="/my/profile" target="_blank" rel="noopener noreferrer"
+          style={{ display: 'block', margin: '8px 0', color: '#93c5fd' }}>
+          My editor &amp; window preferences
+        </a>
+
         <button
           disabled={busy || !orderId}
           style={{
@@ -1231,6 +1278,7 @@ export default function RadBridgeReportingPanel() {
           studyInstanceUID={studyInstanceUID}
           identity={identity}
           leaseToken={leaseToken}
+          layout={editorLayout}
           onClose={() => {
             void closeReportEditor('ONLYOFFICE');
           }}
