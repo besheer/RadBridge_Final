@@ -64,5 +64,7 @@ def page_access(role,row):
     perms=set(role.permissions())
     if role.code=='SUPER_ADMIN':return 'ROLE_ALLOWED'
     if role.code in NO_REPORT_EDIT and 'reports.edit' in row['permissions']:return 'DENIED'
-    if role.code=='RECEPTION' and any(p in ('payments.create','cashier.workstation') for p in row['permissions']):return 'BRANCH_DEPENDENT'
+    if role.code=='RECEPTION' and any(p in ('payments.create','cashier.workstation') for p in row['permissions']):
+        if '*' in perms or 'payments.create' in perms:perms.add('cashier.workstation')
+        return 'BRANCH_DEPENDENT' if all('*' in perms or p in perms for p in row['permissions']) else 'DENIED'
     return 'ROLE_ALLOWED' if all('*' in perms or p in perms for p in row['permissions']) else 'DENIED'

@@ -130,3 +130,11 @@ def test_create_user_can_store_contact_details(monkeypatch):
     assert response.status_code==200
     u=m.User.query.filter_by(username='CODEX-UAT-new-contact').one()
     assert policy.contacts(u)['email']=='uat@example.test' and u.must_change_password
+
+
+def test_reception_review_requires_base_collection_permission(monkeypatch):
+    c,u=client(monkeypatch,'RECEPTION')
+    row={'permissions':['cashier.workstation']}
+    assert policy.page_access(u.role,row)=='BRANCH_DEPENDENT'
+    u.role.permissions_json='[]'
+    assert policy.page_access(u.role,row)=='DENIED'
