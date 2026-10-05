@@ -17,6 +17,7 @@ import NavBar from '../NavBar';
 
 interface HeaderProps {
   children?: ReactNode;
+  responsive?: boolean;
   menuOptions: Array<{
     title: string;
     icon?: string;
@@ -43,6 +44,7 @@ function Header({
   PatientInfo,
   UndoRedo,
   Secondary,
+  responsive = false,
   ...props
 }: HeaderProps): ReactNode {
   const onClickReturn = () => {
@@ -60,8 +62,8 @@ function Header({
         isSticky={isSticky}
         {...props}
       >
-        <div className="relative h-[48px] items-center">
-          <div className="absolute left-0 top-1/2 flex -translate-y-1/2 items-center">
+        <div className={classNames("relative h-[48px] items-center", responsive && "rb-responsive-header")}>
+          <div className="rb-header-brand absolute left-0 top-1/2 flex -translate-y-1/2 items-center">
             <div
               className={classNames(
                 'mr-3 inline-flex items-center',
@@ -76,11 +78,11 @@ function Header({
               </div>
             </div>
           </div>
-          <div className="absolute top-1/2 left-[250px] h-8 -translate-y-1/2">{Secondary}</div>
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform">
-            <div className="flex items-center justify-center space-x-2">{children}</div>
+          {!responsive && <div className="absolute top-1/2 left-[250px] h-8 -translate-y-1/2">{Secondary}</div>}
+          <div className="rb-header-tools absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform">
+            <div className="rb-header-tool-items flex items-center justify-center space-x-2">{responsive && Secondary}{children}</div>
           </div>
-          <div className="absolute right-0 top-1/2 flex -translate-y-1/2 select-none items-center">
+          <div className="rb-header-controls absolute right-0 top-1/2 flex -translate-y-1/2 select-none items-center">
             {UndoRedo}
             <div className="border-primary-dark mx-1.5 h-[25px] border-r"></div>
             {PatientInfo}

@@ -163,7 +163,29 @@ function ViewerLayout({
 
   return (
     <div data-radbridge-docked={reportViewerPercent > 0 ? 'true' : undefined}
-      style={{ width: reportViewerPercent > 0 ? `${reportViewerPercent}%` : undefined }}>
+      className="flex h-screen flex-col overflow-hidden"
+      style={{ width: reportViewerPercent > 0 ? `${reportViewerPercent}%` : undefined,
+        containerType: 'inline-size', containerName: 'rb-viewer' }}>
+      <style>{`
+        @container rb-viewer (max-width: 1000px) {
+          .rb-responsive-header { height: 96px; }
+          .rb-responsive-header .rb-header-brand,
+          .rb-responsive-header .rb-header-controls {
+            top: 24px;
+          }
+          .rb-responsive-header .rb-header-tools {
+            top: 48px; left: 0; right: 0; height: 48px;
+            transform: none; overflow-x: auto; overflow-y: hidden;
+          }
+          .rb-responsive-header .rb-header-tool-items {
+            justify-content: flex-start; width: max-content; min-width: 100%;
+            height: 44px; padding-inline: 4px;
+          }
+        }
+        @container rb-viewer (max-width: 600px) {
+          .rb-responsive-header .rb-header-brand { display: none; }
+        }
+      `}</style>
       {reportViewerPercent > 0 && <style>{`
         [data-radbridge-docked="true"] [data-panel-id]:not([data-panel-id="viewerLayoutResizableViewportGridPanel"]) {
           flex: 0 0 0px !important; min-width: 0 !important; max-width: 0 !important;
@@ -181,8 +203,7 @@ function ViewerLayout({
         appConfig={appConfig}
       />
       <div
-        className="relative flex w-full flex-row flex-nowrap items-stretch overflow-hidden bg-black"
-        style={{ height: 'calc(100vh - 52px' }}
+        className="relative flex min-h-0 w-full flex-1 flex-row flex-nowrap items-stretch overflow-hidden bg-black"
       >
         <React.Fragment>
           {showLoadingIndicator && <LoadingIndicatorProgress className="h-full w-full bg-black" />}
