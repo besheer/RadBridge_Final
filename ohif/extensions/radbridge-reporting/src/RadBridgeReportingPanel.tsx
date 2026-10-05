@@ -335,7 +335,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
     const top = layout === 'CASCADE' ? Math.max(available.availTop || 0,
       Math.min(window.screenY + 48, (available.availTop || 0) + available.availHeight - height)) : (available.availTop || 0);
     const editorWindow = window.open(
-      '',
+      editorUrl.toString(),
       dedicatedOnlyOfficeWindowName,
       `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
     );
@@ -348,31 +348,6 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
     }
 
     onlyOfficeWindowRef.current = editorWindow;
-
-    let matchingEditorWindow = false;
-
-    try {
-      const activeUrl =
-        new URL(editorWindow.location.href);
-
-      const activeOrderId =
-        activeUrl.searchParams.get('radbridgeOrderId') ||
-        activeUrl.searchParams.get('orderId') ||
-        '';
-
-      matchingEditorWindow =
-        activeUrl.searchParams.get(
-          'radbridgeReportWindow'
-        ) === 'ONLYOFFICE' &&
-        activeOrderId === orderId;
-    } catch {
-      matchingEditorWindow = false;
-    }
-
-    if (!matchingEditorWindow) {
-      editorWindow.location.href =
-        editorUrl.toString();
-    }
 
     editorWindow.focus();
     if (layout === 'DUAL_MONITOR' || preferredDisplay === 'OTHER') {
