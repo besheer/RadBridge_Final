@@ -6932,6 +6932,7 @@ def technician_case_workspace(order_id):
     return render_template(
         'technician_case.html',
         quality_rule=quality_rule_for(order),
+        acquisition_minimum=technician_minimum_requirement(order,quality_rule_for(order))[0],
         acquisition_notes=technician_acquisition_notes(quality_rule_for(order)),
         image_readiness=CaseReadiness.query.filter_by(order_id=order.id).first(),
         order=order,
@@ -7122,6 +7123,15 @@ def technician_acquisition_notes(rule):
     return row.notes if row else ''
 
 
+def technician_minimum_requirement(order,rule):
+    minimum=(rule.min_images or 0) if rule else 0
+    approved=CaseReadinessOverride.query.filter_by(order_id=order.id,blocker='INCOMPLETE_IMAGES',active=True).first()
+    if approved:
+        try: minimum=max(0,int(approved.override_value))
+        except (ValueError,TypeError): pass
+    return max(1,minimum),approved
+
+
 def technician_completion_evidence(order):
     from technician_image_policy import completion_image_policy
     from case_exception_resolution_service import apply_series_aliases
@@ -7129,11 +7139,7 @@ def technician_completion_evidence(order):
     matched,_match_reason=pacs_demographic_gate(order)
     evidence=pacs_readiness_evidence(order)
     count,meta,error,series=evidence
-    minimum=(rule.min_images or 0) if rule else 0
-    approved=CaseReadinessOverride.query.filter_by(order_id=order.id,blocker='INCOMPLETE_IMAGES',active=True).first()
-    if approved:
-        try: minimum=max(0,int(approved.override_value))
-        except (ValueError,TypeError): pass
+    minimum,approved=technician_minimum_requirement(order,rule)
     aliases=ReadinessSeriesAlias.query.filter_by(rule_id=rule.id,active=True).all() if rule else []
     result=completion_image_policy(matched=matched,pacs_present=bool(meta),error=error,
         image_count=count,policy_defined=bool(rule),min_images=minimum,

@@ -154,3 +154,17 @@ def test_fresh_pacs_error_blocks_even_when_ris_cached_count_is_high(app_ctx,monk
     monkeypatch.setattr(m,'CaseReadinessOverride',SimpleNamespace(query=SimpleNamespace(filter_by=lambda **_:SimpleNamespace(first=lambda:None))))
     result,_=m.technician_completion_evidence(order)
     assert not result['allowed'] and result['image_count']==0
+
+
+def test_case_page_shows_current_policy_not_old_readiness_minimum(app_ctx,monkeypatch):
+    from test_assignment_distribution import doctor,order
+    m=app_ctx
+    user=doctor('CODEX-UAT-policy-display','SUPER_ADMIN')
+    o=order('CODEX-UAT-POLICY-DISPLAY','DX');o.procedure='CODEX UAT Display';o.exam_status='IN_PROGRESS'
+    rule=m.ProcedureQualityRule(modality='DX',procedure_pattern='CODEX UAT Display',min_images=2,required_series='AP,LAT',active=True)
+    m.db.session.add_all([rule,m.CaseReadiness(order_id=o.id,expected_min_images=0,image_count=0)])
+    m.db.session.flush();monkeypatch.setattr(m,'current_user',lambda:user)
+    with m.app.test_client() as client:
+        response=client.get('/technician/'+str(o.id))
+        assert response.status_code==200
+        assert b'Minimum DICOM images: <b>2</b>' in response.data

@@ -54,7 +54,7 @@ consumables, technical notes, attachments and case history
   <h3>سياسة صور الفحص · Acquisition Policy</h3>
   {% if quality_rule %}
     <p><b>{{quality_rule.modality}} · {{quality_rule.procedure_pattern}}</b></p>
-    <p>Minimum DICOM images: <b>{{image_readiness.expected_min_images if image_readiness else quality_rule.min_images}}</b> (at least one received image).
+    <p>Minimum DICOM images: <b>{{acquisition_minimum}}</b> (at least one received image).
        Required series: <b>{{quality_rule.required_series or 'No named series configured'}}</b></p>
   {% else %}
     <p class="muted">السياسة ناقصة: يسمح بالإكمال عند وجود صور مؤكدة مع تنبيه. Procedure policy is incomplete; confirmed PACS images are required.</p>
