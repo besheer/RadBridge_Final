@@ -18830,6 +18830,8 @@ def cashier_workstation():
 def refund_payment(payment_id):
     p=Payment.query.get_or_404(payment_id)
     o=p.order
+    from collection_policy import require_collection_branch
+    require_collection_branch(o.branch_id)
     amount=float(request.form.get('amount') or 0)
     reason=(request.form.get('reason') or '').strip()
     reference=(request.form.get('reference') or '').strip()
