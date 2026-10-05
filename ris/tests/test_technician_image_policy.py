@@ -87,7 +87,7 @@ def test_direct_http_completion_cannot_bypass_images(app_ctx,monkeypatch,path,st
     order=SimpleNamespace(id=999998,exam_status='IN_PROGRESS',status='IN_PROGRESS',
                           exam_started_at=None,exam_completed_at=None)
     monkeypatch.setattr(m,'Order',SimpleNamespace(query=SimpleNamespace(get_or_404=lambda _:order)))
-    monkeypatch.setattr(m,'current_user',lambda:SimpleNamespace(id=999998,role=SimpleNamespace(code='SUPER_ADMIN')))
+    monkeypatch.setattr(m,'current_user',lambda:SimpleNamespace(id=999998,active=True,role=SimpleNamespace(code='SUPER_ADMIN',permissions=lambda:['*'])))
     monkeypatch.setattr(m,'has_perm',lambda _:True)
     monkeypatch.setattr(m,'technician_completion_evidence',lambda _:(check(image_count=0),None))
     def forbidden(*args,**kwargs):pytest.fail('Blocked exam caused an event, stock deduction or assignment')

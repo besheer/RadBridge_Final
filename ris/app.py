@@ -7161,6 +7161,8 @@ def _apply_exam_transition(order,target,role_code,override=False):
 def technician_status(order_id):
     # Legacy compatibility endpoint routed through the canonical exam engine.
     order=Order.query.get_or_404(order_id)
+    from technician_queue import scoped_order
+    scoped_order(_reporting_support_sys.modules[__name__],order)
     new=(request.form.get('status') or '').upper().strip()
     role_code=(current_user().role.code if current_user() and current_user().role else '').upper()
 
@@ -7233,6 +7235,8 @@ def api_reporting_health():
 @require_perm('technician.worklist')
 def order_exam_status(order_id):
     order=Order.query.get_or_404(order_id)
+    from technician_queue import scoped_order
+    scoped_order(_reporting_support_sys.modules[__name__],order)
     target=(request.form.get('status') or '').upper().strip()
     role_code=(current_user().role.code if current_user() and current_user().role else '').upper()
 
@@ -7275,6 +7279,8 @@ def order_exam_status(order_id):
 @require_perm('workflow.override')
 def order_exam_status_override(order_id):
     order=Order.query.get_or_404(order_id)
+    from technician_queue import scoped_order
+    scoped_order(_reporting_support_sys.modules[__name__],order)
     target=(request.form.get('status') or '').upper().strip()
     reason=(request.form.get('reason') or '').strip()
     if target not in EXAM_STATUS_ORDER: abort(400)

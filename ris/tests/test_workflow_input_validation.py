@@ -106,7 +106,7 @@ def test_authorized_http_route_rejects_invalid_target_without_writes(monkeypatch
     order = SimpleNamespace(id=999999, status="SCHEDULED", exam_status="BOOKED")
     before = vars(order).copy()
     monkeypatch.setattr(m, "Order", SimpleNamespace(query=SimpleNamespace(get_or_404=lambda order_id: order)))
-    monkeypatch.setattr(m, "current_user", lambda: SimpleNamespace(id=999999, role=SimpleNamespace(code="SUPER_ADMIN")))
+    monkeypatch.setattr(m, "current_user", lambda: SimpleNamespace(id=999999, active=True, role=SimpleNamespace(code="SUPER_ADMIN", permissions=lambda:["*"])))
     monkeypatch.setattr(m, "has_perm", lambda permission: True)
 
     def forbidden_write(*args, **kwargs):
