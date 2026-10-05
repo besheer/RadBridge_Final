@@ -49,6 +49,7 @@ from workflow_engine import (
     canonical_display_state,
     derive_journey_stage,
     exam_transition_gate,
+    TransitionDecision,
     normalize_state,
     order_status_for_exam_transition,
     report_source_allowed,
@@ -6930,6 +6931,9 @@ def technician_case_workspace(order_id):
 
     return render_template(
         'technician_case.html',
+        quality_rule=quality_rule_for(order),
+        acquisition_notes=technician_acquisition_notes(quality_rule_for(order)),
+        image_readiness=CaseReadiness.query.filter_by(order_id=order.id).first(),
         order=order,
         image_url=clinical_image_only_url(order),
         warehouse=warehouse,
@@ -7111,6 +7115,48 @@ def technician_worklist():
         saved_view_page='TECHNICIAN',
     )
 
+def technician_acquisition_notes(rule):
+    if not rule:
+        return ''
+    row=StudioTemplate.query.filter_by(template_type='TECH_ACQUISITION',name=str(rule.id)).first()
+    return row.notes if row else ''
+
+
+def technician_completion_evidence(order):
+    from technician_image_policy import completion_image_policy
+    from case_exception_resolution_service import apply_series_aliases
+    rule=quality_rule_for(order)
+    matched,_match_reason=pacs_demographic_gate(order)
+    evidence=pacs_readiness_evidence(order)
+    count,meta,error,series=evidence
+    minimum=(rule.min_images or 0) if rule else 0
+    approved=CaseReadinessOverride.query.filter_by(order_id=order.id,blocker='INCOMPLETE_IMAGES',active=True).first()
+    if approved:
+        try: minimum=max(0,int(approved.override_value))
+        except (ValueError,TypeError): pass
+    aliases=ReadinessSeriesAlias.query.filter_by(rule_id=rule.id,active=True).all() if rule else []
+    result=completion_image_policy(matched=matched,pacs_present=bool(meta),error=error,
+        image_count=count,policy_defined=bool(rule),min_images=minimum,
+        required_series=rule.required_series if rule else '',series=apply_series_aliases(series,aliases))
+    result['rule_id']=rule.id if rule else None
+    result['minimum_override_id']=approved.id if approved else None
+    return result,evidence
+
+
+@app.post('/technician/<int:order_id>/check-images')
+@require_perm('technician.worklist')
+def technician_check_images(order_id):
+    order=Order.query.get_or_404(order_id)
+    result,evidence=technician_completion_evidence(order)
+    evaluate_case_readiness(order,pacs_evidence=evidence)
+    audit('TECHNICIAN_IMAGE_CHECK','order',order.id,json.dumps(result,sort_keys=True))
+    db.session.commit()
+    flash(result['reason'] or f"Images checked: {result['image_count']}. Image requirements are satisfied.",
+          'success' if result['allowed'] else 'danger')
+    if result['warning']: flash(result['warning'],'warning')
+    return redirect(url_for('technician_case_workspace',order_id=order.id))
+
+
 def _apply_exam_transition(order,target,role_code,override=False):
     current=(order.exam_status or 'ORDERED').upper()
 
@@ -7138,6 +7184,13 @@ def _apply_exam_transition(order,target,role_code,override=False):
 
     if not decision.allowed:
         return decision,current
+
+    if target=='EXAM_COMPLETED':
+        result,_evidence=technician_completion_evidence(order)
+        if not result['allowed']:
+            return TransitionDecision(False,result['reason']),current
+        audit('EXAM_COMPLETION_IMAGES_VERIFIED','order',order.id,json.dumps(result,sort_keys=True))
+        if result['warning']: flash(result['warning'],'warning')
 
     order.exam_status=target
     order.status=order_status_for_exam_transition(
@@ -12409,11 +12462,11 @@ def pacs_readiness_evidence(order):
     except Exception as e:
         return 0,meta,str(e)[:500],[]
 
-def evaluate_case_readiness(order):
+def evaluate_case_readiness(order,pacs_evidence=None):
     from case_readiness_service import evaluate_readiness
     from case_exception_resolution_service import apply_series_aliases
     rule=quality_rule_for(order)
-    count,pacs,error,series=pacs_readiness_evidence(order)
+    count,pacs,error,series=pacs_evidence if pacs_evidence is not None else pacs_readiness_evidence(order)
     has_history=_order_history_present(order)
     attachments=_order_attachment_count(order)
     missing_pacs=not bool(pacs)
@@ -27135,18 +27188,38 @@ def case_readiness_check(order_id):
 @require_perm('users.view')
 def admin_procedure_quality_rules():
     if request.method=='POST':
-        r=ProcedureQualityRule(modality=(request.form.get('modality') or '').upper(),
-          procedure_pattern=(request.form.get('procedure_pattern') or '').upper(),
-          min_images=request.form.get('min_images',type=int) or 0,
-          warning_images=request.form.get('warning_images',type=int) or 0,
-          required_series=request.form.get('required_series') or '',
-          require_history=request.form.get('require_history')=='1',
-          require_attachments=request.form.get('require_attachments')=='1',
-          require_pacs_study=request.form.get('require_pacs_study')=='1',
-          block_auto_assign=request.form.get('block_auto_assign')=='1')
-        db.session.add(r);db.session.commit()
+        if not (has_perm('*') or has_perm('users.manage')): abort(403)
+        modality=(request.form.get('modality') or '').strip().upper()
+        pattern=(request.form.get('procedure_pattern') or '').strip().upper()
+        minimum=request.form.get('min_images',type=int)
+        warning=request.form.get('warning_images',type=int)
+        if not modality or not pattern or minimum is None or warning is None or min(minimum,warning)<0:
+            flash('Enter a modality, procedure pattern and non-negative image thresholds.','danger')
+            return redirect(url_for('admin_procedure_quality_rules'))
+        rule_id=request.form.get('rule_id',type=int)
+        r=ProcedureQualityRule.query.get_or_404(rule_id) if rule_id else ProcedureQualityRule()
+        before={k:getattr(r,k,None) for k in ('modality','procedure_pattern','min_images','warning_images','required_series','active')}
+        r.modality=modality;r.procedure_pattern=pattern;r.min_images=minimum;r.warning_images=warning
+        r.required_series=(request.form.get('required_series') or '').strip()
+        for field in ('require_history','require_attachments','require_pacs_study','block_auto_assign','active'):
+            setattr(r,field,request.form.get(field)=='1')
+        db.session.add(r);db.session.flush()
+        note=StudioTemplate.query.filter_by(template_type='TECH_ACQUISITION',name=str(r.id)).first()
+        if not note:
+            note=StudioTemplate(template_type='TECH_ACQUISITION',name=str(r.id),status='PUBLISHED',scope='GLOBAL')
+            db.session.add(note)
+        old_notes=note.notes or ''
+        note.notes=(request.form.get('acquisition_notes') or '').strip()[:5000]
+        after={k:getattr(r,k,None) for k in before}
+        audit('PROCEDURE_QUALITY_POLICY_UPDATE','procedure_quality_rule',r.id,
+              json.dumps({'before':before,'after':after,'notes_before':old_notes,'notes_after':note.notes},sort_keys=True))
+        db.session.commit()
+        flash('Procedure image policy saved.','success')
         return redirect(url_for('admin_procedure_quality_rules'))
-    return render_template('admin_procedure_quality_rules.html',rows=ProcedureQualityRule.query.order_by(ProcedureQualityRule.modality,ProcedureQualityRule.procedure_pattern).all())
+    rows=ProcedureQualityRule.query.order_by(ProcedureQualityRule.modality,ProcedureQualityRule.procedure_pattern).all()
+    selected=ProcedureQualityRule.query.get(request.args.get('rule_id',type=int)) if request.args.get('rule_id',type=int) else None
+    return render_template('admin_procedure_quality_rules.html',rows=rows,selected=selected,
+                           acquisition_notes=technician_acquisition_notes(selected),can_edit=has_perm('*') or has_perm('users.manage'))
 
 @app.post('/reports/<int:order_id>/return-case')
 @require_perm('reports.edit')
