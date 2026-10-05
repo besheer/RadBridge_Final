@@ -21,7 +21,9 @@ def _pacs_row_template():
     start=src.rfind("<tr>",0,marker_pos)
     end=src.index("</tr>",marker_pos)+len("</tr>")
 
-    return Environment().from_string(
+    env = Environment()
+    env.globals['ui_phrase'] = __import__('ui_localization').translate
+    return env.from_string(
         src[start:end]
     )
 
@@ -38,6 +40,7 @@ def _action_template():
     )+len("{% endif %}")
 
     env=Environment()
+    env.globals['ui_phrase'] = __import__('ui_localization').translate
 
     env.globals["url_for"]=(
         lambda endpoint,**kwargs:

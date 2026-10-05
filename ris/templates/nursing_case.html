@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
-{% block page_title %}Nursing — {{order.patient.name}}{% endblock %}
+{% block page_title %}{{ ui_phrase('Nursing —') }} {{order.patient.name}}{% endblock %}
 {% block subtitle %}
-Patient preparation, clinical history, attachments and actual consumables
+{{ ui_phrase('Patient preparation, clinical history, attachments and actual consumables') }}
 {% endblock %}
 
 {% block content %}
@@ -28,34 +28,34 @@ Patient preparation, clinical history, attachments and actual consumables
              alt=""
              loading="lazy">
       {% else %}
-        <div class="empty">No PACS image received</div>
+        <div class="empty">{{ ui_phrase('No PACS image received') }}</div>
       {% endif %}
 
       <h3>{{order.patient.name}}</h3>
       <p>{{order.patient.patient_id}} · <b>{{order.accession}}</b></p>
       <p>{{order.proc.name if order.proc else order.procedure}}</p>
       <p>
-        Exam: <b>{{order.exam_status or 'ORDERED'}}</b><br>
-        PACS: <b>{{order.pacs_status or 'WAITING'}}</b>
-        · {{order.pacs_image_count or 0}} image(s)
+        {{ ui_phrase('Exam:') }} <b>{{order.exam_status or ui_phrase('ORDERED')}}</b><br>
+        PACS: <b>{{order.pacs_status or ui_phrase('WAITING')}}</b>
+        · {{order.pacs_image_count or 0}} {{ ui_phrase('image(s)') }}
       </p>
 
       <div class="nursing-actions">
         {% if image_url %}
           <a class="btn primary" href="{{image_url}}"
-             target="_blank" rel="noopener noreferrer">🖼 Open Images</a>
+             target="_blank" rel="noopener noreferrer">{{ ui_phrase('🖼 Open Images') }}</a>
         {% endif %}
         <a class="btn" href="{{url_for('order_clinical_notes',order_id=order.id)}}">
-          📝 Add History / Note
+          {{ ui_phrase('📝 Add History / Note') }}
         </a>
         <a class="btn" href="{{url_for('order_attachments',order_id=order.id)}}">
-          📎 All Attachments
+          {{ ui_phrase('📎 All Attachments') }}
         </a>
       </div>
     </div>
 
     <div class="panel">
-      <h3>Recent Clinical Notes</h3>
+      <h3>{{ ui_phrase('Recent Clinical Notes') }}</h3>
       {% for note in clinical_notes %}
         <div style="padding:9px 0;border-bottom:1px solid var(--border,#294052)">
           <b>{{note.note_type}}</b>
@@ -63,12 +63,12 @@ Patient preparation, clinical history, attachments and actual consumables
           <div>{{note.text}}</div>
         </div>
       {% else %}
-        <p class="muted">No clinical history or notes recorded.</p>
+        <p class="muted">{{ ui_phrase('No clinical history or notes recorded.') }}</p>
       {% endfor %}
     </div>
 
     <div class="panel">
-      <h3>Attachments</h3>
+      <h3>{{ ui_phrase('Attachments') }}</h3>
 
       {% for attachment in attachments %}
         <p>
@@ -78,7 +78,7 @@ Patient preparation, clinical history, attachments and actual consumables
           </a>
         </p>
       {% else %}
-        <p class="muted">No attachments.</p>
+        <p class="muted">{{ ui_phrase('No attachments.') }}</p>
       {% endfor %}
 
       {% if has_perm('attachments.upload') %}
@@ -89,8 +89,8 @@ Patient preparation, clinical history, attachments and actual consumables
           <input type="hidden" name="order_id" value="{{order.id}}">
           <input type="hidden" name="category" value="CLINICAL">
           <input type="file" name="files" multiple required>
-          <input name="notes" placeholder="Attachment note">
-          <button class="btn">＋ Upload</button>
+          <input name="notes" placeholder="{{ ui_phrase('Attachment note') }}">
+          <button class="btn">{{ ui_phrase('＋ Upload') }}</button>
         </form>
       {% endif %}
     </div>
@@ -102,16 +102,15 @@ Patient preparation, clinical history, attachments and actual consumables
     %}
 
     <div class="panel">
-      <h3>Actual Consumables</h3>
+      <h3>{{ ui_phrase('Actual Consumables') }}</h3>
       <p class="muted">
-        Suggested quantities come from the examination protocol.
-        Confirm only the quantities actually used.
+        {{ ui_phrase('Suggested quantities come from the examination protocol.\n        Confirm only the quantities actually used.') }}
       </p>
 
       {% if not any_confirmed %}
         <form method="post">
           <table>
-            <tr><th>Item</th><th>Default</th><th>Actual</th></tr>
+            <tr><th>{{ ui_phrase('Item') }}</th><th>{{ ui_phrase('Default') }}</th><th>{{ ui_phrase('Actual') }}</th></tr>
             {% for item in defaults %}
               <tr>
                 <td>{{item.consumable.name}}</td>
@@ -123,14 +122,14 @@ Patient preparation, clinical history, attachments and actual consumables
                 </td>
               </tr>
             {% else %}
-              <tr><td colspan="3" class="empty">No default consumables.</td></tr>
+              <tr><td colspan="3" class="empty">{{ ui_phrase('No default consumables.') }}</td></tr>
             {% endfor %}
           </table>
-          <button class="btn primary">Confirm Actual Consumables</button>
+          <button class="btn primary">{{ ui_phrase('Confirm Actual Consumables') }}</button>
         </form>
       {% else %}
         <table>
-          <tr><th>Item</th><th>Default</th><th>Actual</th></tr>
+          <tr><th>{{ ui_phrase('Item') }}</th><th>{{ ui_phrase('Default') }}</th><th>{{ ui_phrase('Actual') }}</th></tr>
           {% for item in defaults %}
             {% set entry=entries.get(item.consumable_id) %}
             <tr>
@@ -140,25 +139,25 @@ Patient preparation, clinical history, attachments and actual consumables
             </tr>
           {% endfor %}
         </table>
-        <p><b>Locked after confirmation.</b></p>
+        <p><b>{{ ui_phrase('Locked after confirmation.') }}</b></p>
       {% endif %}
     </div>
 
     <div class="panel">
-      <h3>Additional Consumables & Inventory</h3>
-      <p>Branch warehouse: <b>{{inv_wh.name if inv_wh else 'Not configured'}}</b></p>
+      <h3>{{ ui_phrase('Additional Consumables & Inventory') }}</h3>
+      <p>{{ ui_phrase('Branch warehouse:') }} <b>{{inv_wh.name if inv_wh else ui_phrase('Not configured')}}</b></p>
 
       <div class="nursing-actions">
         {% if has_perm('inventory.view') %}
           <a class="btn primary"
              href="{{url_for('order_consumables',order_id=order.id)}}">
-            📦 Full Case Consumables
+            {{ ui_phrase('📦 Full Case Consumables') }}
           </a>
         {% endif %}
         {% if has_perm('inventory.view') %}
           <a class="btn"
              href="{{url_for('inventory_stock',warehouse_id=inv_wh.id if inv_wh else '')}}">
-            🏬 Branch Stock
+            {{ ui_phrase('🏬 Branch Stock') }}
           </a>
         {% endif %}
       </div>
@@ -168,7 +167,7 @@ Patient preparation, clinical history, attachments and actual consumables
       <form method="post"
             action="{{url_for('nursing_consumable_correct',order_id=order.id)}}"
             class="panel">
-        <h3>Supervisor Correction</h3>
+        <h3>{{ ui_phrase('Supervisor Correction') }}</h3>
         {% for item in defaults %}
           {% set entry=entries.get(item.consumable_id) %}
           <label>{{item.consumable.name}}</label>
@@ -176,9 +175,9 @@ Patient preparation, clinical history, attachments and actual consumables
                  name="qty_{{item.consumable_id}}"
                  value="{{entry.actual_qty if entry else item.qty}}">
         {% endfor %}
-        <label>Documented reason</label>
+        <label>{{ ui_phrase('Documented reason') }}</label>
         <input name="reason" minlength="5" required>
-        <button class="btn">Save Audited Correction</button>
+        <button class="btn">{{ ui_phrase('Save Audited Correction') }}</button>
       </form>
     {% endif %}
   </main>

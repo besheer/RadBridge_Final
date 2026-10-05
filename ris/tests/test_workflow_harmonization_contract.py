@@ -176,6 +176,6 @@ def test_journey_template_has_no_manual_stage_buttons():
 
 def test_order_detail_separates_exam_and_report_domains():
     template = (ROOT / "templates" / "order_detail.html").read_text(encoding="utf-8")
-    assert "<b>Report:</b>" in template
+    assert "ui_phrase('Report:')" in template
     assert "work_order_gate.allowed" in template
     assert "['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING']" in template

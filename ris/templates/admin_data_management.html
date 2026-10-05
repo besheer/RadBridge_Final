@@ -5,11 +5,11 @@
 <div class="panel danger-zone-note"><b>Safety controls are active.</b> Destructive operations require dedicated permissions, exact typed confirmation and audit logging. Clinical data with dependent orders cannot be deleted directly.</div>
 
 <div class="grid2">
-<div class="panel"><h3>Storage Locations</h3>
+<div class="panel"><h3>{{ ui_phrase('Storage Locations') }}</h3>
 {% for x in storage_rows %}<div class="storage-row"><div><b>{{x.label}}</b><small>{{x.path}}</small></div><div><span class="{{'stock-ok' if x.exists and x.writable else 'stock-low'}}">{{'Writable' if x.exists and x.writable else ('Read only' if x.exists else 'Missing')}}</span><small>{{'%.2f'|format(x.size/1024/1024)}} MB</small></div></div>{% endfor %}
 <p><b>Backup directory:</b> {{backup_dir}}</p></div>
 
-<div class="panel"><h3>System Data</h3><div class="kpi-grid"><div><b>{{patient_count}}</b><small>Patients</small></div><div><b>{{order_count}}</b><small>Orders / Exams</small></div></div>
+<div class="panel"><h3>System Data</h3><div class="kpi-grid"><div><b>{{patient_count}}</b><small>{{ ui_phrase('Patients') }}</small></div><div><b>{{order_count}}</b><small>Orders / Exams</small></div></div>
 {% if has_perm('backup.create') %}<form method="post" action="{{url_for('admin_create_manifest_backup')}}"><button class="btn primary">Create Verified Backup Manifest</button></form>{% endif %}
 <p class="muted">Database dumps should be executed by the server backup job with database credentials outside the web UI.</p></div>
 </div>
@@ -39,7 +39,7 @@
 
 {% if has_perm('data.export') %}
 <div class="panel"><h3>Patient Package Export</h3><p>Creates a ZIP with patient metadata, order index and linked report/attachment files that are discoverable through their database records.</p>
-<form method="post" action="{{url_for('admin_export_patient')}}" class="actions"><input name="patient_key" required placeholder="Patient ID"><button class="btn primary">Download Patient Package</button></form></div>
+<form method="post" action="{{url_for('admin_export_patient')}}" class="actions"><input name="patient_key" required placeholder="{{ ui_phrase('Patient ID') }}"><button class="btn primary">Download Patient Package</button></form></div>
 {% endif %}
 
 {% if has_perm('data.anonymize') %}
@@ -54,6 +54,6 @@
 
 {% if has_perm('data.reset') %}
 <div class="panel danger-zone"><h3>Controlled Module Reset</h3><p>v5.27.3 intentionally allows only non-clinical Notifications reset. Patient, Order, Report, Finance, Inventory and Audit data are blocked from bulk reset until a retention-aware purge workflow is configured.</p>
-<form method="post" action="{{url_for('admin_reset_module')}}" class="grid3"><select name="module"><option value="NOTIFICATIONS">Notifications</option></select><input name="confirmation" required placeholder="RESET NOTIFICATIONS &lt;count&gt;"><button class="btn danger">Reset Module</button></form></div>
+<form method="post" action="{{url_for('admin_reset_module')}}" class="grid3"><select name="module"><option value="NOTIFICATIONS">{{ ui_phrase('Notifications') }}</option></select><input name="confirmation" required placeholder="RESET NOTIFICATIONS &lt;count&gt;"><button class="btn danger">Reset Module</button></form></div>
 {% endif %}
 {% endblock %}

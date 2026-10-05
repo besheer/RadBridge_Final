@@ -60,7 +60,7 @@
 <input type="hidden" name="special_index" value="">
 <label>{{'رمز التصنيف' if ui_lang=='ar' else 'Classification code'}}<input data-field="code" maxlength="80" placeholder="FISTULA" required></label>
 <label>{{'الاسم' if ui_lang=='ar' else 'Name'}}<input data-field="label" maxlength="120" required></label>
-<label>{{'الأولوية' if ui_lang=='ar' else 'Priority'}}<select data-field="priority"><option>*</option><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select></label>
+<label>{{'الأولوية' if ui_lang=='ar' else 'Priority'}}<select data-field="priority"><option>*</option><option value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option><option value="URGENT">{{ ui_phrase('URGENT') }}</option><option value="STAT">{{ ui_phrase('STAT') }}</option></select></label>
 <label>{{'اسم الفحص يحتوي' if ui_lang=='ar' else 'Procedure contains'}}<input data-field="pattern" maxlength="180" placeholder="Fistula,Fistulogram"></label>
 <label>{{'الأطباء المؤهلون' if ui_lang=='ar' else 'Eligible doctors'}}<select multiple data-field="doctors" size="4">{% for d in doctors %}<option value="{{d.id}}">{{d.full_name or d.username}}</option>{% endfor %}</select></label>
 <label><span><input type="checkbox" data-field="enabled" value="1"> {{'مفعّل' if ui_lang=='ar' else 'Enabled'}}</span><button type="button" class="btn" onclick="this.closest('.special-rule').remove()">{{'حذف القاعدة' if ui_lang=='ar' else 'Remove rule'}}</button></label>

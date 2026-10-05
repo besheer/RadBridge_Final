@@ -3,26 +3,26 @@
 {% block content %}
 <div class="studio-shortcut-layout">
 <form method="post" class="panel">
-<h2>Shortcut / App Launcher Designer</h2>
+<h2>{{ ui_phrase('Shortcut / App Launcher Designer') }}</h2>
 <div class="grid2">
-<div><label>English Name</label><input name="title_en" required placeholder="PACS Viewer"></div>
-<div><label>Arabic Name</label><input name="title_ar" placeholder="عارض الصور"></div>
+<div><label>{{ ui_phrase('English Name') }}</label><input name="title_en" required placeholder="PACS Viewer"></div>
+<div><label>Arabic Name</label><input name="title_ar" placeholder="{{ ui_phrase('عارض الصور') }}"></div>
 </div>
 <label>Choose Icon</label>
 <div class="studio-icon-picker">{% for key,glyph,label in icons %}<label title="{{label}}"><input type="radio" name="icon" value="{{key}}" {% if key=='link' %}checked{% endif %}><span>{{glyph}}</span><small>{{label}}</small></label>{% endfor %}</div>
 <div class="grid2">
 <div><label>Target Type</label><select name="target_type"><option value="INTERNAL">RIS Internal Page</option><option value="URL">External URL</option></select></div>
-<div><label>Target</label><input name="target" required placeholder="/orders/{order_id}/print-center"></div>
-<div><label>Placement</label><select name="placement"><option>DASHBOARD</option><option>GLOBAL</option><option>ORDER</option><option>PATIENT</option><option>DOCTOR</option></select></div>
-<div><label>Open</label><select name="open_mode"><option value="SAME">Same Tab</option><option value="NEW">New Tab</option></select></div>
-<div><label>Size</label><select name="size"><option>SMALL</option><option selected>MEDIUM</option><option>LARGE</option></select></div>
-<div><label>Accent</label><select name="accent"><option>blue</option><option>green</option><option>orange</option><option>purple</option><option>gray</option></select></div>
+<div><label>{{ ui_phrase('Target') }}</label><input name="target" required placeholder="/orders/{order_id}/print-center"></div>
+<div><label>Placement</label><select name="placement"><option>DASHBOARD</option><option value="GLOBAL">{{ ui_phrase('GLOBAL') }}</option><option value="ORDER">{{ ui_phrase('ORDER') }}</option><option value="PATIENT">{{ ui_phrase('PATIENT') }}</option><option>DOCTOR</option></select></div>
+<div><label>{{ ui_phrase('Open') }}</label><select name="open_mode"><option value="SAME">Same Tab</option><option value="NEW">New Tab</option></select></div>
+<div><label>{{ ui_phrase('Size') }}</label><select name="size"><option>SMALL</option><option selected>MEDIUM</option><option>LARGE</option></select></div>
+<div><label>{{ ui_phrase('Accent') }}</label><select name="accent"><option>blue</option><option>green</option><option>orange</option><option>purple</option><option>gray</option></select></div>
 <div><label>Permission (optional)</label><input name="permission_code" placeholder="reports.view"></div>
 <div><label>Role (optional)</label><input name="role_code" placeholder="DOCTOR"></div>
-<div><label>Branch (optional)</label><select name="branch_id"><option value="">All branches</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select></div>
+<div><label>Branch (optional)</label><select name="branch_id"><option value="">{{ ui_phrase('All branches') }}</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select></div>
 <div><label>User (optional)</label><select name="user_id"><option value="">All users</option>{% for u in users %}<option value="{{u.id}}">{{u.full_name or u.username}}</option>{% endfor %}</select></div>
-<div><label>Order</label><input type="number" name="sort_order" value="100"></div>
-<div><label><input type="checkbox" name="active" value="1" checked> Active</label></div>
+<div><label>{{ ui_phrase('Order') }}</label><input type="number" name="sort_order" value="100"></div>
+<div><label><input type="checkbox" name="active" value="1" checked> {{ ui_phrase('Active') }}</label></div>
 </div>
 <div class="notice info">Context variables: <code>{order_id}</code> · <code>{patient_id}</code> · <code>{accession}</code> · <code>{user_id}</code> · <code>{branch_id}</code></div>
 <button class="btn primary">＋ Create Shortcut</button>
@@ -45,7 +45,7 @@
 {% for x in rows %}
 <div class="shortcut-actions"><b>{{x.title_en}}</b>
 <form method="post" action="{{url_for('studio_shortcut_toggle',shortcut_id=x.id)}}"><button class="btn small">{{'Hide' if x.active else 'Show'}}</button></form>
-<form method="post" action="{{url_for('studio_shortcut_delete',shortcut_id=x.id)}}" onsubmit="return confirm('Delete shortcut?')"><button class="btn small danger">Delete</button></form>
+<form method="post" action="{{url_for('studio_shortcut_delete',shortcut_id=x.id)}}" onsubmit="return confirm('Delete shortcut?')"><button class="btn small danger">{{ ui_phrase('Delete') }}</button></form>
 </div>{% endfor %}
 </div>
 </div>

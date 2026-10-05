@@ -25,13 +25,15 @@ def test_blocked_completion_keeps_structured_evidence_without_state_change(app_c
         assert category=='exam-completion-blocked' and payload['order_id']==991
 
 
-def test_bilingual_message_escapes_series_and_links_to_correct_exam(app_ctx):
+@pytest.mark.parametrize('language',['en','ar'])
+def test_bilingual_message_escapes_series_and_links_to_correct_exam(app_ctx,language):
     result=evidence()
     result['missing_series']=['<script>alert(1)</script>']
     with app_ctx.app.test_request_context():
-        html=render_template('exam_completion_message.html',msg={'order_id':991,'details':result})
-    assert 'لا يمكن إنهاء الفحص الآن' in html and 'Cannot complete the exam yet' in html
-    assert 'Images received: 0' in html and 'Minimum required: 2' in html
+        html=render_template('exam_completion_message.html',msg={'order_id':991,'details':result},ui_lang=language,ui_phrase=lambda text:__import__('ui_localization').translate(text,language))
+    assert ('لا يمكن إنهاء الفحص الآن' if language=='ar' else 'Cannot complete the exam yet') in html
+    assert ('الصور المستلمة: 0' if language=='ar' else 'Images received: 0') in html
+    assert ('الحد الأدنى المطلوب: 2' if language=='ar' else 'Minimum required: 2') in html
     assert '/technician/991' in html
     assert '<script>' not in html and '&lt;script&gt;' in html
 

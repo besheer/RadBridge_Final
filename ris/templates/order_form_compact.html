@@ -69,16 +69,16 @@
 <form method="post" class="panel compact-registration">
 <input type="hidden" name="patient_mode" value="existing">
 <div class="grid3">
-<div><label>Patient</label><select name="patient" required>{% for p in patients %}<option value="{{p.id}}" {% if selected_patient==p.id %}selected{% endif %}>{{p.patient_id}} · {{p.name}}</option>{% endfor %}</select></div>
-<div><label>Branch</label><select name="branch_id" required>{% for b in branches %}<option value="{{b.id}}" {% if branch_value==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div>
-<div><label>Examination</label><select name="procedure_id" required>{% for p in procedures %}<option value="{{p.id}}" {% if procedure_value==p.id %}selected{% endif %}>{{p.modality}} · {{p.name}}</option>{% endfor %}</select></div>
-<div><label>Date/Time</label><input type="datetime-local" name="scheduled" required value="{{fd.get('scheduled','')}}"></div>
-<div><label>Priority</label><select name="priority"><option {% if priority_value=="ROUTINE" %}selected{% endif %}>ROUTINE</option><option {% if priority_value=="URGENT" %}selected{% endif %}>URGENT</option><option {% if priority_value=="STAT" %}selected{% endif %}>STAT</option></select></div>
+<div><label>{{ ui_phrase('Patient') }}</label><select name="patient" required>{% for p in patients %}<option value="{{p.id}}" {% if selected_patient==p.id %}selected{% endif %}>{{p.patient_id}} · {{p.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Branch') }}</label><select name="branch_id" required>{% for b in branches %}<option value="{{b.id}}" {% if branch_value==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Examination') }}</label><select name="procedure_id" required>{% for p in procedures %}<option value="{{p.id}}" {% if procedure_value==p.id %}selected{% endif %}>{{p.modality}} · {{p.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Date/Time') }}</label><input type="datetime-local" name="scheduled" required value="{{fd.get('scheduled','')}}"></div>
+<div><label>{{ ui_phrase('Priority') }}</label><select name="priority"><option {% if priority_value=="ROUTINE" %}selected{% endif %} value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option><option {% if priority_value=="URGENT" %}selected{% endif %} value="URGENT">{{ ui_phrase('URGENT') }}</option><option {% if priority_value=="STAT" %}selected{% endif %} value="STAT">{{ ui_phrase('STAT') }}</option></select></div>
 
 <div>
-<label>Contract</label>
+<label>{{ ui_phrase('Contract') }}</label>
 <select name="contract_id" id="compactContract">
-<option value="">Cash / Private</option>
+<option value="">{{ ui_phrase('Cash / Private') }}</option>
 {% for c in contracts %}
 {% if c.code!='CASH' %}
 <option value="{{c.id}}"
@@ -94,19 +94,19 @@
 <div id="compactApprovalBox" style="display:none">
 <label>🛡 Approval</label>
 <select name="approval_method" id="compactApprovalMethod">
-<option value="AUTO">⚡ Automatic</option>
-<option value="MANUAL">✋ Manual</option>
-<option value="ALREADY_APPROVED">📎 Already Approved</option>
+<option value="AUTO">{{ ui_phrase('⚡ Automatic') }}</option>
+<option value="MANUAL">{{ ui_phrase('✋ Manual') }}</option>
+<option value="ALREADY_APPROVED">{{ ui_phrase('📎 Already Approved') }}</option>
 </select>
 </div>
 
 <div id="compactApprovalNoBox" style="display:none">
-<label>Approval No.</label>
+<label>{{ ui_phrase('Approval No.') }}</label>
 <input name="approval_no" id="compactApprovalNo" value="{{fd.get('approval_no','')}}">
 </div>
 </div>
 <textarea name="clinical_note" rows="2" placeholder="Clinical note">{{fd.get("clinical_note","")}}</textarea>
-<button class="btn primary">Save</button>
+<button class="btn primary">{{ ui_phrase('Save') }}</button>
 </form>
 
 <script>

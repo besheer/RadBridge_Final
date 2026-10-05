@@ -1,20 +1,20 @@
 {% extends "base.html" %}
-{% block page_title %}Discount Policies{% endblock %}
+{% block page_title %}{{ ui_phrase('Discount Policies') }}{% endblock %}
 {% block content %}
 <div class="grid2">
 <form method="post" class="panel"><h3>New Discount Policy</h3>
-<label>Name</label><input name="name" required placeholder="Cashier 5% / Manager 20%">
-<label>Role</label><select name="role_code"><option value="">Any role</option>{% for r in roles %}<option value="{{r.code}}">{{r.name}}</option>{% endfor %}</select>
-<label>User</label><select name="user_id"><option value="">Any user</option>{% for u in users %}<option value="{{u.id}}">{{u.full_name or u.username}}</option>{% endfor %}</select>
-<label>Branch</label><select name="branch_id"><option value="">All branches</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select>
-<label>Procedure</label><select name="procedure_id"><option value="">All procedures</option>{% for p in procedures %}<option value="{{p.id}}">{{p.modality}} · {{p.name}}</option>{% endfor %}</select>
-<label>Contract</label><select name="contract_id"><option value="">All contracts</option>{% for c in contracts %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}</select>
+<label>{{ ui_phrase('Name') }}</label><input name="name" required placeholder="Cashier 5% / Manager 20%">
+<label>{{ ui_phrase('Role') }}</label><select name="role_code"><option value="">Any role</option>{% for r in roles %}<option value="{{r.code}}">{{r.name}}</option>{% endfor %}</select>
+<label>{{ ui_phrase('User') }}</label><select name="user_id"><option value="">{{ ui_phrase('Any user') }}</option>{% for u in users %}<option value="{{u.id}}">{{u.full_name or u.username}}</option>{% endfor %}</select>
+<label>{{ ui_phrase('Branch') }}</label><select name="branch_id"><option value="">{{ ui_phrase('All branches') }}</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select>
+<label>{{ ui_phrase('Procedure') }}</label><select name="procedure_id"><option value="">{{ ui_phrase('All procedures') }}</option>{% for p in procedures %}<option value="{{p.id}}">{{p.modality}} · {{p.name}}</option>{% endfor %}</select>
+<label>{{ ui_phrase('Contract') }}</label><select name="contract_id"><option value="">{{ ui_phrase('All contracts') }}</option>{% for c in contracts %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}</select>
 <div><label>Max Direct %</label><input name="max_direct_percent" type="number" min="0" max="100" step="0.01" value="0"></div>
 <div><label>Max Request %</label><input name="max_request_percent" type="number" min="0" max="100" step="0.01" value="0"></div>
-<label><input type="checkbox" name="active" value="1" checked> Active</label>
+<label><input type="checkbox" name="active" value="1" checked> {{ ui_phrase('Active') }}</label>
 <div class="notice info">Example: Cashier Direct 5%, Request up to 15%. A higher request is blocked. Approval requires finance.discount.approve.</div>
-<button class="btn primary">Save Policy</button></form>
+<button class="btn primary">{{ ui_phrase('Save Policy') }}</button></form>
 
 <div class="panel"><h3>Policies</h3>
-{% for p in rows %}<div class="finance-rule-row"><div><b>{{p.name}}</b><small>{{p.role_code or 'Any role'}} · {{p.user.full_name if p.user else 'Any user'}} · {{p.branch.name if p.branch else 'All branches'}} · Direct {{p.max_direct_percent}}% · Request {{p.max_request_percent}}%</small></div><form method="post" action="{{url_for('discount_policy_toggle',policy_id=p.id)}}"><button class="btn small">{{'Disable' if p.active else 'Enable'}}</button></form></div>{% else %}<p>No policies.</p>{% endfor %}
+{% for p in rows %}<div class="finance-rule-row"><div><b>{{p.name}}</b><small>{{p.role_code or 'Any role'}} · {{p.user.full_name if p.user else ui_phrase('Any user')}} · {{p.branch.name if p.branch else ui_phrase('All branches')}} · Direct {{p.max_direct_percent}}{{ ui_phrase('% · Request') }} {{p.max_request_percent}}%</small></div><form method="post" action="{{url_for('discount_policy_toggle',policy_id=p.id)}}"><button class="btn small">{{ui_phrase('Disable') if p.active else ui_phrase('Enable')}}</button></form></div>{% else %}<p>No policies.</p>{% endfor %}
 </div></div>{% endblock %}

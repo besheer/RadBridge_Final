@@ -5,7 +5,7 @@
 <div class="panel">
   <div class="section-title">RIS {{version}}</div>
   <table>
-    <thead><tr><th>Check</th><th>Status</th><th>Details</th></tr></thead>
+    <thead><tr><th>{{ ui_phrase('Check') }}</th><th>{{ ui_phrase('Status') }}</th><th>{{ ui_phrase('Details') }}</th></tr></thead>
     <tbody>
     {% for name,status,detail in checks %}
       <tr>

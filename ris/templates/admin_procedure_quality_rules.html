@@ -8,7 +8,7 @@
   <h3>{{'Edit policy' if selected else 'Add policy'}}</h3>
   <form method="post" class="grid2">
     {% if selected %}<input type="hidden" name="rule_id" value="{{selected.id}}">{% endif %}
-    <label>Modality <input name="modality" required value="{{selected.modality if selected else ''}}" placeholder="CT / MR / DX / US"></label>
+    <label>{{ ui_phrase('Modality') }} <input name="modality" required value="{{selected.modality if selected else ''}}" placeholder="CT / MR / DX / US"></label>
     <label>Procedure name contains <input name="procedure_pattern" required value="{{selected.procedure_pattern if selected else ''}}" placeholder="CHEST / BRAIN"></label>
     <label>Minimum DICOM images <input type="number" name="min_images" min="0" required value="{{selected.min_images if selected else 0}}"></label>
     <label>Warning threshold <input type="number" name="warning_images" min="0" required value="{{selected.warning_images if selected else 0}}"></label>
@@ -18,12 +18,12 @@
     {% for field,label,default in [('require_history','Require history for assignment',true),('require_attachments','Require attachments for assignment',false),('require_pacs_study','Require PACS for assignment',true),('block_auto_assign','Block automatic assignment if readiness fails',true),('active','Active policy',true)] %}
     <label><input type="checkbox" name="{{field}}" value="1" {% if (selected|attr(field) if selected else default) %}checked{% endif %}> {{label}}</label>
     {% endfor %}
-    <button class="btn primary">Save Policy</button>
+    <button class="btn primary">{{ ui_phrase('Save Policy') }}</button>
     {% if selected %}<a href="{{url_for('admin_procedure_quality_rules')}}">Add another policy</a>{% endif %}
   </form>
   {% endif %}
 </section>
-<div class="table-wrap"><table><tr><th>Modality</th><th>Procedure</th><th>Minimum</th><th>Warning</th><th>Series</th><th>Active</th><th>Action</th></tr>
-{% for r in rows %}<tr><td>{{r.modality}}</td><td>{{r.procedure_pattern}}</td><td>{{r.min_images}}</td><td>{{r.warning_images}}</td><td>{{r.required_series}}</td><td>{{'Yes' if r.active else 'No'}}</td><td>{% if can_edit %}<a href="{{url_for('admin_procedure_quality_rules',rule_id=r.id)}}">Edit</a>{% endif %}</td></tr>{% endfor %}
+<div class="table-wrap"><table><tr><th>{{ ui_phrase('Modality') }}</th><th>{{ ui_phrase('Procedure') }}</th><th>{{ ui_phrase('Minimum') }}</th><th>Warning</th><th>{{ ui_phrase('Series') }}</th><th>{{ ui_phrase('Active') }}</th><th>{{ ui_phrase('Action') }}</th></tr>
+{% for r in rows %}<tr><td>{{r.modality}}</td><td>{{r.procedure_pattern}}</td><td>{{r.min_images}}</td><td>{{r.warning_images}}</td><td>{{r.required_series}}</td><td>{{ui_phrase('Yes') if r.active else ui_phrase('No')}}</td><td>{% if can_edit %}<a href="{{url_for('admin_procedure_quality_rules',rule_id=r.id)}}">{{ ui_phrase('Edit') }}</a>{% endif %}</td></tr>{% endfor %}
 </table></div>
 {% endblock %}

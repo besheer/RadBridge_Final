@@ -23,17 +23,17 @@
     <input type="hidden" name="order_id" value="{{order.id}}">
     <input type="file" name="files" multiple required>
     <select name="category">
-      <option value="PRESCRIPTION">Prescription / Referral</option>
-      <option value="APPROVAL">Medical Approval</option>
-      <option value="IDENTITY">ID / Identity</option>
-      <option value="INSURANCE_CARD">Insurance / Contract Card</option>
-      <option value="PREVIOUS_REPORT">Previous Report</option>
-      <option value="PREVIOUS_IMAGES">Previous Images / DICOM</option>
-      <option value="LAB">Lab</option>
-      <option value="CONSENT">Consent</option>
-      <option value="QUESTIONNAIRE">Questionnaire</option>
-      <option value="CLINICAL">Clinical</option>
-      <option value="OTHER">Other</option>
+      <option value="PRESCRIPTION">{{ ui_phrase('Prescription / Referral') }}</option>
+      <option value="APPROVAL">{{ ui_phrase('Medical Approval') }}</option>
+      <option value="IDENTITY">{{ ui_phrase('ID / Identity') }}</option>
+      <option value="INSURANCE_CARD">{{ ui_phrase('Insurance / Contract Card') }}</option>
+      <option value="PREVIOUS_REPORT">{{ ui_phrase('Previous Report') }}</option>
+      <option value="PREVIOUS_IMAGES">{{ ui_phrase('Previous Images / DICOM') }}</option>
+      <option value="LAB">{{ ui_phrase('Lab') }}</option>
+      <option value="CONSENT">{{ ui_phrase('Consent') }}</option>
+      <option value="QUESTIONNAIRE">{{ ui_phrase('Questionnaire') }}</option>
+      <option value="CLINICAL">{{ ui_phrase('Clinical') }}</option>
+      <option value="OTHER">{{ ui_phrase('Other') }}</option>
     </select>
     <input name="notes" placeholder="{{'ملاحظات' if ui_lang=='ar' else 'Notes'}}">
     <button class="btn primary">＋ {{'إضافة ملفات' if ui_lang=='ar' else 'Add Files'}}</button>

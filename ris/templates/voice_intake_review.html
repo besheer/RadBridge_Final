@@ -6,7 +6,7 @@
 
   <div class="panel">
 
-    <h2>Voice Intake Review</h2>
+    <h2>{{ ui_phrase('Voice Intake Review') }}</h2>
     <p>
       مراجعة الطلبات الصوتية التي تحتاج تدخل موظف الاستقبال
     </p>
@@ -15,12 +15,12 @@
 
       <a class="btn"
          href="{{ url_for('voice_intake_review',status='PENDING') }}">
-        انتظار
+        {{ ui_phrase('انتظار') }}
       </a>
 
       <a class="btn"
          href="{{ url_for('voice_intake_review',status='REVIEWED') }}">
-        تمت المراجعة
+        {{ ui_phrase('تمت المراجعة') }}
       </a>
 
       <a class="btn"
@@ -30,7 +30,7 @@
 
       <a class="btn"
          href="{{ url_for('voice_intake_review',status='CANCELLED') }}">
-        ملغي
+        {{ ui_phrase('ملغي') }}
       </a>
 
     </div>
@@ -48,17 +48,17 @@
     ">
 
       <div>
-        <small>Reference</small>
+        <small>{{ ui_phrase('Reference') }}</small>
         <div><strong>{{ r.reference }}</strong></div>
       </div>
 
       <div>
-        <small>Status</small>
+        <small>{{ ui_phrase('Status') }}</small>
         <div>{{ r.status }}</div>
       </div>
 
       <div>
-        <small>التاريخ</small>
+        <small>{{ ui_phrase('التاريخ') }}</small>
         <div>
           {{ r.created_at.strftime('%Y-%m-%d %H:%M')
              if r.created_at else '-' }}
@@ -66,8 +66,8 @@
       </div>
 
       <div>
-        <small>الفرع</small>
-        <div>{{ r.branch_name or 'غير محدد' }}</div>
+        <small>{{ ui_phrase('الفرع') }}</small>
+        <div>{{ r.branch_name or ui_phrase('غير محدد') }}</div>
       </div>
 
       <div>
@@ -128,7 +128,7 @@
     {% if r.notes %}
 
     <div style="margin-top:12px">
-      <small>ملاحظات</small>
+      <small>{{ ui_phrase('ملاحظات') }}</small>
       <div>{{ r.notes }}</div>
     </div>
 
@@ -228,7 +228,7 @@
 
         <button class="btn"
                 type="submit">
-          إلغاء
+          {{ ui_phrase('إلغاء') }}
         </button>
 
       </form>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}Warehouses
+{% block page_title %}{{ ui_phrase('Warehouses') }}
 <div class="panel">
   <h3>Branch Warehouse Status</h3>
   {% for b in branches %}
@@ -42,9 +42,9 @@
 <div class="grid2">
 <form method="post" class="panel"><h3>New Warehouse</h3>
 <input name="code" required placeholder="MAIN / BR-CARIO"><input name="name" required placeholder="Warehouse name">
-<select name="warehouse_type"><option>MAIN</option><option selected>BRANCH</option><option>SUBSTORE</option></select>
+<select name="warehouse_type"><option>MAIN</option><option selected value="BRANCH">{{ ui_phrase('BRANCH') }}</option><option>SUBSTORE</option></select>
 <select name="branch_id"><option value="">No branch / Main</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select>
 <select name="parent_id"><option value="">No parent</option>{% for w in rows %}<option value="{{w.id}}">{{w.name}}</option>{% endfor %}</select>
 <button class="btn primary">Create Warehouse</button></form>
-<div class="panel"><h3>Warehouses</h3>{% for w in rows %}<div class="inventory-row"><b>{{w.code}} · {{w.name}}</b><small>{{w.warehouse_type}} · {{w.branch.name if w.branch else 'Central'}}{% if w.parent %} · Parent: {{w.parent.name}}{% endif %}</small></div>{% endfor %}</div>
+<div class="panel"><h3>{{ ui_phrase('Warehouses') }}</h3>{% for w in rows %}<div class="inventory-row"><b>{{w.code}} · {{w.name}}</b><small>{{w.warehouse_type}} · {{w.branch.name if w.branch else 'Central'}}{% if w.parent %} · Parent: {{w.parent.name}}{% endif %}</small></div>{% endfor %}</div>
 </div>{% endblock %}

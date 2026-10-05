@@ -1,8 +1,9 @@
 <!doctype html>
 <html lang="{{ui_lang}}" dir="{{ui_dir}}">
 <head>
+<script>window.rbUiCatalog={{ ui_client_catalog|default({})|tojson }};window.rbUi=function(text){return window.rbUiCatalog[text]||text;};</script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{% block title %}RIS Operations{% endblock %}</title>
+<title>{% block title %}{{ ui_phrase('RIS Operations') }}{% endblock %}</title>
 <link rel="stylesheet" href="{{url_for('static',filename='app.css')}}">
 <style id="rb-nav-v4-style">
 .rb-nav-v3{display:flex;flex-direction:column;gap:3px}
@@ -40,7 +41,7 @@
 
 <div class="workspace-card">
 <div class="workspace-dot"></div>
-<div><strong>{{me.full_name or me.username}}</strong><small>{{me.role.name}}</small></div>
+<div><strong>{{me.full_name or me.username}}</strong><small>{{ui_role(me.role)}}</small></div>
 </div>
 
 
@@ -273,9 +274,9 @@
 </form>
 
 <div class="user-menu">
-<button class="user-trigger" id="userTrigger"><span class="avatar">{{(me.full_name or me.username)[:1]|upper}}</span><span class="user-meta"><strong>{{me.full_name or me.username}}</strong><small>{{me.role.name}}</small></span><span>⌄</span></button>
+<button class="user-trigger" id="userTrigger"><span class="avatar">{{(me.full_name or me.username)[:1]|upper}}</span><span class="user-meta"><strong>{{me.full_name or me.username}}</strong><small>{{ui_role(me.role)}}</small></span><span>⌄</span></button>
 <div class="user-dropdown" id="userDropdown">
-<div class="dropdown-user"><span class="avatar">{{(me.full_name or me.username)[:1]|upper}}</span><div><strong>{{me.full_name or me.username}}</strong><small>{{me.role.name}}</small></div></div>
+<div class="dropdown-user"><span class="avatar">{{(me.full_name or me.username)[:1]|upper}}</span><div><strong>{{me.full_name or me.username}}</strong><small>{{ui_role(me.role)}}</small></div></div>
 <div class="dropdown-divider"></div>
 <a href="{{url_for('my_profile')}}">👤 {{t("nav.profile","My Profile")}}</a>
 <a href="{{url_for('my_ribbon')}}">⭐ {{t("nav.ribbon","My Ribbon")}}</a>
@@ -297,11 +298,11 @@
 {% endif %}
 
 <section class="page-heading"><h1>{{self.page_title()}}</h1></section>
-{% with msgs=get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flash-stack">{% for cat,msg in msgs %}<div class="flash {{'danger' if cat=='exam-completion-blocked' else cat}}">{% if cat=='exam-completion-blocked' %}{% include 'exam_completion_message.html' %}{% else %}<div>{{msg}}</div>{% endif %}<button class="flash-close" aria-label="إغلاق / Close">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
+{% with msgs=get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flash-stack">{% for cat,msg in msgs %}<div class="flash {{'danger' if cat=='exam-completion-blocked' else cat}}">{% if cat=='exam-completion-blocked' %}{% include 'exam_completion_message.html' %}{% else %}<div>{{msg}}</div>{% endif %}<button class="flash-close" aria-label="{{ ui_phrase('إغلاق / Close') }}">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
 <div class="page-content">{% block content %}{% endblock %}</div>
-{% if has_perm("users.view") %}<div class="admin-quick-link"><a href="{{url_for('admin_printer_profiles')}}">🖨️ Printer Profiles</a></div>{% endif %}
-<div class="registration-default-links"><a href="{{url_for('my_registration_defaults')}}">⚙ Registration Defaults</a>{% if has_perm("users.view") %} · <a href="{{url_for('admin_registration_defaults')}}">Admin Defaults</a>{% endif %}</div>
-<footer class="app-footer"><span>RIS Operations</span><span>•</span><span>{{ app_version or version or '5.33.1' }}</span></footer>
+{% if has_perm("users.view") %}<div class="admin-quick-link"><a href="{{url_for('admin_printer_profiles')}}">{{ ui_phrase('🖨️ Printer Profiles') }}</a></div>{% endif %}
+<div class="registration-default-links"><a href="{{url_for('my_registration_defaults')}}">{{ ui_phrase('⚙ Registration Defaults') }}</a>{% if has_perm("users.view") %} · <a href="{{url_for('admin_registration_defaults')}}">{{ ui_phrase('Admin Defaults') }}</a>{% endif %}</div>
+<footer class="app-footer"><span>{{ ui_phrase('RIS Operations') }}</span><span>•</span><span>{{ app_version or version or '5.33.1' }}</span></footer>
 </main>
 </div>
 
@@ -374,7 +375,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
 <div id="rbOfferBell"
      onclick="rbCheckAssignmentOffer()"
-     title="Pending assignment offers"
+     title="{{ ui_phrase('Pending assignment offers') }}"
      style="
        position:fixed;
        top:18px;
@@ -415,7 +416,7 @@ document.addEventListener('DOMContentLoaded',function(){
   </span>
 </div>
 
-<div id="rbAssignmentOfferModal" style="display:none;position:fixed;inset:0;background:#0008;z-index:99999;align-items:center;justify-content:center"><div class="panel" style="width:min(560px,92vw)"><h2>New Case Offer</h2>
+<div id="rbAssignmentOfferModal" style="display:none;position:fixed;inset:0;background:#0008;z-index:99999;align-items:center;justify-content:center"><div class="panel" style="width:min(560px,92vw)"><h2>{{ ui_phrase('New Case Offer') }}</h2>
 <div id="rbOfferCountdown"
      style="
        margin-top:10px;
@@ -424,7 +425,7 @@ document.addEventListener('DOMContentLoaded',function(){
      ">
 </div>
 
-<div id="rbOfferSummary"></div><div class="actions" style="margin-top:16px"><a id="rbOfferViewer" class="btn" target="_blank">Open Images</a><form id="rbOfferForm" method="post" style="display:inline"><button class="btn primary" name="action" value="ACCEPT">Accept</button><button class="btn" name="action" value="BUSY">Busy</button><button class="btn danger" name="action" value="REJECT">Reject</button></form><button class="btn" type="button" onclick="document.getElementById('rbAssignmentOfferModal').style.display='none'">Later</button></div></div></div>
+<div id="rbOfferSummary"></div><div class="actions" style="margin-top:16px"><a id="rbOfferViewer" class="btn" target="_blank">{{ ui_phrase('Open Images') }}</a><form id="rbOfferForm" method="post" style="display:inline"><button class="btn primary" name="action" value="ACCEPT">{{ ui_phrase('Accept') }}</button><button class="btn" name="action" value="BUSY">{{ ui_phrase('Busy') }}</button><button class="btn danger" name="action" value="REJECT">{{ ui_phrase('Reject') }}</button></form><button class="btn" type="button" onclick="document.getElementById('rbAssignmentOfferModal').style.display='none'">{{ ui_phrase('Later') }}</button></div></div></div>
 <script>
 let rbOfferTimer=null;
 
@@ -637,11 +638,11 @@ rbStartOfferCountdown(d.expires_at);document.getElementById('rbOfferForm').actio
 <div class="rb-global-alert-copy">
 
 <strong>
-طلبات مرضى جديدة
+{{ ui_phrase('طلبات مرضى جديدة') }}
 </strong>
 
 <small id="rbGlobalCommText">
-اضغط للمتابعة
+{{ ui_phrase('اضغط للمتابعة') }}
 </small>
 
 </div>

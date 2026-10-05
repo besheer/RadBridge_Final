@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
-{% block page_title %}Exam Operations{% endblock %}
+{% block page_title %}{{ ui_phrase('Exam Operations') }}{% endblock %}
 {% block subtitle %}
-Technician workspace · Start and complete examinations, review images, and document technical activity
+{{ ui_phrase('Technician workspace · Start and complete examinations, review images, and document technical activity') }}
 {% endblock %}
 
 {% block content %}
@@ -91,10 +91,10 @@ Technician workspace · Start and complete examinations, review images, and docu
 {% endfor %}
 
 <div class="tech-summary">
-  <div class="tech-summary-card">Waiting<strong>{{ns.waiting}}</strong></div>
-  <div class="tech-summary-card">In progress<strong>{{ns.active}}</strong></div>
-  <div class="tech-summary-card">Exam completed<strong>{{ns.finished}}</strong></div>
-  <div class="tech-summary-card">Images received<strong>{{ns.images}}</strong></div>
+  <div class="tech-summary-card">{{ ui_phrase('Waiting') }}<strong>{{ns.waiting}}</strong></div>
+  <div class="tech-summary-card">{{ ui_phrase('In progress') }}<strong>{{ns.active}}</strong></div>
+  <div class="tech-summary-card">{{ ui_phrase('Exam completed') }}<strong>{{ns.finished}}</strong></div>
+  <div class="tech-summary-card">{{ ui_phrase('Images received') }}<strong>{{ns.images}}</strong></div>
 </div>
 
 <form method="get" class="panel global-screen-filter">
@@ -103,15 +103,15 @@ Technician workspace · Start and complete examinations, review images, and docu
     <input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
     <input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
     <select name="priority">
-      <option value="">Priority</option>
-      <option>ROUTINE</option>
-      <option>URGENT</option>
-      <option>STAT</option>
+      <option value="">{{ ui_phrase('Priority') }}</option>
+      <option value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option>
+      <option value="URGENT">{{ ui_phrase('URGENT') }}</option>
+      <option value="STAT">{{ ui_phrase('STAT') }}</option>
     </select>
   </div>
   <div class="actions">
-    <button class="btn small primary">Filter</button>
-    <a class="btn small" href="{{request.path}}">Clear</a>
+    <button class="btn small primary">{{ ui_phrase('Filter') }}</button>
+    <a class="btn small" href="{{request.path}}">{{ ui_phrase('Clear') }}</a>
   </div>
 </form>
 {% if saved_views is defined %}
@@ -129,13 +129,13 @@ Technician workspace · Start and complete examinations, review images, and docu
       <form method="post"
             action="{{url_for('saved_view_set_default',page_key=saved_view_page,view_id=v.id)}}"
             style="display:inline">
-        <button class="btn small" title="Set default">☆</button>
+        <button class="btn small" title="{{ ui_phrase('Set default') }}">☆</button>
       </form>
 
       <form method="post"
             action="{{url_for('saved_view_delete',page_key=saved_view_page,view_id=v.id)}}"
             style="display:inline"
-            onsubmit="return confirm('Delete saved view?')">
+            onsubmit="return confirm(window.rbUi('Delete saved view?'))">
         <button class="btn small">×</button>
       </form>
     {% endfor %}
@@ -163,7 +163,7 @@ Technician workspace · Start and complete examinations, review images, and docu
 {% endif %}
 
 
-<h2 class="tech-section-title">Examination Worklist</h2>
+<h2 class="tech-section-title">{{ ui_phrase('Examination Worklist') }}</h2>
 
 <div class="tech-grid">
 {% for o in orders %}
@@ -177,7 +177,7 @@ Technician workspace · Start and complete examinations, review images, and docu
         loading="lazy"
       >
     {% else %}
-      <div class="tech-thumb-empty">No PACS image received</div>
+      <div class="tech-thumb-empty">{{ ui_phrase('No PACS image received') }}</div>
     {% endif %}
 
     <div class="tech-body">
@@ -187,32 +187,32 @@ Technician workspace · Start and complete examinations, review images, and docu
           <small>{{o.patient.patient_id}} · {{o.accession}}</small>
         </div>
         <span class="status-chip status-{{st|lower|replace('_','-')}}">
-          {{st}}
+          {{ui_phrase(st)}}
         </span>
       </div>
 
       <div class="tech-meta">
-        <div><small>Exam</small>{{o.proc.name if o.proc else o.procedure}}</div>
-        <div><small>Room / Device</small>{{o.device.name if o.device else 'Routing required'}}</div>
-        <div><small>Scheduled</small>{{o.scheduled.strftime('%Y-%m-%d %H:%M') if o.scheduled else '-'}}</div>
-        <div><small>PACS</small>{{o.pacs_status or 'WAITING'}} · {{o.pacs_image_count or 0}} image(s)</div>
+        <div><small>{{ ui_phrase('Exam') }}</small>{{o.proc.name if o.proc else o.procedure}}</div>
+        <div><small>{{ ui_phrase('Room / Device') }}</small>{{o.device.name if o.device else ui_phrase('Routing required')}}</div>
+        <div><small>{{ ui_phrase('Scheduled') }}</small>{{o.scheduled.strftime('%Y-%m-%d %H:%M') if o.scheduled else '-'}}</div>
+        <div><small>PACS</small>{{ui_phrase(o.pacs_status or 'WAITING')}} · {{o.pacs_image_count or 0}} {{ ui_phrase('image(s)') }}</div>
       </div>
 
       <div class="tech-actions">
           <a class="btn primary"
              href="{{url_for('technician_case_workspace',order_id=o.id)}}">
-            🧰 Open Case Workspace
+            {{ ui_phrase('🧰 Open Case Workspace') }}
           </a>
 
         {% if st in ['BOOKED','ORDERED'] %}
           <form method="post" action="{{url_for('order_exam_status',order_id=o.id)}}">
             <input type="hidden" name="status" value="IN_PROGRESS">
-            <button class="btn primary">▶ Start Exam</button>
+            <button class="btn primary">{{ ui_phrase('▶ Start Exam') }}</button>
           </form>
         {% elif st == 'IN_PROGRESS' %}
           <form method="post" action="{{url_for('order_exam_status',order_id=o.id)}}">
             <input type="hidden" name="status" value="EXAM_COMPLETED">
-            <button class="btn primary">✓ Complete Exam</button>
+            <button class="btn primary">{{ ui_phrase('✓ Complete Exam') }}</button>
           </form>
         {% endif %}
 
@@ -222,27 +222,27 @@ Technician workspace · Start and complete examinations, review images, and docu
             href="{{image_urls.get(o.id)}}"
             target="_blank"
             rel="noopener noreferrer"
-          >🖼 Open Images</a>
+          >{{ ui_phrase('🖼 Open Images') }}</a>
         {% endif %}
 
         <a class="btn" href="{{url_for('order_clinical_notes',order_id=o.id)}}">
-          📝 Notes
+          {{ ui_phrase('📝 Notes') }}
         </a>
 
         <a class="btn" href="{{url_for('order_attachments',order_id=o.id)}}">
-          📎 Attachments ({{attachment_counts.get(o.id,0)}})
+          {{ ui_phrase('📎 Attachments (') }}{{attachment_counts.get(o.id,0)}})
         </a>
 
         {% if has_perm('pacs.transfer') and (o.pacs_image_count or 0) > 0 %}
           <a class="btn" href="{{url_for('pacs_case_actions',order_id=o.id)}}">
-            ⇄ PACS Send / Resend
+            {{ ui_phrase('⇄ PACS Send / Resend') }}
           </a>
         {% endif %}
       </div>
     </div>
   </article>
 {% else %}
-  <div class="panel empty">No active or recently completed studies.</div>
+  <div class="panel empty">{{ ui_phrase('No active or recently completed studies.') }}</div>
 {% endfor %}
 </div>
 {% endblock %}

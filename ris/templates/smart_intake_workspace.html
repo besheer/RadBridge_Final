@@ -48,7 +48,7 @@ OCR suggests. Staff reviews.
 
 
 <div class="si-card">
-<h2>1. رفع المستندات</h2>
+<h2>{{ ui_phrase('1. رفع المستندات') }}</h2>
 
 <div class="upload-grid">
 
@@ -62,7 +62,7 @@ OCR suggests. Staff reviews.
 
     <select name="document_type">
         <option value="IDENTITY">بطاقة شخصية / جواز سفر</option>
-        <option value="INSURANCE_CARD">كارنيه تأمين / تعاقد</option>
+        <option value="INSURANCE_CARD">{{ ui_phrase('كارنيه تأمين / تعاقد') }}</option>
     </select>
 
     <input type="hidden" name="document_type" value="OTHER">
@@ -82,7 +82,7 @@ OCR suggests. Staff reviews.
       enctype="multipart/form-data"
       action="{{url_for('smart_intake_upload',intake_id=intake.id)}}">
 
-    <h3>روشتة / تحويل</h3>
+    <h3>{{ ui_phrase('روشتة / تحويل') }}</h3>
 
     <input type="hidden" name="document_type" value="PRESCRIPTION">
     <input type="hidden" name="auto_ocr" value="1">
@@ -100,7 +100,7 @@ OCR suggests. Staff reviews.
 
 
 <div class="si-card">
-<h2>2. مراجعة المستندات</h2>
+<h2>{{ ui_phrase('2. مراجعة المستندات') }}</h2>
 
 {% if not docs %}
 <div class="alert warn">لم يتم رفع أي مستند بعد.</div>
@@ -159,19 +159,19 @@ OCR suggests. Staff reviews.
 
 <input name="review_notes"
        value="{{doc.review_notes or ''}}"
-       placeholder="ملاحظة اختيارية">
+       placeholder="{{ ui_phrase('ملاحظة اختيارية') }}">
 
 <button class="btn success"
         name="action"
         value="APPROVED"
         {% if doc.status=='UPLOADED' %}disabled{% endif %}>
-اعتماد
+{{ ui_phrase('اعتماد') }}
 </button>
 
 <button class="btn danger"
         name="action"
         value="REJECTED">
-رفض
+{{ ui_phrase('رفض') }}
 </button>
 
 </form>
@@ -185,7 +185,7 @@ OCR suggests. Staff reviews.
       action="{{url_for('smart_intake_review_save',intake_id=intake.id)}}">
 
 <div class="si-card">
-<h2>3. بيانات المريض</h2>
+<h2>{{ ui_phrase('3. بيانات المريض') }}</h2>
 
 <div class="fields">
 
@@ -207,8 +207,8 @@ OCR suggests. Staff reviews.
 {% if key=='sex' %}
 <select name="{{key}}">
 <option value="">اختر</option>
-<option value="M" {% if row and row.final_value=='M' %}selected{% endif %}>ذكر</option>
-<option value="F" {% if row and row.final_value=='F' %}selected{% endif %}>أنثى</option>
+<option value="M" {% if row and row.final_value=='M' %}selected{% endif %}>{{ ui_phrase('ذكر') }}</option>
+<option value="F" {% if row and row.final_value=='F' %}selected{% endif %}>{{ ui_phrase('أنثى') }}</option>
 </select>
 {% else %}
 <input name="{{key}}"
@@ -227,7 +227,7 @@ OCR suggests. Staff reviews.
 
 
 <div class="si-card">
-<h2>4. الفحص</h2>
+<h2>{{ ui_phrase('4. الفحص') }}</h2>
 
 <select name="procedure_id"
         style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:9px">

@@ -23,7 +23,7 @@
     </label>
 
     <label>
-      Specialty
+      {{ ui_phrase('Specialty') }}
       <input
         name="specialty"
         value="{{ profile.specialty or '' }}"
@@ -39,7 +39,7 @@
     </label>
 
     <label>
-      Language
+      {{ ui_phrase('Language') }}
       <select name="ui_language">
         <option
           value="en"
@@ -58,7 +58,7 @@
     </label>
 
     <label>
-      Theme
+      {{ ui_phrase('Theme') }}
       <select name="theme">
         {% for x in ['light-soft','light','dim','dark','midnight','auto'] %}
         <option
@@ -105,7 +105,7 @@
     </label>
 
     <label>
-      Density
+      {{ ui_phrase('Density') }}
       <select name="density">
         {% for x in ['comfortable','compact'] %}
         <option
@@ -119,7 +119,7 @@
     </label>
 
     <label>
-      Font Size
+      {{ ui_phrase('Font Size') }}
       <select name="font_scale">
         {% for x in ['small','normal','large'] %}
         <option
@@ -133,7 +133,7 @@
     </label>
 
     <label>
-      Sidebar
+      {{ ui_phrase('Sidebar') }}
       <select name="sidebar_mode">
         {% for x in ['expanded','collapsed'] %}
         <option
@@ -235,7 +235,7 @@
           value="30_70"
           {% if layout == '30_70' %}selected{% endif %}
         >
-          30% Viewer / 70% Editor
+          {{ ui_phrase('30% Viewer / 70% Editor') }}
         </option>
 
         <option

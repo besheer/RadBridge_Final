@@ -1,14 +1,14 @@
-{% extends "base.html" %}{% block page_title %}Device Schedules / جداول الأجهزة{% endblock %}
+{% extends "base.html" %}{% block page_title %}{{ ui_phrase('Device Schedules / جداول الأجهزة') }}{% endblock %}
 {% block content %}
 <div class="grid2">
 <div class="panel"><h3>Weekly Working Hours</h3><form method="post"><div class="grid2">
-<div><label>Device</label><select name="device_id">{% for d in devices %}<option value="{{d.id}}">{{d.modality}} — {{d.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Device') }}</label><select name="device_id">{% for d in devices %}<option value="{{d.id}}">{{d.modality}} — {{d.name}}</option>{% endfor %}</select></div>
 <div><label>Weekday</label><select name="weekday">{% for i,n in [(0,'Monday'),(1,'Tuesday'),(2,'Wednesday'),(3,'Thursday'),(4,'Friday'),(5,'Saturday'),(6,'Sunday')] %}<option value="{{i}}">{{n}}</option>{% endfor %}</select></div>
-<div><label>Start</label><input type="time" name="start_time" value="09:00"></div><div><label>End</label><input type="time" name="end_time" value="21:00"></div>
+<div><label>{{ ui_phrase('Start') }}</label><input type="time" name="start_time" value="09:00"></div><div><label>End</label><input type="time" name="end_time" value="21:00"></div>
 <div><label>Break Start</label><input type="time" name="break_start"></div><div><label>Break End</label><input type="time" name="break_end"></div>
 </div><button class="btn primary">Save Schedule</button></form></div>
-<div class="panel"><h3>Block / Maintenance</h3><form method="post" action="{{url_for('admin_device_blocks')}}"><label>Device</label><select name="device_id">{% for d in devices %}<option value="{{d.id}}">{{d.name}}</option>{% endfor %}</select>
-<label>Start</label><input type="datetime-local" name="start_at" required><label>End</label><input type="datetime-local" name="end_at" required><label>Reason</label><input name="reason" value="Maintenance"><button class="btn">Block Time</button></form></div>
+<div class="panel"><h3>Block / Maintenance</h3><form method="post" action="{{url_for('admin_device_blocks')}}"><label>{{ ui_phrase('Device') }}</label><select name="device_id">{% for d in devices %}<option value="{{d.id}}">{{d.name}}</option>{% endfor %}</select>
+<label>{{ ui_phrase('Start') }}</label><input type="datetime-local" name="start_at" required><label>End</label><input type="datetime-local" name="end_at" required><label>{{ ui_phrase('Reason') }}</label><input name="reason" value="Maintenance"><button class="btn">Block Time</button></form></div>
 </div>
-<div class="panel"><table><tr><th>Device</th><th>Day</th><th>Working</th><th>Break</th></tr>{% for s in rows %}<tr><td>{{s.device.name}}</td><td>{{s.weekday}}</td><td>{{s.start_time}} - {{s.end_time}}</td><td>{{s.break_start}} - {{s.break_end}}</td></tr>{% endfor %}</table></div>
+<div class="panel"><table><tr><th>{{ ui_phrase('Device') }}</th><th>Day</th><th>Working</th><th>Break</th></tr>{% for s in rows %}<tr><td>{{s.device.name}}</td><td>{{s.weekday}}</td><td>{{s.start_time}} - {{s.end_time}}</td><td>{{s.break_start}} - {{s.break_end}}</td></tr>{% endfor %}</table></div>
 {% endblock %}

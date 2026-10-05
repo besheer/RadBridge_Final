@@ -26,7 +26,7 @@ Configure, edit and clone assignment behavior without changing code
 <div class="grid">
 
 <label>
-Name
+{{ ui_phrase('Name') }}
 <input name="name"
        id="strategy_name"
        value="Default Strategy"
@@ -34,7 +34,7 @@ Name
 </label>
 
 <label>
-Priority
+{{ ui_phrase('Priority') }}
 <input type="number"
        name="priority"
        id="strategy_priority"
@@ -42,12 +42,12 @@ Priority
 </label>
 
 <label>
-Branch
+{{ ui_phrase('Branch') }}
 <select name="branch_id"
         id="strategy_branch">
 
 <option value="">
-Any branch
+{{ ui_phrase('Any branch') }}
 </option>
 
 {% for b in branches %}
@@ -62,14 +62,14 @@ Any branch
 </label>
 
 <label>
-Modality
+{{ ui_phrase('Modality') }}
 <input name="modality"
        id="strategy_modality"
        placeholder="CT / MR / US">
 </label>
 
 <label>
-Procedure contains
+{{ ui_phrase('Procedure contains') }}
 <input name="procedure_pattern"
        id="strategy_procedure">
 </label>
@@ -93,7 +93,7 @@ Open Pool / Assign to Me
 </option>
 
 <option value="HYBRID">
-Hybrid
+{{ ui_phrase('Hybrid') }}
 </option>
 
 <option value="MANUAL_ONLY">
@@ -104,17 +104,17 @@ Manual Only
 </label>
 
 <label>
-Fallback
+{{ ui_phrase('Fallback') }}
 
 <select name="fallback_mode"
         id="strategy_fallback">
 
 <option value="OPEN_POOL">
-Open Pool
+{{ ui_phrase('Open Pool') }}
 </option>
 
 <option value="COORDINATOR">
-Coordinator
+{{ ui_phrase('Coordinator') }}
 </option>
 
 <option value="MANUAL_ONLY">
@@ -259,7 +259,7 @@ Active To
        id="strategy_enabled"
        value="1"
        checked>
-Enabled
+{{ ui_phrase('Enabled') }}
 </label>
 
 <label>
@@ -268,7 +268,7 @@ Enabled
        id="require_modality_match"
        value="1"
        checked>
-Require Modality
+{{ ui_phrase('Require Modality') }}
 </label>
 
 <label>
@@ -276,7 +276,7 @@ Require Modality
        name="require_branch_match"
        id="require_branch_match"
        value="1">
-Require Branch
+{{ ui_phrase('Require Branch') }}
 </label>
 
 <label>
@@ -284,7 +284,7 @@ Require Branch
        name="require_online"
        id="require_online"
        value="1">
-Require Online
+{{ ui_phrase('Require Online') }}
 </label>
 
 <label>
@@ -293,7 +293,7 @@ Require Online
        id="prefer_online"
        value="1"
        checked>
-Prefer Online
+{{ ui_phrase('Prefer Online') }}
 </label>
 
 </div>
@@ -312,7 +312,7 @@ Prefer Online
 
 <button class="btn primary"
         id="saveStrategyButton">
-Save Strategy
+{{ ui_phrase('Save Strategy') }}
 </button>
 
 {{ action_info(
@@ -340,7 +340,7 @@ New Strategy
 
 <div class="panel">
 
-<h3>Strategy Simulator</h3>
+<h3>{{ ui_phrase('Strategy Simulator') }}</h3>
 
 <p>
 Test the decision engine without assigning the case.
@@ -352,7 +352,7 @@ Test the decision engine without assigning the case.
 
 <input type="number"
        name="order_id"
-       placeholder="Order ID"
+       placeholder="{{ ui_phrase('Order ID') }}"
        required>
 
 <button class="btn">
@@ -382,17 +382,17 @@ Simulate
 
 <tr>
 
-<th>Priority</th>
-<th>Name</th>
-<th>Scope</th>
-<th>Mode</th>
+<th>{{ ui_phrase('Priority') }}</th>
+<th>{{ ui_phrase('Name') }}</th>
+<th>{{ ui_phrase('Scope') }}</th>
+<th>{{ ui_phrase('Mode') }}</th>
 <th>PACS</th>
-<th>Images</th>
-<th>Docs</th>
-<th>Notes</th>
-<th>Version</th>
-<th>Status</th>
-<th>Actions</th>
+<th>{{ ui_phrase('Images') }}</th>
+<th>{{ ui_phrase('Docs') }}</th>
+<th>{{ ui_phrase('Notes') }}</th>
+<th>{{ ui_phrase('Version') }}</th>
+<th>{{ ui_phrase('Status') }}</th>
+<th>{{ ui_phrase('Actions') }}</th>
 
 </tr>
 
@@ -407,7 +407,7 @@ Simulate
 </td>
 
 <td>
-Branch {{s.branch_id or '*'}}
+{{ ui_phrase('Branch') }} {{s.branch_id or '*'}}
 <br>
 {{s.modality or '*'}}
 <br>
@@ -443,13 +443,13 @@ v{{s.version_no}}
 {% if s.enabled %}
 
 <span class="badge">
-Enabled
+{{ ui_phrase('Enabled') }}
 </span>
 
 {% else %}
 
 <span class="badge">
-Disabled
+{{ ui_phrase('Disabled') }}
 </span>
 
 {% endif %}
@@ -500,14 +500,14 @@ Disabled
         data-require-online="{{1 if s.require_online else 0}}"
         data-prefer-online="{{1 if s.prefer_online else 0}}">
 
-Edit
+{{ ui_phrase('Edit') }}
 
 </button>
 
 
 <a class="btn btn-sm"
 href="{{url_for('admin_assignment_strategy_history',strategy_id=s.id)}}">
-History
+{{ ui_phrase('History') }}
 </a>
 
 <form method="post"
@@ -538,9 +538,9 @@ Clone
 <button class="btn btn-sm">
 
 {% if s.enabled %}
-Disable
+{{ ui_phrase('Disable') }}
 {% else %}
-Enable
+{{ ui_phrase('Enable') }}
 {% endif %}
 
 </button>

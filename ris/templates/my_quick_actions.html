@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}Quick Actions / الاختصارات{% endblock %}
+{% block page_title %}{{ ui_phrase('Quick Actions / الاختصارات') }}{% endblock %}
 {% block content %}
 <div class="panel"><h3>{{action_role}}</h3><p>{{"اختصارات جاهزة حسب دور المستخدم." if ui_lang=='ar' else "Ready quick actions based on user role."}}</p></div>
 <div class="quick-actions-grid">{% for key,en,ar,icon,endpoint in actions %}

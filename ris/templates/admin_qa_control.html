@@ -13,12 +13,12 @@
 <h3>Latest QA Run #{{ latest.id }}</h3>
 
 <table>
-<tr><th>Status</th><td>{{ latest.status }}</td></tr>
-<tr><th>Type</th><td>{{ latest.run_type }}</td></tr>
-<tr><th>Release</th><td>{{ latest.release_name }}</td></tr>
-<tr><th>Total</th><td>{{ latest.total_tests }}</td></tr>
+<tr><th>{{ ui_phrase('Status') }}</th><td>{{ latest.status }}</td></tr>
+<tr><th>{{ ui_phrase('Type') }}</th><td>{{ latest.run_type }}</td></tr>
+<tr><th>{{ ui_phrase('Release') }}</th><td>{{ latest.release_name }}</td></tr>
+<tr><th>{{ ui_phrase('Total') }}</th><td>{{ latest.total_tests }}</td></tr>
 <tr><th>Passed</th><td>{{ latest.passed_tests }}</td></tr>
-<tr><th>Failed</th><td>{{ latest.failed_tests }}</td></tr>
+<tr><th>{{ ui_phrase('Failed') }}</th><td>{{ latest.failed_tests }}</td></tr>
 <tr><th>Critical</th><td>{{ latest.critical_tests }}</td></tr>
 <tr><th>Warnings</th><td>{{ latest.warning_tests }}</td></tr>
 </table>
@@ -34,16 +34,16 @@
 <select name="run_type">
 <option value="FULL">Full System QA</option>
 <option value="REGISTRATION">Registration</option>
-<option value="APPROVAL">Approval</option>
+<option value="APPROVAL">{{ ui_phrase('Approval') }}</option>
 <option value="PACS">PACS & Demographics</option>
-<option value="ASSIGNMENT">Assignment</option>
-<option value="OPEN_POOL">Open Pool</option>
+<option value="ASSIGNMENT">{{ ui_phrase('Assignment') }}</option>
+<option value="OPEN_POOL">{{ ui_phrase('Open Pool') }}</option>
 <option value="OFFER">Offer Workflow</option>
 <option value="DOCTOR">Doctor Workflow</option>
-<option value="COORDINATOR">Coordinator</option>
+<option value="COORDINATOR">{{ ui_phrase('Coordinator') }}</option>
 <option value="OHIF">OHIF</option>
-<option value="IMAGING_AI">Imaging AI</option>
-<option value="REPORTING">Reporting</option>
+<option value="IMAGING_AI">{{ ui_phrase('Imaging AI') }}</option>
+<option value="REPORTING">{{ ui_phrase('Reporting') }}</option>
 <option value="SIGNATURE">Digital Signature</option>
 </select>
 
@@ -100,11 +100,11 @@ These controls enable or disable the RadBridge QA automation workflow.
 
 <tr>
 <th>Test</th>
-<th>Category</th>
-<th>Severity</th>
-<th>Expected</th>
-<th>Actual</th>
-<th>Error</th>
+<th>{{ ui_phrase('Category') }}</th>
+<th>{{ ui_phrase('Severity') }}</th>
+<th>{{ ui_phrase('Expected') }}</th>
+<th>{{ ui_phrase('Actual') }}</th>
+<th>{{ ui_phrase('Error') }}</th>
 </tr>
 
 {% for x in failed %}
@@ -132,13 +132,13 @@ These controls enable or disable the RadBridge QA automation workflow.
 
 <tr>
 <th>ID</th>
-<th>Type</th>
-<th>Status</th>
-<th>Total</th>
+<th>{{ ui_phrase('Type') }}</th>
+<th>{{ ui_phrase('Status') }}</th>
+<th>{{ ui_phrase('Total') }}</th>
 <th>Pass</th>
 <th>Fail</th>
 <th>Critical</th>
-<th>Started</th>
+<th>{{ ui_phrase('Started') }}</th>
 </tr>
 
 {% for x in runs %}

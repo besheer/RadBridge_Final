@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block page_title %}Booking Control Center{% endblock %}
+{% block page_title %}{{ ui_phrase('Booking Control Center') }}{% endblock %}
 
 {% block content %}
 
 <div class="page-head">
   <div>
-    <h1>Booking Control Center</h1>
+    <h1>{{ ui_phrase('Booking Control Center') }}</h1>
     <p class="muted">
       Unified read-only overview of booking availability, devices, schedules and restrictions.
     </p>
@@ -15,13 +15,13 @@
 <div class="grid3">
 
   <div class="panel">
-    <div class="muted">Devices</div>
+    <div class="muted">{{ ui_phrase('Devices') }}</div>
     <h2>{{total_devices}}</h2>
-    <div>{{active_devices}} active</div>
+    <div>{{active_devices}} {{ ui_phrase('active') }}</div>
   </div>
 
   <div class="panel">
-    <div class="muted">Booking Enabled</div>
+    <div class="muted">{{ ui_phrase('Booking Enabled') }}</div>
     <h2>{{booking_enabled_devices}}</h2>
     <div>Active devices accepting booking</div>
   </div>
@@ -57,7 +57,7 @@
 
   <div class="actions">
     <a class="btn" href="{{url_for('admin_device_schedules')}}">
-      Device Schedules
+      {{ ui_phrase('Device Schedules') }}
     </a>
 
     <a class="btn" href="{{url_for('admin_booking_control')}}">
@@ -69,11 +69,11 @@
     </a>
 
     <a class="btn" href="{{url_for('admin_devices')}}">
-      Devices / AE Titles
+      {{ ui_phrase('Devices / AE Titles') }}
     </a>
 
     <a class="btn" href="{{url_for('admin_procedures')}}">
-      Procedure Catalog
+      {{ ui_phrase('Procedure Catalog') }}
     </a>
 
     <a class="btn" href="{{url_for('schedule_calendar')}}">
@@ -89,12 +89,12 @@
     <table>
       <thead>
         <tr>
-          <th>Device</th>
-          <th>Branch</th>
-          <th>Modality</th>
+          <th>{{ ui_phrase('Device') }}</th>
+          <th>{{ ui_phrase('Branch') }}</th>
+          <th>{{ ui_phrase('Modality') }}</th>
           <th>AE Title</th>
-          <th>Status</th>
-          <th>Booking</th>
+          <th>{{ ui_phrase('Status') }}</th>
+          <th>{{ ui_phrase('Booking') }}</th>
           <th>Working Hours</th>
           <th>Block Now</th>
         </tr>
@@ -118,14 +118,14 @@
 
           <td>
             {% if not d.active %}
-              Inactive
+              {{ ui_phrase('Inactive') }}
             {% else %}
               {{d.operational_status}}
             {% endif %}
           </td>
 
           <td>
-            {{'Enabled' if d.booking_enabled else 'Disabled'}}
+            {{ui_phrase('Enabled') if d.booking_enabled else ui_phrase('Disabled')}}
           </td>
 
           <td>
@@ -134,12 +134,12 @@
 
           <td>
             {% if d.blocked_now %}
-              <b>Blocked</b>
+              <b>{{ ui_phrase('Blocked') }}</b>
               {% if d.block_reason %}
                 <div class="muted">{{d.block_reason}}</div>
               {% endif %}
             {% else %}
-              Available
+              {{ ui_phrase('Available') }}
             {% endif %}
           </td>
         </tr>

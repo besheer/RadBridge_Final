@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}RadBridge — Login{% endblock %}
+{% block title %}{{ ui_phrase('RadBridge — Login') }}{% endblock %}
 {% block public_content %}
 <div class="rb-login-page">
   <section class="rb-login-showcase">
@@ -34,9 +34,9 @@
 
     <div class="rb-feature-row">
       <div><b>▤</b><strong>{{'تقارير احترافية' if ui_lang=='ar' else 'Professional Reports'}}</strong><small>PDF · Excel</small></div>
-      <div><b>▥</b><strong>{{'تحليلات ذكية' if ui_lang=='ar' else 'Smart Analytics'}}</strong><small>KPIs & Charts</small></div>
+      <div><b>▥</b><strong>{{'تحليلات ذكية' if ui_lang=='ar' else 'Smart Analytics'}}</strong><small>{{ ui_phrase('KPIs & Charts') }}</small></div>
       <div><b>☁</b><strong>{{'آمن وموثوق' if ui_lang=='ar' else 'Secure & Reliable'}}</strong><small>{{'عزل بيانات الشركات' if ui_lang=='ar' else 'Tenant Isolation'}}</small></div>
-      <div><b>▦</b><strong>{{'تكامل شامل' if ui_lang=='ar' else 'Full Integration'}}</strong><small>RIS · PACS · Billing · Inventory</small></div>
+      <div><b>▦</b><strong>{{'تكامل شامل' if ui_lang=='ar' else 'Full Integration'}}</strong><small>{{ ui_phrase('RIS · PACS · Billing · Inventory') }}</small></div>
     </div>
 
     <div class="rb-contact-strip">

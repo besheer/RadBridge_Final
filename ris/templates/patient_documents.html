@@ -1,9 +1,9 @@
-{% extends "base.html" %}{% block page_title %}Patient Documents / مستندات المريض{% endblock %}{% block content %}<div class="actions"><a class="btn" href="{{url_for('patient_communications',patient_id=patient.id)}}">📨 {{'التواصل' if ui_lang=='ar' else 'Communications'}}</a></div>
+{% extends "base.html" %}{% block page_title %}{{ ui_phrase('Patient Documents / مستندات المريض') }}{% endblock %}{% block content %}<div class="actions"><a class="btn" href="{{url_for('patient_communications',patient_id=patient.id)}}">📨 {{'التواصل' if ui_lang=='ar' else 'Communications'}}</a></div>
 <div class="panel"><h3>{{patient.name}} · {{patient.patient_id}}</h3><a class="btn" href="{{url_for('patient_timeline',patient_id=patient.id)}}">🕘 History Timeline</a></div>
-<div class="grid2"><div class="panel"><h3>Upload / رفع مستند</h3><form method="post" enctype="multipart/form-data">
+<div class="grid2"><div class="panel"><h3>{{ ui_phrase('Upload / رفع مستند') }}</h3><form method="post" enctype="multipart/form-data">
 <select name="document_type" required>{% for k,v in document_types.items() %}<option value="{{k}}">{{v[1] if ui_lang=='ar' else v[0]}}</option>{% endfor %}</select>
-<select name="order_id"><option value="">Patient level / خاص بالمريض</option>{% for o in orders %}<option value="{{o.id}}">{{o.accession}} · {{o.procedure}}</option>{% endfor %}</select>
+<select name="order_id"><option value="">{{ ui_phrase('Patient level / خاص بالمريض') }}</option>{% for o in orders %}<option value="{{o.id}}">{{o.accession}} · {{o.procedure}}</option>{% endfor %}</select>
 <input name="reference_no" placeholder="Reference / Approval No."><input type="file" name="file" required>
-<button class="btn primary">Upload / رفع</button></form></div>
-<div class="panel"><h3>Documents / المستندات</h3>{% for d in documents %}<div class="doc-card"><b>{{document_types.get(d.document_type,(d.document_type,d.document_type,''))[1 if ui_lang=='ar' else 0]}}</b><span>{{d.original_name}}</span><small>{{d.created_at}} · {{d.review_status}} · {{d.extraction_status}}</small><a class="btn small" href="{{url_for('document_review',document_id=d.id)}}">Review / مراجعة</a></div>{% else %}<p>—</p>{% endfor %}</div></div>
+<button class="btn primary">{{ ui_phrase('Upload / رفع') }}</button></form></div>
+<div class="panel"><h3>{{ ui_phrase('Documents / المستندات') }}</h3>{% for d in documents %}<div class="doc-card"><b>{{document_types.get(d.document_type,(d.document_type,d.document_type,''))[1 if ui_lang=='ar' else 0]}}</b><span>{{d.original_name}}</span><small>{{d.created_at}} · {{d.review_status}} · {{d.extraction_status}}</small><a class="btn small" href="{{url_for('document_review',document_id=d.id)}}">{{ ui_phrase('Review / مراجعة') }}</a></div>{% else %}<p>—</p>{% endfor %}</div></div>
 {% endblock %}

@@ -1,3 +1,3 @@
-{% extends "base.html" %}{% block page_title %}Stock Movements{% endblock %}
-{% block content %}<div class="panel"><table><tr><th>Date</th><th>Item</th><th>Type</th><th>Qty</th><th>Before</th><th>After</th><th>Reference</th><th>Reason</th></tr>
+{% extends "base.html" %}{% block page_title %}{{ ui_phrase('Stock Movements') }}{% endblock %}
+{% block content %}<div class="panel"><table><tr><th>{{ ui_phrase('Date') }}</th><th>{{ ui_phrase('Item') }}</th><th>{{ ui_phrase('Type') }}</th><th>{{ ui_phrase('Qty') }}</th><th>Before</th><th>After</th><th>{{ ui_phrase('Reference') }}</th><th>{{ ui_phrase('Reason') }}</th></tr>
 {% for r in rows %}<tr><td>{{r.movement_date}}</td><td>{{r.consumable.code}} — {{r.consumable.name_en or r.consumable.name}}</td><td>{{r.movement_type}}</td><td>{{r.qty}}</td><td>{{r.before_qty}}</td><td>{{r.after_qty}}</td><td>{{r.reference_type}} {{r.reference_id}}</td><td>{{r.reason}}</td></tr>{% endfor %}</table></div>{% endblock %}

@@ -203,17 +203,17 @@
     <table class="rb-info">
 
       <tr>
-        <td>Order</td>
+        <td>{{ ui_phrase('Order') }}</td>
         <td><strong>#{{order.id}}</strong></td>
       </tr>
 
       <tr>
-        <td>Accession</td>
+        <td>{{ ui_phrase('Accession') }}</td>
         <td><strong>{{order.accession}}</strong></td>
       </tr>
 
       <tr>
-        <td>Patient</td>
+        <td>{{ ui_phrase('Patient') }}</td>
         <td>
           {% if order.patient %}
             {{order.patient.name or order.patient.full_name or '-'}}
@@ -224,32 +224,32 @@
       </tr>
 
       <tr>
-        <td>Modality</td>
+        <td>{{ ui_phrase('Modality') }}</td>
         <td><strong>{{order.modality or '-'}}</strong></td>
       </tr>
 
       <tr>
-        <td>Procedure</td>
+        <td>{{ ui_phrase('Procedure') }}</td>
         <td>{{order.procedure or '-'}}</td>
       </tr>
 
       <tr>
-        <td>Priority</td>
+        <td>{{ ui_phrase('Priority') }}</td>
         <td>{{order.priority or '-'}}</td>
       </tr>
 
       <tr>
-        <td>Branch</td>
+        <td>{{ ui_phrase('Branch') }}</td>
         <td>{{order.branch_id or '-'}}</td>
       </tr>
 
       <tr>
-        <td>PACS Status</td>
+        <td>{{ ui_phrase('PACS Status') }}</td>
         <td>{{order.pacs_status or '-'}}</td>
       </tr>
 
       <tr>
-        <td>Images</td>
+        <td>{{ ui_phrase('Images') }}</td>
         <td>{{order.pacs_image_count or 0}}</td>
       </tr>
 
@@ -267,48 +267,48 @@
     <table class="rb-info">
 
       <tr>
-        <td>Name</td>
+        <td>{{ ui_phrase('Name') }}</td>
         <td><strong>{{strategy.name}}</strong></td>
       </tr>
 
       <tr>
-        <td>Version</td>
+        <td>{{ ui_phrase('Version') }}</td>
         <td>v{{strategy.version_no}}</td>
       </tr>
 
       <tr>
-        <td>Priority</td>
+        <td>{{ ui_phrase('Priority') }}</td>
         <td>{{strategy.priority}}</td>
       </tr>
 
       <tr>
-        <td>Mode</td>
+        <td>{{ ui_phrase('Mode') }}</td>
         <td><strong>{{strategy.assignment_mode}}</strong></td>
       </tr>
 
       <tr>
-        <td>Fallback</td>
+        <td>{{ ui_phrase('Fallback') }}</td>
         <td>{{strategy.fallback_mode}}</td>
       </tr>
 
       <tr>
-        <td>Require Modality</td>
-        <td>{{'Yes' if strategy.require_modality_match else 'No'}}</td>
+        <td>{{ ui_phrase('Require Modality') }}</td>
+        <td>{{ui_phrase('Yes') if strategy.require_modality_match else ui_phrase('No')}}</td>
       </tr>
 
       <tr>
-        <td>Require Branch</td>
-        <td>{{'Yes' if strategy.require_branch_match else 'No'}}</td>
+        <td>{{ ui_phrase('Require Branch') }}</td>
+        <td>{{ui_phrase('Yes') if strategy.require_branch_match else ui_phrase('No')}}</td>
       </tr>
 
       <tr>
-        <td>Require Online</td>
-        <td>{{'Yes' if strategy.require_online else 'No'}}</td>
+        <td>{{ ui_phrase('Require Online') }}</td>
+        <td>{{ui_phrase('Yes') if strategy.require_online else ui_phrase('No')}}</td>
       </tr>
 
       <tr>
-        <td>Prefer Online</td>
-        <td>{{'Yes' if strategy.prefer_online else 'No'}}</td>
+        <td>{{ ui_phrase('Prefer Online') }}</td>
+        <td>{{ui_phrase('Yes') if strategy.prefer_online else ui_phrase('No')}}</td>
       </tr>
 
     </table>
@@ -374,7 +374,7 @@
 
       {% else %}
 
-        <span class="rb-badge rb-good">None</span>
+        <span class="rb-badge rb-good">{{ ui_phrase('None') }}</span>
 
       {% endif %}
 
@@ -393,7 +393,7 @@
 
       {% else %}
 
-        <span class="rb-badge rb-good">None</span>
+        <span class="rb-badge rb-good">{{ ui_phrase('None') }}</span>
 
       {% endif %}
 
@@ -430,13 +430,13 @@
       <thead>
 
         <tr>
-          <th>Doctor</th>
+          <th>{{ ui_phrase('Doctor') }}</th>
           <th>Decision</th>
-          <th>Availability</th>
-          <th>Online</th>
-          <th>Load</th>
-          <th>Modality</th>
-          <th>Branch</th>
+          <th>{{ ui_phrase('Availability') }}</th>
+          <th>{{ ui_phrase('Online') }}</th>
+          <th>{{ ui_phrase('Load') }}</th>
+          <th>{{ ui_phrase('Modality') }}</th>
+          <th>{{ ui_phrase('Branch') }}</th>
           <th>Auto Assign</th>
           <th>Reasons</th>
         </tr>
@@ -486,13 +486,13 @@
             {% if d.availability_state == 'AVAILABLE' %}
 
               <span class="rb-badge rb-good">
-                AVAILABLE
+                {{ ui_phrase('AVAILABLE') }}
               </span>
 
             {% elif d.availability_state == 'BUSY' %}
 
               <span class="rb-badge rb-warning">
-                BUSY
+                {{ ui_phrase('BUSY') }}
               </span>
 
             {% else %}
@@ -608,7 +608,7 @@
 
   <p>
 
-    Case <strong>#{{order.id}}</strong>
+    {{ ui_phrase('Case') }} <strong>#{{order.id}}</strong>
     / <strong>{{order.accession}}</strong>
 
     would currently receive decision

@@ -215,7 +215,7 @@
 
 <div class="panel ai-prior-banner">
 <a class="btn primary" href="{{url_for('imaging_ai_workspace',order_id=order.id)}}">🧠 PACS AI Imaging</a>
-<a class="btn" href="{{url_for('ai_report_assistant',order_id=order.id)}}">🤖 AI Draft</a>
+<a class="btn" href="{{url_for('ai_report_assistant',order_id=order.id)}}">{{ ui_phrase('🤖 AI Draft') }}</a>
 <a class="btn" href="{{url_for('patient_external_priors',patient_id=order.patient.id)}}">📀 Priors</a>
 <small>Image AI requires demographic verification before analysis.</small>
 </div>
@@ -231,10 +231,10 @@
 <div class="panel report-summary rb-report-header">
   <div>
     <h3>{{order.patient.name}}</h3>
-    <small>Patient ID: {{order.patient.patient_id}} · Accession: {{order.accession}} · {{order.procedure}}</small>
+    <small>{{ ui_phrase('Patient ID:') }} {{order.patient.patient_id}} · Accession: {{order.accession}} · {{order.procedure}}</small>
   </div>
   <div class="actions">
-    <span class="badge">Current: {{report.status.replace('_',' ')}}</span>
+    <span class="badge">{{ ui_phrase('Current:') }} {{report.status.replace('_',' ')}}</span>
     <a class="btn" target="_blank" href="{{pacs_url}}">Open Case Images</a>
   </div>
 </div>
@@ -297,8 +297,8 @@
   <div class="section-title">Manual Report Upload</div>
 <div class="patient-identity-banner">
 <div><b>Patient Name:</b> {{order.patient.name}}</div>
-<div><b>Patient ID:</b> {{order.patient.patient_id}}</div>
-<div><b>Accession:</b> {{order.accession}}</div>
+<div><b>{{ ui_phrase('Patient ID:') }}</b> {{order.patient.patient_id}}</div>
+<div><b>{{ ui_phrase('Accession:') }}</b> {{order.accession}}</div>
 </div>
   {% if report.status!='FINAL' %}
   <form method="post" action="{{url_for('report_upload',order_id=order.id)}}" enctype="multipart/form-data" class="upload-row">
@@ -307,7 +307,7 @@
       <input type="file" name="document" accept=".docx" required>
     </div>
     <div class="upload-field status-field">
-      <label>Report Status</label>
+      <label>{{ ui_phrase('Report Status') }}</label>
       <input type="hidden" name="action" value="DRAFT">
       <input type="hidden" name="base_version_no" value="{{base_version_no}}">
       <input type="hidden" name="lease_token" id="upload-lease-token" value="">
@@ -504,17 +504,17 @@
     <input type="hidden" name="base_version_no" value="{{base_version_no}}">
     <input type="hidden" name="lease_token" id="web-lease-token" value="">
     <input type="hidden" name="commit_id" value="{{web_commit_id}}">
-    <label>Radiologist</label>
+    <label>{{ ui_phrase('Radiologist') }}</label>
     <input name="radiologist" value="{{report.radiologist}}" {% if report.status=='FINAL' %}readonly{% endif %}>
-    <label>Findings</label>
+    <label>{{ ui_phrase('Findings') }}</label>
     <div class="dictation-bar" id="radiology-dictation-controls">
 <button type="button" class="btn" data-dictate="findings">🎙 Dictate Findings</button>
 <button type="button" class="btn" data-dictate="impression">🎙 Dictate Impression</button>
 <select id="dictationLanguage"><option value="en-US">English</option><option value="ar-EG">العربية - مصر</option></select>
-<span id="dictationStatus">Ready</span>
+<span id="dictationStatus">{{ ui_phrase('Ready') }}</span>
 </div>
 <textarea name="findings" rows="12" {% if report.status=='FINAL' %}readonly{% endif %}>{{report.findings}}</textarea>
-    <label>Impression</label>
+    <label>{{ ui_phrase('Impression') }}</label>
     <textarea name="impression" rows="7" {% if report.status=='FINAL' %}readonly{% endif %}>{{report.impression}}</textarea>
   </form>
 
@@ -527,7 +527,7 @@
 </div>
 
 <div class="panel workflow-panel workflow-bottom rb-report-workflow-bottom">
-  <div class="workflow-caption"><strong>Save / Change Report Status</strong><span>Current: {{report.status.replace('_',' ')}}</span></div>
+  <div class="workflow-caption"><strong>Save / Change Report Status</strong><span>{{ ui_phrase('Current:') }} {{report.status.replace('_',' ')}}</span></div>
   <div class="workflow-strip">
     {% for st in all_states %}
       <button form="web-report-form" name="action" value="{{st}}"
@@ -550,7 +550,7 @@
 <div class="panel">
   <div class="section-title rb-report-history-title">Version History / Audit Trail</div>
   <table>
-    <tr><th>Version</th><th>Action</th><th>Actor Role</th><th>Radiologist</th><th>Change Summary</th><th>SHA256</th><th>Date</th></tr>
+    <tr><th>{{ ui_phrase('Version') }}</th><th>{{ ui_phrase('Action') }}</th><th>Actor Role</th><th>{{ ui_phrase('Radiologist') }}</th><th>Change Summary</th><th>SHA256</th><th>{{ ui_phrase('Date') }}</th></tr>
     {% for h in history %}<tr><td>v{{'%03d'|format(h.version_no)}}</td><td>{{h.action}}</td><td>{{h.created_role or '-'}}</td><td>{{h.radiologist}}</td><td>{{h.change_summary or '-'}}</td><td><small>{{(h.sha256 or '')[:12]}}</small></td><td>{{h.created_at}}</td></tr>{% endfor %}
   </table>
 </div>

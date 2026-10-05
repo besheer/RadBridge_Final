@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block page_title %}Scheduler & Registration
+{% block page_title %}{{ ui_phrase('Scheduler & Registration') }}
 {% endblock %}
-{% block subtitle %}One-screen booking, registration, OCR, insurance, documents and payment{% endblock %}
+{% block subtitle %}{{ ui_phrase('One-screen booking, registration, OCR, insurance, documents and payment') }}{% endblock %}
 {% block content %}
 <style>
 @media(max-width:600px){
@@ -415,21 +415,21 @@
 <div class="panel rb-toolbar">
  <div class="rb-tools">
   <a class="btn" href="{{url_for('schedule_calendar',date=prev_day.isoformat(),branch_id=branch_id or '')}}">‹</a>
-  <a class="btn" href="{{url_for('schedule_calendar',branch_id=branch_id or '')}}">Today</a>
+  <a class="btn" href="{{url_for('schedule_calendar',branch_id=branch_id or '')}}">{{ ui_phrase('Today') }}</a>
   <strong>{{selected.strftime('%d %b %Y')}}</strong>
   <a class="btn" href="{{url_for('schedule_calendar',date=next_day.isoformat(),branch_id=branch_id or '')}}">›</a>
   <input type="date" id="calDate" value="{{selected.isoformat()}}">
  </div>
  <form method="get" class="rb-tools">
   <input type="hidden" name="date" value="{{selected.isoformat()}}">
-  <select name="branch_id"><option value="">All Branches</option>{% for b in branches %}<option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select>
-  <select name="device_id"><option value="">All Devices</option>{% for d in all_devices %}<option value="{{d.id}}" {% if selected_device_id==d.id %}selected{% endif %}>{{d.modality}} — {{d.name}}</option>{% endfor %}</select>
-  <button class="btn">Apply</button>
+  <select name="branch_id"><option value="">{{ ui_phrase('All Branches') }}</option>{% for b in branches %}<option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select>
+  <select name="device_id"><option value="">{{ ui_phrase('All Devices') }}</option>{% for d in all_devices %}<option value="{{d.id}}" {% if selected_device_id==d.id %}selected{% endif %}>{{d.modality}} — {{d.name}}</option>{% endfor %}</select>
+  <button class="btn">{{ ui_phrase('Apply') }}</button>
  </form>
 </div>
 
 <div class="rb-board-wrap"><div class="rb-board" style="--n:{{devices|length if devices else 1}}">
- <div class="rb-head rb-corner">Time</div>
+ <div class="rb-head rb-corner">{{ ui_phrase('Time') }}</div>
  {% for d in devices %}<div class="rb-head"><b>{{d.name}}</b><div class="rb-small">{{d.modality}} · AE {{d.ae_title}} · {{d.workday_start or '08:00'}}-{{d.workday_end or '22:00'}}</div></div>{% endfor %}
  {% for slot in slots %}
   <div class="rb-time">{{slot.strftime('%H:%M')}}</div>
@@ -441,9 +441,9 @@
    {% set outside_hours=(slot_hm < work_start or slot_hm >= work_end) %}
    <div class="rb-cell{% if cell and cell.occupied %} rb-occupied{% endif %}{% if outside_hours %} rb-outside-hours{% endif %}" data-device="{{d.id}}" data-branch="{{d.branch_id}}" data-name="{{d.name}}" data-modality="{{d.modality}}" data-work-start="{{work_start}}" data-work-end="{{work_end}}" data-dt="{{slot.strftime('%Y-%m-%dT%H:%M')}}" {% if outside_hours %}title="{{'خارج ساعات العمل' if ui_lang=='ar' else 'Outside working hours'}} · {{work_start}}-{{work_end}}"{% endif %}>
     {% if cell and cell.starts %}
-      {% for a in cell.starts %}<div class="rb-appt">{% if a.order_id %}<a href="{{url_for('order_detail',order_id=a.order_id)}}">{% endif %}<b>{{a.patient.name}}</b><div>{{a.procedure.name}} · {{a.duration_min or 20}}m · {{a.status}}</div>{% if a.order_id %}</a><a class="btn" href="{{url_for('order_detail',order_id=a.order_id)}}">أمر الشغل / Work Order</a>{% elif a.status in ['BOOKED','CONFIRMED','WAITING'] and has_perm('appointments.manage') %}
-<a class="btn" href="{{url_for('appointment_edit',appointment_id=a.id)}}">تعديل البيانات والفحص / Edit booking and patient</a><details><summary>تعديل الموعد / Change time</summary><form class="rb-booking-edit" method="post" action="{{url_for('appointment_reschedule',appointment_id=a.id)}}"><label>الموعد / Time</label><input type="datetime-local" name="scheduled" value="{{a.scheduled.strftime('%Y-%m-%dT%H:%M')}}" required><input type="hidden" name="device_id" value="{{a.device_id}}"><button class="btn" type="submit">حفظ / Save</button><span aria-live="polite"></span></form></details>
-<form method="post" action="{{url_for('appointment_action',appointment_id=a.id,action='checkin')}}"><button class="btn" type="submit">تسجيل الحضور / Check-in</button></form>
+      {% for a in cell.starts %}<div class="rb-appt">{% if a.order_id %}<a href="{{url_for('order_detail',order_id=a.order_id)}}">{% endif %}<b>{{a.patient.name}}</b><div>{{a.procedure.name}} · {{a.duration_min or 20}}{{ ui_phrase('m ·') }} {{a.status}}</div>{% if a.order_id %}</a><a class="btn" href="{{url_for('order_detail',order_id=a.order_id)}}">{{ ui_phrase('أمر الشغل / Work Order') }}</a>{% elif a.status in ['BOOKED','CONFIRMED','WAITING'] and has_perm('appointments.manage') %}
+<a class="btn" href="{{url_for('appointment_edit',appointment_id=a.id)}}">{{ ui_phrase('تعديل البيانات والفحص / Edit booking and patient') }}</a><details><summary>{{ ui_phrase('تعديل الموعد / Change time') }}</summary><form class="rb-booking-edit" method="post" action="{{url_for('appointment_reschedule',appointment_id=a.id)}}"><label>{{ ui_phrase('الموعد / Time') }}</label><input type="datetime-local" name="scheduled" value="{{a.scheduled.strftime('%Y-%m-%dT%H:%M')}}" required><input type="hidden" name="device_id" value="{{a.device_id}}"><button class="btn" type="submit">{{ ui_phrase('حفظ / Save') }}</button><span aria-live="polite"></span></form></details>
+<form method="post" action="{{url_for('appointment_action',appointment_id=a.id,action='checkin')}}"><button class="btn" type="submit">{{ ui_phrase('تسجيل الحضور / Check-in') }}</button></form>
 {% endif %}</div>{% endfor %}
     {% elif cell and cell.occupied %}
       <div class="rb-occupied-tail">{{'محجوز' if ui_lang=='ar' else 'Occupied'}}</div>
@@ -461,50 +461,50 @@
 <div id="rbOverlay" class="rb-overlay" hidden>
 <form id="rbForm" class="rb-ws" method="post" enctype="multipart/form-data" action="{{url_for('schedule_unified_submit')}}">
 <input type="hidden" name="scheduled" id="fScheduled"><input type="hidden" name="device_id" id="fDevice"><input type="hidden" name="patient_mode" id="fMode" value="new"><input type="hidden" name="registration_action" id="fAction" value="REGISTER"><input type="hidden" name="ocr_intake_id" id="ocrIntake"><input type="hidden" name="ocr_document_ids" id="ocrIds">
-<div class="rb-ws-head"><div><b>Full Registration / تسجيل الزيارة</b><div class="rb-small"><span id="metaDevice"></span> · <span id="metaDt"></span></div></div><button type="button" class="btn" id="closeWs">×</button></div>
+<div class="rb-ws-head"><div><b>{{ ui_phrase('Full Registration / تسجيل الزيارة') }}</b><div class="rb-small"><span id="metaDevice"></span> · <span id="metaDt"></span></div></div><button type="button" class="btn" id="closeWs">×</button></div>
 
 <div class="rb-main">
 <section class="rb-pane">
-<h3>Patient / المريض</h3>
-<div class="rb-mode"><button type="button" class="btn primary" data-mode="new">New Patient</button><button type="button" class="btn" data-mode="existing">Existing</button><button type="button" class="btn" data-mode="ocr">Start from OCR</button></div>
+<h3>{{ ui_phrase('Patient / المريض') }}</h3>
+<div class="rb-mode"><button type="button" class="btn primary" data-mode="new">{{ ui_phrase('New Patient') }}</button><button type="button" class="btn" data-mode="existing">{{ ui_phrase('Existing') }}</button><button type="button" class="btn" data-mode="ocr">{{ ui_phrase('Start from OCR') }}</button></div>
 
 <div id="newPane"><div class="rb-grid2">
- <div><label>First Name *</label><input name="new_first_name" id="firstName"></div>
- <div><label>Father / Middle</label><input name="new_middle_name"></div>
- <div><label>Third Name</label><input name="new_third_name"></div>
- <div><label>Fourth Name</label><input name="new_fourth_name"></div>
+ <div><label>{{ ui_phrase('First Name *') }}</label><input name="new_first_name" id="firstName"></div>
+ <div><label>{{ ui_phrase('Father / Middle') }}</label><input name="new_middle_name"></div>
+ <div><label>{{ ui_phrase('Third Name') }}</label><input name="new_third_name"></div>
+ <div><label>{{ ui_phrase('Fourth Name') }}</label><input name="new_fourth_name"></div>
  {% set age_dob_form={} %}{% set age_dob_prefix='new_' %}{% include '_patient_age_dob_fields.html' %}
- <div><label>Sex</label><select name="new_sex"><option value=""></option><option value="M">Male</option><option value="F">Female</option></select></div>
- <div><label>Mobile</label><input name="new_phone"></div>
- <div><label>National ID</label><input name="new_national_id"></div>
- <div><label>Address (optional)</label><input name="new_address"></div>
- <div><label>Email</label><input type="email" name="new_email"></div>
- <div><label>Nationality</label><input name="new_nationality"></div>
+ <div><label>{{ ui_phrase('Sex') }}</label><select name="new_sex"><option value=""></option><option value="M">{{ ui_phrase('Male') }}</option><option value="F">{{ ui_phrase('Female') }}</option></select></div>
+ <div><label>{{ ui_phrase('Mobile') }}</label><input name="new_phone"></div>
+ <div><label>{{ ui_phrase('National ID') }}</label><input name="new_national_id"></div>
+ <div><label>{{ ui_phrase('Address (optional)') }}</label><input name="new_address"></div>
+ <div><label>{{ ui_phrase('Email') }}</label><input type="email" name="new_email"></div>
+ <div><label>{{ ui_phrase('Nationality') }}</label><input name="new_nationality"></div>
 </div><div class="notice info" style="margin-top:6px"><span id="nameView">—</span> <span class="rb-small">DICOM: <span id="dicomView">—</span></span></div></div>
 
-<div id="existingPane" class="rb-hidden"><label>Search Patient</label><input id="patientSearch"><input type="hidden" name="patient_id" id="patientId"><div class="rb-results" id="patientResults">{% for p in patients %}<button class="rb-result" type="button" data-id="{{p.id}}" data-q="{{(p.patient_id or '')|lower}} {{(p.name or '')|lower}} {{(p.phone or '')|lower}} {{(p.national_id or '')|lower}}"><b>{{p.patient_id}} — {{p.name}}</b><div class="rb-small">{{p.phone or ''}} {{p.national_id or ''}}</div></button>{% endfor %}</div><div id="selectedPatient" class="notice info rb-hidden"></div></div>
+<div id="existingPane" class="rb-hidden"><label>{{ ui_phrase('Search Patient') }}</label><input id="patientSearch"><input type="hidden" name="patient_id" id="patientId"><div class="rb-results" id="patientResults">{% for p in patients %}<button class="rb-result" type="button" data-id="{{p.id}}" data-q="{{(p.patient_id or '')|lower}} {{(p.name or '')|lower}} {{(p.phone or '')|lower}} {{(p.national_id or '')|lower}}"><b>{{p.patient_id}} — {{p.name}}</b><div class="rb-small">{{p.phone or ''}} {{p.national_id or ''}}</div></button>{% endfor %}</div><div id="selectedPatient" class="notice info rb-hidden"></div></div>
 
-<div id="ocrPane" class="rb-ocr rb-hidden"><b>Smart OCR</b><p class="rb-small">OCR suggestions are applied automatically. Review or edit before registration. Failure never blocks registration.</p><div class="rb-grid2"><select id="ocrType"><option value="OTHER">Auto / Other</option>{% for value,en,ar in document_types %}<option value="{{value}}">{{en}} / {{ar}}</option>{% endfor %}</select><input id="ocrFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp,.dcm"></div><button class="btn" type="button" id="readOcr" style="margin-top:6px">Read Document</button><div id="ocrStatus" class="rb-small"></div><div id="ocrResults"></div></div>
+<div id="ocrPane" class="rb-ocr rb-hidden"><b>{{ ui_phrase('Smart OCR') }}</b><p class="rb-small">{{ ui_phrase('OCR suggestions are applied automatically. Review or edit before registration. Failure never blocks registration.') }}</p><div class="rb-grid2"><select id="ocrType"><option value="OTHER">{{ ui_phrase('Auto / Other') }}</option>{% for value,en,ar in document_types %}<option value="{{value}}">{{en}} / {{ar}}</option>{% endfor %}</select><input id="ocrFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp,.dcm"></div><button class="btn" type="button" id="readOcr" style="margin-top:6px">{{ ui_phrase('Read Document') }}</button><div id="ocrStatus" class="rb-small"></div><div id="ocrResults"></div></div>
 </section>
 
 <section class="rb-pane">
-<h3>Visit & Examinations</h3><div class="rb-grid2"><div><label for="fBranch">الفرع / Branch *</label><select name="branch_id" id="fBranch" required>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select></div><div><label for="registrationDevice">الجهاز / Device *</label><select id="registrationDevice">{% for d in all_devices %}<option value="{{d.id}}" data-branch="{{d.branch_id}}" data-modality="{{d.modality}}" data-name="{{d.name}}">{{d.modality}} — {{d.name}}</option>{% endfor %}</select></div></div>
+<h3>{{ ui_phrase('Visit & Examinations') }}</h3><div class="rb-grid2"><div><label for="fBranch">{{ ui_phrase('الفرع / Branch *') }}</label><select name="branch_id" id="fBranch" required>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select></div><div><label for="registrationDevice">{{ ui_phrase('الجهاز / Device *') }}</label><select id="registrationDevice">{% for d in all_devices %}<option value="{{d.id}}" data-branch="{{d.branch_id}}" data-modality="{{d.modality}}" data-name="{{d.name}}">{{d.modality}} — {{d.name}}</option>{% endfor %}</select></div></div>
 {% include '_registration_assignment_controls.html' %}
-<div class="rb-grid3"><div><label>Priority</label><select name="priority"><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select></div><div><label>Referring Doctor</label><select name="referring_doctor_id"><option value="">—</option>{% for r in referrers %}<option value="{{r.id}}">{{r.name}}</option>{% endfor %}</select></div><div><label>Booking Type</label><select name="waiting_list"><option value="0">Scheduled</option><option value="1">Waiting List</option></select></div></div>
-<div id="examRows" style="margin-top:7px"></div><button class="btn" type="button" id="addExam">+ Add Examination</button>
+<div class="rb-grid3"><div><label>{{ ui_phrase('Priority') }}</label><select name="priority"><option value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option><option value="URGENT">{{ ui_phrase('URGENT') }}</option><option value="STAT">{{ ui_phrase('STAT') }}</option></select></div><div><label>{{ ui_phrase('Referring Doctor') }}</label><select name="referring_doctor_id"><option value="">—</option>{% for r in referrers %}<option value="{{r.id}}">{{r.name}}</option>{% endfor %}</select></div><div><label>{{ ui_phrase('Booking Type') }}</label><select name="waiting_list"><option value="0">{{ ui_phrase('Scheduled') }}</option><option value="1">{{ ui_phrase('Waiting List') }}</option></select></div></div>
+<div id="examRows" style="margin-top:7px"></div><button class="btn" type="button" id="addExam">{{ ui_phrase('+ Add Examination') }}</button>
 
-<div class="rb-tabs"><button class="rb-tab active" type="button" data-tab="insurance">Insurance</button><button class="rb-tab" type="button" data-tab="clinical">Clinical</button><button class="rb-tab" type="button" data-tab="docs">Documents</button><button class="rb-tab" type="button" data-tab="payment">Payment</button></div>
-<div class="rb-panel active" data-panel="insurance"><div class="rb-grid2"><div><label>Payer / Contract</label><select name="contract_id" id="contract"><option value="">Cash / Private</option>{% for c in contracts %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}</select></div><div><label>Member / Card No.</label><input name="member_no" id="memberNo"></div><div><label>Approval Method</label><select name="approval_method"><option value="AUTO">Auto / Follow-up</option><option value="MANUAL">Manual</option><option value="ALREADY_APPROVED">Already Approved</option></select></div><div><label>Approval No.</label><input name="approval_no" id="approvalNo"></div></div></div>
-<div class="rb-panel" data-panel="clinical"><div class="rb-grid2"><div class="rb-span"><label>Clinical History</label><textarea name="clinical_history" id="history" rows="3"></textarea></div><div class="rb-span"><label>Clinical Notes / Indication</label><textarea name="clinical_note" id="clinical" rows="3"></textarea></div><div class="rb-span"><label>Questionnaire Notes</label><textarea name="questionnaire_note" id="questionnaire" rows="3"></textarea></div></div></div>
-<div class="rb-panel" data-panel="docs"><div id="docRows"></div><button class="btn" type="button" id="addDoc">+ Add Document</button><div class="rb-small">OCR documents selected with Accept are attached automatically.</div></div>
-<div class="rb-panel" data-panel="payment">{% if can_take_payment %}<div class="rb-grid3"><div><label>Amount</label><input name="payment_amount" type="number" min="0" step="0.01" value="0"></div><div><label>Method</label><select name="payment_method"><option value="">—</option><option value="CASH">Cash / نقدي</option><option value="VISA">Card — Visa / بطاقة فيزا</option><option value="MASTERCARD">Card — Mastercard / بطاقة ماستركارد</option><option value="WALLET">Wallet / محفظة إلكترونية</option><option value="BANK_TRANSFER">Bank Transfer / تحويل بنكي</option></select></div><div><label>Reference</label><input name="payment_reference"></div></div>{% else %}<div class="notice">No payment permission. Registration can continue.</div>{% endif %}</div>
-<div style="margin-top:7px"><label>General Notes</label><textarea name="notes" rows="2"></textarea></div>
+<div class="rb-tabs"><button class="rb-tab active" type="button" data-tab="insurance">{{ ui_phrase('Insurance') }}</button><button class="rb-tab" type="button" data-tab="clinical">{{ ui_phrase('Clinical') }}</button><button class="rb-tab" type="button" data-tab="docs">{{ ui_phrase('Documents') }}</button><button class="rb-tab" type="button" data-tab="payment">{{ ui_phrase('Payment') }}</button></div>
+<div class="rb-panel active" data-panel="insurance"><div class="rb-grid2"><div><label>{{ ui_phrase('Payer / Contract') }}</label><select name="contract_id" id="contract"><option value="">{{ ui_phrase('Cash / Private') }}</option>{% for c in contracts %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}</select></div><div><label>{{ ui_phrase('Member / Card No.') }}</label><input name="member_no" id="memberNo"></div><div><label>{{ ui_phrase('Approval Method') }}</label><select name="approval_method"><option value="AUTO">{{ ui_phrase('Auto / Follow-up') }}</option><option value="MANUAL">{{ ui_phrase('Manual') }}</option><option value="ALREADY_APPROVED">{{ ui_phrase('Already Approved') }}</option></select></div><div><label>{{ ui_phrase('Approval No.') }}</label><input name="approval_no" id="approvalNo"></div></div></div>
+<div class="rb-panel" data-panel="clinical"><div class="rb-grid2"><div class="rb-span"><label>{{ ui_phrase('Clinical History') }}</label><textarea name="clinical_history" id="history" rows="3"></textarea></div><div class="rb-span"><label>{{ ui_phrase('Clinical Notes / Indication') }}</label><textarea name="clinical_note" id="clinical" rows="3"></textarea></div><div class="rb-span"><label>{{ ui_phrase('Questionnaire Notes') }}</label><textarea name="questionnaire_note" id="questionnaire" rows="3"></textarea></div></div></div>
+<div class="rb-panel" data-panel="docs"><div id="docRows"></div><button class="btn" type="button" id="addDoc">{{ ui_phrase('+ Add Document') }}</button><div class="rb-small">{{ ui_phrase('OCR documents selected with Accept are attached automatically.') }}</div></div>
+<div class="rb-panel" data-panel="payment">{% if can_take_payment %}<div class="rb-grid3"><div><label>{{ ui_phrase('Amount') }}</label><input name="payment_amount" type="number" min="0" step="0.01" value="0"></div><div><label>{{ ui_phrase('Method') }}</label><select name="payment_method"><option value="">—</option><option value="CASH">{{ ui_phrase('Cash / نقدي') }}</option><option value="VISA">{{ ui_phrase('Card — Visa / بطاقة فيزا') }}</option><option value="MASTERCARD">{{ ui_phrase('Card — Mastercard / بطاقة ماستركارد') }}</option><option value="WALLET">{{ ui_phrase('Wallet / محفظة إلكترونية') }}</option><option value="BANK_TRANSFER">{{ ui_phrase('Bank Transfer / تحويل بنكي') }}</option></select></div><div><label>{{ ui_phrase('Reference') }}</label><input name="payment_reference"></div></div>{% else %}<div class="notice">{{ ui_phrase('No payment permission. Registration can continue.') }}</div>{% endif %}</div>
+<div style="margin-top:7px"><label>{{ ui_phrase('General Notes') }}</label><textarea name="notes" rows="2"></textarea></div>
 </section>
 
-<aside class="rb-pane rb-summary-pane"><h3>Summary</h3><div class="rb-summary"><span>Patient</span><b id="sPatient">New Patient</b></div><div class="rb-summary"><span>Device</span><b id="sDevice">—</b></div><div class="rb-summary"><span>Start</span><b id="sStart">—</b></div><div class="rb-summary"><span>Exams</span><b id="sCount">0</b></div><div class="rb-summary"><span>Duration</span><b><span id="sDuration">0</span>m</b></div><div class="rb-summary"><span>OCR Docs</span><b id="sOcr">0</b></div><div id="rbValidationGuide" class="notice" style="margin-top:10px" aria-live="polite"><b id="rbValidationTitle">Complete required information</b><div id="rbValidationItems" class="rb-small"></div></div><p class="rb-small">Book Only = editable booking. Register & Save = registration and accession. Convert to Work Order from the order page after financial clearance. / الحجز قابل للتعديل؛ التحويل إلى أمر شغل من صفحة الطلب بعد التسوية المالية.</p></aside>
+<aside class="rb-pane rb-summary-pane"><h3>{{ ui_phrase('Summary') }}</h3><div class="rb-summary"><span>{{ ui_phrase('Patient') }}</span><b id="sPatient">{{ ui_phrase('New Patient') }}</b></div><div class="rb-summary"><span>{{ ui_phrase('Device') }}</span><b id="sDevice">—</b></div><div class="rb-summary"><span>{{ ui_phrase('Start') }}</span><b id="sStart">—</b></div><div class="rb-summary"><span>{{ ui_phrase('Exams') }}</span><b id="sCount">0</b></div><div class="rb-summary"><span>{{ ui_phrase('Duration') }}</span><b><span id="sDuration">0</span>{{ ui_phrase('m') }}</b></div><div class="rb-summary"><span>{{ ui_phrase('OCR Docs') }}</span><b id="sOcr">0</b></div><div id="rbValidationGuide" class="notice" style="margin-top:10px" aria-live="polite"><b id="rbValidationTitle">{{ ui_phrase('Complete required information') }}</b><div id="rbValidationItems" class="rb-small"></div></div><p class="rb-small">{{ ui_phrase('Book Only = editable booking. Register & Save = registration and accession. Convert to Work Order from the order page after financial clearance. / الحجز قابل للتعديل؛ التحويل إلى أمر شغل من صفحة الطلب بعد التسوية المالية.') }}</p></aside>
 </div>
 
-<div class="rb-ws-foot"><span class="rb-small">Optional missing data does not block. Duplicate/safety checks remain active.</span><div class="rb-actions"><button type="button" class="btn" id="cancelWs">Cancel</button><button type="submit" class="btn" data-action="BOOK" id="rbBookBtn">Book Only</button><button type="submit" class="btn primary" data-action="REGISTER" id="rbRegisterBtn">Register & Save</button></div></div>
+<div class="rb-ws-foot"><span class="rb-small">{{ ui_phrase('Optional missing data does not block. Duplicate/safety checks remain active.') }}</span><div class="rb-actions"><button type="button" class="btn" id="cancelWs">{{ ui_phrase('Cancel') }}</button><button type="submit" class="btn" data-action="BOOK" id="rbBookBtn">{{ ui_phrase('Book Only') }}</button><button type="submit" class="btn primary" data-action="REGISTER" id="rbRegisterBtn">{{ ui_phrase('Register & Save') }}</button></div></div>
 </form></div>
 
 <script>

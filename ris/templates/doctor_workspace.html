@@ -5,19 +5,19 @@
 {% block content %}
 {% if system_health %}
 <div class="panel ops-health-strip rb-doctor-kpis">
-<div><small>PACS</small><b>{{'ONLINE' if system_health.pacs else 'OFFLINE'}}</b></div>
-<div><small>Studies Today</small><b>{{system_health.studies_today}}</b></div>
-<div><small>My Queue</small><b>{{system_health.my_queue}}</b></div>
-<div><small>Open Cases I Can Take</small><b>{{system_health.open_allowed}}</b></div>
-<div><small>Workflow Problems</small><b>{{system_health.problems}}</b></div>
+<div><small>PACS</small><b>{{'ONLINE' if system_health.pacs else ui_phrase('OFFLINE')}}</b></div>
+<div><small>{{ ui_phrase('Studies Today') }}</small><b>{{system_health.studies_today}}</b></div>
+<div><small>{{ ui_phrase('My Queue') }}</small><b>{{system_health.my_queue}}</b></div>
+<div><small>{{ ui_phrase('Open Cases I Can Take') }}</small><b>{{system_health.open_allowed}}</b></div>
+<div><small>{{ ui_phrase('Workflow Problems') }}</small><b>{{system_health.problems}}</b></div>
 </div>
 {% endif %}
 
 <form class="panel filterbar rb-doctor-filters" method="get">
-<input name="q" value="{{request.args.get('q','')}}" placeholder="Patient / Patient ID / Accession">
-<select name="status"><option value="">All statuses</option>{% for s in ['ARRIVED','IN_PROGRESS','COMPLETED','IMAGES_RECEIVED','REPORTING','FINAL'] %}<option value="{{s}}">{{s}}</option>{% endfor %}</select>
-<select name="modality"><option value="">All modalities</option>{% for m in ['CT','MR','DX','US','MG','RF','NM','PT'] %}<option value="{{m}}">{{m}}</option>{% endfor %}</select>
-<button class="btn primary">Apply</button>
+<input name="q" value="{{request.args.get('q','')}}" placeholder="{{ ui_phrase('Patient / Patient ID / Accession') }}">
+<select name="status"><option value="">{{ ui_phrase('All statuses') }}</option>{% for s in ['ARRIVED','IN_PROGRESS','COMPLETED','IMAGES_RECEIVED','REPORTING','FINAL'] %}<option value="{{s}}">{{s}}</option>{% endfor %}</select>
+<select name="modality"><option value="">{{ ui_phrase('All modalities') }}</option>{% for m in ['CT','MR','DX','US','MG','RF','NM','PT'] %}<option value="{{m}}">{{m}}</option>{% endfor %}</select>
+<button class="btn primary">{{ ui_phrase('Apply') }}</button>
 </form>
 {% if saved_views is defined %}
 <div class="panel" style="margin-top:10px">
@@ -34,13 +34,13 @@
       <form method="post"
             action="{{url_for('saved_view_set_default',page_key=saved_view_page,view_id=v.id)}}"
             style="display:inline">
-        <button class="btn small" title="Set default">☆</button>
+        <button class="btn small" title="{{ ui_phrase('Set default') }}">☆</button>
       </form>
 
       <form method="post"
             action="{{url_for('saved_view_delete',page_key=saved_view_page,view_id=v.id)}}"
             style="display:inline"
-            onsubmit="return confirm('Delete saved view?')">
+            onsubmit="return confirm(window.rbUi('Delete saved view?'))">
         <button class="btn small">×</button>
       </form>
     {% endfor %}
@@ -68,7 +68,7 @@
 {% endif %}
 
 <div class="panel rb-doctor-worklist"><div class="table-wrap"><table class="rb-doctor-table">
-<thead><tr><th>Patient</th><th>Accession</th><th>Exam</th><th>Status</th><th>Assigned Doctor</th><th>Actions</th></tr></thead>
+<thead><tr><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Accession') }}</th><th>{{ ui_phrase('Exam') }}</th><th>{{ ui_phrase('Status') }}</th><th>{{ ui_phrase('Assigned Doctor') }}</th><th>{{ ui_phrase('Actions') }}</th></tr></thead>
 <tbody>
 {% for o in rows %}
 <tr>
@@ -80,7 +80,7 @@
               {% if o.assigned_doctor %}
                 <b>{{o.assigned_doctor.full_name or o.assigned_doctor.username}}</b>
               {% else %}
-                <span class="badge rb-status rb-status-unassigned">UNASSIGNED</span>
+                <span class="badge rb-status rb-status-unassigned">{{ ui_phrase('UNASSIGNED') }}</span>
               {% endif %}
             </td>
             <td class="actions rb-doctor-actions">
@@ -88,7 +88,7 @@
 <a class="btn"
    target="_blank"
    rel="noopener"
-   href="{{pacs_urls.get(o.id)}}">Open Images</a>
+   href="{{pacs_urls.get(o.id)}}">{{ ui_phrase('Open Images') }}</a>
 {% endif %}
 
 {% if ohif_urls and ohif_urls.get(o.id) %}
@@ -96,14 +96,14 @@
    target="_blank"
    rel="noopener"
    href="{{ohif_urls.get(o.id)}}">
-🖥 Open in OHIF
+{{ ui_phrase('🖥 Open in OHIF') }}
 </a>
 {% endif %}
 
-<a class="btn primary" href="{{url_for('report_editor',order_id=o.id)}}">Report</a>
+<a class="btn primary" href="{{url_for('report_editor',order_id=o.id)}}">{{ ui_phrase('Report') }}</a>
             {% if not o.assigned_doctor_id %}
             <form method="post" action="{{url_for('take_case',order_id=o.id)}}" class="rb-inline-form">
-              <button class="btn">Take Case</button>
+              <button class="btn">{{ ui_phrase('Take Case') }}</button>
               {{ action_info(
                 'Take Case' if ui_lang != 'ar' else 'استلام الحالة',
                 'Assigns this unassigned case to your worklist.' if ui_lang != 'ar' else 'تُعيّن هذه الحالة غير الموزعة إلى قائمة عملك.',
@@ -117,8 +117,8 @@
             {% endif %}
             {% if has_perm('assignment.manage') %}
             <form method="post" action="{{url_for('assign_case',order_id=o.id)}}" class="assign-inline">
-              <select name="doctor_user_id"><option value="">Reassign...</option>{% for d in doctors %}<option value="{{d.id}}">{{d.full_name or d.username}}</option>{% endfor %}</select>
-              <button class="btn" name="mode" value="manual">Assign</button>
+              <select name="doctor_user_id"><option value="">{{ ui_phrase('Reassign...') }}</option>{% for d in doctors %}<option value="{{d.id}}">{{d.full_name or d.username}}</option>{% endfor %}</select>
+              <button class="btn" name="mode" value="manual">{{ ui_phrase('Assign') }}</button>
               {{ action_info(
                 'Manual Assignment' if ui_lang != 'ar' else 'التعيين اليدوي',
                 'Assigns the case to the selected radiologist.' if ui_lang != 'ar' else 'تُعيّن الحالة إلى طبيب الأشعة المحدد.',
@@ -128,7 +128,7 @@
                 'Reassignment changes clinical ownership; confirm the doctor first.' if ui_lang != 'ar' else 'إعادة التعيين تغيّر المسؤولية السريرية؛ تأكد من الطبيب أولًا.',
                 ui_lang
               ) }}
-              <button class="btn" name="mode" value="auto">Auto</button>
+              <button class="btn" name="mode" value="auto">{{ ui_phrase('Auto') }}</button>
               {{ action_info(
                 'Auto Assignment' if ui_lang != 'ar' else 'التعيين التلقائي',
                 'Runs the current assignment policy for this case.' if ui_lang != 'ar' else 'يشغّل سياسة التعيين الحالية لهذه الحالة.',
@@ -142,7 +142,7 @@
             {% endif %}
 </td>
 </tr>
-{% else %}<tr><td colspan="6" class="empty">No studies found</td></tr>{% endfor %}
+{% else %}<tr><td colspan="6" class="empty">{{ ui_phrase('No studies found') }}</td></tr>{% endfor %}
 </tbody></table></div></div>
 
 <script id="rbDoctorPresenceHeartbeat">

@@ -52,14 +52,14 @@
       <div class="ocr-field">
         <div class="field-top"><label for="enabled">OCR availability</label><span id="indicator-enabled" class="indicator pending">Checking</span></div>
         <select id="enabled" name="enabled">
-          <option value="0" {% if not cfg or not cfg.enabled %}selected{% endif %}>Disabled</option>
-          <option value="1" {% if cfg and cfg.enabled %}selected{% endif %}>Enabled</option>
+          <option value="0" {% if not cfg or not cfg.enabled %}selected{% endif %}>{{ ui_phrase('Disabled') }}</option>
+          <option value="1" {% if cfg and cfg.enabled %}selected{% endif %}>{{ ui_phrase('Enabled') }}</option>
         </select>
         <div id="message-enabled" class="field-message"></div>
       </div>
 
       <div class="ocr-field">
-        <div class="field-top"><label for="provider_key">Provider</label><span id="indicator-provider_key" class="indicator pending">Checking</span></div>
+        <div class="field-top"><label for="provider_key">{{ ui_phrase('Provider') }}</label><span id="indicator-provider_key" class="indicator pending">Checking</span></div>
         <select id="provider_key" name="provider_key">
           {% for provider in supported_providers %}<option value="{{provider}}" {% if cfg and cfg.provider_key == provider %}selected{% endif %}>{{provider.replace('_',' ')}}</option>{% endfor %}
         </select>
@@ -67,20 +67,20 @@
       </div>
 
       <div class="ocr-field wide">
-        <div class="field-top"><label for="base_url">Base URL</label><span id="indicator-base_url" class="indicator pending">Checking</span></div>
+        <div class="field-top"><label for="base_url">{{ ui_phrase('Base URL') }}</label><span id="indicator-base_url" class="indicator pending">Checking</span></div>
         <input id="base_url" name="base_url" type="url" value="{{cfg.base_url if cfg else ''}}" placeholder="https://vision.googleapis.com/v1" spellcheck="false">
         <div id="message-base_url" class="field-message"></div>
         <div id="provider-note" class="provider-note"></div>
       </div>
 
       <div class="ocr-field">
-        <div class="field-top"><label for="model_name">Model</label><span id="indicator-model_name" class="indicator pending">Checking</span></div>
+        <div class="field-top"><label for="model_name">{{ ui_phrase('Model') }}</label><span id="indicator-model_name" class="indicator pending">Checking</span></div>
         <input id="model_name" name="model_name" value="{{cfg.model_name if cfg else ''}}" placeholder="gemini-2.5-flash" spellcheck="false">
         <div id="message-model_name" class="field-message"></div>
       </div>
 
       <div class="ocr-field">
-        <div class="field-top"><label for="timeout_seconds">Timeout</label><span id="indicator-timeout_seconds" class="indicator pending">Checking</span></div>
+        <div class="field-top"><label for="timeout_seconds">{{ ui_phrase('Timeout') }}</label><span id="indicator-timeout_seconds" class="indicator pending">Checking</span></div>
         <input id="timeout_seconds" type="number" name="timeout_seconds" min="5" max="120" value="{{cfg.timeout_seconds if cfg else 60}}">
         <div id="message-timeout_seconds" class="field-message"></div>
       </div>

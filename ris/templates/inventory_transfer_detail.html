@@ -3,9 +3,9 @@
 {% block content %}
 <div class="panel"><h2>{{row.transfer_no}} · {{row.status}}</h2><p>{{row.source_warehouse.name}} → {{row.target_warehouse.name}}</p><p>{{row.notes}}</p>
 <div class="actions">
-{% if row.status=='REQUESTED' and has_perm('inventory.transfer.approve') %}<form method="post" action="{{url_for('inventory_transfer_approve',transfer_id=row.id)}}"><button class="btn primary">Approve</button></form><form method="post" action="{{url_for('inventory_transfer_reject',transfer_id=row.id)}}"><input name="reason" placeholder="Reject reason"><button class="btn danger">Reject</button></form>{% endif %}
+{% if row.status=='REQUESTED' and has_perm('inventory.transfer.approve') %}<form method="post" action="{{url_for('inventory_transfer_approve',transfer_id=row.id)}}"><button class="btn primary">{{ ui_phrase('Approve') }}</button></form><form method="post" action="{{url_for('inventory_transfer_reject',transfer_id=row.id)}}"><input name="reason" placeholder="Reject reason"><button class="btn danger">{{ ui_phrase('Reject') }}</button></form>{% endif %}
 {% if row.status=='APPROVED' and has_perm('inventory.transfer.dispatch') %}<form method="post" action="{{url_for('inventory_transfer_dispatch',transfer_id=row.id)}}"><button class="btn primary">Dispatch</button></form>{% endif %}
-{% if row.status=='DISPATCHED' and has_perm('inventory.transfer.receive') %}<form method="post" action="{{url_for('inventory_transfer_receive',transfer_id=row.id)}}"><button class="btn primary">Receive</button></form>{% endif %}
+{% if row.status=='DISPATCHED' and has_perm('inventory.transfer.receive') %}<form method="post" action="{{url_for('inventory_transfer_receive',transfer_id=row.id)}}"><button class="btn primary">{{ ui_phrase('Receive') }}</button></form>{% endif %}
 </div></div>
-<div class="table-wrap"><table><tr><th>Item</th><th>Requested</th><th>Dispatched</th><th>Received</th></tr>{% for x in lines %}<tr><td>{{x.item.name}}</td><td>{{x.qty_requested}}</td><td>{{x.qty_dispatched}}</td><td>{{x.qty_received}}</td></tr>{% endfor %}</table></div>
+<div class="table-wrap"><table><tr><th>{{ ui_phrase('Item') }}</th><th>{{ ui_phrase('Requested') }}</th><th>Dispatched</th><th>Received</th></tr>{% for x in lines %}<tr><td>{{x.item.name}}</td><td>{{x.qty_requested}}</td><td>{{x.qty_dispatched}}</td><td>{{x.qty_received}}</td></tr>{% endfor %}</table></div>
 {% endblock %}

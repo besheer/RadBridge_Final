@@ -6,21 +6,21 @@
 <input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
 <input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
 <input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
-<select name="priority"><option value="">Priority</option><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select>
-</div><div class="actions"><button class="btn small primary">Filter</button><a class="btn small" href="{{request.path}}">Clear</a></div></form>
+<select name="priority"><option value="">{{ ui_phrase('Priority') }}</option><option value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option><option value="URGENT">{{ ui_phrase('URGENT') }}</option><option value="STAT">{{ ui_phrase('STAT') }}</option></select>
+</div><div class="actions"><button class="btn small primary">{{ ui_phrase('Filter') }}</button><a class="btn small" href="{{request.path}}">{{ ui_phrase('Clear') }}</a></div></form>
 <div class="panel">
-<div class="tracking-toolbar"><div><b>PACS Tracking</b><small>Refreshes every 30 seconds</small></div><button id="refreshPacs" class="btn">Refresh</button></div>
+<div class="tracking-toolbar"><div><b>{{ ui_phrase('PACS Tracking') }}</b><small>Refreshes every 30 seconds</small></div><button id="refreshPacs" class="btn">{{ ui_phrase('Refresh') }}</button></div>
 <table>
-<tr><th>Patient</th><th>Accession</th><th>Exam</th><th>Modality</th><th>Exam Status</th><th>Images</th><th>PACS Status</th><th>Last Seen</th><th>Viewer</th></tr>
+<tr><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Accession') }}</th><th>{{ ui_phrase('Exam') }}</th><th>{{ ui_phrase('Modality') }}</th><th>Exam Status</th><th>{{ ui_phrase('Images') }}</th><th>{{ ui_phrase('PACS Status') }}</th><th>{{ ui_phrase('Last Seen') }}</th><th>{{ ui_phrase('Viewer') }}</th></tr>
 {% for o in rows %}
 <tr>
 <td><b>{{o.patient.name}}</b><small>{{o.patient.patient_id}}</small></td>
 <td>{{o.accession}}</td><td>{{o.proc.name if o.proc else o.procedure}}</td><td>{{o.modality}}</td>
-<td><span class="status-chip status-{{(o.exam_status or 'ORDERED')|lower|replace('_','-')}}">{{o.exam_status or 'ORDERED'}}</span></td>
+<td><span class="status-chip status-{{(o.exam_status or ui_phrase('ORDERED'))|lower|replace('_','-')}}">{{o.exam_status or ui_phrase('ORDERED')}}</span></td>
 <td><b>{{o.pacs_image_count or 0}}</b></td>
-<td><span class="pacs-chip pacs-{{(o.pacs_status or 'WAITING')|lower|replace('_','-')}}">{{o.pacs_status or 'WAITING'}}</span></td>
+<td><span class="pacs-chip pacs-{{(o.pacs_status or ui_phrase('WAITING'))|lower|replace('_','-')}}">{{ui_phrase(o.pacs_status or 'WAITING')}}</span></td>
 <td>{{o.pacs_last_seen_at or '-'}}</td>
-<td>{% if o.pacs_study_id %}<a class="btn btn-sm" href="{{case_pacs_url(o)}}" target="_blank">Viewer</a>{% else %}-{% endif %}</td>
+<td>{% if o.pacs_study_id %}<a class="btn btn-sm" href="{{case_pacs_url(o)}}" target="_blank">{{ ui_phrase('Viewer') }}</a>{% else %}-{% endif %}</td>
 </tr>
 {% endfor %}
 </table>

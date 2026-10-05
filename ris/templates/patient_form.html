@@ -1,17 +1,17 @@
 {% extends "base.html" %}{% block page_title %}Register Patient{% endblock %}
 {% block subtitle %}Patient ID is generated automatically and remains permanent{% endblock %}
-{% block content %}{% if duplicates %}<div class="panel duplicate-warning"><h3>⚠ Possible duplicate patient / احتمال تكرار المريض</h3>{% for d in duplicates %}<p><b>{{d.name}}</b> — {{d.patient_id}} — {{d.dob}} — {{d.phone}}</p>{% endfor %}<p>Review the existing patient before creating a new record.</p></div>{% endif %}<form method="post" class="panel form-card">{% if duplicates %}<input type="hidden" name="confirm_duplicate" value="1">{% endif %}<div class="notice">Patient ID will be created automatically after Save. Reception never types it.</div>
+{% block content %}{% if duplicates %}<div class="panel duplicate-warning"><h3>{{ ui_phrase('⚠ Possible duplicate patient / احتمال تكرار المريض') }}</h3>{% for d in duplicates %}<p><b>{{d.name}}</b> — {{d.patient_id}} — {{d.dob}} — {{d.phone}}</p>{% endfor %}<p>Review the existing patient before creating a new record.</p></div>{% endif %}<form method="post" class="panel form-card">{% if duplicates %}<input type="hidden" name="confirm_duplicate" value="1">{% endif %}<div class="notice">Patient ID will be created automatically after Save. Reception never types it.</div>
 <div class="grid2">
 <div><label>Full Name *</label><input name="name" required value="{{(form_data or {}).get('name','')}}"></div><div class="form-group">
 <label>{{'الاسم بالإنجليزية / Worklist Name' if ui_lang=='ar' else 'English / Worklist Name'}}</label>
 <input id="worklist_name" name="worklist_name" value="{{(form_data or {}).get('worklist_name', patient.worklist_name if patient is defined and patient else '')}}" placeholder="MOHAMED AHMED ALI">
 <small>{{'يستخدم في DICOM Worklist ويمكن تعديله قبل الحفظ.' if ui_lang=='ar' else 'Used in DICOM Worklist and can be edited before saving.'}}</small>
 </div>
-<div><label>National ID</label><input name="national_id" value="{{(form_data or {}).get('national_id','')}}"></div>
+<div><label>{{ ui_phrase('National ID') }}</label><input name="national_id" value="{{(form_data or {}).get('national_id','')}}"></div>
 {% set age_dob_form=form_data or {} %}{% set age_dob_prefix='' %}{% include '_patient_age_dob_fields.html' %}
-<div><label>Sex</label><select name="sex"><option value="">Select</option><option value="M" {% if (form_data or {}).get('sex')=='M' %}selected{% endif %}>Male</option><option value="F" {% if (form_data or {}).get('sex')=='F' %}selected{% endif %}>Female</option></select></div>
-<div><label>Mobile</label><input name="phone" value="{{(form_data or {}).get('phone','')}}"></div>
-<div><label>Address</label><input name="address" value="{{(form_data or {}).get('address','')}}"></div>
-</div><div class="actions"><button class="btn primary">Save & Continue to Order</button><a class="btn" href="{{url_for('patients')}}">Cancel</a></div><label>Email</label>
+<div><label>{{ ui_phrase('Sex') }}</label><select name="sex"><option value="">{{ ui_phrase('Select') }}</option><option value="M" {% if (form_data or {}).get('sex')=='M' %}selected{% endif %}>{{ ui_phrase('Male') }}</option><option value="F" {% if (form_data or {}).get('sex')=='F' %}selected{% endif %}>{{ ui_phrase('Female') }}</option></select></div>
+<div><label>{{ ui_phrase('Mobile') }}</label><input name="phone" value="{{(form_data or {}).get('phone','')}}"></div>
+<div><label>{{ ui_phrase('Address') }}</label><input name="address" value="{{(form_data or {}).get('address','')}}"></div>
+</div><div class="actions"><button class="btn primary">Save & Continue to Order</button><a class="btn" href="{{url_for('patients')}}">{{ ui_phrase('Cancel') }}</a></div><label>{{ ui_phrase('Email') }}</label>
 <input type="email" name="email" value="{{(form_data or {}).get('email', patient.email if patient is defined and patient else '')}}" placeholder="patient@example.com">
 </form>{% endblock %}

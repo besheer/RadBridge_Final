@@ -3,12 +3,12 @@
 {% block subtitle %}Radiology management reports with CSV / Excel / PDF export{% endblock %}
 {% block content %}
 <div class="panel"><form method="get" class="finance-filters">
-<div><label>Report</label><select name="report">{% for k,n in reports.items() %}<option value="{{k}}" {% if k==report_key %}selected{% endif %}>{{n}}</option>{% endfor %}</select></div>
-<div><label>From</label><input type="date" name="start" value="{{dataset.filters.start}}"></div><div><label>To</label><input type="date" name="end" value="{{dataset.filters.end}}"></div>
-<div><label>Branch</label><select name="branch_id"><option value="">All</option>{% for b in branches %}<option value="{{b.id}}" {% if dataset.filters.branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div>
-<div><label>Payer</label><select name="contract_id"><option value="">All</option>{% for c in contracts %}<option value="{{c.id}}" {% if dataset.filters.contract_id==c.id %}selected{% endif %}>{{c.name}}</option>{% endfor %}</select></div>
-<div><label>Device</label><select name="device_id"><option value="">All</option>{% for d in devices %}<option value="{{d.id}}" {% if dataset.filters.device_id==d.id %}selected{% endif %}>{{d.modality}} — {{d.name}}</option>{% endfor %}</select></div>
-<div><label>Modality</label><select name="modality"><option value="">All</option>{% for m in modalities %}<option value="{{m}}" {% if dataset.filters.modality==m %}selected{% endif %}>{{m}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Report') }}</label><select name="report">{% for k,n in reports.items() %}<option value="{{k}}" {% if k==report_key %}selected{% endif %}>{{n}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('From') }}</label><input type="date" name="start" value="{{dataset.filters.start}}"></div><div><label>{{ ui_phrase('To') }}</label><input type="date" name="end" value="{{dataset.filters.end}}"></div>
+<div><label>{{ ui_phrase('Branch') }}</label><select name="branch_id"><option value="">{{ ui_phrase('All') }}</option>{% for b in branches %}<option value="{{b.id}}" {% if dataset.filters.branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Payer') }}</label><select name="contract_id"><option value="">{{ ui_phrase('All') }}</option>{% for c in contracts %}<option value="{{c.id}}" {% if dataset.filters.contract_id==c.id %}selected{% endif %}>{{c.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Device') }}</label><select name="device_id"><option value="">{{ ui_phrase('All') }}</option>{% for d in devices %}<option value="{{d.id}}" {% if dataset.filters.device_id==d.id %}selected{% endif %}>{{d.modality}} — {{d.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Modality') }}</label><select name="modality"><option value="">{{ ui_phrase('All') }}</option>{% for m in modalities %}<option value="{{m}}" {% if dataset.filters.modality==m %}selected{% endif %}>{{m}}</option>{% endfor %}</select></div>
 <div><button class="btn primary">Run Report</button></div></form></div>
 
 <div class="finance-kpis">{% for k,v in dataset.kpis.items() %}<div class="kpi-card"><small>{{k}}</small><strong>{% if k=='Cases' %}{{v|int}}{% else %}{{"%.2f"|format(v)}}{% endif %}</strong></div>{% endfor %}</div>
@@ -16,7 +16,7 @@
 <div class="panel"><div class="finance-report-head"><div><h3>{{dataset.title}}</h3><small>{{dataset.filters.start}} → {{dataset.filters.end}}</small></div>
 <div class="export-actions">
 {% set qs='report='~report_key~'&start='~dataset.filters.start~'&end='~dataset.filters.end~('&branch_id='~dataset.filters.branch_id if dataset.filters.branch_id else '')~('&contract_id='~dataset.filters.contract_id if dataset.filters.contract_id else '')~('&device_id='~dataset.filters.device_id if dataset.filters.device_id else '')~('&modality='~dataset.filters.modality if dataset.filters.modality else '') %}
-<a class="btn" href="{{url_for('financial_center_export',fmt='csv')}}?{{qs}}">CSV</a><a class="btn" href="{{url_for('financial_center_export',fmt='xlsx')}}?{{qs}}">Excel</a><a class="btn" href="{{url_for('financial_center_export',fmt='pdf')}}?{{qs}}">PDF</a><a class="btn" href="{{url_for('financial_entries')}}">Finance Entries</a>
+<a class="btn" href="{{url_for('financial_center_export',fmt='csv')}}?{{qs}}">CSV</a><a class="btn" href="{{url_for('financial_center_export',fmt='xlsx')}}?{{qs}}">Excel</a><a class="btn" href="{{url_for('financial_center_export',fmt='pdf')}}?{{qs}}">PDF</a><a class="btn" href="{{url_for('financial_entries')}}">{{ ui_phrase('Finance Entries') }}</a>
 </div></div>
 <div class="table-wrap"><table><thead><tr>{% for h in dataset.headers %}<th>{{h}}</th>{% endfor %}</tr></thead><tbody>
 {% for row in dataset.rows %}<tr>{% for x in row %}<td>{{x}}</td>{% endfor %}</tr>{% else %}<tr><td colspan="{{dataset.headers|length or 1}}" class="empty">No data.</td></tr>{% endfor %}

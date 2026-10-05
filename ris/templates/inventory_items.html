@@ -7,9 +7,9 @@
 <input name="category" placeholder="Contrast / Cannula / General"><input name="unit" value="EA" placeholder="EA / ML / BOX">
 <input name="default_cost" type="number" min="0" step="0.01" value="0">
 <label><input type="checkbox" name="track_lot" value="1"> Track Lot / Batch</label>
-<label><input type="checkbox" name="track_expiry" value="1"> Track Expiry</label>
-<button class="btn primary">Add Item</button>
+<label><input type="checkbox" name="track_expiry" value="1"> {{ ui_phrase('Track Expiry') }}</label>
+<button class="btn primary">{{ ui_phrase('Add Item') }}</button>
 <form method="post" action="{{url_for('inventory_migrate_legacy_items')}}"><button class="btn">Copy Existing Consumable Catalog</button></form>
 </form>
-<div class="panel"><h3>Items</h3>{% for x in rows %}<div class="inventory-row"><b>{{x.code}} · {{x.name}}</b><small>{{x.category}} · {{x.unit}} · Cost {{x.default_cost}} · Lot {{'Yes' if x.track_lot else 'No'}} · Expiry {{'Yes' if x.track_expiry else 'No'}}</small></div>{% endfor %}</div>
+<div class="panel"><h3>{{ ui_phrase('Items') }}</h3>{% for x in rows %}<div class="inventory-row"><b>{{x.code}} · {{x.name}}</b><small>{{x.category}} · {{x.unit}} · Cost {{x.default_cost}} · Lot {{ui_phrase('Yes') if x.track_lot else ui_phrase('No')}} · Expiry {{ui_phrase('Yes') if x.track_expiry else ui_phrase('No')}}</small></div>{% endfor %}</div>
 </div>{% endblock %}

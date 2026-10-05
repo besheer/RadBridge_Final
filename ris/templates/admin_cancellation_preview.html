@@ -12,11 +12,11 @@
   <div style="display:flex;gap:12px;flex-wrap:wrap">
     <div class="panel" style="min-width:300px">
       <h3>Order Preview</h3>
-      <label>Order ID</label>
+      <label>{{ ui_phrase('Order ID') }}</label>
       <input id="rb-preview-order-id"
              type="number"
              min="1"
-             placeholder="Order ID">
+             placeholder="{{ ui_phrase('Order ID') }}">
       <button type="button"
               onclick="rbOpenOrderPreview()">
         Preview Order
@@ -57,15 +57,15 @@
       <strong>Order:</strong>
       {{ preview.order.id }}
       |
-      <strong>Accession:</strong>
+      <strong>{{ ui_phrase('Accession:') }}</strong>
       {{ preview.order.accession or '—' }}
     </p>
 
     <table>
       <tr>
         <th>Domain</th>
-        <th>Status</th>
-        <th>Details</th>
+        <th>{{ ui_phrase('Status') }}</th>
+        <th>{{ ui_phrase('Details') }}</th>
       </tr>
 
       <tr>
@@ -85,14 +85,14 @@
           {% endif %}
         </td>
         <td>
-          Study {{ preview.pacs.study_id or '—' }};
+          {{ ui_phrase('Study') }} {{ preview.pacs.study_id or '—' }};
           images {{ preview.pacs.image_count }};
           status {{ preview.pacs.status or '—' }}
         </td>
       </tr>
 
       <tr>
-        <td>Reports</td>
+        <td>{{ ui_phrase('Reports') }}</td>
         <td>
           {% if preview.reports.count %}
             PRESENT
@@ -131,7 +131,7 @@
 
     <table>
       <tr>
-        <th>Action</th>
+        <th>{{ ui_phrase('Action') }}</th>
         <th>Current State</th>
       </tr>
       <tr>
@@ -189,7 +189,7 @@
       </p>
 
       <table>
-        <tr><th>Sequence</th><th>Stage</th><th>State</th><th>Future confirmation</th></tr>
+        <tr><th>Sequence</th><th>Stage</th><th>{{ ui_phrase('State') }}</th><th>Future confirmation</th></tr>
         {% for stage in preview.full_case_orchestration.stages %}
         <tr>
           <td>{{ stage.sequence }}</td>
@@ -258,7 +258,7 @@
               <input type="text" name="confirm_accession" autocomplete="off" required>
             </label>
             <label>
-              Reason
+              {{ ui_phrase('Reason') }}
               <textarea name="reason" minlength="5" required></textarea>
             </label>
             <button type="submit" class="danger">Execute Full Case Deletion</button>
@@ -284,7 +284,7 @@
   </p>
 
   <p>
-    <strong>Accession:</strong>
+    <strong>{{ ui_phrase('Accession:') }}</strong>
     {{ preview.order.accession }}
   </p>
 
@@ -309,7 +309,7 @@
     </label>
 
     <label>
-      Reason
+      {{ ui_phrase('Reason') }}
       <textarea
         name="reason"
         minlength="5"
@@ -334,7 +334,7 @@
       files, leases, workflow rows, PACS images, or RIS case data.
     </p>
     <table>
-      <tr><th>Check</th><th>Result</th></tr>
+      <tr><th>{{ ui_phrase('Check') }}</th><th>{{ ui_phrase('Result') }}</th></tr>
       <tr><td>Report rows</td><td>{{ preview.reports_only.report_count }}</td></tr>
       <tr><td>ReportVersion rows</td><td>{{ preview.reports_only.version_count }}</td></tr>
       <tr><td>CoordinatorTask rows</td><td>{{ preview.reports_only.coordinator_task_count }}</td></tr>
@@ -349,7 +349,7 @@
           {% if preview.reports_only.can_delete_reports_only %}
             READY — SUPER ADMIN CONFIRMATION REQUIRED
           {% else %}
-            BLOCKED
+            {{ ui_phrase('BLOCKED') }}
           {% endif %}
         </td>
       </tr>
@@ -403,7 +403,7 @@
             >
           </label>
           <label>
-            Reason
+            {{ ui_phrase('Reason') }}
             <textarea
               name="reason"
               minlength="5"
@@ -420,7 +420,7 @@
     {% if preview.reports_only.storage.artifacts %}
       <h4>Report artifact inventory</h4>
       <table>
-        <tr><th>Path</th><th>Exists</th><th>Inside case root</th></tr>
+        <tr><th>{{ ui_phrase('Path') }}</th><th>Exists</th><th>Inside case root</th></tr>
         {% for artifact in preview.reports_only.storage.artifacts %}
         <tr>
           <td>{{ artifact.path }}</td>
@@ -446,7 +446,7 @@
       report files, attachment/document files, and audit history. Reports must already be zero.
     </p>
     <table>
-      <tr><th>Check</th><th>Result</th></tr>
+      <tr><th>{{ ui_phrase('Check') }}</th><th>{{ ui_phrase('Result') }}</th></tr>
       <tr><td>Patient preserved</td><td>{{ 'YES' if preview.ris_case_only.patient_preserved else 'NO' }}</td></tr>
       <tr><td>PACS images preserved</td><td>{{ 'YES' if preview.ris_case_only.pacs_images_preserved else 'NO' }}</td></tr>
       <tr><td>Audit history preserved</td><td>{{ 'YES' if preview.ris_case_only.audit_history_preserved else 'NO' }}</td></tr>
@@ -460,7 +460,7 @@
           {% if preview.ris_case_only.can_prepare_execution %}
             READY — EXECUTION REQUIRES EXACT ACCESSION + REASON
           {% else %}
-            BLOCKED
+            {{ ui_phrase('BLOCKED') }}
           {% endif %}
         </td>
       </tr>
@@ -489,7 +489,7 @@
             <input type="text" name="confirm_accession" autocomplete="off" required>
           </label>
           <label>
-            Reason
+            {{ ui_phrase('Reason') }}
             <textarea name="reason" minlength="5" required></textarea>
           </label>
           <button type="submit" class="danger">Delete RIS Case Data Only</button>
@@ -514,7 +514,7 @@
         <th>Rows</th>
         <th>Classification</th>
         <th>Future action</th>
-        <th>State</th>
+        <th>{{ ui_phrase('State') }}</th>
       </tr>
       {% for row in preview.ris_case_only.rows %}
       <tr>
@@ -523,7 +523,7 @@
         <td>{{ 'REVIEW' if row.count is none else row.count }}</td>
         <td>{{ row.classification }}</td>
         <td>{{ row.action }}</td>
-        <td>{{ 'BLOCK' if row.blocking else 'OK' }}</td>
+        <td>{{ 'BLOCK' if row.blocking else ui_phrase('OK') }}</td>
       </tr>
       {% endfor %}
     </table>
@@ -563,9 +563,9 @@
 
     <table>
       <tr>
-        <th>Orders</th>
-        <th>Appointments</th>
-        <th>Reports</th>
+        <th>{{ ui_phrase('Orders') }}</th>
+        <th>{{ ui_phrase('Appointments') }}</th>
+        <th>{{ ui_phrase('Reports') }}</th>
         <th>PACS Cases</th>
         <th>Active Cases</th>
       </tr>
@@ -578,16 +578,16 @@
       </tr>
     </table>
 
-    <h3>Orders</h3>
+    <h3>{{ ui_phrase('Orders') }}</h3>
 
     <table>
       <tr>
         <th>ID</th>
-        <th>Accession</th>
-        <th>Status</th>
+        <th>{{ ui_phrase('Accession') }}</th>
+        <th>{{ ui_phrase('Status') }}</th>
         <th>PACS Study</th>
-        <th>Images</th>
-        <th>Reports</th>
+        <th>{{ ui_phrase('Images') }}</th>
+        <th>{{ ui_phrase('Reports') }}</th>
       </tr>
 
       {% for row in preview.orders %}

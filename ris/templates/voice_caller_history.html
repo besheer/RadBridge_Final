@@ -4,7 +4,7 @@
 
 <div class="panel">
 
-<h2>Caller History / سجل المتصل</h2>
+<h2>{{ ui_phrase('Caller History / سجل المتصل') }}</h2>
 
 <p>
 Reference:
@@ -21,7 +21,7 @@ Phone:
 <div class="grid3">
 
 <div>
-<small>Status</small>
+<small>{{ ui_phrase('Status') }}</small>
 <div><strong>{{ control.status }}</strong></div>
 </div>
 
@@ -49,11 +49,11 @@ Phone:
 
 <thead>
 <tr>
-<th>Reference</th>
-<th>Date</th>
-<th>Status</th>
+<th>{{ ui_phrase('Reference') }}</th>
+<th>{{ ui_phrase('Date') }}</th>
+<th>{{ ui_phrase('Status') }}</th>
 <th>Spam</th>
-<th>Reason</th>
+<th>{{ ui_phrase('Reason') }}</th>
 </tr>
 </thead>
 
@@ -76,7 +76,7 @@ Phone:
 {% if r.spam_flag %}
 🚩 Yes
 {% else %}
-No
+{{ ui_phrase('No') }}
 {% endif %}
 </td>
 

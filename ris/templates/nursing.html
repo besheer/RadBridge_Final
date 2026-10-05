@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
-{% block page_title %}Nursing & Patient Preparation{% endblock %}
+{% block page_title %}{{ ui_phrase('Nursing & Patient Preparation') }}{% endblock %}
 {% block subtitle %}
-Clinical preparation, history, attachments and consumables · No report access
+{{ ui_phrase('Clinical preparation, history, attachments and consumables · No report access') }}
 {% endblock %}
 
 {% block content %}
@@ -54,10 +54,10 @@ Clinical preparation, history, attachments and consumables · No report access
 {% endfor %}
 
 <div class="nurse-summary">
-  <div class="nurse-stat">Open cases<strong>{{ns.total}}</strong></div>
-  <div class="nurse-stat">Preparation pending<strong>{{ns.pending}}</strong></div>
-  <div class="nurse-stat">Consumables confirmed<strong>{{ns.confirmed}}</strong></div>
-  <div class="nurse-stat">Images received<strong>{{ns.images}}</strong></div>
+  <div class="nurse-stat">{{ ui_phrase('Open cases') }}<strong>{{ns.total}}</strong></div>
+  <div class="nurse-stat">{{ ui_phrase('Preparation pending') }}<strong>{{ns.pending}}</strong></div>
+  <div class="nurse-stat">{{ ui_phrase('Consumables confirmed') }}<strong>{{ns.confirmed}}</strong></div>
+  <div class="nurse-stat">{{ ui_phrase('Images received') }}<strong>{{ns.images}}</strong></div>
 </div>
 
 <form method="get" class="panel global-screen-filter">
@@ -66,13 +66,13 @@ Clinical preparation, history, attachments and consumables · No report access
     <input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
     <input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
     <select name="priority">
-      <option value="">Priority</option>
-      <option>ROUTINE</option><option>URGENT</option><option>STAT</option>
+      <option value="">{{ ui_phrase('Priority') }}</option>
+      <option value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option><option value="URGENT">{{ ui_phrase('URGENT') }}</option><option value="STAT">{{ ui_phrase('STAT') }}</option>
     </select>
   </div>
   <div class="actions">
-    <button class="btn small primary">Filter</button>
-    <a class="btn small" href="{{request.path}}">Clear</a>
+    <button class="btn small primary">{{ ui_phrase('Filter') }}</button>
+    <a class="btn small" href="{{request.path}}">{{ ui_phrase('Clear') }}</a>
   </div>
 </form>
 {% if saved_views is defined %}
@@ -90,13 +90,13 @@ Clinical preparation, history, attachments and consumables · No report access
       <form method="post"
             action="{{url_for('saved_view_set_default',page_key=saved_view_page,view_id=v.id)}}"
             style="display:inline">
-        <button class="btn small" title="Set default">☆</button>
+        <button class="btn small" title="{{ ui_phrase('Set default') }}">☆</button>
       </form>
 
       <form method="post"
             action="{{url_for('saved_view_delete',page_key=saved_view_page,view_id=v.id)}}"
             style="display:inline"
-            onsubmit="return confirm('Delete saved view?')">
+            onsubmit="return confirm(window.rbUi('Delete saved view?'))">
         <button class="btn small">×</button>
       </form>
     {% endfor %}
@@ -124,7 +124,7 @@ Clinical preparation, history, attachments and consumables · No report access
 {% endif %}
 
 
-<h2>Patient Preparation Queue</h2>
+<h2>{{ ui_phrase('Patient Preparation Queue') }}</h2>
 
 <div class="nurse-grid">
 {% for o,d,c in rows %}
@@ -136,7 +136,7 @@ Clinical preparation, history, attachments and consumables · No report access
            alt=""
            loading="lazy">
     {% else %}
-      <div class="nurse-thumb-empty">No PACS image received</div>
+      <div class="nurse-thumb-empty">{{ ui_phrase('No PACS image received') }}</div>
     {% endif %}
 
     <div class="nurse-body">
@@ -145,38 +145,38 @@ Clinical preparation, history, attachments and consumables · No report access
           <strong>{{o.patient.name}}</strong>
           <small>{{o.patient.patient_id}} · {{o.accession}}</small>
         </div>
-        <span class="status-chip status-{{st|lower|replace('_','-')}}">{{st}}</span>
+        <span class="status-chip status-{{st|lower|replace('_','-')}}">{{ui_phrase(st)}}</span>
       </div>
 
       <div class="nurse-meta">
-        <div><small>Exam</small>{{o.proc.name if o.proc else o.procedure}}</div>
-        <div><small>Priority</small>{{o.priority or 'ROUTINE'}}</div>
-        <div><small>Consumables</small>{{'Confirmed' if c else 'Pending'}} · {{d}} default</div>
-        <div><small>PACS</small>{{o.pacs_status or 'WAITING'}} · {{o.pacs_image_count or 0}} image(s)</div>
+        <div><small>{{ ui_phrase('Exam') }}</small>{{o.proc.name if o.proc else o.procedure}}</div>
+        <div><small>{{ ui_phrase('Priority') }}</small>{{o.priority or ui_phrase('ROUTINE')}}</div>
+        <div><small>{{ ui_phrase('Consumables') }}</small>{{ui_phrase('Confirmed') if c else ui_phrase('Pending')}} · {{d}} {{ ui_phrase('default') }}</div>
+        <div><small>PACS</small>{{ui_phrase(o.pacs_status or 'WAITING')}} · {{o.pacs_image_count or 0}} {{ ui_phrase('image(s)') }}</div>
       </div>
 
       <div class="nurse-actions">
         <a class="btn primary" href="{{url_for('nursing_case',order_id=o.id)}}">
-          Open Preparation
+          {{ ui_phrase('Open Preparation') }}
         </a>
 
         {% if image_urls.get(o.id) %}
           <a class="btn" href="{{image_urls.get(o.id)}}"
-             target="_blank" rel="noopener noreferrer">🖼 Open Images</a>
+             target="_blank" rel="noopener noreferrer">{{ ui_phrase('🖼 Open Images') }}</a>
         {% endif %}
 
         <a class="btn" href="{{url_for('order_clinical_notes',order_id=o.id)}}">
-          📝 History & Notes
+          {{ ui_phrase('📝 History & Notes') }}
         </a>
 
         <a class="btn" href="{{url_for('order_attachments',order_id=o.id)}}">
-          📎 Attachments ({{attachment_counts.get(o.id,0)}})
+          {{ ui_phrase('📎 Attachments (') }}{{attachment_counts.get(o.id,0)}})
         </a>
       </div>
     </div>
   </article>
 {% else %}
-  <div class="panel empty">No open nursing cases.</div>
+  <div class="panel empty">{{ ui_phrase('No open nursing cases.') }}</div>
 {% endfor %}
 </div>
 {% endblock %}

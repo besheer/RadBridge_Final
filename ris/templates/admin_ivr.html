@@ -84,25 +84,25 @@
 
             <div class="ivr-flow-node">
               <div class="ivr-key blue">1</div>
-              <strong>Booking</strong>
+              <strong>{{ ui_phrase('Booking') }}</strong>
               <small>Voice Booking</small>
             </div>
 
             <div class="ivr-flow-node">
               <div class="ivr-key green">2</div>
-              <strong>Reports</strong>
+              <strong>{{ ui_phrase('Reports') }}</strong>
               <small>Patient Reports</small>
             </div>
 
             <div class="ivr-flow-node">
               <div class="ivr-key purple">3</div>
               <strong>Complaints</strong>
-              <small>Communications</small>
+              <small>{{ ui_phrase('Communications') }}</small>
             </div>
 
             <div class="ivr-flow-node">
               <div class="ivr-key orange">0</div>
-              <strong>Reception</strong>
+              <strong>{{ ui_phrase('Reception') }}</strong>
               <small>Operator</small>
             </div>
 
@@ -131,7 +131,7 @@
           <a class="ivr-action" href="/telephony/calls">
             <div class="ivr-action-icon">☏</div>
             <div>
-              <strong>Call History</strong>
+              <strong>{{ ui_phrase('Call History') }}</strong>
               <small>Review existing call logs</small>
             </div>
           </a>
@@ -147,7 +147,7 @@
           <a class="ivr-action" href="/communications">
             <div class="ivr-action-icon">✉</div>
             <div>
-              <strong>Communications</strong>
+              <strong>{{ ui_phrase('Communications') }}</strong>
               <small>Patient communication queue</small>
             </div>
           </a>
@@ -176,7 +176,7 @@
             <span>●</span>
             <strong>IVR Control Plane</strong>
           </div>
-          <span class="ivr-health-ok">Ready</span>
+          <span class="ivr-health-ok">{{ ui_phrase('Ready') }}</span>
         </div>
 
         <div class="ivr-health-row">
@@ -213,9 +213,9 @@
         <table class="ivr-table">
           <thead>
             <tr>
-              <th>Caller</th>
-              <th>Extension</th>
-              <th>Status</th>
+              <th>{{ ui_phrase('Caller') }}</th>
+              <th>{{ ui_phrase('Extension') }}</th>
+              <th>{{ ui_phrase('Status') }}</th>
             </tr>
           </thead>
 

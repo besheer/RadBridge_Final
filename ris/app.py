@@ -5194,6 +5194,18 @@ def inject_pacs_helpers():
         'case_pacs_url': case_pacs_url,
     }
 
+def ui_phrase(text):
+    from ui_localization import translate
+    return translate(text, current_ui_language())
+
+
+_flask_flash = flash
+
+def flash(message, category='message'):
+    # Structured workflow messages keep their evidence payload intact.
+    return _flask_flash(ui_phrase(message) if isinstance(message, str) else message, category)
+
+
 @app.context_processor
 def template_globals():
     lang=current_ui_language()
@@ -5209,6 +5221,9 @@ def template_globals():
         't':ui_text,
         'status_label':status_text,
         'ui_lang':lang,
+        'ui_phrase':lambda text: __import__('ui_localization').translate(text, lang),
+        'ui_role':lambda role: __import__('ui_localization').role_label(role, lang),
+        'ui_client_catalog':__import__('ui_localization').client_catalog(lang),
         'ui_dir':'rtl' if lang=='ar' else 'ltr',
         'user_profile':profile,
         'ribbon_actions':ribbon_actions_for_user(u,'GLOBAL') if u else [],

@@ -36,7 +36,7 @@
     </div>
 
     <div class="metric">
-      <small>Workflow</small>
+      <small>{{ ui_phrase('Workflow') }}</small>
       <b>{{edit_row.workflow_mode}}</b>
     </div>
 
@@ -136,13 +136,13 @@
 <select name="portal_type">
 <option value="WEB" {% if edit_row and edit_row.portal_type=='WEB' %}selected{% endif %}>WEB</option>
 <option value="API" {% if edit_row and edit_row.portal_type=='API' %}selected{% endif %}>API</option>
-<option value="EMAIL" {% if edit_row and edit_row.portal_type=='EMAIL' %}selected{% endif %}>EMAIL</option>
+<option value="EMAIL" {% if edit_row and edit_row.portal_type=='EMAIL' %}selected{% endif %}>{{ ui_phrase('EMAIL') }}</option>
 <option value="HYBRID" {% if edit_row and edit_row.portal_type=='HYBRID' %}selected{% endif %}>HYBRID</option>
 </select>
 </div>
 
 <div>
-<label>Username</label>
+<label>{{ ui_phrase('Username') }}</label>
 <input name="username"
        value="{{edit_row.username if edit_row else ''}}">
 </div>
@@ -163,11 +163,11 @@
 <div>
 <label>Workflow Mode</label>
 <select name="workflow_mode">
-<option value="MANUAL" {% if edit_row and edit_row.workflow_mode=='MANUAL' %}selected{% endif %}>Manual</option>
+<option value="MANUAL" {% if edit_row and edit_row.workflow_mode=='MANUAL' %}selected{% endif %}>{{ ui_phrase('Manual') }}</option>
 <option value="BROWSER" {% if edit_row and edit_row.workflow_mode=='BROWSER' %}selected{% endif %}>Browser Automation</option>
 <option value="API" {% if edit_row and edit_row.workflow_mode=='API' %}selected{% endif %}>API</option>
-<option value="EMAIL" {% if edit_row and edit_row.workflow_mode=='EMAIL' %}selected{% endif %}>Email</option>
-<option value="HYBRID" {% if edit_row and edit_row.workflow_mode=='HYBRID' %}selected{% endif %}>Hybrid</option>
+<option value="EMAIL" {% if edit_row and edit_row.workflow_mode=='EMAIL' %}selected{% endif %}>{{ ui_phrase('Email') }}</option>
+<option value="HYBRID" {% if edit_row and edit_row.workflow_mode=='HYBRID' %}selected{% endif %}>{{ ui_phrase('Hybrid') }}</option>
 </select>
 </div>
 
@@ -178,7 +178,7 @@
 <label>
 <input type="checkbox" name="enabled" value="1"
 {% if edit_row and edit_row.enabled %}checked{% endif %}>
-Enabled
+{{ ui_phrase('Enabled') }}
 </label>
 
 <label>
@@ -196,7 +196,7 @@ Telegram
 <label>
 <input type="checkbox" name="email_enabled" value="1"
 {% if edit_row and edit_row.email_enabled %}checked{% endif %}>
-Email
+{{ ui_phrase('Email') }}
 </label>
 
 <label>
@@ -218,7 +218,7 @@ else 'Training / Portal Instructions'}}
 
 <textarea name="training_notes"
           rows="7"
-          placeholder="1. Open portal&#10;2. Login&#10;3. Search member&#10;4. Create approval request...">{{edit_row.training_notes if edit_row else ''}}</textarea>
+          placeholder="{{ ui_phrase('1. Open portal\n2. Login\n3. Search member\n4. Create approval request...') }}">{{edit_row.training_notes if edit_row else ''}}</textarea>
 </div>
 
 
@@ -245,48 +245,42 @@ else 'Training / Portal Instructions'}}
       <input type="checkbox"
              name="step_login"
              value="1" {% if '"LOGIN"' in saved_steps %}checked{% endif %}>
-      1. 🔐 LOGIN
-      — {{'تسجيل الدخول' if ui_lang=='ar' else 'Portal Login'}}
+      {{ ui_phrase('1. 🔐 LOGIN\n      —') }} {{'تسجيل الدخول' if ui_lang=='ar' else 'Portal Login'}}
     </label>
 
     <label style="display:block;margin:7px 0">
       <input type="checkbox"
              name="step_search_member"
              value="1" {% if '"SEARCH_MEMBER"' in saved_steps %}checked{% endif %}>
-      2. 🔎 SEARCH MEMBER
-      — {{'البحث عن المريض / العضوية' if ui_lang=='ar' else 'Find Member / Patient'}}
+      {{ ui_phrase('2. 🔎 SEARCH MEMBER\n      —') }} {{'البحث عن المريض / العضوية' if ui_lang=='ar' else 'Find Member / Patient'}}
     </label>
 
     <label style="display:block;margin:7px 0">
       <input type="checkbox"
              name="step_create_request"
              value="1" {% if '"CREATE_REQUEST"' in saved_steps %}checked{% endif %}>
-      3. 📝 CREATE REQUEST
-      — {{'إنشاء طلب الموافقة' if ui_lang=='ar' else 'Create Approval Request'}}
+      {{ ui_phrase('3. 📝 CREATE REQUEST\n      —') }} {{'إنشاء طلب الموافقة' if ui_lang=='ar' else 'Create Approval Request'}}
     </label>
 
     <label style="display:block;margin:7px 0">
       <input type="checkbox"
              name="step_upload_documents"
              value="1" {% if '"UPLOAD_DOCUMENTS"' in saved_steps %}checked{% endif %}>
-      4. 📎 UPLOAD DOCUMENTS
-      — {{'رفع المستندات' if ui_lang=='ar' else 'Upload Documents'}}
+      {{ ui_phrase('4. 📎 UPLOAD DOCUMENTS\n      —') }} {{'رفع المستندات' if ui_lang=='ar' else 'Upload Documents'}}
     </label>
 
     <label style="display:block;margin:7px 0">
       <input type="checkbox"
              name="step_submit"
              value="1" {% if '"SUBMIT"' in saved_steps %}checked{% endif %}>
-      5. 📤 SUBMIT
-      — {{'إرسال الطلب' if ui_lang=='ar' else 'Submit Request'}}
+      {{ ui_phrase('5. 📤 SUBMIT\n      —') }} {{'إرسال الطلب' if ui_lang=='ar' else 'Submit Request'}}
     </label>
 
     <label style="display:block;margin:7px 0">
       <input type="checkbox"
              name="step_check_status"
              value="1" {% if '"CHECK_STATUS"' in saved_steps %}checked{% endif %}>
-      6. 🔄 CHECK STATUS
-      — {{'متابعة حالة الطلب' if ui_lang=='ar' else 'Check Approval Status'}}
+      {{ ui_phrase('6. 🔄 CHECK STATUS\n      —') }} {{'متابعة حالة الطلب' if ui_lang=='ar' else 'Check Approval Status'}}
     </label>
 
     <label style="display:block;margin:7px 0">
@@ -373,9 +367,9 @@ else 'Login Notes'}}
 <tr>
 <th>{{'الشركة' if ui_lang=='ar' else 'Company'}}</th>
 <th>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</th>
-<th>Mode</th>
+<th>{{ ui_phrase('Mode') }}</th>
 <th>Automation</th>
-<th>Status</th>
+<th>{{ ui_phrase('Status') }}</th>
 <th>Last Test</th>
 <th></th>
 </tr>
@@ -438,7 +432,7 @@ else 'Login Notes'}}
       action="{{url_for('admin_insurance_approval_toggle',portal_id=r.id)}}">
 
 <button class="btn small">
-{{'Disable' if r.enabled else 'Enable'}}
+{{ui_phrase('Disable') if r.enabled else ui_phrase('Enable')}}
 </button>
 
 </form>

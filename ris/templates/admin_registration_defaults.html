@@ -2,18 +2,18 @@
 {% block page_title %}Registration Defaults Administration{% endblock %}
 {% block content %}
 <form method="get" class="panel actions">
-<select name="scope"><option value="USER" {% if scope!='GLOBAL' %}selected{% endif %}>User</option><option value="GLOBAL" {% if scope=='GLOBAL' %}selected{% endif %}>Global Default</option></select>
+<select name="scope"><option value="USER" {% if scope!='GLOBAL' %}selected{% endif %}>{{ ui_phrase('User') }}</option><option value="GLOBAL" {% if scope=='GLOBAL' %}selected{% endif %}>Global Default</option></select>
 <select name="user_id"><option value="">Select user</option>{% for u in users %}<option value="{{u.id}}" {% if selected_user_id==u.id %}selected{% endif %}>{{u.full_name or u.username}}</option>{% endfor %}</select>
-<button class="btn">Load</button></form>
+<button class="btn">{{ ui_phrase('Load') }}</button></form>
 <form method="post" class="panel grid2">
 <input type="hidden" name="scope" value="{{scope}}"><input type="hidden" name="user_id" value="{{selected_user_id or ''}}">
 <h3 class="span2">{{'Global Registration Defaults' if scope=='GLOBAL' else 'User Registration Defaults'}}</h3>
-<div><label>Default Branch</label><select name="default_branch_id"><option value="">No default</option>{% for b in branches %}<option value="{{b.id}}" {% if row and row.default_branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Default Branch') }}</label><select name="default_branch_id"><option value="">{{ ui_phrase('No default') }}</option>{% for b in branches %}<option value="{{b.id}}" {% if row and row.default_branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div>
 <div><label>Department / Section</label><input name="default_department" value="{{row.default_department if row else ''}}"></div>
-<div><label>Default Examination</label><select name="default_procedure_id"><option value="">None</option>{% for p in procedures %}<option value="{{p.id}}" {% if row and row.default_procedure_id==p.id %}selected{% endif %}>{{p.modality}} · {{p.name}}</option>{% endfor %}</select></div>
-<div><label>Default Contract</label><select name="default_contract_id"><option value="">Cash / None</option>{% for c in contracts %}<option value="{{c.id}}" {% if row and row.default_contract_id==c.id %}selected{% endif %}>{{c.name}}</option>{% endfor %}</select></div>
-<div><label>Default Referrer</label><select name="default_referrer_id"><option value="">None</option>{% for r in referrers %}<option value="{{r.id}}" {% if row and row.default_referrer_id==r.id %}selected{% endif %}>{{r.name}}</option>{% endfor %}</select></div>
-<div><label>Priority</label><select name="default_priority">{% for x in ['ROUTINE','URGENT','STAT'] %}<option {% if (row.default_priority if row else 'ROUTINE')==x %}selected{% endif %}>{{x}}</option>{% endfor %}</select></div>
-<div><label>Patient Mode</label><select name="default_patient_mode"><option value="existing" {% if not row or row.default_patient_mode=='existing' %}selected{% endif %}>Existing</option><option value="new" {% if row and row.default_patient_mode=='new' %}selected{% endif %}>New</option></select></div>
-<div><label>Payment Method</label><select name="default_payment_method"><option value="">None</option>{% for x in ['CASH','VISA','MASTERCARD','WALLET','BANK_TRANSFER'] %}<option {% if row and row.default_payment_method==x %}selected{% endif %}>{{x}}</option>{% endfor %}</select></div>
-<button class="btn primary">Save</button></form>{% endblock %}
+<div><label>{{ ui_phrase('Default Examination') }}</label><select name="default_procedure_id"><option value="">{{ ui_phrase('None') }}</option>{% for p in procedures %}<option value="{{p.id}}" {% if row and row.default_procedure_id==p.id %}selected{% endif %}>{{p.modality}} · {{p.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Default Contract') }}</label><select name="default_contract_id"><option value="">{{ ui_phrase('Cash / None') }}</option>{% for c in contracts %}<option value="{{c.id}}" {% if row and row.default_contract_id==c.id %}selected{% endif %}>{{c.name}}</option>{% endfor %}</select></div>
+<div><label>Default Referrer</label><select name="default_referrer_id"><option value="">{{ ui_phrase('None') }}</option>{% for r in referrers %}<option value="{{r.id}}" {% if row and row.default_referrer_id==r.id %}selected{% endif %}>{{r.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Priority') }}</label><select name="default_priority">{% for x in ['ROUTINE','URGENT','STAT'] %}<option {% if (row.default_priority if row else 'ROUTINE')==x %}selected{% endif %}>{{x}}</option>{% endfor %}</select></div>
+<div><label>Patient Mode</label><select name="default_patient_mode"><option value="existing" {% if not row or row.default_patient_mode=='existing' %}selected{% endif %}>{{ ui_phrase('Existing') }}</option><option value="new" {% if row and row.default_patient_mode=='new' %}selected{% endif %}>{{ ui_phrase('New') }}</option></select></div>
+<div><label>{{ ui_phrase('Payment Method') }}</label><select name="default_payment_method"><option value="">{{ ui_phrase('None') }}</option>{% for x in ['CASH','VISA','MASTERCARD','WALLET','BANK_TRANSFER'] %}<option {% if row and row.default_payment_method==x %}selected{% endif %}>{{x}}</option>{% endfor %}</select></div>
+<button class="btn primary">{{ ui_phrase('Save') }}</button></form>{% endblock %}

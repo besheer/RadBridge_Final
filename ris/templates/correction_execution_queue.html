@@ -23,11 +23,11 @@ Approved correction requests — preview, claim and hold only
   <table>
     <thead>
       <tr>
-        <th>Request</th>
-        <th>Order</th>
-        <th>Issue</th>
+        <th>{{ ui_phrase('Request') }}</th>
+        <th>{{ ui_phrase('Order') }}</th>
+        <th>{{ ui_phrase('Issue') }}</th>
         <th>Requester / Reviewer</th>
-        <th>Ledger</th>
+        <th>{{ ui_phrase('Ledger') }}</th>
       </tr>
     </thead>
 
@@ -106,11 +106,11 @@ Approved correction requests — preview, claim and hold only
   <table>
     <thead>
       <tr>
-        <th>Ledger</th>
-        <th>Order</th>
-        <th>Type</th>
-        <th>Status</th>
-        <th>Claim</th>
+        <th>{{ ui_phrase('Ledger') }}</th>
+        <th>{{ ui_phrase('Order') }}</th>
+        <th>{{ ui_phrase('Type') }}</th>
+        <th>{{ ui_phrase('Status') }}</th>
+        <th>{{ ui_phrase('Claim') }}</th>
         <th>Safety State</th>
       </tr>
     </thead>
@@ -130,7 +130,7 @@ Approved correction requests — preview, claim and hold only
           #{{e.order_id}}
           <br>
           <small>
-            Branch {{e.branch_id or '—'}}
+            {{ ui_phrase('Branch') }} {{e.branch_id or '—'}}
           </small>
         </td>
 
@@ -159,7 +159,7 @@ Approved correction requests — preview, claim and hold only
                 value="{{e.state_version}}"
               >
               <button class="btn">
-                Claim
+                {{ ui_phrase('Claim') }}
               </button>
             </form>
 
@@ -178,7 +178,7 @@ Approved correction requests — preview, claim and hold only
                 value="{{e.state_version}}"
               >
               <button class="btn">
-                Hold
+                {{ ui_phrase('Hold') }}
               </button>
             </form>
 
@@ -197,7 +197,7 @@ Approved correction requests — preview, claim and hold only
                 value="{{e.state_version}}"
               >
               <button class="btn">
-                Release
+                {{ ui_phrase('Release') }}
               </button>
             </form>
 

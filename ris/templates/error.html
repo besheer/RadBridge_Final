@@ -8,8 +8,8 @@
   <p>{{ message }}</p>
   <div class="error-id"><b>Error ID:</b> <code>{{ error_id }}</code></div>
   <div class="actions">
-    <a class="btn primary" href="{{ url_for('dashboard') }}">Dashboard</a>
-    <button class="btn" onclick="history.back()">Back</button>
+    <a class="btn primary" href="{{ url_for('dashboard') }}">{{ ui_phrase('Dashboard') }}</a>
+    <button class="btn" onclick="history.back()">{{ ui_phrase('Back') }}</button>
   </div>
 </div>
 {% endmacro %}

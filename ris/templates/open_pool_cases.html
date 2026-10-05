@@ -2,7 +2,7 @@
 {% from "_action_guidance.html" import action_info %}
 
 {% block page_title %}
-Open Pool
+{{ ui_phrase('Open Pool') }}
 {% endblock %}
 
 {% block subtitle %}
@@ -16,14 +16,14 @@ Eligible unassigned cases available to take
 <table>
 
 <tr>
-<th>Accession</th>
-<th>Patient</th>
-<th>Modality</th>
-<th>Procedure</th>
-<th>Priority</th>
-<th>Images</th>
-<th>Readiness</th>
-<th>Viewer</th>
+<th>{{ ui_phrase('Accession') }}</th>
+<th>{{ ui_phrase('Patient') }}</th>
+<th>{{ ui_phrase('Modality') }}</th>
+<th>{{ ui_phrase('Procedure') }}</th>
+<th>{{ ui_phrase('Priority') }}</th>
+<th>{{ ui_phrase('Images') }}</th>
+<th>{{ ui_phrase('Readiness') }}</th>
+<th>{{ ui_phrase('Viewer') }}</th>
 <th></th>
 </tr>
 
@@ -72,7 +72,7 @@ Eligible unassigned cases available to take
 <a class="btn btn-sm"
 href="{{case_pacs_url(o)}}"
 target="_blank">
-Open Images
+{{ ui_phrase('Open Images') }}
 </a>
 </td>
 
@@ -82,7 +82,7 @@ Open Images
 action="{{url_for('assign_case_to_me',order_id=o.id)}}">
 
 <button class="btn primary">
-Assign to Me
+{{ ui_phrase('Assign to Me') }}
 </button>
 
 {{ action_info(

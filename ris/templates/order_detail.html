@@ -28,10 +28,10 @@
 </style>
 <div class="rb-case-workspace rb-order-workspace">
 <div class="cards rb-order-identity">
-  <div class="metric"><small>Patient ID</small><b>{{order.patient.patient_id}}</b></div>
-  <div class="metric"><small>Accession</small><b>{{order.accession}}</b></div>
-  <div class="metric"><small>Modality</small><b>{{order.modality}}</b></div>
-  <div class="metric"><small>Status</small><b>{{order.status}}</b></div>
+  <div class="metric"><small>{{ ui_phrase('Patient ID') }}</small><b>{{order.patient.patient_id}}</b></div>
+  <div class="metric"><small>{{ ui_phrase('Accession') }}</small><b>{{order.accession}}</b></div>
+  <div class="metric"><small>{{ ui_phrase('Modality') }}</small><b>{{order.modality}}</b></div>
+  <div class="metric"><small>{{ ui_phrase('Status') }}</small><b>{{order.status}}</b></div>
 </div>
 {% if request.args.get('created')=='1' %}
 <div class="panel rb-order-created-summary" id="post_save_summary"
@@ -51,7 +51,7 @@
     </div>
 
     <div class="metric">
-      <small>Accession</small>
+      <small>{{ ui_phrase('Accession') }}</small>
       <b>{{order.accession}}</b>
     </div>
 
@@ -129,7 +129,7 @@
     {% endif %}
   </div>
 
-  <h3>Exam Workflow</h3>
+  <h3>{{ ui_phrase('Exam Workflow') }}</h3>
 
   <div class="workflow-strip">
   {% for st in ['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING'] %}
@@ -138,11 +138,11 @@
   </div>
 
   <p>
-    <b>PACS Images:</b> {{order.pacs_image_count or 0}}
+    <b>{{ ui_phrase('PACS Images:') }}</b> {{order.pacs_image_count or 0}}
     ·
-    <b>PACS:</b> {{order.pacs_status or 'WAITING'}}
+    <b>PACS:</b> {{order.pacs_status or ui_phrase('WAITING')}}
     ·
-    <b>Report:</b> {{order.report.status if order.report else 'UNREPORTED'}}
+    <b>{{ ui_phrase('Report:') }}</b> {{order.report.status if order.report else ui_phrase('UNREPORTED')}}
   </p>
 
   {% if has_perm('workflow.override') %}
@@ -159,8 +159,8 @@
       <input name="reason"
              required
              minlength="5"
-             placeholder="Required reason">
-      <button class="btn">Apply Override</button>
+             placeholder="{{ ui_phrase('Required reason') }}">
+      <button class="btn">{{ ui_phrase('Apply Override') }}</button>
     </form>
   </details>
   {% endif %}
@@ -170,19 +170,19 @@
 </nav>
 <div class="rb-order-main-grid">
 <section class="panel" id="order-case">
-  <div class="section-title">Case / بيانات الحالة</div>
+  <div class="section-title">{{ ui_phrase('Case / بيانات الحالة') }}</div>
   <table>
-    <tr><td>Patient</td><td><b>{{order.patient.name}}</b></td></tr>
-    <tr><td>Procedure</td><td>{{order.proc.name_ar if ui_lang=='ar' and order.proc and order.proc.name_ar else (order.proc.name if order.proc else order.procedure)}}</td></tr>
-    <tr><td>Branch</td><td>{{order.branch.name if order.branch else ''}}</td></tr>
-    <tr><td>Scheduled</td><td>{{order.scheduled.strftime("%Y-%m-%d %H:%M") if order.scheduled else "—"}}</td></tr>
+    <tr><td>{{ ui_phrase('Patient') }}</td><td><b>{{order.patient.name}}</b></td></tr>
+    <tr><td>{{ ui_phrase('Procedure') }}</td><td>{{order.proc.name_ar if ui_lang=='ar' and order.proc and order.proc.name_ar else (order.proc.name if order.proc else order.procedure)}}</td></tr>
+    <tr><td>{{ ui_phrase('Branch') }}</td><td>{{order.branch.name if order.branch else ''}}</td></tr>
+    <tr><td>{{ ui_phrase('Scheduled') }}</td><td>{{order.scheduled.strftime("%Y-%m-%d %H:%M") if order.scheduled else "—"}}</td></tr>
     <tr><td>AE Title</td><td>{{order.station_ae or 'Automatic routing'}}</td></tr>
-    <tr><td>Payer</td><td>{{order.contract.name if order.contract else 'Cash / Private'}}</td></tr>
+    <tr><td>{{ ui_phrase('Payer') }}</td><td>{{order.contract.name if order.contract else ui_phrase('Cash / Private')}}</td></tr>
   </table>
   <div class="actions">
-    <div class="actions rb-case-primary-actions"><a class="btn" href="{{url_for('order_clinical_notes',order_id=order.id)}}">📝 Clinical Notes</a></div>
-    {% if has_perm('devices.manage') and order.status in ['SCHEDULED','MWL_ERROR'] %}<form method="post" action="{{url_for('resend_mwl',order_id=order.id)}}"><button class="btn">Resend MWL</button></form>{% endif %}
-    {% if has_perm('reports.view') %}<a class="btn primary" href="{{url_for('report_editor',order_id=order.id)}}">Reporting</a>{% endif %} <a class="btn" href="{{url_for('order_sticker_preview',order_id=order.id)}}">Sticker / ملصق</a>
+    <div class="actions rb-case-primary-actions"><a class="btn" href="{{url_for('order_clinical_notes',order_id=order.id)}}">{{ ui_phrase('📝 Clinical Notes') }}</a></div>
+    {% if has_perm('devices.manage') and order.status in ['SCHEDULED','MWL_ERROR'] %}<form method="post" action="{{url_for('resend_mwl',order_id=order.id)}}"><button class="btn">{{ ui_phrase('Resend MWL') }}</button></form>{% endif %}
+    {% if has_perm('reports.view') %}<a class="btn primary" href="{{url_for('report_editor',order_id=order.id)}}">{{ ui_phrase('Reporting') }}</a>{% endif %} <a class="btn" href="{{url_for('order_sticker_preview',order_id=order.id)}}">{{ ui_phrase('Sticker / ملصق') }}</a>
   </div>
 </section>
 <details class="panel rb-order-finance" id="order-finance" {% if order.status=='REGISTERED' or ((effective_due|float)-((order.paid_amount or 0)|float))>0.01 %}open{% endif %}><summary>{{'التحصيل والبواقي' if ui_lang=='ar' else 'Payment & balance'}} · {{'%.2f'|format((effective_due|float)-((order.paid_amount or 0)|float))}} EGP</summary><div class="rb-order-section-content">
@@ -193,23 +193,22 @@
   {# RB_WORK_ORDER_GATE_V2 #}
   {% if order.status == 'REGISTERED' and has_perm('orders.create') %}
   <div class="card" style="margin-bottom:16px">
-    <div class="section-title">Work Order / أمر الشغل</div>
+    <div class="section-title">{{ ui_phrase('Work Order / أمر الشغل') }}</div>
 
     {# Legacy regression marker: work_order_balance <= 0.01 is now one input to work_order_gate. #}
     {% if work_order_gate and work_order_gate.allowed %}
       <p>
-        Canonical Work Order checks passed. The case can be sent to the
-        modality MWL with demographics compatible with strict PACS matching.
+        {{ ui_phrase('Canonical Work Order checks passed. The case can be sent to the\n        modality MWL with demographics compatible with strict PACS matching.') }}
       </p>
 
       <form method="post"
             action="{{ url_for('convert_to_work_order', order_id=order.id) }}">
         <button class="btn primary" type="submit">
-          Convert to Work Order
+          {{ ui_phrase('Convert to Work Order') }}
         </button>
       </form>
     {% else %}
-      <p>Work Order is blocked until all required conditions are satisfied.</p>
+      <p>{{ ui_phrase('Work Order is blocked until all required conditions are satisfied.') }}</p>
       {% if work_order_gate %}
       <ul>
         {% for blocker in work_order_gate.blockers %}
@@ -221,66 +220,66 @@
   </div>
   {% endif %}
 
-  <div class="section-title">Payment & Balance / التحصيل والبواقي</div>
+  <div class="section-title">{{ ui_phrase('Payment & Balance / التحصيل والبواقي') }}</div>
   {% set gross_due=(order.patient_share or order.contract_price or order.gross_price or 0)|float %}
   {% set due=effective_due|float %}
   {% set paid=(order.paid_amount or 0)|float %}
   <div class="pricing-preview">
-    <div><small>Original Patient Due</small><b>{{'%.2f'|format(gross_due)}} EGP</b></div>
-    <div><small>Approved Discount</small><b>{{'%.2f'|format(gross_due-due)}} EGP</b></div>
-    <div><small>Net Due</small><b>{{'%.2f'|format(due)}} EGP</b></div>
-    <div><small>Paid</small><b>{{'%.2f'|format(paid)}} EGP</b></div>
-    <div><small>Balance</small><b>{{'%.2f'|format(due-paid)}} EGP</b></div>
+    <div><small>{{ ui_phrase('Original Patient Due') }}</small><b>{{'%.2f'|format(gross_due)}} EGP</b></div>
+    <div><small>{{ ui_phrase('Approved Discount') }}</small><b>{{'%.2f'|format(gross_due-due)}} EGP</b></div>
+    <div><small>{{ ui_phrase('Net Due') }}</small><b>{{'%.2f'|format(due)}} EGP</b></div>
+    <div><small>{{ ui_phrase('Paid') }}</small><b>{{'%.2f'|format(paid)}} EGP</b></div>
+    <div><small>{{ ui_phrase('Balance') }}</small><b>{{'%.2f'|format(due-paid)}} EGP</b></div>
   </div>
   {% if order_discounts %}
   <div class="discount-history">{% for d in order_discounts %}<span>🏷 {{d.percent|round(2)}}% · {{d.amount|round(2)}} EGP · {{d.reason}}</span>{% endfor %}</div>
   {% endif %}
   {% if has_perm('payments.create') %}
   <form method="post" action="{{url_for('receive_payment',order_id=order.id)}}" class="grid2">
-    <div><label>Amount</label><input type="number" step="0.01" min="0.01" name="amount" required></div>
-    <div><label>Method</label><select name="payment_method"><option>CASH</option><option>VISA</option><option>MASTERCARD</option><option>WALLET</option><option>BANK_TRANSFER</option></select></div>
-    <div><label>Reference</label><input name="reference_no"></div>
-    <div><label>Notes</label><input name="notes"></div>
+    <div><label>{{ ui_phrase('Amount') }}</label><input type="number" step="0.01" min="0.01" name="amount" required></div>
+    <div><label>{{ ui_phrase('Method') }}</label><select name="payment_method"><option value="CASH">{{ ui_phrase('CASH') }}</option><option>VISA</option><option>MASTERCARD</option><option value="WALLET">{{ ui_phrase('WALLET') }}</option><option value="BANK_TRANSFER">{{ ui_phrase('BANK_TRANSFER') }}</option></select></div>
+    <div><label>{{ ui_phrase('Reference') }}</label><input name="reference_no"></div>
+    <div><label>{{ ui_phrase('Notes') }}</label><input name="notes"></div>
     {% if has_perm('finance.discount.request') or has_perm('finance.discount.apply') or has_perm('finance.discount.approve') %}
-    <div><label>Discount %</label><input name="discount_percent" type="number" min="0" max="100" step="0.01" placeholder="0"></div>
-    <div><label>Discount Reason</label><input name="discount_reason" placeholder="Required when discount is requested"></div>
+    <div><label>{{ ui_phrase('Discount %') }}</label><input name="discount_percent" type="number" min="0" max="100" step="0.01" placeholder="0"></div>
+    <div><label>{{ ui_phrase('Discount Reason') }}</label><input name="discount_reason" placeholder="{{ ui_phrase('Required when discount is requested') }}"></div>
     <div class="span2 finance-policy-hint">
-      {% if has_perm('finance.discount.approve') %}Management approval permission: direct approval available.
-      {% elif discount_policy %}Direct up to {{discount_policy.max_direct_percent|round(2)}}% · Request approval up to {{discount_policy.max_request_percent|round(2)}}%.
-      {% else %}No discount policy is configured for this user/role/exam.{% endif %}
+      {% if has_perm('finance.discount.approve') %}{{ ui_phrase('Management approval permission: direct approval available.') }}
+      {% elif discount_policy %}{{ ui_phrase('Direct up to') }} {{discount_policy.max_direct_percent|round(2)}}{{ ui_phrase('% · Request approval up to') }} {{discount_policy.max_request_percent|round(2)}}%.
+      {% else %}{{ ui_phrase('No discount policy is configured for this user/role/exam.') }}{% endif %}
     </div>
     {% endif %}
-    <div><button class="btn primary">Receive Payment</button></div>
+    <div><button class="btn primary">{{ ui_phrase('Receive Payment') }}</button></div>
   </form>
   {% endif %}
   {% if receipts %}
-  <h4>Receipts</h4>
-  <table><tr><th>Receipt</th><th>Amount</th><th>Method</th><th>Date</th></tr>
+  <h4>{{ ui_phrase('Receipts') }}</h4>
+  <table><tr><th>{{ ui_phrase('Receipt') }}</th><th>{{ ui_phrase('Amount') }}</th><th>{{ ui_phrase('Method') }}</th><th>{{ ui_phrase('Date') }}</th></tr>
   {% for r in receipts %}<tr><td><a href="{{url_for('receipt_view',receipt_id=r.id)}}">{{r.receipt_no}}</a></td><td>{{r.amount}}</td><td>{{r.payment_method}}</td><td>{{r.created_at}}</td></tr>{% endfor %}
   </table>
   {% endif %}
 </div></details>
 </div>
 <details class="panel rb-order-delivery" id="order-delivery" {% if order.report and order.report.status=='FINAL' and not order.report_delivered %}open{% endif %}><summary>{{'التسليم' if ui_lang=='ar' else 'Delivery'}} · {{'تم تسليم التقرير' if ui_lang=='ar' and order.report_delivered else ('Report delivered' if order.report_delivered else ('التقرير لم يُسلّم' if ui_lang=='ar' else 'Report pending'))}}</summary><div class="rb-order-section-content">
-  <div class="section-title">Delivery / التسليم</div><p>تسجيل التسليم يوثّق التسليم الذي تم فعليًا؛ لا يرسل بريدًا أو واتساب تلقائيًا. / Record only completed handover. This action does not send email or WhatsApp automatically.</p>
+  <div class="section-title">{{ ui_phrase('Delivery / التسليم') }}</div><p>{{ ui_phrase('تسجيل التسليم يوثّق التسليم الذي تم فعليًا؛ لا يرسل بريدًا أو واتساب تلقائيًا. / Record only completed handover. This action does not send email or WhatsApp automatically.') }}</p>
   <div class="pricing-preview">
-    <div><small>Report</small><b>{{'Delivered' if order.report_delivered else 'Pending'}}</b></div>
-    <div><small>Images</small><b>{{'Delivered' if order.images_delivered else 'Pending'}}</b></div>
+    <div><small>{{ ui_phrase('Report') }}</small><b>{{ui_phrase('Delivered') if order.report_delivered else ui_phrase('Pending')}}</b></div>
+    <div><small>{{ ui_phrase('Images') }}</small><b>{{ui_phrase('Delivered') if order.images_delivered else ui_phrase('Pending')}}</b></div>
   </div>
   {% if has_perm('delivery.manage') %}
   <form method="post" action="{{url_for('mark_delivery',order_id=order.id,item_type='REPORT')}}" class="grid2">
-    <div><label>Report method</label><select name="delivery_method"><option>IN_PERSON</option><option>EMAIL</option><option>PORTAL</option><option>WHATSAPP</option></select></div>
-    <div><label>Recipient / المستلم *</label><input name="recipient_name" required maxlength="160"></div>
-    <div><button class="btn primary" {% if order.report_delivered or not delivery_readiness.REPORT.allowed %}disabled{% endif %}>{{'تسجيل تسليم التقرير' if ui_lang=='ar' else 'Record report handover'}}</button><small>{{'تم التسليم بالفعل / Already delivered' if order.report_delivered else delivery_readiness.REPORT.reason}}</small></div>
+    <div><label>{{ ui_phrase('Report method') }}</label><select name="delivery_method"><option value="IN_PERSON">{{ ui_phrase('IN_PERSON') }}</option><option value="EMAIL">{{ ui_phrase('EMAIL') }}</option><option value="PORTAL">{{ ui_phrase('PORTAL') }}</option><option value="WHATSAPP">{{ ui_phrase('WHATSAPP') }}</option></select></div>
+    <div><label>{{ ui_phrase('Recipient / المستلم *') }}</label><input name="recipient_name" required maxlength="160"></div>
+    <div><button class="btn primary" {% if order.report_delivered or not delivery_readiness.REPORT.allowed %}disabled{% endif %}>{{'تسجيل تسليم التقرير' if ui_lang=='ar' else 'Record report handover'}}</button><small>{{ui_phrase('تم التسليم بالفعل / Already delivered') if order.report_delivered else delivery_readiness.REPORT.reason}}</small></div>
   </form>
   <form method="post" action="{{url_for('mark_delivery',order_id=order.id,item_type='IMAGES')}}" class="grid2">
-    <div><label>Images method</label><select name="delivery_method"><option>CD</option><option>FILM</option><option>PORTAL</option><option>LINK</option></select></div>
-    <div><label>Recipient / المستلم *</label><input name="recipient_name" required maxlength="160"></div>
-    <div><button class="btn" {% if order.images_delivered or not delivery_readiness.IMAGES.allowed %}disabled{% endif %}>{{'تسجيل تسليم الصور' if ui_lang=='ar' else 'Record image handover'}}</button><small>{{'تم التسليم بالفعل / Already delivered' if order.images_delivered else delivery_readiness.IMAGES.reason}}</small></div>
+    <div><label>{{ ui_phrase('Images method') }}</label><select name="delivery_method"><option value="CD">{{ ui_phrase('CD') }}</option><option value="FILM">{{ ui_phrase('FILM') }}</option><option value="PORTAL">{{ ui_phrase('PORTAL') }}</option><option value="LINK">{{ ui_phrase('LINK') }}</option></select></div>
+    <div><label>{{ ui_phrase('Recipient / المستلم *') }}</label><input name="recipient_name" required maxlength="160"></div>
+    <div><button class="btn" {% if order.images_delivered or not delivery_readiness.IMAGES.allowed %}disabled{% endif %}>{{'تسجيل تسليم الصور' if ui_lang=='ar' else 'Record image handover'}}</button><small>{{ui_phrase('تم التسليم بالفعل / Already delivered') if order.images_delivered else delivery_readiness.IMAGES.reason}}</small></div>
   </form>
   {% endif %}
   {% if delivery_events %}
-  <h4>Delivery History</h4><table><tr><th>Item</th><th>Method</th><th>Recipient</th><th>Date</th></tr>
+  <h4>{{ ui_phrase('Delivery History') }}</h4><table><tr><th>{{ ui_phrase('Item') }}</th><th>{{ ui_phrase('Method') }}</th><th>{{ ui_phrase('Recipient') }}</th><th>{{ ui_phrase('Date') }}</th></tr>
   {% for d in delivery_events %}<tr><td>{{d.item_type}}</td><td>{{d.delivery_method}}</td><td>{{d.recipient_name}}</td><td>{{d.delivered_at}}</td></tr>{% endfor %}</table>
   {% endif %}
 </div></details>
@@ -291,11 +290,11 @@
 <input type="hidden" name="patient_id" value="{{order.patient_id}}">
 <input type="hidden" name="order_id" value="{{order.id}}">
 <input type="file" name="files" multiple required>
-<select name="category"><option>PRESCRIPTION</option><option>APPROVAL</option><option>IDENTITY</option><option>INSURANCE_CARD</option><option>PREVIOUS_REPORT</option><option>PREVIOUS_IMAGES</option><option>LAB</option><option>CONSENT</option><option>QUESTIONNAIRE</option><option>CLINICAL</option><option>OTHER</option><option>CREATININE</option><option>LAB_RESULT</option><option>NATIONAL_ID</option><option>REFERRAL</option></select>
-<input name="notes" placeholder="Notes"><button class="btn">＋ Add Files</button></form>
+<select name="category"><option value="PRESCRIPTION">{{ ui_phrase('PRESCRIPTION') }}</option><option value="APPROVAL">{{ ui_phrase('APPROVAL') }}</option><option value="IDENTITY">{{ ui_phrase('IDENTITY') }}</option><option value="INSURANCE_CARD">{{ ui_phrase('INSURANCE_CARD') }}</option><option value="PREVIOUS_REPORT">{{ ui_phrase('PREVIOUS_REPORT') }}</option><option value="PREVIOUS_IMAGES">{{ ui_phrase('PREVIOUS_IMAGES') }}</option><option value="LAB">{{ ui_phrase('LAB') }}</option><option value="CONSENT">{{ ui_phrase('CONSENT') }}</option><option value="QUESTIONNAIRE">{{ ui_phrase('QUESTIONNAIRE') }}</option><option value="CLINICAL">{{ ui_phrase('CLINICAL') }}</option><option value="OTHER">{{ ui_phrase('OTHER') }}</option><option value="CREATININE">{{ ui_phrase('CREATININE') }}</option><option value="LAB_RESULT">{{ ui_phrase('LAB_RESULT') }}</option><option value="NATIONAL_ID">{{ ui_phrase('NATIONAL_ID') }}</option><option value="REFERRAL">{{ ui_phrase('REFERRAL') }}</option></select>
+<input name="notes" placeholder="{{ ui_phrase('Notes') }}"><button class="btn">{{ ui_phrase('＋ Add Files') }}</button></form>
 {% endif %}
 <div class="attachment-list">{% for a in attachments %}
-<div class="attachment-item"><div><b>{{a.category}}</b> · {{a.original_name}}<small>{{a.created_at}} · {{a.notes}}</small></div><div class="actions"><a class="btn small" target="_blank" href="{{url_for('attachment_preview',attachment_id=a.id)}}">👁 Preview</a><a class="btn small" href="{{url_for('attachment_download',attachment_id=a.id)}}">⬇ Download</a>{% if has_perm('attachments.upload') %}<form method="post" action="{{url_for('attachment_delete',attachment_id=a.id)}}" onsubmit="return confirm('Delete attachment?')"><button class="btn small danger">🗑</button></form>{% endif %}</div></div>
+<div class="attachment-item"><div><b>{{a.category}}</b> · {{a.original_name}}<small>{{a.created_at}} · {{a.notes}}</small></div><div class="actions"><a class="btn small" target="_blank" href="{{url_for('attachment_preview',attachment_id=a.id)}}">{{ ui_phrase('👁 Preview') }}</a><a class="btn small" href="{{url_for('attachment_download',attachment_id=a.id)}}">{{ ui_phrase('⬇ Download') }}</a>{% if has_perm('attachments.upload') %}<form method="post" action="{{url_for('attachment_delete',attachment_id=a.id)}}" onsubmit="return confirm('Delete attachment?')"><button class="btn small danger">🗑</button></form>{% endif %}</div></div>
 {% else %}<p>—</p>{% endfor %}</div></div></details>
 <details class="panel rb-approval-panel rb-order-section" id="insurance_approval_panel" {% if order.contract and (not insurance_approval or insurance_approval.status!='APPROVED') %}open{% endif %}><summary>🛡 {{'الموافقة الطبية' if ui_lang=='ar' else 'Medical approval'}} · {{insurance_approval.status if insurance_approval else ('غير مطلوبة' if ui_lang=='ar' and not order.contract else ('Not required' if not order.contract else 'Required'))}}</summary><div class="rb-order-section-content">
   <div class="section-title">
@@ -391,11 +390,11 @@
         <div>
           <label>{{'الحالة' if ui_lang=='ar' else 'Status'}}</label>
           <select name="status">
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="NEED_INFO">Need Info</option>
-            <option value="ERROR">Error</option>
+            <option value="PENDING">{{ ui_phrase('Pending') }}</option>
+            <option value="APPROVED">{{ ui_phrase('Approved') }}</option>
+            <option value="REJECTED">{{ ui_phrase('Rejected') }}</option>
+            <option value="NEED_INFO">{{ ui_phrase('Need Info') }}</option>
+            <option value="ERROR">{{ ui_phrase('Error') }}</option>
           </select>
         </div>
 
@@ -424,16 +423,16 @@
 </div></details>
 <div class="rb-order-main-grid">
 <details class="panel rb-order-inventory" id="order-consumables"><summary>{{'المستهلكات' if ui_lang=='ar' else 'Consumables'}}</summary><div class="rb-order-section-content">
-  <div class="section-title">Consumables / المستهلكات</div>
-  <p>Warehouse: <b>{{branch_warehouse.name if branch_warehouse else 'Not configured'}}</b></p>
-  <p>Recorded Consumable Cost: <b>{{'%.2f'|format(consumable_cost or 0)}} EGP</b></p>
-  {% if has_perm('inventory.view') %}<a class="btn primary" href="{{url_for('order_consumables',order_id=order.id)}}">📦 Manage Case Consumables</a>{% endif %}
+  <div class="section-title">{{ ui_phrase('Consumables / المستهلكات') }}</div>
+  <p>{{ ui_phrase('Warehouse:') }} <b>{{branch_warehouse.name if branch_warehouse else ui_phrase('Not configured')}}</b></p>
+  <p>{{ ui_phrase('Recorded Consumable Cost:') }} <b>{{'%.2f'|format(consumable_cost or 0)}} EGP</b></p>
+  {% if has_perm('inventory.view') %}<a class="btn primary" href="{{url_for('order_consumables',order_id=order.id)}}">{{ ui_phrase('📦 Manage Case Consumables') }}</a>{% endif %}
 
   {% if consumables %}
   <div class="rb-order-consumable-items">
-    <h4>Recorded Items / الأصناف المسجلة</h4>
+    <h4>{{ ui_phrase('Recorded Items / الأصناف المسجلة') }}</h4>
     <table>
-      <tr><th>Item</th><th>Qty</th></tr>
+      <tr><th>{{ ui_phrase('Item') }}</th><th>{{ ui_phrase('Qty') }}</th></tr>
       {% for c in consumables %}
       <tr>
         <td>{{c.consumable.name if c.consumable else ''}}</td>
@@ -445,14 +444,14 @@
   {% endif %}
 </div></details>
 <details class="panel rb-order-doctor" id="order-performing"><summary>{{'الطبيب القائم بالفحص' if ui_lang=='ar' else 'Performing doctor'}} · {{performing_doctor.full_name if performing_doctor else ('غير محدد' if ui_lang=='ar' else 'Not assigned')}}</summary><div class="rb-order-section-content">
-  <div class="section-title">Performing Doctor / الطبيب القائم بالفحص</div>
-  <p><b>{{performing_doctor.full_name if performing_doctor else 'Not assigned'}}</b></p>
-  <p>Calculated Share: <b>{{'%.2f'|format(performing_share or 0)}} EGP</b></p>
+  <div class="section-title">{{ ui_phrase('Performing Doctor / الطبيب القائم بالفحص') }}</div>
+  <p><b>{{performing_doctor.full_name if performing_doctor else ui_phrase('Not assigned')}}</b></p>
+  <p>{{ ui_phrase('Calculated Share:') }} <b>{{'%.2f'|format(performing_share or 0)}} EGP</b></p>
   {% if has_perm('orders.status') %}
   <form method="post" action="{{url_for('set_performing_doctor',order_id=order.id)}}" class="grid2">
-    <select name="doctor_user_id" required><option value="">Select doctor</option>{% for d in doctors %}<option value="{{d.id}}" {% if performing_doctor and performing_doctor.id==d.id %}selected{% endif %}>{{d.full_name or d.username}}</option>{% endfor %}</select>
-    <input name="notes" placeholder="Notes">
-    <button class="btn">Set Performing Doctor</button>
+    <select name="doctor_user_id" required><option value="">{{ ui_phrase('Select doctor') }}</option>{% for d in doctors %}<option value="{{d.id}}" {% if performing_doctor and performing_doctor.id==d.id %}selected{% endif %}>{{d.full_name or d.username}}</option>{% endfor %}</select>
+    <input name="notes" placeholder="{{ ui_phrase('Notes') }}">
+    <button class="btn">{{ ui_phrase('Set Performing Doctor') }}</button>
   </form>{% endif %}
 </div></details>
 </div>

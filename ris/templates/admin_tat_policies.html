@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block page_title %}
-SLA / TAT Policies
+{{ ui_phrase('SLA / TAT Policies') }}
 {% endblock %}
 
 {% block content %}
@@ -146,7 +146,7 @@ SLA / TAT Policies
       <div class="rb-sla-grid">
 
         <label>
-          Priority
+          {{ ui_phrase('Priority') }}
 
           <select
             name="priority"
@@ -162,7 +162,7 @@ SLA / TAT Policies
         </label>
 
         <label>
-          Modality
+          {{ ui_phrase('Modality') }}
 
           <input
             name="modality"
@@ -233,18 +233,18 @@ SLA / TAT Policies
         </label>
 
         <label>
-          Status
+          {{ ui_phrase('Status') }}
 
           <select
             name="active"
             id="active"
           >
             <option value="1">
-              Active
+              {{ ui_phrase('Active') }}
             </option>
 
             <option value="0">
-              Disabled
+              {{ ui_phrase('Disabled') }}
             </option>
           </select>
         </label>
@@ -259,7 +259,7 @@ SLA / TAT Policies
           class="btn primary"
           type="submit"
         >
-          Save Policy
+          {{ ui_phrase('Save Policy') }}
         </button>
 
         <button
@@ -281,8 +281,7 @@ SLA / TAT Policies
 
     <div class="rb-sla-help">
       The runtime first searches for
-      <b>Priority + exact Modality</b>.
-      If no active policy exists, it falls back to
+      <b>Priority + exact Modality</b>{{ ui_phrase('.\n      If no active policy exists, it falls back to') }}
       <b>Priority + *</b>.
     </div>
 
@@ -299,14 +298,14 @@ SLA / TAT Policies
       <thead>
         <tr>
           <th>ID</th>
-          <th>Priority</th>
-          <th>Modality</th>
+          <th>{{ ui_phrase('Priority') }}</th>
+          <th>{{ ui_phrase('Modality') }}</th>
           <th>Ready → Assign</th>
           <th>Assign → Accept</th>
           <th>Accept → Final</th>
-          <th>Total</th>
-          <th>Status</th>
-          <th>Action</th>
+          <th>{{ ui_phrase('Total') }}</th>
+          <th>{{ ui_phrase('Status') }}</th>
+          <th>{{ ui_phrase('Action') }}</th>
         </tr>
       </thead>
 
@@ -329,19 +328,19 @@ SLA / TAT Policies
           </td>
 
           <td>
-            {{ r.ready_to_assign_min }} min
+            {{ r.ready_to_assign_min }} {{ ui_phrase('min') }}
           </td>
 
           <td>
-            {{ r.assign_to_accept_min }} min
+            {{ r.assign_to_accept_min }} {{ ui_phrase('min') }}
           </td>
 
           <td>
-            {{ r.accept_to_final_min }} min
+            {{ r.accept_to_final_min }} {{ ui_phrase('min') }}
           </td>
 
           <td>
-            <b>{{ r.total_tat_min }} min</b>
+            <b>{{ r.total_tat_min }} {{ ui_phrase('min') }}</b>
           </td>
 
           <td>
@@ -372,7 +371,7 @@ SLA / TAT Policies
                 data-total="{{ r.total_tat_min }}"
                 data-active="{{ 1 if r.active else 0 }}"
               >
-                Edit
+                {{ ui_phrase('Edit') }}
               </button>
 
               {% if r.active %}
@@ -395,7 +394,7 @@ SLA / TAT Policies
                   class="btn small"
                   type="submit"
                 >
-                  Disable
+                  {{ ui_phrase('Disable') }}
                 </button>
 
               </form>

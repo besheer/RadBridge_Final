@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% from "_action_guidance.html" import action_info %}
-{% block page_title %}My Assignment Offers{% endblock %}
+{% block page_title %}{{ ui_phrase('My Assignment Offers') }}{% endblock %}
 {% block content %}
 <div class="panel availability-panel">
-<h3>Availability</h3>
+<h3>{{ ui_phrase('Availability') }}</h3>
 <form method="post" action="{{url_for('assignment_availability_update')}}" class="actions">
-<select name="state"><option {% if state.state=='AVAILABLE' %}selected{% endif %}>AVAILABLE</option><option {% if state.state=='BUSY' %}selected{% endif %}>BUSY</option><option {% if state.state=='AWAY' %}selected{% endif %}>AWAY</option><option {% if state.state=='OFFLINE' %}selected{% endif %}>OFFLINE</option></select>
+<select name="state"><option {% if state.state=='AVAILABLE' %}selected{% endif %} value="AVAILABLE">{{ ui_phrase('AVAILABLE') }}</option><option {% if state.state=='BUSY' %}selected{% endif %} value="BUSY">{{ ui_phrase('BUSY') }}</option><option {% if state.state=='AWAY' %}selected{% endif %}>AWAY</option><option {% if state.state=='OFFLINE' %}selected{% endif %} value="OFFLINE">{{ ui_phrase('OFFLINE') }}</option></select>
 <input type="number" name="busy_minutes" value="30" min="5" placeholder="Busy min">
-<button class="btn primary">Update</button>
+<button class="btn primary">{{ ui_phrase('Update') }}</button>
 {{ action_info('Availability','Updates your availability for the assignment engine.','Set this before receiving or pausing case offers.','Choose the real current state and a busy duration when applicable.','Changes future offer eligibility; it does not reassign existing cases.','Do not mark Available when you cannot safely accept reports.',ui_lang) }}
-</form><small>Current: {{state.state}} {% if state.busy_until %}until {{state.busy_until}}{% endif %}</small>
+</form><small>{{ ui_phrase('Current:') }} {{state.state}} {% if state.busy_until %}until {{state.busy_until}}{% endif %}</small>
 </div>
 
 {% for o in rows %}
@@ -18,8 +18,8 @@
 <p>Priority: {{o.order.priority}} · Offered: {{o.offered_at}} · Expires: {{o.expires_at}}</p>
 {% if o.status=='PENDING' %}
 <form method="post" action="{{url_for('assignment_offer_respond',offer_id=o.id)}}">
-<textarea name="note" placeholder="Optional note"></textarea>
-<div class="actions"><button class="btn primary" name="action" value="ACCEPT">Accept</button><button class="btn" name="action" value="BUSY">Busy</button><button class="btn danger" name="action" value="REJECT">Reject</button>{{ action_info('Offer Response','Records Accept, Busy, or Reject for this assignment offer.','Respond before the offer expires.','Confirm the case and your current availability.','Accept creates the protected assignment; Busy or Reject advances the configured fallback workflow.','A response is audited and should reflect the real operational decision.',ui_lang) }}</div>
+<textarea name="note" placeholder="{{ ui_phrase('Optional note') }}"></textarea>
+<div class="actions"><button class="btn primary" name="action" value="ACCEPT">{{ ui_phrase('Accept') }}</button><button class="btn" name="action" value="BUSY">{{ ui_phrase('Busy') }}</button><button class="btn danger" name="action" value="REJECT">{{ ui_phrase('Reject') }}</button>{{ action_info('Offer Response','Records Accept, Busy, or Reject for this assignment offer.','Respond before the offer expires.','Confirm the case and your current availability.','Accept creates the protected assignment; Busy or Reject advances the configured fallback workflow.','A response is audited and should reflect the real operational decision.',ui_lang) }}</div>
 </form>
 {% else %}<small>{{o.response_note}}</small>{% endif %}
 </div>

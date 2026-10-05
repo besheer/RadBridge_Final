@@ -7,7 +7,7 @@
 <div class="panel"><a class="btn primary" href="{{url_for('admin_assignment_distribution')}}">{{'التوزيع العادل ومهلة بدء القراءة' if ui_lang=='ar' else 'Configure Round-Robin & Reading Deadlines'}}</a></div>
 <div class="panel">
   <table>
-    <thead><tr><th>Doctor</th><th>Modalities</th><th>Specialties</th><th>Branches</th><th>Max Active</th><th>Auto</th><th>Available</th><th>Weight</th><th></th></tr></thead>
+    <thead><tr><th>{{ ui_phrase('Doctor') }}</th><th>{{ ui_phrase('Modalities') }}</th><th>Specialties</th><th>{{ ui_phrase('Branches') }}</th><th>Max Active</th><th>{{ ui_phrase('Auto') }}</th><th>{{ ui_phrase('Available') }}</th><th>Weight</th><th></th></tr></thead>
     <tbody>
     {% for d in doctors %}
       {% set p=profiles.get(d.id) %}
@@ -22,7 +22,7 @@
           <td><input type="checkbox" name="auto_assign" value="1" {% if not p or p.auto_assign %}checked{% endif %}></td>
           <td><input type="checkbox" name="available" value="1" {% if not p or p.available %}checked{% endif %}></td>
           <td><input type="number" name="priority_weight" value="{{p.priority_weight if p else 100}}"></td>
-          <td><button class="btn primary">Save</button>{{ action_info('Assignment Configuration','Saves the doctor assignment configuration shown in this row.','Use after confirming doctor scope, activity, and workload rules.','Requires assignment administration access.','Affects future assignment decisions only.','Review changes carefully to avoid excluding eligible doctors.',ui_lang) }}</td>
+          <td><button class="btn primary">{{ ui_phrase('Save') }}</button>{{ action_info('Assignment Configuration','Saves the doctor assignment configuration shown in this row.','Use after confirming doctor scope, activity, and workload rules.','Requires assignment administration access.','Affects future assignment decisions only.','Review changes carefully to avoid excluding eligible doctors.',ui_lang) }}</td>
         </form>
       </tr>
     {% endfor %}

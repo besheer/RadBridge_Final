@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block page_title %}Cancellation Center{% endblock %}
+{% block page_title %}{{ ui_phrase('Cancellation Center') }}{% endblock %}
 {% block subtitle %}Audited cancellation of bookings, work orders and referrals{% endblock %}
 {% block content %}
 <div class="panel danger-zone-note"><b>Reason required.</b> Every cancellation action records user, time and IP. Final and verified reports cannot be cancelled here. Permanent PACS/report/RIS deletion is available only from the separate protected Data Deletion Center.</div>
@@ -10,26 +10,26 @@
   <p>Search for the booking or work order to perform an audited administrative cancellation. This page does not perform permanent data deletion.</p>
   <form method="get" class="actions">
     <input name="q" value="{{q}}" required maxlength="120" autocomplete="off"
-           placeholder="Accession / Patient ID / Name / Phone / Order ID">
-    <button class="btn primary">🔎 Search</button>
-    <a class="btn" href="{{url_for('admin_cancellation_center')}}">Clear</a>
+           placeholder="{{ ui_phrase('Accession / Patient ID / Name / Phone / Order ID') }}">
+    <button class="btn primary">{{ ui_phrase('🔎 Search') }}</button>
+    <a class="btn" href="{{url_for('admin_cancellation_center')}}">{{ ui_phrase('Clear') }}</a>
   </form>
 </div>
 
 {% if q %}
 <div class="panel">
-  <h3>Orders / Work Orders</h3>
+  <h3>{{ ui_phrase('Orders / Work Orders') }}</h3>
   <table>
-    <thead><tr><th>Order</th><th>Patient</th><th>Phone</th><th>Exam</th><th>Status</th><th>Referral</th><th>Controlled action</th></tr></thead>
+    <thead><tr><th>{{ ui_phrase('Order') }}</th><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Phone') }}</th><th>{{ ui_phrase('Exam') }}</th><th>{{ ui_phrase('Status') }}</th><th>{{ ui_phrase('Referral') }}</th><th>Controlled action</th></tr></thead>
     <tbody>
     {% for o in orders %}
       <tr>
-        <td><b>{{o.accession}}</b><small>Order ID {{o.id}}</small></td>
+        <td><b>{{o.accession}}</b><small>{{ ui_phrase('Order ID') }} {{o.id}}</small></td>
         <td>{{o.patient.patient_id}} — {{o.patient.name}}</td>
         <td>{{o.patient.phone or '—'}}</td>
         <td>{{o.procedure}}</td>
         <td>{{o.status}} / {{o.exam_status}}</td>
-        <td>{{o.referring_doctor.name if o.referring_doctor else 'None'}}</td>
+        <td>{{o.referring_doctor.name if o.referring_doctor else ui_phrase('None')}}</td>
         <td>
           <form method="post" action="{{url_for('admin_cancel_order',order_id=o.id)}}" class="actions">
             <input type="hidden" name="return_q" value="{{q}}">
@@ -46,16 +46,16 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="7">No matching orders.</td></tr>
+      <tr><td colspan="7">{{ ui_phrase('No matching orders.') }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
 </div>
 
 <div class="panel">
-  <h3>Appointments</h3>
+  <h3>{{ ui_phrase('Appointments') }}</h3>
   <table>
-    <thead><tr><th>ID</th><th>Patient</th><th>Phone</th><th>Scheduled</th><th>Status</th><th>Controlled action</th></tr></thead>
+    <thead><tr><th>ID</th><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Phone') }}</th><th>{{ ui_phrase('Scheduled') }}</th><th>{{ ui_phrase('Status') }}</th><th>Controlled action</th></tr></thead>
     <tbody>
     {% for a in appointments %}
       <tr>
@@ -73,7 +73,7 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="6">No matching appointments.</td></tr>
+      <tr><td colspan="6">{{ ui_phrase('No matching appointments.') }}</td></tr>
     {% endfor %}
     </tbody>
   </table>

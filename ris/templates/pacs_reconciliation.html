@@ -7,10 +7,10 @@
 <div class="panel">
 
 <h2>PACS Demographic Exception Review</h2>
-{% if correction_paused %}<div class="warn"><strong>الاستقبال التلقائي معلّق أثناء عملية تصحيح غير مكتملة / Automatic PACS intake paused.</strong> راجع سجل التصحيح قبل استئناف أي عملية غير مؤكدة.</div>{% endif %}
-{% if can_reconcile %}<p><a class="btn" href="{{url_for('pacs_reconciliation_example')}}">مثال توضيحي بدون تغيير بيانات / Read-only example</a></p>{% endif %}
-{% if demo_mode %}<div class="warn"><strong>مثال توضيحي فقط / Read-only synthetic example</strong> — لا يتم حفظ أو تعديل أي مريض أو صور.</div>{% endif %}
-{% if has_perm('audit.view') %}<p><a class="btn" href="{{url_for('pacs_reconciliation_audit')}}">سجل تصحيح DICOM / Correction audit</a></p>{% endif %}
+{% if correction_paused %}<div class="warn"><strong>{{ ui_phrase('الاستقبال التلقائي معلّق أثناء عملية تصحيح غير مكتملة / Automatic PACS intake paused.') }}</strong> راجع سجل التصحيح قبل استئناف أي عملية غير مؤكدة.</div>{% endif %}
+{% if can_reconcile %}<p><a class="btn" href="{{url_for('pacs_reconciliation_example')}}">{{ ui_phrase('مثال توضيحي بدون تغيير بيانات / Read-only example') }}</a></p>{% endif %}
+{% if demo_mode %}<div class="warn"><strong>{{ ui_phrase('مثال توضيحي فقط / Read-only synthetic example') }}</strong> — لا يتم حفظ أو تعديل أي مريض أو صور.</div>{% endif %}
+{% if has_perm('audit.view') %}<p><a class="btn" href="{{url_for('pacs_reconciliation_audit')}}">{{ ui_phrase('سجل تصحيح DICOM / Correction audit') }}</a></p>{% endif %}
 
 <p>
 Studies listed here were blocked because PACS demographics did not satisfy
@@ -60,7 +60,7 @@ No safe same-patient editable Order pairs are currently eligible for Exam Linkin
   <option value="">Select confirmed same-patient Orders</option>
   {% for pair in eligible_exam_pairs %}
   <option value="{{ pair.primary.id }}:{{ pair.secondary.id }}">
-    {{ pair.patient.name if pair.patient else 'Patient' }} —
+    {{ pair.patient.name if pair.patient else ui_phrase('Patient') }} —
     Primary #{{ pair.primary.id }} {{ pair.primary.accession }} →
     Secondary #{{ pair.secondary.id }} {{ pair.secondary.accession }}
   </option>
@@ -85,7 +85,7 @@ placeholder="Explain why the same PACS acquisition belongs to both RIS Orders"><
 {% if active_exam_links %}
 <h4 style="margin-top:20px">Active Exam Links</h4>
 <table>
-<tr><th>Study</th><th>Primary Order</th><th>Secondary Order</th><th>Reason</th><th>Action</th></tr>
+<tr><th>{{ ui_phrase('Study') }}</th><th>Primary Order</th><th>Secondary Order</th><th>{{ ui_phrase('Reason') }}</th><th>{{ ui_phrase('Action') }}</th></tr>
 {% for item in active_exam_links %}
 <tr>
 <td>{{ item.link.orthanc_study_id }}</td>
@@ -137,43 +137,43 @@ Study Exception #{{ x.id }}
 
 {% set v=row.preview %}
 <section class="panel" style="border-top:4px solid #dc2626;background:#fff7f7;overflow-wrap:anywhere">
-<h4>١ — بيانات DICOM الحالية المطلوب مراجعتها / Current PACS data</h4>
+<h4>{{ ui_phrase('١ — بيانات DICOM الحالية المطلوب مراجعتها / Current PACS data') }}</h4>
 {% if v %}{% set original=v.before.tags %}{% else %}{% set original={'PatientID':x.pacs_patient_id,'PatientName':x.pacs_patient_name,'AccessionNumber':x.accession} %}{% endif %}
-<div style="overflow:auto"><table><tr><th>الحقل / Field</th><th>القيمة الحالية / Current value</th></tr>
+<div style="overflow:auto"><table><tr><th>{{ ui_phrase('الحقل / Field') }}</th><th>{{ ui_phrase('القيمة الحالية / Current value') }}</th></tr>
 {% for field in ['PatientID','PatientName','PatientBirthDate','PatientSex','AccessionNumber'] %}
-<tr><td>{{field}}</td><td>{{original.get(field) or 'غير متاح قبل المعاينة / Preview required'}}</td></tr>{% endfor %}
-<tr><td>Images</td><td>{{v.before.count if v else x.image_count}}</td></tr>
+<tr><td>{{field}}</td><td>{{original.get(field) or ui_phrase('غير متاح قبل المعاينة / Preview required')}}</td></tr>{% endfor %}
+<tr><td>{{ ui_phrase('Images') }}</td><td>{{v.before.count if v else x.image_count}}</td></tr>
 <tr><td>Study UID</td><td>{{v.before.study_uid if v else x.study_instance_uid or '—'}}</td></tr></table></div>
 <p><strong>REVIEW REQUIRED — AI BLOCKED — FINALIZE BLOCKED</strong></p>
 {% if not v %}<p>البيانات المحفوظة في قائمة الاستقبال؛ المعاينة تقرأ البيانات الحالية من الصور نفسها.</p>{% endif %}
 </section>
 <section class="panel" style="border-top:4px solid #16a34a;background:#f0fdf4;margin-top:16px">
-<h4>٢ — المريض وأمر الشغل الصحيحان / Correct RIS patient and order</h4>
+<h4>{{ ui_phrase('٢ — المريض وأمر الشغل الصحيحان / Correct RIS patient and order') }}</h4>
 {% if can_reconcile %}
 <form method="get" action="{{url_for('pacs_reconciliation')}}">
-<label>ابحث بالاسم أو رقم المريض أو رقم الفحص / Search patient or accession</label>
+<label>{{ ui_phrase('ابحث بالاسم أو رقم المريض أو رقم الفحص / Search patient or accession') }}</label>
 <input name="q" value="{{search_query}}" placeholder="Patient name / Patient ID / Accession">
-<button class="btn">بحث / Search</button></form>
+<button class="btn">{{ ui_phrase('بحث / Search') }}</button></form>
 <form method="get" action="{{url_for('pacs_reconciliation')}}">
 <input type="hidden" name="study_id" value="{{x.orthanc_study_id}}">
 <input type="hidden" name="q" value="{{search_query}}">
-<label>اختر أمر الشغل الصحيح / Correct RIS Order</label>
-<select name="order_id" required><option value="">اختر / Select</option>
-{% if o %}<option value="{{o.id}}">اقتراح غير مؤكد / Suggestion — #{{o.id}} · {{p.name}} · {{p.patient_id}} · {{o.accession}}</option>{% endif %}
+<label>{{ ui_phrase('اختر أمر الشغل الصحيح / Correct RIS Order') }}</label>
+<select name="order_id" required><option value="">{{ ui_phrase('اختر / Select') }}</option>
+{% if o %}<option value="{{o.id}}">{{ ui_phrase('اقتراح غير مؤكد / Suggestion — #') }}{{o.id}} · {{p.name}} · {{p.patient_id}} · {{o.accession}}</option>{% endif %}
 {% for opt in target_options %}{% if not o or opt.id!=o.id %}<option value="{{opt.id}}">#{{opt.id}} · {{opt.patient.name}} · {{opt.patient.patient_id}} · {{opt.accession}} · {{opt.procedure}}</option>{% endif %}{% endfor %}
-</select><button class="btn primary">معاينة قبل التأكيد / Preview mapping</button></form>
+</select><button class="btn primary">{{ ui_phrase('معاينة قبل التأكيد / Preview mapping') }}</button></form>
 {% endif %}
 {% if v %}
 <p><strong>#{{v.order.id}} — {{v.order.procedure}}</strong> · {{v.order.branch.name if v.order.branch else '—'}}</p>
-<div style="overflow:auto"><table><tr><th>Field</th><th>Correct value</th><th>Change</th></tr>
-{% for field,value in v.after.items() %}<tr><td>{{field}}</td><td>{{value}}</td><td>{{'تغيير / Changed' if value!=v.before.tags.get(field) else 'مطابق / Same'}}</td></tr>{% endfor %}</table></div>
+<div style="overflow:auto"><table><tr><th>{{ ui_phrase('Field') }}</th><th>Correct value</th><th>{{ ui_phrase('Change') }}</th></tr>
+{% for field,value in v.after.items() %}<tr><td>{{field}}</td><td>{{value}}</td><td>{{ui_phrase('تغيير / Changed') if value!=v.before.tags.get(field) else ui_phrase('مطابق / Same')}}</td></tr>{% endfor %}</table></div>
 {% if not demo_mode %}<form method="post" action="{{url_for('pacs_reconciliation_match',study_id=x.orthanc_study_id)}}">
 <input type="hidden" name="order_id" value="{{v.order.id}}"><input type="hidden" name="preview_token" value="{{v.token}}">
-<label>سبب التصحيح / Documented reason</label><textarea name="reason" required minlength="5" maxlength="500"></textarea>
-<label style="display:block;margin:12px 0"><input type="checkbox" name="identity_confirmed" value="1" required> تأكدت من هوية المريض وأن الصور تخص هذا الفحص / I confirmed patient and study identity.</label>
+<label>{{ ui_phrase('سبب التصحيح / Documented reason') }}</label><textarea name="reason" required minlength="5" maxlength="500"></textarea>
+<label style="display:block;margin:12px 0"><input type="checkbox" name="identity_confirmed" value="1" required> {{ ui_phrase('تأكدت من هوية المريض وأن الصور تخص هذا الفحص / I confirmed patient and study identity.') }}</label>
 <p>الربط فقط لا يغيّر DICOM. التصحيح ينشئ نسخة جديدة بمعرفات جديدة، يحتفظ بالأصل، ثم يتحقق ويربط النسخة الصحيحة. التقارير النهائية محمية.</p>
-{% if has_perm('correction.review') %}<button class="btn primary" formaction="{{url_for('pacs_reconciliation_correct_dicom',study_id=x.orthanc_study_id)}}">تصحيح DICOM والربط / Correct DICOM and map</button>{% endif %}
-<button class="btn">ربط فقط دون تعديل DICOM / Confirm Manual Match</button>
+{% if has_perm('correction.review') %}<button class="btn primary" formaction="{{url_for('pacs_reconciliation_correct_dicom',study_id=x.orthanc_study_id)}}">{{ ui_phrase('تصحيح DICOM والربط / Correct DICOM and map') }}</button>{% endif %}
+<button class="btn">{{ ui_phrase('ربط فقط دون تعديل DICOM / Confirm Manual Match') }}</button>
 </form>{% else %}<p>بعد المعاينة، تظهر خيارات تصحيح DICOM والربط أو الربط فقط للمستخدم المخوّل. الأصل محفوظ وسجل التدقيق يسجل القيم القديمة والجديدة.</p>{% endif %}
 {% else %}<p>لم تُؤكد البيانات الصحيحة بعد. اختر أمر الشغل واضغط معاينة أولًا.</p>{% endif %}
 </section>

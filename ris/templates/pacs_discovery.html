@@ -1,34 +1,34 @@
 {% extends "base.html" %}
-{% block page_title %}DICOM Nodes{% endblock %}
-{% block subtitle %}Review devices and control incoming Worklist and image access{% endblock %}
+{% block page_title %}{{ ui_phrase('DICOM Nodes') }}{% endblock %}
+{% block subtitle %}{{ ui_phrase('Review devices and control incoming Worklist and image access') }}{% endblock %}
 {% block content %}
 <div class="panel">
   {% if ingress_ready %}
-  <strong>Orthanc ingress policy is configured.</strong>
-  <p>Changes are applied to Orthanc and checked before the RIS status is saved. Verify the policy file matches the running Orthanc container during deployment.</p>
+  <strong>{{ ui_phrase('Orthanc ingress policy is configured.') }}</strong>
+  <p>{{ ui_phrase('Changes are applied to Orthanc and checked before the RIS status is saved. Verify the policy file matches the running Orthanc container during deployment.') }}</p>
   {% else %}
-  <strong>Incoming access controls are unavailable.</strong>
-  <p>Orthanc must check source IP, reject unknown image senders and persist registrations. Approve and Block are disabled until this policy is verified. A RIS status alone cannot stop DICOM traffic.</p>
+  <strong>{{ ui_phrase('Incoming access controls are unavailable.') }}</strong>
+  <p>{{ ui_phrase('Orthanc must check source IP, reject unknown image senders and persist registrations. Approve and Block are disabled until this policy is verified. A RIS status alone cannot stop DICOM traffic.') }}</p>
   {% endif %}
 </div>
 <div class="panel">
-  <h3>Add node for review</h3>
+  <h3>{{ ui_phrase('Add node for review') }}</h3>
   <form method="post" action="{{url_for('pacs_discovery_manual')}}" class="form-grid">
     <input name="ae_title" placeholder="AE Title" maxlength="16" required>
-    <input name="host" placeholder="Source IP address" required>
-    <input name="port" type="number" min="1" max="65535" placeholder="Device listener port" required>
-    <select name="node_type"><option>VIEWER</option><option>MODALITY</option><option>UNKNOWN</option></select>
-    <button class="btn primary">Add for review</button>
+    <input name="host" placeholder="{{ ui_phrase('Source IP address') }}" required>
+    <input name="port" type="number" min="1" max="65535" placeholder="{{ ui_phrase('Device listener port') }}" required>
+    <select name="node_type"><option value="VIEWER">{{ ui_phrase('VIEWER') }}</option><option value="MODALITY">{{ ui_phrase('MODALITY') }}</option><option value="UNKNOWN">{{ ui_phrase('UNKNOWN') }}</option></select>
+    <button class="btn primary">{{ ui_phrase('Add for review') }}</button>
   </form>
-  <small>Adding a record for review does not authorize the device in Orthanc.</small>
+  <small>{{ ui_phrase('Adding a record for review does not authorize the device in Orthanc.') }}</small>
 </div>
 
 <div class="panel">
 <table>
-<tr><th>Status</th><th>AE Title</th><th>Source IP</th><th>Port</th><th>Type</th><th>Modality</th><th>Studies</th><th>Last Seen</th><th>Access control</th></tr>
+<tr><th>{{ ui_phrase('Status') }}</th><th>AE Title</th><th>{{ ui_phrase('Source IP') }}</th><th>{{ ui_phrase('Port') }}</th><th>{{ ui_phrase('Type') }}</th><th>{{ ui_phrase('Modality') }}</th><th>{{ ui_phrase('Studies') }}</th><th>{{ ui_phrase('Last Seen') }}</th><th>{{ ui_phrase('Access control') }}</th></tr>
 {% for r in rows %}
 <tr>
-<td><span class="badge">{{r.status}}</span>{% if r.status=='APPROVED' and r.id not in managed_ids %}<small>RIS record only; no managed Orthanc registration</small>{% endif %}</td>
+<td><span class="badge">{{r.status}}</span>{% if r.status=='APPROVED' and r.id not in managed_ids %}<small>{{ ui_phrase('RIS record only; no managed Orthanc registration') }}</small>{% endif %}</td>
 <td><b>{{r.ae_title}}</b></td>
 <td>{{r.host or 'Not reported by study metadata'}}</td>
 <td>{{r.port or '-'}}</td>
@@ -39,33 +39,33 @@
 <td>
   <form method="post" action="{{url_for('pacs_discovery_approve',node_id=r.id)}}" style="display:grid;gap:5px">
     <input name="ae_title" value="{{r.ae_title}}" maxlength="16" aria-label="AE Title" required>
-    <input name="host" value="{{r.host}}" aria-label="Source IP" required>
-    <input name="port" type="number" min="1" max="65535" value="{{r.port or ''}}" aria-label="Listener port" required>
-    <label><input name="allow_find" type="checkbox" value="1"> Allow Worklist / C-FIND</label>
-    <label><input name="allow_store" type="checkbox" value="1"> Allow incoming images / C-STORE</label>
+    <input name="host" value="{{r.host}}" aria-label="{{ ui_phrase('Source IP') }}" required>
+    <input name="port" type="number" min="1" max="65535" value="{{r.port or ''}}" aria-label="{{ ui_phrase('Listener port') }}" required>
+    <label><input name="allow_find" type="checkbox" value="1"> {{ ui_phrase('Allow Worklist / C-FIND') }}</label>
+    <label><input name="allow_store" type="checkbox" value="1"> {{ ui_phrase('Allow incoming images / C-STORE') }}</label>
     <button class="btn primary" {% if not ingress_ready %}disabled{% endif %}>{{'Update permissions' if r.status=='APPROVED' else 'Approve in Orthanc'}}</button>
   </form>
   {% if r.status == 'APPROVED' %}
   <form method="post" action="{{url_for('pacs_discovery_block',node_id=r.id)}}" style="margin-top:5px">
-    <button class="btn" {% if not ingress_ready or r.id not in managed_ids %}disabled{% endif %}>Disable incoming access</button>
+    <button class="btn" {% if not ingress_ready or r.id not in managed_ids %}disabled{% endif %}>{{ ui_phrase('Disable incoming access') }}</button>
   </form>
   {% endif %}
   {% set legacy = legacy_nodes.get(r.id) %}
   {% if legacy %}
   <form method="post" action="{{url_for('pacs_discovery_legacy_endpoint',node_id=r.id)}}" style="display:grid;gap:5px;margin-top:12px" onsubmit="return confirm('Changing the active source IP may interrupt this device. Continue?');">
-    <strong>Legacy Orthanc endpoint</strong>
-    <small>Active source IP: {{legacy.Host}} · listener port: {{legacy.Port}}. Changes here keep the current Worklist and Store permissions. If this device uses an SSH tunnel, use the IP Orthanc sees through that tunnel.</small>
+    <strong>{{ ui_phrase('Legacy Orthanc endpoint') }}</strong>
+    <small>{{ ui_phrase('Active source IP:') }} {{legacy.Host}} {{ ui_phrase('· listener port:') }} {{legacy.Port}}{{ ui_phrase('. Changes here keep the current Worklist and Store permissions. If this device uses an SSH tunnel, use the IP Orthanc sees through that tunnel.') }}</small>
     <input type="hidden" name="expected_host" value="{{legacy.Host}}">
     <input type="hidden" name="expected_port" value="{{legacy.Port}}">
-    <input name="host" value="{{legacy.Host}}" aria-label="Active source IP in Orthanc" required>
-    <input name="port" type="number" min="1" max="65535" value="{{legacy.Port}}" aria-label="Device listener port in Orthanc" required>
-    <button class="btn" type="submit">Update legacy IP / port</button>
-    <small>This does not enable Block. Unknown senders can still C-STORE under the current Live policy.</small>
+    <input name="host" value="{{legacy.Host}}" aria-label="{{ ui_phrase('Active source IP in Orthanc') }}" required>
+    <input name="port" type="number" min="1" max="65535" value="{{legacy.Port}}" aria-label="{{ ui_phrase('Device listener port in Orthanc') }}" required>
+    <button class="btn" type="submit">{{ ui_phrase('Update legacy IP / port') }}</button>
+    <small>{{ ui_phrase('This does not enable Block. Unknown senders can still C-STORE under the current Live policy.') }}</small>
   </form>
   {% endif %}
   {% if r.status in ('PENDING','BLOCKED') %}
   <form method="post" action="{{url_for('pacs_discovery_dismiss',node_id=r.id)}}" style="margin-top:5px" onsubmit="return confirm('Remove this review record? Orthanc and studies will not change.');">
-    <button class="btn" type="submit">Remove from review</button>
+    <button class="btn" type="submit">{{ ui_phrase('Remove from review') }}</button>
   </form>
   {% endif %}
 </td>

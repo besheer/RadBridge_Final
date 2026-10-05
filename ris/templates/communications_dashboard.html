@@ -553,7 +553,7 @@
  data-filter="ALL"
  onclick="setFilter('ALL',this)">
 
-الكل
+{{ ui_phrase('الكل') }}
 <span class="count" id="rbCountAll">0</span>
 
 </button>
@@ -573,7 +573,7 @@
  data-filter="IN_PROGRESS"
  onclick="setFilter('IN_PROGRESS',this)">
 
-قيد التنفيذ
+{{ ui_phrase('قيد التنفيذ') }}
 <span class="count" id="rbCountProgress">0</span>
 
 </button>
@@ -663,7 +663,7 @@ Waiting / Active Requests
 <div class="rb-patient-summary">
 
 <div class="rb-summary-cell">
-<span>اسم المريض</span>
+<span>{{ ui_phrase('اسم المريض') }}</span>
 <strong id="rbSummaryName">-</strong>
 </div>
 
@@ -673,12 +673,12 @@ Waiting / Active Requests
 </div>
 
 <div class="rb-summary-cell">
-<span>الحجز / Accession</span>
+<span>{{ ui_phrase('الحجز / Accession') }}</span>
 <strong id="rbSummaryBooking">-</strong>
 </div>
 
 <div class="rb-summary-cell">
-<span>نوع الطلب</span>
+<span>{{ ui_phrase('نوع الطلب') }}</span>
 <strong id="rbSummaryType">-</strong>
 </div>
 
@@ -728,12 +728,12 @@ Waiting / Active Requests
 <div class="rb-fields">
 
 <div class="rb-field">
-<label>الاسم</label>
+<label>{{ ui_phrase('الاسم') }}</label>
 <input id="rbPatientName">
 </div>
 
 <div class="rb-field">
-<label>الموبايل</label>
+<label>{{ ui_phrase('الموبايل') }}</label>
 <input id="rbPhone">
 </div>
 
@@ -743,16 +743,16 @@ Waiting / Active Requests
 </div>
 
 <div class="rb-field">
-<label>نوع الطلب</label>
+<label>{{ ui_phrase('نوع الطلب') }}</label>
 
 <select id="rbType">
 
-<option value="BOOKING">Booking</option>
-<option value="REPORT">Report</option>
-<option value="PRICE">Price</option>
+<option value="BOOKING">{{ ui_phrase('Booking') }}</option>
+<option value="REPORT">{{ ui_phrase('Report') }}</option>
+<option value="PRICE">{{ ui_phrase('Price') }}</option>
 <option value="APPOINTMENT">Appointment</option>
 <option value="COMPLAINT">Complaint</option>
-<option value="OTHER">Other</option>
+<option value="OTHER">{{ ui_phrase('Other') }}</option>
 
 </select>
 
@@ -766,7 +766,7 @@ Waiting / Active Requests
 <div class="rb-mini-card">
 
 <h3>
-المرفقات
+{{ ui_phrase('المرفقات') }}
 </h3>
 
 <div id="rbAttachments">
@@ -781,7 +781,7 @@ Waiting / Active Requests
 <div class="rb-mini-card">
 
 <h3>
-المحادثة
+{{ ui_phrase('المحادثة') }}
 </h3>
 
 <div class="rb-chat-status">

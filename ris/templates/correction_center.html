@@ -3,14 +3,14 @@
 {% block subtitle %}Search cases, report operational errors and request controlled correction{% endblock %}
 {% block content %}
 <div class="panel">
-  <h3>Search & Case Selection</h3>
+  <h3>{{ ui_phrase('Search & Case Selection') }}</h3>
   <p>Search by accession, Patient ID, patient name, phone, or internal Order ID. Results are limited to your branch unless your role has global access.</p>
   <form method="get" class="actions">
-    <input name="q" value="{{q}}" placeholder="Accession / Patient ID / Name / Phone / Order ID" required>
-    <button class="btn primary">🔎 Search</button>
-    <a class="btn" href="{{url_for('correction_center')}}">Clear</a>
+    <input name="q" value="{{q}}" placeholder="{{ ui_phrase('Accession / Patient ID / Name / Phone / Order ID') }}" required>
+    <button class="btn primary">{{ ui_phrase('🔎 Search') }}</button>
+    <a class="btn" href="{{url_for('correction_center')}}">{{ ui_phrase('Clear') }}</a>
     {% if can_review %}
-      <a class="btn" href="{{url_for('correction_request_queue')}}">Coordinator Queue{% if pending_count %} ({{pending_count}}){% endif %}</a>
+      <a class="btn" href="{{url_for('correction_request_queue')}}">{{ ui_phrase('Coordinator Queue') }}{% if pending_count %} ({{pending_count}}){% endif %}</a>
     {% endif %}
   </form>
 </div>
@@ -19,7 +19,7 @@
 <div class="panel">
   <h3>Matching Orders</h3>
   <div style="overflow-x:auto"><table>
-    <thead><tr><th>Order / Accession</th><th>Patient</th><th>Exam</th><th>Branch</th><th>Workflow</th><th>PACS / Report</th><th>Request correction</th></tr></thead>
+    <thead><tr><th>Order / Accession</th><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Exam') }}</th><th>{{ ui_phrase('Branch') }}</th><th>{{ ui_phrase('Workflow') }}</th><th>PACS / Report</th><th>Request correction</th></tr></thead>
     <tbody>
     {% for o in orders %}
       <tr>
@@ -28,17 +28,17 @@
         <td>{{o.modality}} — {{o.procedure}}<br><small>{{o.scheduled}}</small></td>
         <td>{{o.branch.name if o.branch else '—'}}</td>
         <td>{{o.status}} / {{o.exam_status}}</td>
-        <td>Images: {{o.pacs_image_count or 0}}<br>PACS: {{o.pacs_status or '—'}}<br>Report: {{o.report.status if o.report else 'NONE'}}</td>
+        <td>{{ ui_phrase('Images:') }} {{o.pacs_image_count or 0}}<br>PACS: {{o.pacs_status or '—'}}<br>{{ ui_phrase('Report:') }} {{o.report.status if o.report else 'NONE'}}</td>
         <td>
           {% if has_perm('correction.request') %}
           <form method="post" action="{{url_for('correction_request_submit')}}">
             <input type="hidden" name="order_id" value="{{o.id}}">
-            <a class="btn" href="{{url_for('patient_demographics_correction',order_id=o.id)}}">تصحيح بيانات المريض / Patient demographics</a><select name="request_type" required>
+            <a class="btn" href="{{url_for('patient_demographics_correction',order_id=o.id)}}">{{ ui_phrase('تصحيح بيانات المريض / Patient demographics') }}</a><select name="request_type" required>
               <option value="">Problem type…</option>
               {% for code,label in request_types if code!='WRONG_DEMOGRAPHICS' %}<option value="{{code}}">{{label}}</option>{% endfor %}
             </select>
             <input name="reason" minlength="5" required placeholder="What is wrong?">
-            <button class="btn primary">Submit Request</button>
+            <button class="btn primary">{{ ui_phrase('Submit Request') }}</button>
           </form>
           {% else %}
             <small>Review-only access</small>
@@ -56,15 +56,15 @@
 <div class="panel">
   <h3>My Requests</h3>
   <div style="overflow-x:auto"><table>
-    <thead><tr><th>ID</th><th>Order</th><th>Problem</th><th>Status</th><th>Coordinator</th><th>Created</th></tr></thead>
+    <thead><tr><th>ID</th><th>{{ ui_phrase('Order') }}</th><th>{{ ui_phrase('Problem') }}</th><th>{{ ui_phrase('Status') }}</th><th>{{ ui_phrase('Coordinator') }}</th><th>{{ ui_phrase('Created') }}</th></tr></thead>
     <tbody>
     {% for r in my_requests %}
       <tr>
         <td>#{{r.id}}</td>
         <td>#{{r.order_id}} — {{r.order.accession if r.order else '—'}}</td>
-        <td>{{r.request_type}}<br><small>{{r.reason}}</small>{% if r.demographic_detail %}<br><a href="{{url_for('patient_demographics_correction_view',request_id=r.id)}}">الحقل والقيم والتأثير / Field and impact</a>{% endif %}</td>
+        <td>{{r.request_type}}<br><small>{{r.reason}}</small>{% if r.demographic_detail %}<br><a href="{{url_for('patient_demographics_correction_view',request_id=r.id)}}">{{ ui_phrase('الحقل والقيم والتأثير / Field and impact') }}</a>{% endif %}</td>
         <td>{{r.status}}</td>
-        <td>{{r.assignee.full_name if r.assignee else 'Unassigned'}}{% if r.review_note %}<br><small>{{r.review_note}}</small>{% endif %}</td>
+        <td>{{r.assignee.full_name if r.assignee else ui_phrase('Unassigned')}}{% if r.review_note %}<br><small>{{r.review_note}}</small>{% endif %}</td>
         <td>{{r.created_at}}</td>
       </tr>
     {% else %}

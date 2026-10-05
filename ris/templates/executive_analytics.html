@@ -1,26 +1,26 @@
 {% extends "base.html" %}
-{% block page_title %}Executive Analytics{% endblock %}
+{% block page_title %}{{ ui_phrase('Executive Analytics') }}{% endblock %}
 {% block subtitle %}Interactive management reporting from live RIS data{% endblock %}
 {% block content %}
 <div class="panel exec-filters">
 <form method="get" class="exec-filter-grid">
-<div><label>From</label><input type="date" name="start" value="{{f.start}}"></div>
-<div><label>To</label><input type="date" name="end" value="{{f.end}}"></div>
-<div><label>Branch</label><select name="branch_id"><option value="">All Branches</option>{% for x in branches %}<option value="{{x.id}}" {% if f.branch_id==x.id %}selected{% endif %}>{{x.name}}</option>{% endfor %}</select></div>
-<div><label>Modality</label><select name="modality"><option value="">All Modalities</option>{% for x in modalities %}<option value="{{x}}" {% if f.modality==x %}selected{% endif %}>{{x}}</option>{% endfor %}</select></div>
-<div><label>Doctor</label><select name="doctor_id"><option value="">All Doctors</option>{% for x in doctors %}<option value="{{x.id}}" {% if f.doctor_id==x.id %}selected{% endif %}>{{x.full_name or x.username}}</option>{% endfor %}</select></div>
-<div><label>Device</label><select name="device_id"><option value="">All Devices</option>{% for x in devices %}<option value="{{x.id}}" {% if f.device_id==x.id %}selected{% endif %}>{{x.name}}</option>{% endfor %}</select></div>
-<div><label>Contract</label><select name="contract_id"><option value="">All Contracts</option>{% for x in contracts %}<option value="{{x.id}}" {% if f.contract_id==x.id %}selected{% endif %}>{{x.name}}</option>{% endfor %}</select></div>
-<div class="exec-filter-action"><button class="btn primary">Apply Filters</button></div>
+<div><label>{{ ui_phrase('From') }}</label><input type="date" name="start" value="{{f.start}}"></div>
+<div><label>{{ ui_phrase('To') }}</label><input type="date" name="end" value="{{f.end}}"></div>
+<div><label>{{ ui_phrase('Branch') }}</label><select name="branch_id"><option value="">{{ ui_phrase('All Branches') }}</option>{% for x in branches %}<option value="{{x.id}}" {% if f.branch_id==x.id %}selected{% endif %}>{{x.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Modality') }}</label><select name="modality"><option value="">{{ ui_phrase('All Modalities') }}</option>{% for x in modalities %}<option value="{{x}}" {% if f.modality==x %}selected{% endif %}>{{x}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Doctor') }}</label><select name="doctor_id"><option value="">{{ ui_phrase('All Doctors') }}</option>{% for x in doctors %}<option value="{{x.id}}" {% if f.doctor_id==x.id %}selected{% endif %}>{{x.full_name or x.username}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Device') }}</label><select name="device_id"><option value="">{{ ui_phrase('All Devices') }}</option>{% for x in devices %}<option value="{{x.id}}" {% if f.device_id==x.id %}selected{% endif %}>{{x.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Contract') }}</label><select name="contract_id"><option value="">All Contracts</option>{% for x in contracts %}<option value="{{x.id}}" {% if f.contract_id==x.id %}selected{% endif %}>{{x.name}}</option>{% endfor %}</select></div>
+<div class="exec-filter-action"><button class="btn primary">{{ ui_phrase('Apply Filters') }}</button></div>
 </form></div>
 
 <div class="exec-kpis">
-<div><span>Total Exams</span><b>{{data.kpi.total_exams}}</b></div>
+<div><span>{{ ui_phrase('Total Exams') }}</span><b>{{data.kpi.total_exams}}</b></div>
 <div><span>New Patients</span><b>{{data.kpi.new_patients}}</b></div>
-<div><span>Average TAT</span><b>{{data.kpi.avg_tat}} <small>min</small></b></div>
+<div><span>{{ ui_phrase('Average TAT') }}</span><b>{{data.kpi.avg_tat}} <small>{{ ui_phrase('min') }}</small></b></div>
 <div><span>Completion Rate</span><b>{{data.kpi.completion_rate}}%</b></div>
-<div><span>Revenue</span><b>{{'{:,.0f}'.format(data.kpi.revenue)}} <small>EGP</small></b></div>
-<div><span>Collected</span><b>{{'{:,.0f}'.format(data.kpi.paid)}} <small>EGP</small></b></div>
+<div><span>{{ ui_phrase('Revenue') }}</span><b>{{'{:,.0f}'.format(data.kpi.revenue)}} <small>EGP</small></b></div>
+<div><span>{{ ui_phrase('Collected') }}</span><b>{{'{:,.0f}'.format(data.kpi.paid)}} <small>EGP</small></b></div>
 </div>
 
 <div class="exec-grid">

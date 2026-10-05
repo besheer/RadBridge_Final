@@ -54,7 +54,7 @@
     <small>{{'متوسط زمن التقرير' if ui_lang=='ar' else 'Average TAT'}}</small>
     <b>
       {% if stats.avg_tat_minutes is not none %}
-        {{stats.avg_tat_minutes//60}}h {{stats.avg_tat_minutes%60}}m
+        {{stats.avg_tat_minutes//60}}{{ ui_phrase('h') }} {{stats.avg_tat_minutes%60}}{{ ui_phrase('m') }}
       {% else %}
         —
       {% endif %}
@@ -125,7 +125,7 @@
     <div>
       <label>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</label>
       <select name="branch_id">
-        <option value="">All</option>
+        <option value="">{{ ui_phrase('All') }}</option>
         {% for b in branches %}
         <option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>
           {{b.name}}
@@ -135,9 +135,9 @@
     </div>
 
     <div>
-      <label>Modality</label>
+      <label>{{ ui_phrase('Modality') }}</label>
       <select name="modality">
-        <option value="">All</option>
+        <option value="">{{ ui_phrase('All') }}</option>
         {% for m in modalities %}
         <option value="{{m}}" {% if modality==m %}selected{% endif %}>
           {{m}}
@@ -149,7 +149,7 @@
     <div>
       <label>{{'الطبيب' if ui_lang=='ar' else 'Doctor'}}</label>
       <select name="doctor_id">
-        <option value="">All</option>
+        <option value="">{{ ui_phrase('All') }}</option>
         {% for d in doctors %}
         <option value="{{d.id}}" {% if doctor_id==d.id %}selected{% endif %}>
           {{d.full_name or d.username}}
@@ -161,7 +161,7 @@
     <div>
       <label>{{'حالة التقرير' if ui_lang=='ar' else 'Report Status'}}</label>
       <select name="report_status">
-        <option value="">All</option>
+        <option value="">{{ ui_phrase('All') }}</option>
         {% for st in [
           'UNREPORTED',
           'DRAFT',
@@ -237,7 +237,7 @@
          report_status=report_status,
          date_from=date_from,
          date_to=date_to)}}">
-      All
+      {{ ui_phrase('All') }}
     </a>
 
     <a class="btn {{'primary' if view=='waiting' else ''}}"
@@ -317,7 +317,7 @@
 <thead>
 <tr>
 <th>{{'المريض' if ui_lang=='ar' else 'Patient'}}</th>
-<th>Accession</th>
+<th>{{ ui_phrase('Accession') }}</th>
 <th>{{'الفحص' if ui_lang=='ar' else 'Exam'}}</th>
 <th>{{'الطبيب' if ui_lang=='ar' else 'Doctor'}}</th>
 <th>{{'الأولوية' if ui_lang=='ar' else 'Priority'}}</th>
@@ -357,7 +357,7 @@
 {% if p in ('STAT','EMERGENCY') %}
 🚨 <b>{{p}}</b>
 {% elif p=='URGENT' %}
-⚡ <b>URGENT</b>
+⚡ <b>{{ ui_phrase('URGENT') }}</b>
 {% elif p=='VIP' %}
 ⭐ <b>VIP</b>
 {% else %}
@@ -369,8 +369,8 @@
 {% if row.sla.status=='BREACHED' %}
 🔴 <b>BREACHED</b><br>
 <small>
-Target {{format_sla_minutes(row.sla.target_minutes)}}<br>
-Overdue {{format_sla_minutes(-row.sla.remaining_minutes)}}
+{{ ui_phrase('Target') }} {{format_sla_minutes(row.sla.target_minutes)}}<br>
+{{ ui_phrase('Overdue') }} {{format_sla_minutes(-row.sla.remaining_minutes)}}
 </small>
 
 {% elif row.sla.status=='NEAR_SLA' %}
@@ -392,26 +392,26 @@ Remaining {{format_sla_minutes(row.sla.remaining_minutes)}}
 
 <td>
 <span class="badge">
-{{r.status if r else 'WAITING'}}
+{{r.status if r else ui_phrase('WAITING')}}
 </span>
 </td>
 
 <td>
 
 {% if row.portal_state=='NEEDS_ACTION' %}
-🟠 <b>Needs Action</b>
+🟠 <b>{{ ui_phrase('Needs Action') }}</b>
 
 {% elif row.portal_state=='READY_FOR_REREVIEW' %}
 🔵 <b>Ready for Re-review</b>
 
 {% elif row.portal_state=='FINAL' %}
-🟢 <b>Final</b>
+🟢 <b>{{ ui_phrase('Final') }}</b>
 
 {% elif row.portal_state=='REPORTING' %}
-🟡 <b>Reporting</b>
+🟡 <b>{{ ui_phrase('Reporting') }}</b>
 
 {% else %}
-⚪ <b>Waiting</b>
+⚪ <b>{{ ui_phrase('Waiting') }}</b>
 {% endif %}
 
 </td>
@@ -435,7 +435,7 @@ Remaining {{format_sla_minutes(row.sla.remaining_minutes)}}
 
 <a class="btn"
    href="{{url_for('order_detail',order_id=o.id)}}">
-Open
+{{ ui_phrase('Open') }}
 </a>
 
 {% if r and r.status=='FINAL' %}

@@ -213,7 +213,7 @@
     </div>
 
     <div class="lcc-card">
-      <small>Exam Completed</small>
+      <small>{{ ui_phrase('Exam Completed') }}</small>
       <strong id="lccExamCompleted">—</strong>
     </div>
 
@@ -223,7 +223,7 @@
     </div>
 
     <div class="lcc-card">
-      <small>Ready</small>
+      <small>{{ ui_phrase('Ready') }}</small>
       <strong class="lcc-good" id="lccReady">—</strong>
     </div>
 
@@ -241,15 +241,15 @@
   <div class="lcc-flow">
 
     <div class="lcc-node">
-      <div class="lcc-node-title">Orders</div>
+      <div class="lcc-node-title">{{ ui_phrase('Orders') }}</div>
       <div class="lcc-node-value" id="nodeOrders">—</div>
       <div class="lcc-node-detail">Registration / scheduling</div>
     </div>
 
     <div class="lcc-node">
-      <div class="lcc-node-title">Exam</div>
+      <div class="lcc-node-title">{{ ui_phrase('Exam') }}</div>
       <div class="lcc-node-value" id="nodeExam">—</div>
-      <div class="lcc-node-detail">Exam completed</div>
+      <div class="lcc-node-detail">{{ ui_phrase('Exam completed') }}</div>
     </div>
 
     <div class="lcc-node">
@@ -259,21 +259,21 @@
     </div>
 
     <div class="lcc-node">
-      <div class="lcc-node-title">Readiness</div>
+      <div class="lcc-node-title">{{ ui_phrase('Readiness') }}</div>
       <div class="lcc-node-value" id="nodeReady">—</div>
       <div class="lcc-node-detail" id="nodeReadyDetail">Case readiness</div>
     </div>
 
     <div class="lcc-node">
-      <div class="lcc-node-title">Assignment</div>
+      <div class="lcc-node-title">{{ ui_phrase('Assignment') }}</div>
       <div class="lcc-node-value" id="nodeAssignment">—</div>
       <div class="lcc-node-detail" id="nodeAssignmentDetail">Active assignments</div>
     </div>
 
     <div class="lcc-node">
-      <div class="lcc-node-title">Reporting</div>
+      <div class="lcc-node-title">{{ ui_phrase('Reporting') }}</div>
       <div class="lcc-node-value" id="nodeReporting">—</div>
-      <div class="lcc-node-detail" id="nodeReportingDetail">Final reports</div>
+      <div class="lcc-node-detail" id="nodeReportingDetail">{{ ui_phrase('Final reports') }}</div>
     </div>
 
   </div>
@@ -286,7 +286,7 @@
     </div>
 
     <div class="lcc-panel">
-      <h3>Attention</h3>
+      <h3>{{ ui_phrase('Attention') }}</h3>
 
       <div class="lcc-row">
         <span class="lcc-key">Unmatched studies</span>
@@ -304,7 +304,7 @@
       </div>
 
       <div class="lcc-row">
-        <span class="lcc-key">Incomplete images</span>
+        <span class="lcc-key">{{ ui_phrase('Incomplete images') }}</span>
         <strong class="lcc-warn" id="lccIncomplete">—</strong>
       </div>
 
@@ -1165,16 +1165,16 @@
 
         <div class="rb-node" data-stage="MWL">
             <div class="rb-node-icon">MWL</div>
-            <div class="rb-node-name">Worklist</div>
-            <div class="rb-node-state">Waiting</div>
+            <div class="rb-node-name">{{ ui_phrase('Worklist') }}</div>
+            <div class="rb-node-state">{{ ui_phrase('Waiting') }}</div>
         </div>
 
         <div class="rb-edge"></div>
 
         <div class="rb-node" data-stage="EXAM">
             <div class="rb-node-icon">EX</div>
-            <div class="rb-node-name">Exam</div>
-            <div class="rb-node-state">Waiting</div>
+            <div class="rb-node-name">{{ ui_phrase('Exam') }}</div>
+            <div class="rb-node-state">{{ ui_phrase('Waiting') }}</div>
         </div>
 
         <div class="rb-edge"></div>
@@ -1182,7 +1182,7 @@
         <div class="rb-node" data-stage="PACS">
             <div class="rb-node-icon">PX</div>
             <div class="rb-node-name">PACS</div>
-            <div class="rb-node-state">Waiting</div>
+            <div class="rb-node-state">{{ ui_phrase('Waiting') }}</div>
         </div>
 
         <div class="rb-edge"></div>
@@ -1190,7 +1190,7 @@
         <div class="rb-node" data-stage="MATCHING">
             <div class="rb-node-icon">MT</div>
             <div class="rb-node-name">Matching</div>
-            <div class="rb-node-state">Waiting</div>
+            <div class="rb-node-state">{{ ui_phrase('Waiting') }}</div>
         </div>
 
         <div class="rb-edge"></div>
@@ -1198,31 +1198,31 @@
         <div class="rb-node" data-stage="READINESS">
             <div class="rb-node-icon">RD</div>
             <div class="rb-node-name">Case Ready</div>
-            <div class="rb-node-state">Waiting</div>
+            <div class="rb-node-state">{{ ui_phrase('Waiting') }}</div>
         </div>
 
         <div class="rb-edge"></div>
 
         <div class="rb-node" data-stage="ASSIGNMENT">
             <div class="rb-node-icon">AS</div>
-            <div class="rb-node-name">Assignment</div>
-            <div class="rb-node-state">Waiting</div>
+            <div class="rb-node-name">{{ ui_phrase('Assignment') }}</div>
+            <div class="rb-node-state">{{ ui_phrase('Waiting') }}</div>
         </div>
 
         <div class="rb-edge"></div>
 
         <div class="rb-node" data-stage="REPORTING">
             <div class="rb-node-icon">RP</div>
-            <div class="rb-node-name">Reporting</div>
-            <div class="rb-node-state">Waiting</div>
+            <div class="rb-node-name">{{ ui_phrase('Reporting') }}</div>
+            <div class="rb-node-state">{{ ui_phrase('Waiting') }}</div>
         </div>
 
         <div class="rb-edge"></div>
 
         <div class="rb-node" data-stage="FINAL">
-            <div class="rb-node-icon">OK</div>
-            <div class="rb-node-name">Final</div>
-            <div class="rb-node-state">Waiting</div>
+            <div class="rb-node-icon">{{ ui_phrase('OK') }}</div>
+            <div class="rb-node-name">{{ ui_phrase('Final') }}</div>
+            <div class="rb-node-state">{{ ui_phrase('Waiting') }}</div>
         </div>
 
     </div>
@@ -1269,7 +1269,7 @@
             class="rb-control-mode"
             data-mode="NORMAL"
         >
-            <strong>NORMAL</strong>
+            <strong>{{ ui_phrase('NORMAL') }}</strong>
             <small>
                 Low-frequency monitoring
             </small>
@@ -1371,7 +1371,7 @@
                 -
             </strong>
             <small id="rb-resource-host-mem-sub">
-                available
+                {{ ui_phrase('available') }}
             </small>
         </div>
 
@@ -1483,8 +1483,8 @@
             <div class="rb-v3-main">
 
                 <button class="rb-v3-node" data-v3-node="ORDER">
-                    <span>Order</span>
-                    <strong>Waiting</strong>
+                    <span>{{ ui_phrase('Order') }}</span>
+                    <strong>{{ ui_phrase('Waiting') }}</strong>
                     <small></small>
                 </button>
 
@@ -1492,15 +1492,15 @@
 
                 <button class="rb-v3-node" data-v3-node="MWL">
                     <span>MWL</span>
-                    <strong>Waiting</strong>
+                    <strong>{{ ui_phrase('Waiting') }}</strong>
                     <small></small>
                 </button>
 
                 <div class="rb-v3-link"></div>
 
                 <button class="rb-v3-node" data-v3-node="EXAM">
-                    <span>Exam</span>
-                    <strong>Waiting</strong>
+                    <span>{{ ui_phrase('Exam') }}</span>
+                    <strong>{{ ui_phrase('Waiting') }}</strong>
                     <small></small>
                 </button>
 
@@ -1508,7 +1508,7 @@
 
                 <button class="rb-v3-node" data-v3-node="PACS">
                     <span>PACS</span>
-                    <strong>Waiting</strong>
+                    <strong>{{ ui_phrase('Waiting') }}</strong>
                     <small></small>
                 </button>
 
@@ -1520,7 +1520,7 @@
                         data-v3-node="MATCHING"
                     >
                         <span>Matching</span>
-                        <strong>Waiting</strong>
+                        <strong>{{ ui_phrase('Waiting') }}</strong>
                         <small></small>
                     </button>
 
@@ -1540,7 +1540,7 @@
                         data-v3-node="READINESS"
                     >
                         <span>Case Ready</span>
-                        <strong>Waiting</strong>
+                        <strong>{{ ui_phrase('Waiting') }}</strong>
                         <small></small>
                     </button>
 
@@ -1557,8 +1557,8 @@
                         class="rb-v3-node"
                         data-v3-node="ASSIGNMENT"
                     >
-                        <span>Assignment</span>
-                        <strong>Waiting</strong>
+                        <span>{{ ui_phrase('Assignment') }}</span>
+                        <strong>{{ ui_phrase('Waiting') }}</strong>
                         <small></small>
                     </button>
 
@@ -1576,15 +1576,15 @@
                         class="rb-v3-node"
                         data-v3-node="REPORTING"
                     >
-                        <span>Reporting</span>
-                        <strong>Waiting</strong>
+                        <span>{{ ui_phrase('Reporting') }}</span>
+                        <strong>{{ ui_phrase('Waiting') }}</strong>
                         <small></small>
                     </button>
 
                     <div class="rb-v3-mini-flow">
-                        <span>Draft</span>
-                        <span>Verified</span>
-                        <span>Final</span>
+                        <span>{{ ui_phrase('Draft') }}</span>
+                        <span>{{ ui_phrase('Verified') }}</span>
+                        <span>{{ ui_phrase('Final') }}</span>
                     </div>
                 </div>
 
@@ -1612,7 +1612,7 @@
                     href="#"
                     hidden
                 >
-                    Open Resolution
+                    {{ ui_phrase('Open Resolution') }}
                 </a>
             </aside>
 

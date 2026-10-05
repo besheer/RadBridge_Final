@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async function(){
 {% endif %}
 
 
-<form method="post" enctype="multipart/form-data" class="panel form-card easy-registration" id="easyRegistrationForm"><div class="notice info validation-preserve-note">Validation errors keep the entered patient/visit data on this screen. Browser security may require re-selecting file attachments after a server-side validation response.</div>
+<form method="post" enctype="multipart/form-data" class="panel form-card easy-registration" id="easyRegistrationForm"><div class="notice info validation-preserve-note">{{ ui_phrase('Validation errors keep the entered patient/visit data on this screen. Browser security may require re-selecting file attachments after a server-side validation response.') }}</div>
 
 <div class="registration-head">
   <div><b>{{t("visit.title","Patient & Visit")}}</b><small>{{ "تسجيل سريع ومتكامل" if ui_lang=="ar" else "Fast integrated registration" }}</small></div>
@@ -156,10 +156,10 @@ document.addEventListener('DOMContentLoaded', async function(){
 </div>
 
 <div id="pricingPreview" class="pricing-preview">
-  <div><small>Base Price</small><b id="gross">—</b></div>
-  <div><small>Contract Price</small><b id="contractPrice">—</b></div>
-  <div><small>Patient Share</small><b id="patientShare">—</b></div>
-  <div><small>Company Share</small><b id="companyShare">—</b></div>
+  <div><small>{{ ui_phrase('Base Price') }}</small><b id="gross">—</b></div>
+  <div><small>{{ ui_phrase('Contract Price') }}</small><b id="contractPrice">—</b></div>
+  <div><small>{{ ui_phrase('Patient Share') }}</small><b id="patientShare">—</b></div>
+  <div><small>{{ ui_phrase('Company Share') }}</small><b id="companyShare">—</b></div>
 </div>
 
 <div id="approvalBox" class="panel" style="display:none;margin-top:12px">
@@ -219,7 +219,7 @@ document.addEventListener('DOMContentLoaded', async function(){
           <option value="OTHER">{{"أخرى" if ui_lang=="ar" else "Other"}}</option>
         </select>
         <input name="attachment_notes" placeholder="{{'ملاحظة على المرفق' if ui_lang=='ar' else 'Attachment note'}}">
-        <button type="button" class="icon-btn remove-attachment-row" title="Remove">×</button>
+        <button type="button" class="icon-btn remove-attachment-row" title="{{ ui_phrase('Remove') }}">×</button>
       </div>
     </div>
     <small>{{"يمكن إضافة أكثر من ملف وتصنيف كل ملف بصورة مستقلة." if ui_lang=="ar" else "Add multiple files and classify each attachment separately."}}</small>

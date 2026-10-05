@@ -1,9 +1,9 @@
-{% extends "base.html" %}{% block page_title %}Telephony / المكالمات{% endblock %}{% block content %}
+{% extends "base.html" %}{% block page_title %}{{ ui_phrase('Telephony / المكالمات') }}{% endblock %}{% block content %}
 <form method="get" class="panel global-screen-filter"><div class="filter-grid">
 <input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
 <input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
 <input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
-<select name="priority"><option value="">Priority</option><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select>
-</div><div class="actions"><button class="btn small primary">Filter</button><a class="btn small" href="{{request.path}}">Clear</a></div></form>
-<div class="panel"><table><tr><th>Time</th><th>Caller</th><th>Extension</th><th>Patient</th><th>Status</th><th></th></tr>{% for c in calls %}<tr><td>{{c.started_at}}</td><td>{{c.caller_number}}</td><td>{{c.extension}}</td><td>{{c.patient.name if c.patient else 'Unknown Caller'}}</td><td>{{c.status}}</td><td><a class="btn small" href="{{url_for('telephony_caller',call_id=c.id)}}">Open</a></td></tr>{% endfor %}</table></div>
+<select name="priority"><option value="">{{ ui_phrase('Priority') }}</option><option value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option><option value="URGENT">{{ ui_phrase('URGENT') }}</option><option value="STAT">{{ ui_phrase('STAT') }}</option></select>
+</div><div class="actions"><button class="btn small primary">{{ ui_phrase('Filter') }}</button><a class="btn small" href="{{request.path}}">{{ ui_phrase('Clear') }}</a></div></form>
+<div class="panel"><table><tr><th>{{ ui_phrase('Time') }}</th><th>{{ ui_phrase('Caller') }}</th><th>{{ ui_phrase('Extension') }}</th><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Status') }}</th><th></th></tr>{% for c in calls %}<tr><td>{{c.started_at}}</td><td>{{c.caller_number}}</td><td>{{c.extension}}</td><td>{{c.patient.name if c.patient else 'Unknown Caller'}}</td><td>{{c.status}}</td><td><a class="btn small" href="{{url_for('telephony_caller',call_id=c.id)}}">{{ ui_phrase('Open') }}</a></td></tr>{% endfor %}</table></div>
 {% endblock %}

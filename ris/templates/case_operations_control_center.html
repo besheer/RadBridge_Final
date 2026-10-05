@@ -79,7 +79,7 @@
               <td><b>{{item.order.accession}}</b><br><span class="coc-muted">{{item.order.status}}</span></td>
               <td>{{item.order.patient.name if item.order.patient else '-'}}<br><span class="coc-muted">{{item.order.modality}} · {{item.order.procedure}}</span></td>
               <td class="coc-status">{{item.readiness.status if item.readiness else 'NOT_CHECKED'}}{% if item.readiness %}<br><span class="coc-muted">{{item.readiness.image_count}} / {{item.readiness.expected_min_images}}</span>{% endif %}</td>
-              <td>{% if item.assignment %}{{item.assignment.doctor.full_name or item.assignment.doctor.username}}<br><span class="coc-muted">{{item.assignment.assignment_type}}</span>{% else %}<span class="coc-status">UNASSIGNED</span>{% endif %}</td>
+              <td>{% if item.assignment %}{{item.assignment.doctor.full_name or item.assignment.doctor.username}}<br><span class="coc-muted">{{item.assignment.assignment_type}}</span>{% else %}<span class="coc-status">{{ ui_phrase('UNASSIGNED') }}</span>{% endif %}</td>
               <td><div class="coc-tags">{% for reason in item.attention_reasons %}<span class="coc-tag">{{reason.replace('_',' ')}}</span>{% endfor %}</div>
                 <a class="btn btn-sm" href="{{url_for('case_exception_resolver',order_id=item.order.id)}}">{{'حل المشكلة' if ui_lang=='ar' else 'Resolve Exception'}}</a>
                 {{ action_info('حل مشكلة الحالة' if ui_lang=='ar' else 'Resolve Case Exception','يفتح البحث والمعاينة وأدوات الحل الموثقة لهذه الحالة.' if ui_lang=='ar' else 'Opens search, preview and audited resolution tools for this case.','استخدمه لفهم كل سبب حجب وحله من مصدره.' if ui_lang=='ar' else 'Use it to understand and resolve each blocker at its source.','التنفيذ متاح فقط للمستخدم صاحب صلاحية PACS reconciliation.' if ui_lang=='ar' else 'Write actions require PACS reconciliation permission.','لا يغيّر DICOM ولا يتجاوز الحالات النهائية.' if ui_lang=='ar' else 'It never changes DICOM or overrides terminal cases.','تحقق من هوية المريض والدليل قبل حفظ أي Mapping.' if ui_lang=='ar' else 'Confirm patient identity and evidence before saving any mapping.',ui_lang) }}
@@ -96,7 +96,7 @@
     <div class="panel coc-section">
       <h3>🖼 {{"استثناءات الصور" if ui_lang=="ar" else "Imaging Exceptions"}}</h3>
       <div class="table-wrap">
-        <table><thead><tr><th>Accession</th><th>Patient ID</th><th>Modality</th><th>Images</th><th>State</th></tr></thead><tbody>
+        <table><thead><tr><th>{{ ui_phrase('Accession') }}</th><th>{{ ui_phrase('Patient ID') }}</th><th>{{ ui_phrase('Modality') }}</th><th>{{ ui_phrase('Images') }}</th><th>{{ ui_phrase('State') }}</th></tr></thead><tbody>
         {% for inbox in snapshot.pacs_review %}
           <tr><td>{{inbox.accession or '-'}}</td><td>{{inbox.pacs_patient_id or '-'}}</td><td>{{inbox.modality or '-'}}</td><td>{{inbox.image_count}}</td><td>{{inbox.state}}</td></tr>
         {% else %}<tr><td colspan="5" class="coc-empty">{{"لا توجد دراسات تنتظر المراجعة." if ui_lang=="ar" else "No PACS studies await review."}}</td></tr>{% endfor %}
@@ -122,7 +122,7 @@
       <h3>✎ {{"المحررون النشطون" if ui_lang=="ar" else "Active Editors"}}</h3>
       {% set active_items = snapshot.cases|selectattr('lease')|list %}
       {% for item in active_items %}
-        <div class="coc-card" style="margin-bottom:8px"><b style="font-size:15px">{{item.order.accession}}</b><span>User {{item.lease.user_id}} · {{item.lease.editor_type}} · expires {{item.lease.expires_at}}</span></div>
+        <div class="coc-card" style="margin-bottom:8px"><b style="font-size:15px">{{item.order.accession}}</b><span>{{ ui_phrase('User') }} {{item.lease.user_id}} · {{item.lease.editor_type}} · expires {{item.lease.expires_at}}</span></div>
       {% else %}<div class="coc-empty">{{"لا توجد جلسات تحرير نشطة." if ui_lang=="ar" else "No active editing sessions."}}</div>{% endfor %}
       {{ action_info(
         "Active editor",
@@ -135,11 +135,11 @@
     <div class="panel coc-section">
       <h3>↗ {{"اختصارات آمنة" if ui_lang=="ar" else "Safe Shortcuts"}}</h3>
       <div class="coc-actions">
-        {% if can_manage_assignment %}<a class="btn" href="{{url_for('admin_assignment')}}">Manual Assignment</a>{% endif %}
-        <a class="btn" href="{{url_for('unassigned_cases')}}">Unassigned</a>
-        <a class="btn" href="{{url_for('escalation_board')}}">Escalations</a>
-        {% if can_view_audit %}<a class="btn" href="{{url_for('admin_audit')}}">Audit Log</a>{% endif %}
-        <a class="btn" href="{{url_for('admin_qa_control')}}">QA Control</a>
+        {% if can_manage_assignment %}<a class="btn" href="{{url_for('admin_assignment')}}">{{ ui_phrase('Manual Assignment') }}</a>{% endif %}
+        <a class="btn" href="{{url_for('unassigned_cases')}}">{{ ui_phrase('Unassigned') }}</a>
+        <a class="btn" href="{{url_for('escalation_board')}}">{{ ui_phrase('Escalations') }}</a>
+        {% if can_view_audit %}<a class="btn" href="{{url_for('admin_audit')}}">{{ ui_phrase('Audit Log') }}</a>{% endif %}
+        <a class="btn" href="{{url_for('admin_qa_control')}}">{{ ui_phrase('QA Control') }}</a>
       </div>
     </div>
   </div>

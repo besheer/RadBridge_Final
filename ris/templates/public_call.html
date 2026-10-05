@@ -610,19 +610,19 @@ audio{
 <div class="rb-progress">
 
 <div class="rb-step active">
-1. بيانات التواصل
+{{ ui_phrase('1. بيانات التواصل') }}
 </div>
 
 <div class="rb-step">
-2. بيانات الفحص
+{{ ui_phrase('2. بيانات الفحص') }}
 </div>
 
 <div class="rb-step">
-3. المرفقات
+{{ ui_phrase('3. المرفقات') }}
 </div>
 
 <div class="rb-step">
-4. مراجعة الموظف
+{{ ui_phrase('4. مراجعة الموظف') }}
 </div>
 
 </div>
@@ -656,7 +656,7 @@ audio{
 <div class="rb-field">
 <label>الاسم *</label>
 <input id="rbPublicName"
-       placeholder="اسم المريض">
+       placeholder="{{ ui_phrase('اسم المريض') }}">
 </div>
 
 <div class="rb-field">
@@ -667,18 +667,18 @@ audio{
 </div>
 
 <div class="rb-field">
-<label>رقم الحجز / Accession</label>
+<label>{{ ui_phrase('رقم الحجز / Accession') }}</label>
 <input id="rbPublicBooking"
        placeholder="اختياري">
 </div>
 
 <div class="rb-field">
-<label>نوع الطلب</label>
+<label>{{ ui_phrase('نوع الطلب') }}</label>
 
 <select id="rbPublicType">
 
 <option value="BOOKING">
-حجز جديد
+{{ ui_phrase('حجز جديد') }}
 </option>
 
 <option value="APPOINTMENT">
@@ -698,7 +698,7 @@ audio{
 </option>
 
 <option value="OTHER">
-أخرى
+{{ ui_phrase('أخرى') }}
 </option>
 
 </select>
@@ -750,7 +750,7 @@ audio{
 <div class="rb-field">
 
 <label>
-تاريخ الميلاد
+{{ ui_phrase('تاريخ الميلاد') }}
 </label>
 
 <input
@@ -878,7 +878,7 @@ audio{
 </option>
 
 <option value="PENDING">
-تحت المراجعة
+{{ ui_phrase('تحت المراجعة') }}
 </option>
 
 <option value="PATIENT_HAS_APPROVAL">
@@ -973,7 +973,7 @@ audio{
 </option>
 
 <option value="LAB_RESULT">
-تحاليل
+{{ ui_phrase('تحاليل') }}
 </option>
 
 <option value="REFERRAL">
@@ -1068,11 +1068,11 @@ InstaPay
 </option>
 
 <option value="WALLET">
-محفظة إلكترونية
+{{ ui_phrase('محفظة إلكترونية') }}
 </option>
 
 <option value="BANK_TRANSFER">
-تحويل بنكي
+{{ ui_phrase('تحويل بنكي') }}
 </option>
 
 </select>
@@ -1104,7 +1104,7 @@ SMS
 <label class="rb-check">
 <input type="checkbox"
        id="rbNotifyEmail">
-Email
+{{ ui_phrase('Email') }}
 </label>
 
 <label class="rb-check">
@@ -1122,7 +1122,7 @@ Email
 <div class="rb-field rb-span-2">
 
 <label>
-البريد الإلكتروني
+{{ ui_phrase('البريد الإلكتروني') }}
 </label>
 
 <input
@@ -1227,13 +1227,13 @@ Email
  id="extension"
  maxlength="4"
  inputmode="numeric"
- placeholder="الرقم الداخلي">
+ placeholder="{{ ui_phrase('الرقم الداخلي') }}">
 
 <button
  id="directCall"
  disabled>
 
-اتصال
+{{ ui_phrase('اتصال') }}
 
 </button>
 
@@ -1270,7 +1270,7 @@ Email
 <div>
 
 <h2 class="rb-title">
-المحادثة
+{{ ui_phrase('المحادثة') }}
 </h2>
 
 <p class="rb-subtitle">
@@ -1296,7 +1296,7 @@ Email
  placeholder="اكتب رسالتك...">
 
 <button onclick="rbSendChat()">
-إرسال
+{{ ui_phrase('إرسال') }}
 </button>
 
 </div>

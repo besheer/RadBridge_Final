@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}External Reporting Intake{% endblock %}
+{% block title %}{{ ui_phrase('External Reporting Intake') }}{% endblock %}
 {% block content %}
 <h1>{{"استقبال التقارير الخارجية" if ui_lang=="ar" else "External Reporting Intake"}}</h1>
 <p>{{"الدراسات هنا منفصلة ولا تدخل قائمة الأطباء إلا بقرار إداري." if ui_lang=="ar" else "Studies remain isolated here until an administrator sends them to the assignment queue."}}</p>
@@ -14,11 +14,11 @@
   <h2>{{"إضافة أو تعديل مركز" if ui_lang=="ar" else "Add or update center"}}</h2>
   <form method="post" class="form-grid">
     <input type="hidden" name="action" value="CENTER">
-    <label>Code<input name="code" required maxlength="40"></label>
-    <label>Name<input name="name" required maxlength="160"></label>
+    <label>{{ ui_phrase('Code') }}<input name="code" required maxlength="40"></label>
+    <label>{{ ui_phrase('Name') }}<input name="name" required maxlength="160"></label>
     <label>AE Title<input name="ae_title" required maxlength="80"></label>
-    <label>Priority<select name="default_priority"><option>ROUTINE</option><option>URGENT</option><option>STAT</option></select></label>
-    <label><input type="checkbox" name="active" value="1" checked> Active</label>
+    <label>{{ ui_phrase('Priority') }}<select name="default_priority"><option value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option><option value="URGENT">{{ ui_phrase('URGENT') }}</option><option value="STAT">{{ ui_phrase('STAT') }}</option></select></label>
+    <label><input type="checkbox" name="active" value="1" checked> {{ ui_phrase('Active') }}</label>
     <label><input type="checkbox" name="receiving_enabled" value="1"> Receiving enabled</label>
     <label><input type="checkbox" name="assignment_enabled" value="1"> Assignment enabled</label>
     <label><input type="checkbox" name="required_documents" value="1"> Documents required</label>
@@ -36,8 +36,8 @@
   <form method="post"><input type="hidden" name="action" value="SYNC"><button class="btn">{{"فحص PACS للدراسات الخارجية" if ui_lang=="ar" else "Scan PACS inbox for external studies"}}</button></form>
   <table><thead><tr><th>Center / study</th><th>DICOM identity</th><th>Referral identity and verification</th><th>Admin decision</th></tr></thead><tbody>
   {% for row in rows %}<tr>
-    <td><b>{{row.center.name}}</b><br>{{row.inbox.source_ae}}<br>{{row.inbox.modality}} · {{row.inbox.study_description}}<br>Images: {{row.inbox.image_count}}<br>Intake: {{row.status}}</td>
-    <td>Patient ID: {{row.dicom_patient_id or row.inbox.pacs_patient_id or '-'}}<br>Name: {{row.dicom_patient_name or row.inbox.pacs_patient_name or '-'}}<br>DOB: {{row.dicom_dob or '-'}}<br>Sex: {{row.dicom_sex or '-'}}<br>Accession: {{row.dicom_accession or row.inbox.accession or '-'}}</td>
+    <td><b>{{row.center.name}}</b><br>{{row.inbox.source_ae}}<br>{{row.inbox.modality}} · {{row.inbox.study_description}}<br>{{ ui_phrase('Images:') }} {{row.inbox.image_count}}<br>Intake: {{row.status}}</td>
+    <td>{{ ui_phrase('Patient ID:') }} {{row.dicom_patient_id or row.inbox.pacs_patient_id or '-'}}<br>Name: {{row.dicom_patient_name or row.inbox.pacs_patient_name or '-'}}<br>DOB: {{row.dicom_dob or '-'}}<br>Sex: {{row.dicom_sex or '-'}}<br>{{ ui_phrase('Accession:') }} {{row.dicom_accession or row.inbox.accession or '-'}}</td>
     <td>
       {% if row.status in ('RECEIVED','HOLD') %}
       <small>{{"تم ملء البيانات المتاحة من DICOM تلقائياً؛ راجعها مقابل طلب التحويل قبل الاعتماد." if ui_lang=="ar" else "Available values were prefilled from DICOM; verify them against the referral before approval."}}</small>
@@ -45,7 +45,7 @@
         <input name="expected_patient_id" value="{{row.expected_patient_id}}" required maxlength="80" placeholder="Referral Patient ID">
         <input name="expected_patient_name" value="{{row.expected_patient_name}}" required maxlength="180" placeholder="Referral patient name">
         <input name="expected_dob" value="{{row.expected_dob}}" required maxlength="8" pattern="[0-9]{8}" placeholder="DOB YYYYMMDD">
-        <select name="expected_sex"><option value="">Sex</option><option value="M" {% if row.expected_sex=='M' %}selected{% endif %}>M</option><option value="F" {% if row.expected_sex=='F' %}selected{% endif %}>F</option><option value="O" {% if row.expected_sex=='O' %}selected{% endif %}>O</option></select>
+        <select name="expected_sex"><option value="">{{ ui_phrase('Sex') }}</option><option value="M" {% if row.expected_sex=='M' %}selected{% endif %}>M</option><option value="F" {% if row.expected_sex=='F' %}selected{% endif %}>F</option><option value="O" {% if row.expected_sex=='O' %}selected{% endif %}>O</option></select>
         <input name="expected_accession" value="{{row.expected_accession}}" required maxlength="120" placeholder="Referral accession">
         <button class="btn" name="action" value="VERIFY">Verify demographics</button>
       </form>
@@ -60,7 +60,7 @@
       {% elif row.demographic_override_approved %}<small>Review approved: {{row.demographic_override_reason}}</small>{% endif %}
       {% if row.status in ('RECEIVED','HOLD') %}
       <form method="post" enctype="multipart/form-data" action="{{url_for('admin_external_intake_attachment_upload',intake_id=row.id)}}">
-        <select name="category"><option value="REFERRAL">Referral</option><option value="APPROVAL">Approval</option><option value="CLINICAL">Clinical</option><option value="IDENTITY">Identity</option><option value="OTHER">Other</option></select>
+        <select name="category"><option value="REFERRAL">{{ ui_phrase('Referral') }}</option><option value="APPROVAL">{{ ui_phrase('Approval') }}</option><option value="CLINICAL">{{ ui_phrase('Clinical') }}</option><option value="IDENTITY">Identity</option><option value="OTHER">{{ ui_phrase('Other') }}</option></select>
         <input type="file" name="files" multiple required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.odt,.dcm,.dicom,.zip">
         <input name="notes" maxlength="500" placeholder="Document notes">
         <button class="btn">{{"رفع المستند" if ui_lang=="ar" else "Upload document"}}</button>
@@ -75,8 +75,8 @@
       {% else %}<p>Queue blocked until demographics are verified.</p>{% endif %}
       <form method="post" action="{{url_for('admin_external_intake_decision',intake_id=row.id)}}">
         <input name="note" maxlength="500" placeholder="Review note">
-        <button class="btn" name="action" value="HOLD">Hold</button>
-        <button class="btn danger" name="action" value="REJECT">Reject</button>
+        <button class="btn" name="action" value="HOLD">{{ ui_phrase('Hold') }}</button>
+        <button class="btn danger" name="action" value="REJECT">{{ ui_phrase('Reject') }}</button>
       </form>
     {% endif %}</td>
   </tr>{% else %}<tr><td colspan="4">{{"لا توجد دراسات خارجية." if ui_lang=="ar" else "No external studies."}}</td></tr>{% endfor %}

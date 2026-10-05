@@ -29,7 +29,7 @@
   </select>
 
   <button class="btn primary">{{'تطبيق' if ui_lang=='ar' else 'Apply'}}</button>
-  <a class="btn" href="{{url_for('analytics_export_csv',**request.args)}}">Export CSV</a>
+  <a class="btn" href="{{url_for('analytics_export_csv',**request.args)}}">{{ ui_phrase('Export CSV') }}</a>
 </form>
 
 <div class="cards">
@@ -39,14 +39,14 @@
   <div class="metric"><small>{{'البواقي' if ui_lang=='ar' else 'Outstanding'}}</small><b>{{'%.2f'|format(outstanding|default(0))}} EGP</b></div>
   <div class="metric"><small>{{'حصة المريض' if ui_lang=='ar' else 'Patient Share'}}</small><b>{{'%.2f'|format(patient_share)}} EGP</b></div>
   <div class="metric"><small>{{'حصة الجهة' if ui_lang=='ar' else 'Company Share'}}</small><b>{{'%.2f'|format(company_share)}} EGP</b></div>
-  <div class="metric"><small>{{'متوسط زمن التقرير' if ui_lang=='ar' else 'Average Report TAT'}}</small><b>{{'%.1f'|format(avg_tat|default(0))}} h</b></div>
+  <div class="metric"><small>{{'متوسط زمن التقرير' if ui_lang=='ar' else 'Average Report TAT'}}</small><b>{{'%.1f'|format(avg_tat|default(0))}} {{ ui_phrase('h') }}</b></div>
   <div class="metric"><small>{{'تكلفة المستهلكات' if ui_lang=='ar' else 'Consumables Cost'}}</small><b>{{'%.2f'|format(consumable_cost|default(0))}} EGP</b></div>
 </div>
 
 <div class="grid2">
   <div class="panel">
     <h3>{{'حسب نوع الجهاز' if ui_lang=='ar' else 'By Modality'}}</h3>
-    <table><tr><th>Modality</th><th>Count</th></tr>
+    <table><tr><th>{{ ui_phrase('Modality') }}</th><th>Count</th></tr>
       {% for k,v in by_mod %}<tr><td>{{k}}</td><td><b>{{v}}</b></td></tr>
       {% else %}<tr><td colspan="2" class="empty">No data</td></tr>{% endfor %}
     </table>
@@ -54,7 +54,7 @@
 
   <div class="panel">
     <h3>{{'حسب حالة الفحص' if ui_lang=='ar' else 'By Study Status'}}</h3>
-    <table><tr><th>Status</th><th>Count</th></tr>
+    <table><tr><th>{{ ui_phrase('Status') }}</th><th>Count</th></tr>
       {% for k,v in by_status %}<tr><td>{{k}}</td><td><b>{{v}}</b></td></tr>
       {% else %}<tr><td colspan="2" class="empty">No data</td></tr>{% endfor %}
     </table>
@@ -64,7 +64,7 @@
 <div class="grid2">
   <div class="panel">
     <h3>{{'حالات المواعيد' if ui_lang=='ar' else 'Appointment Status'}}</h3>
-    <table><tr><th>Status</th><th>Count</th></tr>
+    <table><tr><th>{{ ui_phrase('Status') }}</th><th>Count</th></tr>
       {% for k,v in (appointment_stats|default({})).items() %}
       <tr><td>{{k}}</td><td><b>{{v}}</b></td></tr>
       {% else %}<tr><td colspan="2" class="empty">No appointments</td></tr>{% endfor %}
@@ -73,7 +73,7 @@
 
   <div class="panel">
     <h3>{{'حسب الفرع' if ui_lang=='ar' else 'By Branch'}}</h3>
-    <table><tr><th>Branch</th><th>Count</th></tr>
+    <table><tr><th>{{ ui_phrase('Branch') }}</th><th>Count</th></tr>
       {% for k,v in by_branch|default([]) %}<tr><td>{{k}}</td><td><b>{{v}}</b></td></tr>
       {% else %}<tr><td colspan="2" class="empty">No data</td></tr>{% endfor %}
     </table>
