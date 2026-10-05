@@ -5206,6 +5206,9 @@ def flash(message, category='message'):
     return _flask_flash(ui_phrase(message) if isinstance(message, str) else message, category)
 
 
+# Imported Jinja macros also need the explicit UI translator.
+app.jinja_env.globals['ui_phrase'] = ui_phrase
+
 @app.context_processor
 def template_globals():
     lang=current_ui_language()

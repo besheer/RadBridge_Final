@@ -58,3 +58,12 @@ def test_flash_translates_only_text_and_preserves_workflow_payload(app_ctx,monke
 def test_all_templates_compile_in_application_environment(app_ctx):
     for name in app_ctx.app.jinja_env.list_templates():
         if name.endswith('.html'):app_ctx.app.jinja_env.get_template(name)
+
+
+def test_imported_action_guidance_macro_keeps_its_language(app_ctx):
+    with app_ctx.app.test_request_context():
+        macro=app_ctx.app.jinja_env.get_template('_action_guidance.html').module.action_info
+        en=macro('Test','Summary',lang='en')
+        ar=macro('اختبار','ملخص',lang='ar')
+        assert 'aria-label="Close"' in en
+        assert 'aria-label="إغلاق"' in ar

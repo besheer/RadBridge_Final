@@ -2,7 +2,7 @@
 <span class="rb-action-guidance">
   <button type="button" class="rb-guidance-trigger" title="{{ 'معلومات عن' if lang=='ar' else 'Information about' }} {{ title }}" aria-label="{{ 'معلومات عن' if lang=='ar' else 'Information about' }} {{ title }}">i</button>
   <aside popover class="rb-guidance-popover" role="note" dir="{{'rtl' if lang=='ar' else 'ltr'}}">
-    <header><strong>{{ title }}</strong><button type="button" class="rb-guidance-close" aria-label="{{ui_phrase('إغلاق') if lang=='ar' else ui_phrase('Close')}}">×</button></header>
+    <header><strong>{{ title }}</strong><button type="button" class="rb-guidance-close" aria-label="{{'إغلاق' if lang=='ar' else 'Close'}}">×</button></header>
     <p style="margin:7px 0">{{ summary }}</p>
     {% if when_text %}<p><strong>{{ 'متى يُستخدم:' if lang=='ar' else 'When to use:' }}</strong> {{ when_text }}</p>{% endif %}
     {% if requirements %}<p><strong>{{ 'المتطلبات:' if lang=='ar' else 'Requirements:' }}</strong> {{ requirements }}</p>{% endif %}
