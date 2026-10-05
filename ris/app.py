@@ -38531,3 +38531,6 @@ register_coordinator_bulk_assignment(_reporting_support_sys.modules[__name__])
 
 from report_identity_routes import register as register_report_identity_routes
 register_report_identity_routes(_reporting_support_sys.modules[__name__])
+
+from dicom_export_routes import register as register_dicom_export_routes
+register_dicom_export_routes(_reporting_support_sys.modules[__name__])

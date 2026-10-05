@@ -752,6 +752,12 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
   }
 
 
+  function downloadDicom(format: 'archive' | 'media') {
+    const url = new URL(reportApiUrl('/dicom-download'), window.location.origin);
+    url.searchParams.set('format', format);
+    return downloadFromRis(url.pathname + url.search, `RadBridge-Study-${safeOrderId}-${format}.zip`);
+  }
+
   function downloadWordTemplate() {
     if (!orderId) {
       setError('Order ID is missing.');
@@ -1214,6 +1220,17 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
         External desktop editors remain optional.
       </div>
 
+      <hr style={{ margin: '16px 0', opacity: .2 }} />
+
+      <div style={{ fontWeight: 700, marginBottom: '8px' }}>Local DICOM Viewer</div>
+      <button disabled={busy || !orderId} style={{ ...buttonStyle, width: '100%' }}
+        onClick={() => downloadDicom('archive')}>⬇ Download DICOM ZIP · RadiAnt</button>
+      <button disabled={busy || !orderId} style={{ ...buttonStyle, width: '100%' }}
+        onClick={() => downloadDicom('media')}>📀 CD / USB ZIP · DICOMDIR</button>
+      <p style={{ fontSize: '12px', lineHeight: 1.5, opacity: .8 }}>
+        Open the downloaded ZIP in RadiAnt, or import its DICOM files into your local viewer.
+        Downloads contain the original files for this verified case.
+      </p>
       <hr style={{ margin: '16px 0', opacity: .2 }} />
 
       <div
