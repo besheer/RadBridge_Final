@@ -38468,3 +38468,6 @@ register_readiness_operations(_reporting_support_sys.modules[__name__])
 
 from technician_queue import register as register_technician_queue
 register_technician_queue(_reporting_support_sys.modules[__name__])
+
+from coordinator_bulk_assignment import register as register_coordinator_bulk_assignment
+register_coordinator_bulk_assignment(_reporting_support_sys.modules[__name__])

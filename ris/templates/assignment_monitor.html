@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block page_title %}{{ ('لوحة منسق التوزيع' if coordinator else 'متابعة الأطباء والحالات') if ui_lang=='ar' else ('Assignment Coordinator' if coordinator else 'Doctors & Cases Monitor') }}{% endblock %}
 {% block content %}
+{% if has_perm("assignment.manage") or has_perm("reports.coordinate") %}<p><a class="btn primary" href="{{url_for('coordinator_manual_assignment')}}">{{'الإسناد اليدوي الجماعي' if ui_lang=='ar' else 'Bulk Manual Assignment'}}</a></p>{% endif %}
 <style>.monitor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.monitor-linked{border-inline-start:5px solid #805ad5;background:#faf5ff}.monitor-scroll{overflow:auto}.monitor-overdue{color:#b91c1c;font-weight:bold} .monitor-grid .panel{margin:0} .monitor-case{padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px}</style>
 <div class="panel">
  {% if can_manage %}<a class="btn" href="{{url_for('admin_assignment_monitor')}}">{{'متابعة الأطباء' if ui_lang=='ar' else 'Doctors Monitor'}}</a>{% endif %}
