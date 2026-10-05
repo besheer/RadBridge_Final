@@ -136,6 +136,8 @@
 </section>
 {% endif %}
 
+{% include "_coordinator_dashboard.html" %}
+
 {% if has_perm('reports.view') or has_perm('orders.view') %}
 <section class="rb-section">
   <div class="rb-section-head">
