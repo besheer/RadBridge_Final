@@ -334,10 +334,16 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
       Math.min(window.screenX + 48, (available.availLeft || 0) + available.availWidth - width)) : (available.availLeft || 0);
     const top = layout === 'CASCADE' ? Math.max(available.availTop || 0,
       Math.min(window.screenY + 48, (available.availTop || 0) + available.availHeight - height)) : (available.availTop || 0);
+    // Normal pop-out uses a browser tab, including embedded browsers that
+    // cannot host popup windows. Geometry is needed only for display layouts.
+    const windowFeatures =
+      layout === 'CASCADE' || layout === 'DUAL_MONITOR' || preferredDisplay === 'OTHER'
+        ? `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        : 'popup=no';
     const editorWindow = window.open(
       editorUrl.toString(),
       dedicatedOnlyOfficeWindowName,
-      `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      windowFeatures
     );
 
     if (!editorWindow) {
