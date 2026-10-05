@@ -6,6 +6,7 @@
     <p>لم يتم استيفاء متطلبات الصور. لم يتم تغيير حالة الفحص.</p>
     <p><strong>الصور المستلمة: {{msg.details.image_count}} — الحد الأدنى المطلوب: {{msg.details.minimum}}</strong><br><small>العدد يشير إلى ملفات DICOM المستلمة، وليس عدد الإطارات داخل الملف.</small></p>
     <ul>
+      {% if msg.details.exam_type and not msg.details.exam_type.allowed %}<li>نوع الفحص أو المنطقة التشريحية في بيانات الصور يحتاج مراجعة. المطلوب: {{msg.details.exam_type.expected_modality}} / {{msg.details.exam_type.expected_regions|join('، ')}}؛ المستلم: {{msg.details.exam_type.observed_modalities|join('، ')}} / {{msg.details.exam_type.observed_regions|join('، ')}}. لا تُرسل صورًا بديلة على نفس الطلب قبل مراجعة المسؤول.</li>{% endif %}
       {% if not msg.details.identity_verified %}<li>لم يتم تأكيد مطابقة بيانات الصور مع المريض وطلب الفحص.</li>{% endif %}
       {% if not msg.details.images_verified %}<li>تعذر التحقق من الصور على PACS؛ هذا لا يعني بالضرورة أنها لم تُرسل.</li>{% endif %}
       {% if msg.details.image_count < msg.details.minimum %}<li>عدد الصور أقل من الحد المطلوب.</li>{% endif %}
@@ -18,6 +19,7 @@
     <p>Image requirements have not been met. The exam status has not changed.</p>
     <p><strong>Images received: {{msg.details.image_count}} — Minimum required: {{msg.details.minimum}}</strong><br><small>This counts received DICOM instances, not frames within a file.</small></p>
     <ul>
+      {% if msg.details.exam_type and not msg.details.exam_type.allowed %}<li>Exam modality or anatomical region in the image metadata requires review. Expected: {{msg.details.exam_type.expected_modality}} / {{msg.details.exam_type.expected_regions|join(', ')}}; received: {{msg.details.exam_type.observed_modalities|join(', ')}} / {{msg.details.exam_type.observed_regions|join(', ')}}. Ask the administrator to review the acquisition before resending images.</li>{% endif %}
       {% if not msg.details.identity_verified %}<li>The images have not been confirmed as belonging to this patient and exam order.</li>{% endif %}
       {% if not msg.details.images_verified %}<li>PACS images could not be verified; this does not necessarily mean they were not sent.</li>{% endif %}
       {% if msg.details.image_count < msg.details.minimum %}<li>The image count is below the required minimum.</li>{% endif %}

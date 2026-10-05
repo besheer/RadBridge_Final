@@ -3672,6 +3672,13 @@ def pacs_demographic_gate(order):
     if not order:
         return False, 'ORDER_NOT_FOUND'
 
+    # Exam metadata is an independent safety boundary; demographic overrides
+    # and minimum-count overrides cannot authorize a conflicting acquisition.
+    from exam_type_policy import cached_exam_gate
+    type_ok,type_reason=cached_exam_gate(order,CaseReadiness.query.filter_by(order_id=order.id).first())
+    if not type_ok:
+        return False,type_reason
+
     # A study waiting for demographic review always blocks downstream actions.
     review = PacsStudyInbox.query.filter(
         PacsStudyInbox.state == 'REVIEW_REQUIRED',
@@ -7048,14 +7055,26 @@ def technician_completion_evidence(order):
     from technician_image_policy import completion_image_policy
     from case_exception_resolution_service import apply_series_aliases
     rule=quality_rule_for(order)
-    matched,_match_reason=pacs_demographic_gate(order)
     evidence=pacs_readiness_evidence(order)
+    # Recheck the current acquisition first, so replacing conflicting images
+    # can clear their previous metadata blocker in this same audited check.
+    if evidence[1] and not evidence[2] and evidence[0]>0:
+        evaluate_case_readiness(order,pacs_evidence=evidence)
+    matched,_match_reason=pacs_demographic_gate(order)
     count,meta,error,series=evidence
     minimum,approved=technician_minimum_requirement(order,rule)
     aliases=ReadinessSeriesAlias.query.filter_by(rule_id=rule.id,active=True).all() if rule else []
     result=completion_image_policy(matched=matched,pacs_present=bool(meta),error=error,
         image_count=count,policy_defined=bool(rule),min_images=minimum,
         required_series=rule.required_series if rule else '',series=apply_series_aliases(series,aliases))
+    from exam_type_policy import evidence_exam_match
+    type_check=evidence_exam_match(order,evidence,rule)
+    result['exam_type']=type_check
+    if not type_check['allowed']:
+        result['allowed']=False
+        result['reason']+='; Exam metadata requires review: '+type_check['status']
+    elif type_check['status']=='REVIEW_REQUIRED':
+        result['warning']+=' Exam region could not be confirmed from DICOM metadata; review the procedure policy.'
     result['rule_id']=rule.id if rule else None
     result['minimum_override_id']=approved.id if approved else None
     return result,evidence
@@ -7065,6 +7084,8 @@ def technician_completion_evidence(order):
 @require_perm('technician.worklist')
 def technician_check_images(order_id):
     order=Order.query.get_or_404(order_id)
+    from technician_queue import scoped_order
+    scoped_order(_reporting_support_sys.modules[__name__],order)
     result,evidence=technician_completion_evidence(order)
     evaluate_case_readiness(order,pacs_evidence=evidence)
     audit('TECHNICIAN_IMAGE_CHECK','order',order.id,json.dumps(result,sort_keys=True))
@@ -12383,6 +12404,7 @@ def pacs_readiness_evidence(order):
             tags=payload.get('MainDicomTags') or {}
             series.append({'series_id':series_id,'description':tags.get('SeriesDescription',''),
               'protocol':tags.get('ProtocolName',''),'modality':tags.get('Modality',''),
+              'body_part':tags.get('BodyPartExamined',''),
               'instance_count':instances})
         return total,meta,'',series
     except Exception as e:
@@ -12412,6 +12434,15 @@ def evaluate_case_readiness(order,pacs_evidence=None):
       require_history=bool(rule.require_history) if rule else False,history_present=has_history,
       require_attachments=bool(rule.require_attachments) if rule else False,attachment_count=attachments,
       required_series=(rule.required_series if rule else ''),series=mapped_series)
+    from exam_type_policy import evidence_exam_match
+    type_check=evidence_exam_match(order,(count,pacs,error,series),rule)
+    result['details']['exam_type']=type_check
+    if not type_check['allowed']:
+        result['status']='BLOCKED'
+        result['score']=0
+    # Bind readiness evidence to the independent exam-type safety check too.
+    import hashlib
+    result['facts_sha256']=hashlib.sha256((result['facts_sha256']+json.dumps(type_check,sort_keys=True)).encode()).hexdigest()
     flags=result['flags']
     row=CaseReadiness.query.filter_by(order_id=order.id).first() or CaseReadiness(order_id=order.id)
     row.status=result['status'];row.score=result['score'];row.image_count=count;row.expected_min_images=min_images
@@ -12545,6 +12576,12 @@ def assignment_readiness_decision(order,refresh_stale=True):
             'allowed':False,'action':'BLOCK','blockers':['READINESS_NOT_CHECKED'],
             'warnings':[],'coordinator':[],'strategy':None,'readiness':None
         }
+
+    from exam_type_policy import cached_exam_gate
+    type_ok,type_reason=cached_exam_gate(order,row)
+    if not type_ok:
+        return {'allowed':False,'action':'BLOCK','blockers':[type_reason],
+            'warnings':[],'coordinator':[],'strategy':None,'readiness':row}
 
     strategy=assignment_strategy_for_order(order)
 
