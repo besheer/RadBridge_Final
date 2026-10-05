@@ -33792,7 +33792,7 @@ def _onlyoffice_prepare_document(order, report):
     return path
 
 
-@app.get('/api/ohif/report/<int:order_id>/preferences')
+@app.route('/api/ohif/report/<int:order_id>/preferences', methods=['GET','POST'])
 @require_ohif_token
 def api_ohif_reporting_preferences(order_id):
     order = Order.query.get_or_404(order_id)
@@ -33813,6 +33813,18 @@ def api_ohif_reporting_preferences(order_id):
     prefs = user_reporting_preferences(
         profile
     )
+    if request.method=='POST':
+        body=request.get_json(silent=True)
+        if not isinstance(body,dict):
+            return jsonify(ok=False,message='A JSON preference object is required.'),400
+        layout=body.get('preferred_layout')
+        if layout not in {'50_50','70_30','30_70','FULL_EDITOR','FULL_VIEWER','DUAL_MONITOR','CASCADE','NEW_WINDOW'}:
+            return jsonify(ok=False,message='Unsupported reporting layout.'),400
+        prefs=set_user_reporting_preferences(profile,prefs['preferred_editor'],layout,prefs['preferred_display'])
+        audit_as_user(doctor_user,'OHIF_REPORTING_PREFERENCES_UPDATED','order',order.id,'layout='+layout)
+        db.session.commit()
+        return jsonify(ok=True,order_id=order.id,**prefs)
+
 
     audit_as_user(
         doctor_user,
@@ -33838,8 +33850,7 @@ def api_ohif_reporting_preferences(order_id):
         ),
         'preferred_display': prefs['preferred_display'],
         'preferred_layout': (
-            prefs['preferred_layout'] +
-            '; display=' + prefs['preferred_display']
+            prefs['preferred_layout']
         )
     })
 

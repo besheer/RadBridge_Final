@@ -14,6 +14,7 @@ type Props = {
   leaseToken: string;
   onClose: () => void;
   layout?: string;
+  onLayoutChange?: (layout: string) => void;
 };
 
 const API_SCRIPT =
@@ -26,6 +27,7 @@ export default function OnlyOfficeReportEditor({
   leaseToken,
   onClose,
   layout = 'FULL_EDITOR',
+  onLayoutChange,
 }: Props) {
   const editorRef = useRef<any>(null);
 
@@ -66,10 +68,11 @@ export default function OnlyOfficeReportEditor({
     window.dispatchEvent(new CustomEvent('radbridge-report-layout', {
       detail: { viewerPercent, active: true },
     }));
-    return () => window.dispatchEvent(new CustomEvent('radbridge-report-layout', {
-      detail: { viewerPercent: 0, active: false },
-    }));
   }, [viewerPercent]);
+
+  useEffect(() => () => window.dispatchEvent(new CustomEvent('radbridge-report-layout', {
+    detail: { viewerPercent: 0, active: false },
+  })), []);
 
   function configUrl() {
     const query = new URLSearchParams();
@@ -627,6 +630,12 @@ export default function OnlyOfficeReportEditor({
             {reportStatus} · Version {baseVersionNo}
           </span>
 
+          {onLayoutChange && <select aria-label="Editor viewer / report layout" value={layout} onChange={e=>onLayoutChange(e.target.value)} style={{color:'#fff',background:'#10232e',padding:6}}>
+            <option value="50_50">50% Viewer / 50% Report</option>
+            <option value="70_30">70% Viewer / 30% Report</option>
+            <option value="30_70">30% Viewer / 70% Report</option>
+            <option value="FULL_EDITOR">Full Report</option>
+          </select>}
           {/* RB_FINAL_ONLYOFFICE_TOOLBAR_READONLY_V1 */}
           {reportStatus !== 'FINAL' && (
             <>

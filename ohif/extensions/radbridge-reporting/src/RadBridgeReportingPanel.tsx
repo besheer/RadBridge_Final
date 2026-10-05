@@ -1,8 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import OnlyOfficeReportEditor from './OnlyOfficeReportEditor';
 
-export default function RadBridgeReportingPanel() {
+export default function RadBridgeReportingPanel({ servicesManager, commandsManager }: { servicesManager?: any; commandsManager?: any }) {
   const [data, setData] = useState<any>(null);
+  const [activeTool, setActiveTool] = useState('');
+  const [dictatedText, setDictatedText] = useState('');
+  const [dictationLanguage, setDictationLanguage] = useState('en-US');
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const speechAvailable = !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
   const [returnReason, setReturnReason] = useState('');
   const [returnNote, setReturnNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -87,6 +94,59 @@ export default function RadBridgeReportingPanel() {
 
   const locked =
     status === 'VERIFIED' || status === 'FINAL';
+
+  async function changeReportingLayout(layout: string) {
+    setError('');
+    try {
+      const response=await fetch(reportApiUrl('/preferences'), {method:'POST', headers:headers(true),body:JSON.stringify({preferred_layout:layout})});
+      const result=await response.json();
+      if(!response.ok || !result.ok) throw new Error(result.message || 'Could not save reporting layout.');
+      setPreferredLayout(result.preferred_layout);
+      if(onlyOfficeEditorOpen && ['50_50','70_30','30_70','FULL_EDITOR'].includes(layout)) setEditorLayout(layout);
+      setMessage('Reporting layout saved to your profile.');
+    } catch(e:any) {setError(e.message || String(e));}
+  }
+
+  function openReportingTool(tool: string) {
+    setError('');
+    const pages: Record<string,string> = {
+      Templates:'/doctor/templates',
+      'Previous Reports':data?.report?.id ? `/reports/${encodeURIComponent(orderId)}` : '',
+      'Clinical Notes':`/orders/${encodeURIComponent(orderId)}/clinical-notes`,
+      Attachments:`/orders/${encodeURIComponent(orderId)}/attachments`,
+    };
+    if(tool in pages){
+      if(!pages[tool]) {setError('Load the current report first.');return;}
+      const tab=window.open(pages[tool],'_blank','noopener,noreferrer');
+      return;
+    }
+    setActiveTool(activeTool===tool ? '' : tool);
+  }
+
+  function exportActiveImage() {
+    try {
+      const id=servicesManager?.services?.viewportGridService?.getState()?.activeViewportId;
+      const viewport=servicesManager?.services?.cornerstoneViewportService?.getCornerstoneViewport(id);
+      if(!viewport?.getCurrentImageId?.()) throw new Error('Select and load an image in the viewer first.');
+      commandsManager.runCommand('showDownloadViewportModal');
+    } catch(e:any){setError(e.message || String(e));}
+  }
+
+  function startDictation() {
+    if(locked || !speechAvailable || listening) return;
+    const Speech=(window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition=new Speech(); recognitionRef.current=recognition;
+    recognition.lang=dictationLanguage; recognition.continuous=true; recognition.interimResults=false;
+    recognition.onresult=(event:any)=>{
+      let text='';for(let i=event.resultIndex;i<event.results.length;i++) if(event.results[i].isFinal) text+=event.results[i][0].transcript+' ';
+      if(text) setDictatedText(previous=>(previous+' '+text).trim());
+    };
+    recognition.onend=()=>setListening(false);
+    recognition.onerror=(event:any)=>{setListening(false);setError('Dictation stopped: '+event.error);};
+    try{recognition.start();setListening(true);}catch(e:any){setError(e.message || String(e));}
+  }
+  useEffect(()=>()=>{recognitionRef.current?.abort?.();},[]);
+  useEffect(()=>{if(locked) recognitionRef.current?.abort?.();},[locked]);
 
   function headers(
     json = false,
@@ -1025,6 +1085,19 @@ export default function RadBridgeReportingPanel() {
           style={{ display: 'block', margin: '8px 0', color: '#93c5fd' }}>
           My editor &amp; window preferences
         </a>
+        <label style={{display:'block',margin:'8px 0'}}>Viewer / report layout
+          <select aria-label="Viewer / report layout" value={preferredLayout} disabled={busy || !preferencesLoaded} onChange={e=>void changeReportingLayout(e.target.value)} style={{...fieldStyle,marginTop:6}}>
+            <option value="50_50">50% Viewer / 50% Report</option>
+            <option value="70_30">70% Viewer / 30% Report</option>
+            <option value="30_70">30% Viewer / 70% Report</option>
+            <option value="FULL_EDITOR">Full Report</option>
+            <option value="FULL_VIEWER">Full Viewer + report window</option>
+            <option value="DUAL_MONITOR">Dual Monitor / Pop-out</option>
+            <option value="CASCADE">Cascade window</option>
+            <option value="NEW_WINDOW">New report window</option>
+          </select>
+        </label>
+
 
         <button
           disabled={busy || !orderId}
@@ -1044,7 +1117,7 @@ export default function RadBridgeReportingPanel() {
         <button
           disabled={busy || !orderId}
           style={buttonStyle}
-          onClick={() => openReportEditor('BROWSER')}
+          onClick={() => openReportEditor('BROWSER', preferredLayout)}
         >
           🌐 Open ONLYOFFICE Here
         </button>
@@ -1086,20 +1159,23 @@ export default function RadBridgeReportingPanel() {
       >
         {[
           ['📄', 'Templates', 'Doctor & study templates'],
-          ['🕘', 'Previous Reports', 'Prior reports & versions'],
+          ['🕘', 'Previous Reports', 'Report & version history'],
           ['📝', 'Clinical Notes', 'Clinical history & notes'],
           ['📎', 'Attachments', 'Referral & documents'],
-          ['🖼️', 'Key Images', 'Selected OHIF images'],
+          ['🖼️', 'Key Images', 'Capture selected viewport'],
           ['🎙️', 'Dictation', 'Voice reporting tools']
         ].map(([icon, title, subtitle]) => (
-          <div
+          <button
+            type="button"
+            onClick={()=>openReportingTool(title)}
+            disabled={!orderId || busy}
             key={title}
             style={{
               border: '1px solid #334155',
               borderRadius: '7px',
               padding: '8px',
               minHeight: '54px',
-              background: '#0b1820'
+              background: '#0b1820', color:'inherit', textAlign:'left', cursor:'pointer'
             }}
           >
             <div
@@ -1120,9 +1196,26 @@ export default function RadBridgeReportingPanel() {
             >
               {subtitle}
             </div>
-          </div>
+          </button>
         ))}
       </div>
+
+      {activeTool==='Key Images' && <section style={{padding:10,border:'1px solid #334155',marginBottom:12}}>
+        <strong>Key image capture</strong>
+        <p>Select the image in the viewer, then export a preview. This does not save a DICOM Key Object or attach the image to the report automatically.</p>
+        <button type="button" style={buttonStyle} onClick={exportActiveImage}>Export active image</button>
+      </section>}
+      {activeTool==='Dictation' && <section style={{padding:10,border:'1px solid #334155',marginBottom:12}}>
+        <strong>Dictation — review before use</strong>
+        <p>Browser speech recognition may use an online speech service. Review and copy the text into ONLYOFFICE; it is not saved to the clinical report automatically.</p>
+        {!speechAvailable && <p role="status">This browser does not provide speech recognition. Use a supported browser or your desktop dictation software.</p>}
+        {locked && <p role="status">Verified / final report: dictation is disabled.</p>}
+        <select aria-label="Dictation language" value={dictationLanguage} disabled={listening} onChange={e=>setDictationLanguage(e.target.value)} style={fieldStyle}><option value="en-US">English</option><option value="ar-EG">العربية — مصر</option></select>
+        <button type="button" style={buttonStyle} disabled={locked || !speechAvailable || listening} onClick={startDictation}>Start dictation</button>
+        <button type="button" style={buttonStyle} disabled={!listening} onClick={()=>recognitionRef.current?.stop?.()}>Stop dictation</button>
+        <textarea aria-label="Dictation review text" value={dictatedText} onChange={e=>setDictatedText(e.target.value)} style={{...fieldStyle,minHeight:120}} />
+        <button type="button" style={buttonStyle} disabled={!dictatedText.trim()} onClick={()=>navigator.clipboard.writeText(dictatedText).then(()=>setMessage('Reviewed text copied.')).catch(()=>setError('Copy failed. Select the text and copy it manually.'))}>Copy reviewed text</button>
+      </section>}
 
       <div
         style={{
@@ -1279,6 +1372,7 @@ export default function RadBridgeReportingPanel() {
           identity={identity}
           leaseToken={leaseToken}
           layout={editorLayout}
+          onLayoutChange={dedicatedOnlyOfficeWindow ? undefined : layout=>void changeReportingLayout(layout)}
           onClose={() => {
             void closeReportEditor('ONLYOFFICE');
           }}
