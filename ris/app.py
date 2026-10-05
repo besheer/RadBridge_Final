@@ -19978,10 +19978,19 @@ def admin_assignment_strategy_rollback(strategy_id,version_id):
     )
 
 
-@app.route('/orders/<int:order_id>/assign',methods=['POST'])
+@app.route('/orders/<int:order_id>/assign',methods=['GET','POST'])
 @require_perm('assignment.manage')
 def assign_case(order_id):
     order=Order.query.get_or_404(order_id)
+    if request.method == 'GET':
+        # Review links must never perform assignment; use the scoped preview workflow.
+        import sys
+        from coordinator_bulk_assignment import actor, in_scope
+        module = sys.modules[__name__]
+        user = actor(module)
+        if not in_scope(module, user, order):
+            abort(403)
+        return redirect(url_for('coordinator_manual_assignment', view='all', q=order.accession))
     doctor_user_id=request.form.get('doctor_user_id',type=int)
     mode=request.form.get('mode','manual')
 
