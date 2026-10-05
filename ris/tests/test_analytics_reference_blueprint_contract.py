@@ -63,7 +63,8 @@ def test_analytics_template_links_use_blueprint_endpoint():
     legacy = "url_for('analytics')"
 
     assert expected in BASE_TEMPLATE
-    assert expected in ADMIN_TEMPLATE
+    assert 'analytics_reference.analytics' in (ROOT / 'admin_control_center.py').read_text(encoding='utf-8')
+    assert 'sections' in ADMIN_TEMPLATE
     assert legacy not in BASE_TEMPLATE
     assert legacy not in ADMIN_TEMPLATE
 

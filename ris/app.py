@@ -20245,6 +20245,7 @@ def unassigned_case_snapshot(order,readiness,policies,now=None):
 # ---------------- Admin ----------------
 
 @app.route('/admin')
+@app.route('/admin/')
 @login_required
 def admin_home():
     admin_perms = (
@@ -20258,13 +20259,21 @@ def admin_home():
         'inventory.manage',
         'audit.view',
         'backup.view',
+        'assignment.manage',
+        'pacs.discovery.view',
+        'pacs.destinations.manage',
+        'pacs.archive.manage',
+        'financial.view',
+        'storage.targets.view',
+        'storage.cloud.view',
+        'analytics.executive.view',
     )
     if not has_perm('*') and not any(has_perm(p) for p in admin_perms):
         abort(403)
 
-    return render_template('admin.html',
-        users=User.query.count(),branches=Branch.query.count(),devices=Device.query.count(),
-        procedures=Procedure.query.count(),contracts=Contract.query.count(),consumables=Consumable.query.count())
+    from admin_control_center import visible_sections
+    sections = visible_sections(has_perm, url_for, app.view_functions)
+    return render_template('admin.html', sections=sections)
 
 @app.route('/admin/users',methods=['GET','POST'])
 @require_perm('users.view')
