@@ -6854,6 +6854,8 @@ def order_study_thumbnail(order_id):
 @require_perm('technician.worklist')
 def technician_case_workspace(order_id):
     order = Order.query.get_or_404(order_id)
+    from technician_queue import scoped_order
+    scoped_order(_reporting_support_sys.modules[__name__], order)
     warehouse = default_warehouse_for_order(order)
 
     notes = (
@@ -6905,6 +6907,8 @@ def technician_case_workspace(order_id):
 
     return render_template(
         'technician_case.html',
+        return_state=case_return_snapshot(order.id),
+        image_requests=CorrectionRequest.query.filter_by(order_id=order.id,request_type='WRONG_IMAGES').order_by(CorrectionRequest.id.desc()).limit(5).all(),
         quality_rule=quality_rule_for(order),
         acquisition_minimum=technician_minimum_requirement(order,quality_rule_for(order))[0],
         acquisition_notes=technician_acquisition_notes(quality_rule_for(order)),
@@ -7020,75 +7024,9 @@ def technician_case_consume(order_id):
 @app.route('/technician')
 @require_perm('technician.worklist')
 def technician_worklist():
-    # RB_ROLE_WORKLIST_FILTERS_V1
-    q = Order.query.filter(Order.status.in_([
-        'SCHEDULED',
-        'ARRIVED',
-        'IN_PROGRESS',
-        'COMPLETED',
-        'IMAGES_RECEIVED',
-        'REPORTING',
-        'MWL_ERROR',
-    ]))
+    from technician_queue import render_worklist
+    return render_worklist(_reporting_support_sys.modules[__name__])
 
-    search = (request.args.get('q') or '').strip()
-    date_from = (request.args.get('date_from') or '').strip()
-    date_to = (request.args.get('date_to') or '').strip()
-    priority = (request.args.get('priority') or '').strip().upper()
-
-    if search:
-        like = f'%{search}%'
-        q = q.join(Patient).filter(db.or_(
-            Patient.name.ilike(like),
-            Patient.patient_id.ilike(like),
-            Patient.phone.ilike(like),
-            Patient.national_id.ilike(like),
-            Order.accession.ilike(like),
-            Order.procedure.ilike(like),
-            Order.modality.ilike(like),
-        ))
-
-    if priority:
-        q = q.filter(Order.priority == priority)
-
-    if date_from:
-        try:
-            start_day = datetime.strptime(date_from, '%Y-%m-%d')
-            q = q.filter(Order.scheduled >= start_day)
-        except ValueError:
-            pass
-
-    if date_to:
-        try:
-            end_day = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
-            q = q.filter(Order.scheduled < end_day)
-        except ValueError:
-            pass
-
-    rows = (
-        q.order_by(Order.scheduled.desc())
-        .limit(300)
-        .all()
-    )
-
-    image_urls = {
-        order.id: clinical_image_only_url(order)
-        for order in rows
-    }
-
-    attachment_counts = {
-        order.id: _order_attachment_count(order)
-        for order in rows
-    }
-
-    return render_template(
-        'technician.html',
-        orders=rows,
-        image_urls=image_urls,
-        attachment_counts=attachment_counts,
-        saved_views=_saved_views_for('TECHNICIAN'),
-        saved_view_page='TECHNICIAN',
-    )
 
 def technician_acquisition_notes(rule):
     if not rule:
@@ -12496,7 +12434,8 @@ def create_ris_notification(
     body,
     severity='WARNING',
     role_code='',
-    user_id=None
+    user_id=None,
+    commit=True
 ):
     n=RISNotification(
         order_id=order.id,
@@ -12510,7 +12449,8 @@ def create_ris_notification(
         status='NEW'
     )
     db.session.add(n)
-    db.session.commit()
+    if commit:
+        db.session.commit()
     return n
 
 
@@ -27219,13 +27159,17 @@ def admin_procedure_quality_rules():
                            acquisition_notes=technician_acquisition_notes(selected),can_edit=has_perm('*') or has_perm('users.manage'))
 
 @app.post('/reports/<int:order_id>/return-case')
-@require_perm('reports.edit')
+@login_required
 def return_case_to_workflow(order_id):
     o=Order.query.get_or_404(order_id)
+    from technician_queue import return_actor
+    return_actor(_reporting_support_sys.modules[__name__],o)
     code=(request.form.get('reason_code') or 'OTHER').upper()
     rr=CaseReturnReason.query.filter_by(code=code,active=True).first()
     note=(request.form.get('note') or '').strip()
-    route=(rr.route_to if rr else 'SUPERVISOR')
+    if not rr or len(note)<5 or len(note)>10000:
+        abort(400)
+    route=rr.route_to
     db.session.add(CaseWorkflowEvent(order_id=o.id,event_type='RETURNED',owner_role=route,reason_code=code,note=note,created_by=current_user().id))
     now=datetime.utcnow()
     for a in CaseAssignment.query.filter_by(order_id=o.id,active=True).all():
@@ -27242,7 +27186,7 @@ def return_case_to_workflow(order_id):
     if (o.status or '').upper() not in ('FINAL','CANCELLED'):
         o.status='COMPLETED'
     create_ris_notification(o,'RETURNED_TO_TECH' if route=='TECHNICIAN' else 'CASE_RETURNED',
-      'Case returned for correction',f'{code}: {note}','WARNING',route)
+      'Case returned for correction',f'{code}: {note}','WARNING',route,commit=False)
     audit(
         'CASE_RETURNED_FOR_ACTION',
         'order',
@@ -27257,12 +27201,15 @@ def return_case_to_workflow(order_id):
         'success'
     )
 
-    return redirect(url_for('doctor'))
+    return redirect(url_for('doctor') if has_perm('reports.edit') else url_for('returned_cases_queue'))
 
 @app.get('/reports/<int:order_id>/return-case')
-@require_perm('reports.edit')
+@login_required
 def return_case_form(order_id):
-    return render_template('return_case.html',order=Order.query.get_or_404(order_id),reasons=CaseReturnReason.query.filter_by(active=True).order_by(CaseReturnReason.label).all())
+    order=Order.query.get_or_404(order_id)
+    from technician_queue import return_actor
+    return_actor(_reporting_support_sys.modules[__name__],order)
+    return render_template('return_case.html',order=order,reasons=CaseReturnReason.query.filter_by(active=True).order_by(CaseReturnReason.label).all())
 
 
 @app.get('/returned-cases')
@@ -27274,6 +27221,9 @@ def returned_cases_queue():
     q=CaseWorkflowEvent.query.filter(
         CaseWorkflowEvent.event_type=='RETURNED'
     )
+
+    if role not in ('SUPER_ADMIN','ADMIN') and not u.branch_id:
+        q=q.filter(db.false())
 
     if role=='TECHNICIAN':
         q=q.filter(
@@ -27355,17 +27305,33 @@ def resolve_returned_case(event_id):
     }
     if role not in allowed_roles:
         abort(403)
-    if u.branch_id and o.branch_id!=u.branch_id and role not in ('SUPER_ADMIN','ADMIN'):
-        abort(403)
-    if ev.event_type!='RETURNED' or not case_return_is_open(o.id):
+    from technician_queue import scoped_order, mutable_return, ACTIVE_CORRECTIONS
+    scoped_order(_reporting_support_sys.modules[__name__],o)
+    mutable_return(_reporting_support_sys.modules[__name__],o)
+    state=case_return_snapshot(o.id)
+    if ev.event_type!='RETURNED' or not state['open'] or state['return_event'].id!=ev.id:
         abort(409)
+    if role in ('TECHNICIAN','RECEPTION','FRONT_DESK') and ev.owner_role != ('TECHNICIAN' if role=='TECHNICIAN' else 'RECEPTION'):
+        abort(403)
+    if CorrectionRequest.query.filter_by(order_id=o.id,request_type='WRONG_IMAGES').filter(CorrectionRequest.status.in_(ACTIVE_CORRECTIONS)).first():
+        flash('طلب مراجعة الصور لم يُغلق بعد.' if current_ui_language()=='ar' else 'The image correction request is still open.','warning')
+        return redirect(url_for('technician_case_workspace',order_id=o.id) if role=='TECHNICIAN' else url_for('returned_cases_queue'))
 
     note=(request.form.get('note') or '').strip()
     pacs_lookup_order(o)
-    readiness=evaluate_case_readiness(o)
+    strict_images=True
+    documents_ready=True
+    if ev.owner_role=='TECHNICIAN':
+        from technician_queue import correction_documents_ready
+        image_result,image_evidence=technician_completion_evidence(o)
+        strict_images=bool(image_result['allowed'])
+        documents_ready=correction_documents_ready(_reporting_support_sys.modules[__name__],o,state)
+        readiness=evaluate_case_readiness(o,pacs_evidence=image_evidence)
+    else:
+        readiness=evaluate_case_readiness(o)
     decision=assignment_readiness_decision(o,refresh_stale=False)
     ready=bool(
-        decision.get('allowed')
+        strict_images and documents_ready and decision.get('allowed')
         and (o.exam_status or '').upper()=='EXAM_COMPLETED'
         and (o.pacs_status or '').upper()=='IMAGES_COMPLETE'
     )
@@ -33513,6 +33479,9 @@ def api_ohif_report_return(order_id):
     if identity_block:
         return identity_block
 
+    from technician_queue import mutable_return
+    mutable_return(_reporting_support_sys.modules[__name__],order)
+
     data = _ohif_json_body()
 
     u = doctor_user
@@ -33525,7 +33494,9 @@ def api_ohif_report_return(order_id):
         active=True
     ).first()
 
-    route = rr.route_to if rr else 'SUPERVISOR'
+    if not rr or len(note)<5 or len(note)>10000:
+        abort(400)
+    route = rr.route_to
 
     db.session.add(
         CaseWorkflowEvent(
@@ -33551,7 +33522,8 @@ def api_ohif_report_return(order_id):
         'Case returned for correction',
         f'{code}: {note}',
         'WARNING',
-        route
+        route,
+        commit=False
     )
 
     audit_as_user(
@@ -38487,3 +38459,6 @@ register_report_template_routes(_reporting_support_sys.modules[__name__])
 
 from readiness_operations import register as register_readiness_operations
 register_readiness_operations(_reporting_support_sys.modules[__name__])
+
+from technician_queue import register as register_technician_queue
+register_technician_queue(_reporting_support_sys.modules[__name__])

@@ -13,7 +13,10 @@
   grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:14px;
 }
-.tech-summary { margin-bottom:16px; }
+.tech-summary { margin-bottom:16px; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.tech-summary-card {text-decoration:none;color:inherit}
+.tech-summary-card[aria-current="page"] {border-color:#2563eb;background:rgba(37,99,235,.1)}
+@media(max-width:620px){.tech-summary{grid-template-columns:1fr}.tech-grid{grid-template-columns:1fr}}
 .tech-summary-card,
 .tech-case {
   border:1px solid var(--border,#294052);
@@ -75,29 +78,17 @@
 }
 </style>
 
-{% set ns=namespace(waiting=0,active=0,finished=0,images=0) %}
-{% for o in orders %}
-  {% set st=(o.exam_status or 'ORDERED')|upper %}
-  {% if st in ['BOOKED','ORDERED'] %}
-    {% set ns.waiting=ns.waiting+1 %}
-  {% elif st == 'IN_PROGRESS' %}
-    {% set ns.active=ns.active+1 %}
-  {% else %}
-    {% set ns.finished=ns.finished+1 %}
-  {% endif %}
-  {% if (o.pacs_image_count or 0) > 0 %}
-    {% set ns.images=ns.images+1 %}
-  {% endif %}
-{% endfor %}
-
-<div class="tech-summary">
-  <div class="tech-summary-card">{{ ui_phrase('Waiting') }}<strong>{{ns.waiting}}</strong></div>
-  <div class="tech-summary-card">{{ ui_phrase('In progress') }}<strong>{{ns.active}}</strong></div>
-  <div class="tech-summary-card">{{ ui_phrase('Exam completed') }}<strong>{{ns.finished}}</strong></div>
-  <div class="tech-summary-card">{{ ui_phrase('Images received') }}<strong>{{ns.images}}</strong></div>
-</div>
+<nav class="tech-summary" aria-label="{{'قوائم الفني' if ui_lang=='ar' else 'Technician queues'}}">
+  {% for key,ar,en in [('waiting','لم يبدأ','Not started'),('in_progress','جارٍ الفحص','In progress'),('returned','مطلوب استكمال','Returned for correction')] %}
+  <a class="tech-summary-card {% if queue_view==key and not queue_search %}primary{% endif %}" href="{{url_for('technician_worklist',view=key,date_from=request.args.get('date_from',''),date_to=request.args.get('date_to',''),priority=request.args.get('priority',''))}}" {% if queue_view==key and not queue_search %}aria-current="page"{% endif %}>
+    {{ar if ui_lang=='ar' else en}}<strong>{{queue_counts[key]}}</strong>
+  </a>
+  {% endfor %}
+</nav>
+<p class="muted">{{'الحالات المكتملة تظهر عند البحث فقط. الحالات المعادة تظهر في قائمة مطلوب استكمال.' if ui_lang=='ar' else 'Completed cases appear only in search. Returned cases appear in their correction queue.'}}</p>
 
 <form method="get" class="panel global-screen-filter">
+  <input type="hidden" name="view" value="{{queue_view}}">
   <div class="filter-grid">
     <input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
     <input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
@@ -163,12 +154,13 @@
 {% endif %}
 
 
-<h2 class="tech-section-title">{{ ui_phrase('Examination Worklist') }}</h2>
+<h2 class="tech-section-title">{{('نتائج البحث' if ui_lang=='ar' else 'Search results') if queue_search else ui_phrase('Examination Worklist')}}</h2>
 
 <div class="tech-grid">
 {% for o in orders %}
   {% set st=(o.exam_status or 'ORDERED')|upper %}
-  <article class="tech-case">
+  {% set returned=return_states.get(o.id) %}
+  <article class="tech-case" {% if returned and returned.open and returned.owner=='TECHNICIAN' %}style="border-color:#d97706"{% endif %}>
     {% if (o.pacs_image_count or 0) > 0 and o.pacs_study_id %}
       <img
         class="tech-thumb"
@@ -191,6 +183,12 @@
         </span>
       </div>
 
+      {% if returned and returned.open and returned.owner=='TECHNICIAN' %}
+      <details class="panel" style="margin-top:12px;border-color:#d97706">
+        <summary>{{'مطلوب استكمال · عرض سبب الإرجاع' if ui_lang=='ar' else 'Returned · Show correction reason'}}</summary>
+        <p><b>{{returned.reason}}</b></p><p style="white-space:pre-wrap">{{returned.return_event.note}}</p>
+      </details>
+      {% endif %}
       <div class="tech-meta">
         <div><small>{{ ui_phrase('Exam') }}</small>{{o.proc.name if o.proc else o.procedure}}</div>
         <div><small>{{ ui_phrase('Room / Device') }}</small>{{o.device.name if o.device else ui_phrase('Routing required')}}</div>
@@ -242,7 +240,7 @@
     </div>
   </article>
 {% else %}
-  <div class="panel empty">{{ ui_phrase('No active or recently completed studies.') }}</div>
+  <div class="panel empty">{{'لا توجد حالات في هذه القائمة.' if ui_lang=='ar' else 'No cases in this queue.'}}</div>
 {% endfor %}
 </div>
 {% endblock %}

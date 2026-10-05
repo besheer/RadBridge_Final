@@ -49,6 +49,32 @@
   </div>
 </section>
 
+{% if return_state.open and return_state.owner=='TECHNICIAN' %}
+<section class="panel" style="border-color:#d97706">
+  <h3>{{'مطلوب استكمال الحالة' if ui_lang=='ar' else 'Returned for correction'}}</h3>
+  <p><b>{{return_state.reason}}</b></p><p style="white-space:pre-wrap">{{return_state.return_event.note}}</p>
+  <form method="post" action="{{url_for('technician_returned_note',order_id=order.id)}}">
+    <label>{{'نوع الملاحظة' if ui_lang=='ar' else 'Note type'}}</label>
+    <select name="note_type"><option value="HISTORY">{{'التاريخ المرضي' if ui_lang=='ar' else 'Clinical history'}}</option><option value="TECHNICAL">{{'ملاحظات فنية' if ui_lang=='ar' else 'Technical notes'}}</option></select>
+    <textarea name="text" required minlength="5" maxlength="10000" aria-label="{{'بيانات الاستكمال' if ui_lang=='ar' else 'Correction notes'}}"></textarea>
+    <button class="btn primary">{{'حفظ الاستكمال' if ui_lang=='ar' else 'Save correction notes'}}</button>
+  </form>
+  <details style="margin-top:16px"><summary>{{'طلب مراجعة الصور وحذفها لإعادة الإرسال' if ui_lang=='ar' else 'Request image review and replacement'}}</summary>
+    <p>{{'هذا طلب مراجعة فقط؛ حذف الصور يتطلب الموافقة ومسار التصحيح الموثق.' if ui_lang=='ar' else 'This submits a request. Image deletion requires approval through the audited correction workflow.'}}</p>
+    {% for r in image_requests %}<p>#{{r.id}} · {{ui_phrase(r.status)}} · {{r.reason}}</p>{% endfor %}
+    <form method="post" action="{{url_for('technician_image_replacement_request',order_id=order.id)}}">
+      <textarea name="reason" required minlength="5" maxlength="10000" aria-label="{{'سبب طلب مراجعة الصور' if ui_lang=='ar' else 'Image correction reason'}}"></textarea>
+      <button class="btn">{{'إرسال طلب مراجعة الصور' if ui_lang=='ar' else 'Submit image correction request'}}</button>
+    </form>
+  </details>
+  <form method="post" style="margin-top:16px" action="{{url_for('resolve_returned_case',event_id=return_state.return_event.id)}}">
+    <p>{{'تُراجع الصور وشروط جاهزية الحالة من جديد قبل إعادتها للطبيب.' if ui_lang=='ar' else 'Images and case readiness are checked again before resubmission.'}}</p>
+    <textarea name="note" aria-label="{{'ملخص الاستكمال' if ui_lang=='ar' else 'Correction summary'}}"></textarea>
+    <button class="btn primary">{{'التحقق وإعادة الحالة للمراجعة' if ui_lang=='ar' else 'Check and resubmit for review'}}</button>
+  </form>
+</section>
+{% endif %}
+
 <section class="panel" aria-label="{{ ui_phrase('Acquisition image policy') }}">
   <h3>{{ ui_phrase('سياسة صور الفحص · Acquisition Policy') }}</h3>
   {% if quality_rule %}

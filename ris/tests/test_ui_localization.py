@@ -23,7 +23,7 @@ def render(m,name,lang,**kwargs):
 @pytest.mark.parametrize('lang',['en','ar'])
 def test_technician_filters_keep_canonical_submitted_values(app_ctx,lang):
     with app_ctx.app.test_request_context():
-        body=render(app_ctx,'technician.html',lang,orders=[],image_urls={},attachment_counts={})
+        body=render(app_ctx,'technician.html',lang,orders=[],image_urls={},attachment_counts={},queue_counts={'waiting':0,'in_progress':0,'returned':0},queue_view='waiting',queue_search=False,return_states={})
     assert '<option value="ROUTINE">' in body
     assert '<option value="URGENT">' in body
     assert '<option value="STAT">' in body

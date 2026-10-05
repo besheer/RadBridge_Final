@@ -25,7 +25,7 @@
 <th>{{ ui_phrase('Accession') }}</th>
 <th>{{'الفحص' if ui_lang=='ar' else 'Exam'}}</th>
 <th>{{'السبب' if ui_lang=='ar' else 'Reason'}}</th>
-<th>{{'ملاحظة الطبيب' if ui_lang=='ar' else 'Doctor Note'}}</th>
+<th>{{'سبب الإرجاع' if ui_lang=='ar' else 'Return note'}}</th>
 <th>{{'الوجهة' if ui_lang=='ar' else 'Owner'}}</th>
 <th>{{'منذ' if ui_lang=='ar' else 'Requested'}}</th>
 <th></th>
@@ -68,7 +68,7 @@
 <td>
 
 <a class="btn"
-   href="{{url_for('order_detail',order_id=o.id)}}">
+   href="{{url_for('technician_case_workspace' if ev.owner_role=='TECHNICIAN' and has_perm('technician.worklist') else 'order_detail',order_id=o.id)}}">
 {{'فتح الحالة' if ui_lang=='ar' else 'Open'}}
 </a>
 
