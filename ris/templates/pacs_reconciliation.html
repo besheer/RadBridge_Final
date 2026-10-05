@@ -1,25 +1,24 @@
 {% extends "base.html" %}
 {% from "_action_guidance.html" import action_info %}
 
-{% block page_title %}PACS Exception Review{% endblock %}
+{% block page_title %}{{ ui_phrase('PACS Exception Review') }}{% endblock %}
 
 {% block content %}
 <div class="panel">
 
-<h2>PACS Demographic Exception Review</h2>
-{% if correction_paused %}<div class="warn"><strong>{{ ui_phrase('الاستقبال التلقائي معلّق أثناء عملية تصحيح غير مكتملة / Automatic PACS intake paused.') }}</strong> راجع سجل التصحيح قبل استئناف أي عملية غير مؤكدة.</div>{% endif %}
+<h2>{{ ui_phrase('PACS Demographic Exception Review') }}</h2>
+{% if correction_paused %}<div class="warn"><strong>{{ ui_phrase('الاستقبال التلقائي معلّق أثناء عملية تصحيح غير مكتملة / Automatic PACS intake paused.') }}</strong> {{ ui_phrase('راجع سجل التصحيح قبل استئناف أي عملية غير مؤكدة.') }}</div>{% endif %}
 {% if can_reconcile %}<p><a class="btn" href="{{url_for('pacs_reconciliation_example')}}">{{ ui_phrase('مثال توضيحي بدون تغيير بيانات / Read-only example') }}</a></p>{% endif %}
-{% if demo_mode %}<div class="warn"><strong>{{ ui_phrase('مثال توضيحي فقط / Read-only synthetic example') }}</strong> — لا يتم حفظ أو تعديل أي مريض أو صور.</div>{% endif %}
+{% if demo_mode %}<div class="warn"><strong>{{ ui_phrase('مثال توضيحي فقط / Read-only synthetic example') }}</strong> {{ ui_phrase('— لا يتم حفظ أو تعديل أي مريض أو صور.') }}</div>{% endif %}
 {% if has_perm('audit.view') %}<p><a class="btn" href="{{url_for('pacs_reconciliation_audit')}}">{{ ui_phrase('سجل تصحيح DICOM / Correction audit') }}</a></p>{% endif %}
 
 <p>
-Studies listed here were blocked because PACS demographics did not satisfy
-the automatic safety match.
+{{ ui_phrase('Studies listed here were blocked because PACS demographics did not satisfy\nthe automatic safety match.') }}
 </p>
 
 {% if not demo_mode %}<div style="margin-bottom:18px">
 <form method="post" action="{{ url_for('pacs_reconciliation_auto_safe') }}">
-<button class="btn primary">Re-run Safe Auto Match</button>
+<button class="btn primary">{{ ui_phrase('Re-run Safe Auto Match') }}</button>
 {{ action_info(
   'Safe Auto Match',
   'Rechecks waiting PACS studies using strict demographic matching.',
@@ -33,7 +32,7 @@ the automatic safety match.
 </div>{% endif %}
 
 {% if not demo_mode %}<div class="panel" style="margin:20px 0;border-left:4px solid #2563eb">
-<h3>Exam Linking</h3>
+<h3>{{ ui_phrase('Exam Linking') }}</h3>
 {{ action_info(
   'Exam Linking',
   'Links one acquired PACS study to an additional RIS Order for the same patient.',
@@ -46,18 +45,18 @@ the automatic safety match.
 
 {% if not can_exam_link %}
 <div class="warn">
-View only. Exam Linking requires the <strong>pacs.exam_link</strong> permission.
+{{ ui_phrase('View only. Exam Linking requires the') }} <strong>pacs.exam_link</strong> {{ ui_phrase('permission.') }}
 </div>
 {% elif not eligible_exam_pairs %}
 <div class="success">
-No safe same-patient editable Order pairs are currently eligible for Exam Linking.
+{{ ui_phrase('No safe same-patient editable Order pairs are currently eligible for Exam Linking.') }}
 </div>
 {% else %}
 <form method="post" action="{{ url_for('pacs_exam_link_create') }}">
-<label>Safe primary / secondary Order pair</label>
+<label>{{ ui_phrase('Safe primary / secondary Order pair') }}</label>
 <select name="exam_pair" id="exam-link-pair" required
         onchange="var p=this.value.split(':');document.getElementById('exam-primary').value=p[0]||'';document.getElementById('exam-secondary').value=p[1]||''">
-  <option value="">Select confirmed same-patient Orders</option>
+  <option value="">{{ ui_phrase('Select confirmed same-patient Orders') }}</option>
   {% for pair in eligible_exam_pairs %}
   <option value="{{ pair.primary.id }}:{{ pair.secondary.id }}">
     {{ pair.patient.name if pair.patient else ui_phrase('Patient') }} —
@@ -69,23 +68,23 @@ No safe same-patient editable Order pairs are currently eligible for Exam Linkin
 <input type="hidden" id="exam-primary" name="primary_order_id">
 <input type="hidden" id="exam-secondary" name="secondary_order_id">
 
-<label>Documented clinical/operational reason</label>
+<label>{{ ui_phrase('Documented clinical/operational reason') }}</label>
 <textarea name="reason" required minlength="5"
-placeholder="Explain why the same PACS acquisition belongs to both RIS Orders"></textarea>
+placeholder="{{ ui_phrase('Explain why the same PACS acquisition belongs to both RIS Orders') }}"></textarea>
 
 <label style="display:block;margin:8px 0">
   <input type="checkbox" required>
-  I confirmed both Orders belong to the same patient and this is not Patient Merge.
+  {{ ui_phrase('I confirmed both Orders belong to the same patient and this is not Patient Merge.') }}
 </label>
 
-<button class="btn primary">Create Exam Link</button>
+<button class="btn primary">{{ ui_phrase('Create Exam Link') }}</button>
 </form>
 {% endif %}
 
 {% if active_exam_links %}
-<h4 style="margin-top:20px">Active Exam Links</h4>
+<h4 style="margin-top:20px">{{ ui_phrase('Active Exam Links') }}</h4>
 <table>
-<tr><th>{{ ui_phrase('Study') }}</th><th>Primary Order</th><th>Secondary Order</th><th>{{ ui_phrase('Reason') }}</th><th>{{ ui_phrase('Action') }}</th></tr>
+<tr><th>{{ ui_phrase('Study') }}</th><th>{{ ui_phrase('Primary Order') }}</th><th>{{ ui_phrase('Secondary Order') }}</th><th>{{ ui_phrase('Reason') }}</th><th>{{ ui_phrase('Action') }}</th></tr>
 {% for item in active_exam_links %}
 <tr>
 <td>{{ item.link.orthanc_study_id }}</td>
@@ -95,8 +94,8 @@ placeholder="Explain why the same PACS acquisition belongs to both RIS Orders"><
 <td>
 {% if can_exam_link %}
 <form method="post" action="{{ url_for('pacs_exam_link_remove',link_id=item.link.id) }}">
-  <input name="reason" required minlength="5" placeholder="Removal reason">
-  <button class="btn">Remove Link</button>
+  <input name="reason" required minlength="5" placeholder="{{ ui_phrase('Removal reason') }}">
+  <button class="btn">{{ ui_phrase('Remove Link') }}</button>
   {{ action_info(
     'Remove Exam Link',
     'Deactivates only the secondary link and preserves its audit history.',
@@ -118,7 +117,7 @@ placeholder="Explain why the same PACS acquisition belongs to both RIS Orders"><
 {% endif %}
 {% if not exceptions %}
 <div class="success">
-No PACS demographic exceptions are waiting for review.
+{{ ui_phrase('No PACS demographic exceptions are waiting for review.') }}
 </div>
 {% endif %}
 
@@ -130,7 +129,7 @@ No PACS demographic exceptions are waiting for review.
 <div class="panel" style="margin-top:20px">
 
 <h3>
-Study Exception #{{ x.id }}
+{{ ui_phrase('Study Exception #') }}{{ x.id }}
 —
 <span class="warn">{{ x.match_method }}</span>
 </h3>
@@ -144,15 +143,15 @@ Study Exception #{{ x.id }}
 <tr><td>{{field}}</td><td>{{original.get(field) or ui_phrase('غير متاح قبل المعاينة / Preview required')}}</td></tr>{% endfor %}
 <tr><td>{{ ui_phrase('Images') }}</td><td>{{v.before.count if v else x.image_count}}</td></tr>
 <tr><td>Study UID</td><td>{{v.before.study_uid if v else x.study_instance_uid or '—'}}</td></tr></table></div>
-<p><strong>REVIEW REQUIRED — AI BLOCKED — FINALIZE BLOCKED</strong></p>
-{% if not v %}<p>البيانات المحفوظة في قائمة الاستقبال؛ المعاينة تقرأ البيانات الحالية من الصور نفسها.</p>{% endif %}
+<p><strong>{{ ui_phrase('REVIEW REQUIRED — AI BLOCKED — FINALIZE BLOCKED') }}</strong></p>
+{% if not v %}<p>{{ ui_phrase('البيانات المحفوظة في قائمة الاستقبال؛ المعاينة تقرأ البيانات الحالية من الصور نفسها.') }}</p>{% endif %}
 </section>
 <section class="panel" style="border-top:4px solid #16a34a;background:#f0fdf4;margin-top:16px">
 <h4>{{ ui_phrase('٢ — المريض وأمر الشغل الصحيحان / Correct RIS patient and order') }}</h4>
 {% if can_reconcile %}
 <form method="get" action="{{url_for('pacs_reconciliation')}}">
 <label>{{ ui_phrase('ابحث بالاسم أو رقم المريض أو رقم الفحص / Search patient or accession') }}</label>
-<input name="q" value="{{search_query}}" placeholder="Patient name / Patient ID / Accession">
+<input name="q" value="{{search_query}}" placeholder="{{ ui_phrase('Patient name / Patient ID / Accession') }}">
 <button class="btn">{{ ui_phrase('بحث / Search') }}</button></form>
 <form method="get" action="{{url_for('pacs_reconciliation')}}">
 <input type="hidden" name="study_id" value="{{x.orthanc_study_id}}">
@@ -165,17 +164,17 @@ Study Exception #{{ x.id }}
 {% endif %}
 {% if v %}
 <p><strong>#{{v.order.id}} — {{v.order.procedure}}</strong> · {{v.order.branch.name if v.order.branch else '—'}}</p>
-<div style="overflow:auto"><table><tr><th>{{ ui_phrase('Field') }}</th><th>Correct value</th><th>{{ ui_phrase('Change') }}</th></tr>
+<div style="overflow:auto"><table><tr><th>{{ ui_phrase('Field') }}</th><th>{{ ui_phrase('Correct value') }}</th><th>{{ ui_phrase('Change') }}</th></tr>
 {% for field,value in v.after.items() %}<tr><td>{{field}}</td><td>{{value}}</td><td>{{ui_phrase('تغيير / Changed') if value!=v.before.tags.get(field) else ui_phrase('مطابق / Same')}}</td></tr>{% endfor %}</table></div>
 {% if not demo_mode %}<form method="post" action="{{url_for('pacs_reconciliation_match',study_id=x.orthanc_study_id)}}">
 <input type="hidden" name="order_id" value="{{v.order.id}}"><input type="hidden" name="preview_token" value="{{v.token}}">
 <label>{{ ui_phrase('سبب التصحيح / Documented reason') }}</label><textarea name="reason" required minlength="5" maxlength="500"></textarea>
 <label style="display:block;margin:12px 0"><input type="checkbox" name="identity_confirmed" value="1" required> {{ ui_phrase('تأكدت من هوية المريض وأن الصور تخص هذا الفحص / I confirmed patient and study identity.') }}</label>
-<p>الربط فقط لا يغيّر DICOM. التصحيح ينشئ نسخة جديدة بمعرفات جديدة، يحتفظ بالأصل، ثم يتحقق ويربط النسخة الصحيحة. التقارير النهائية محمية.</p>
+<p>{{ ui_phrase('الربط فقط لا يغيّر DICOM. التصحيح ينشئ نسخة جديدة بمعرفات جديدة، يحتفظ بالأصل، ثم يتحقق ويربط النسخة الصحيحة. التقارير النهائية محمية.') }}</p>
 {% if has_perm('correction.review') %}<button class="btn primary" formaction="{{url_for('pacs_reconciliation_correct_dicom',study_id=x.orthanc_study_id)}}">{{ ui_phrase('تصحيح DICOM والربط / Correct DICOM and map') }}</button>{% endif %}
 <button class="btn">{{ ui_phrase('ربط فقط دون تعديل DICOM / Confirm Manual Match') }}</button>
-</form>{% else %}<p>بعد المعاينة، تظهر خيارات تصحيح DICOM والربط أو الربط فقط للمستخدم المخوّل. الأصل محفوظ وسجل التدقيق يسجل القيم القديمة والجديدة.</p>{% endif %}
-{% else %}<p>لم تُؤكد البيانات الصحيحة بعد. اختر أمر الشغل واضغط معاينة أولًا.</p>{% endif %}
+</form>{% else %}<p>{{ ui_phrase('بعد المعاينة، تظهر خيارات تصحيح DICOM والربط أو الربط فقط للمستخدم المخوّل. الأصل محفوظ وسجل التدقيق يسجل القيم القديمة والجديدة.') }}</p>{% endif %}
+{% else %}<p>{{ ui_phrase('لم تُؤكد البيانات الصحيحة بعد. اختر أمر الشغل واضغط معاينة أولًا.') }}</p>{% endif %}
 </section>
 
 {% if can_reconcile %}
@@ -183,7 +182,7 @@ Study Exception #{{ x.id }}
 
 <hr>
 
-<h4>Reject / Quarantine</h4>
+<h4>{{ ui_phrase('Reject / Quarantine') }}</h4>
 {{ action_info(
   'Quarantine Study',
   'Separates an unresolved PACS study from RIS workflow for administrator review.',
@@ -201,16 +200,16 @@ action="{{ url_for('pacs_reconciliation_quarantine',study_id=x.orthanc_study_id)
 name="reason"
 required
 minlength="5"
-placeholder="Reason for quarantine"></textarea>
+placeholder="{{ ui_phrase('Reason for quarantine') }}"></textarea>
 
 <button class="btn">
-Quarantine Study
+{{ ui_phrase('Quarantine Study') }}
 </button>
 </form>
 {% elif not demo_mode %}
 <div class="warn">
-View only. Manual PACS matching and quarantine require the
-<strong>pacs.reconcile</strong> permission.
+{{ ui_phrase('View only. Manual PACS matching and quarantine require the') }}
+<strong>pacs.reconcile</strong> {{ ui_phrase('permission.') }}
 </div>
 {% endif %}
 

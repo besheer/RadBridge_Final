@@ -12522,5 +12522,517 @@
   "Sequence ناقصة": [
     "Series",
     "Sequence ناقصة"
+  ],
+  "PACS Exception Review": [
+    "PACS Exception Review",
+    "مراجعة استثناءات PACS"
+  ],
+  "مراجعة استثناءات PACS": [
+    "PACS Exception Review",
+    "مراجعة استثناءات PACS"
+  ],
+  "PACS Demographic Exception Review": [
+    "PACS Demographic Exception Review",
+    "مراجعة اختلاف بيانات المريض في PACS"
+  ],
+  "مراجعة اختلاف بيانات المريض في PACS": [
+    "PACS Demographic Exception Review",
+    "مراجعة اختلاف بيانات المريض في PACS"
+  ],
+  "Studies listed here were blocked because PACS demographics did not satisfy the automatic safety match.": [
+    "Studies listed here were blocked because PACS demographics did not satisfy the automatic safety match.",
+    "أُوقف استخدام الفحوصات المعروضة هنا لأن بيانات المريض في PACS لم تستوفِ شروط المطابقة التلقائية الآمنة."
+  ],
+  "أُوقف استخدام الفحوصات المعروضة هنا لأن بيانات المريض في PACS لم تستوفِ شروط المطابقة التلقائية الآمنة.": [
+    "Studies listed here were blocked because PACS demographics did not satisfy the automatic safety match.",
+    "أُوقف استخدام الفحوصات المعروضة هنا لأن بيانات المريض في PACS لم تستوفِ شروط المطابقة التلقائية الآمنة."
+  ],
+  "Re-run Safe Auto Match": [
+    "Re-run Safe Auto Match",
+    "إعادة المطابقة التلقائية الآمنة"
+  ],
+  "إعادة المطابقة التلقائية الآمنة": [
+    "Re-run Safe Auto Match",
+    "إعادة المطابقة التلقائية الآمنة"
+  ],
+  "Safe Auto Match": [
+    "Safe Auto Match",
+    "المطابقة التلقائية الآمنة"
+  ],
+  "المطابقة التلقائية الآمنة": [
+    "Safe Auto Match",
+    "المطابقة التلقائية الآمنة"
+  ],
+  "Rechecks waiting PACS studies using strict demographic matching.": [
+    "Rechecks waiting PACS studies using strict demographic matching.",
+    "يعيد فحص الدراسات المعلّقة في PACS وفق مطابقة دقيقة لبيانات المريض."
+  ],
+  "يعيد فحص الدراسات المعلّقة في PACS وفق مطابقة دقيقة لبيانات المريض.": [
+    "Rechecks waiting PACS studies using strict demographic matching.",
+    "يعيد فحص الدراسات المعلّقة في PACS وفق مطابقة دقيقة لبيانات المريض."
+  ],
+  "Use after correcting RIS or PACS demographics.": [
+    "Use after correcting RIS or PACS demographics.",
+    "يُستخدم بعد تصحيح بيانات المريض في RIS أو PACS."
+  ],
+  "يُستخدم بعد تصحيح بيانات المريض في RIS أو PACS.": [
+    "Use after correcting RIS or PACS demographics.",
+    "يُستخدم بعد تصحيح بيانات المريض في RIS أو PACS."
+  ],
+  "Requires PACS reconciliation permission.": [
+    "Requires PACS reconciliation permission.",
+    "يتطلب صلاحية مطابقة PACS."
+  ],
+  "يتطلب صلاحية مطابقة PACS.": [
+    "Requires PACS reconciliation permission.",
+    "يتطلب صلاحية مطابقة PACS."
+  ],
+  "Only exact safe matches are linked; unresolved studies remain in review.": [
+    "Only exact safe matches are linked; unresolved studies remain in review.",
+    "يُربط فقط ما يستوفي المطابقة الآمنة؛ وتبقى الدراسات غير المحسومة للمراجعة."
+  ],
+  "يُربط فقط ما يستوفي المطابقة الآمنة؛ وتبقى الدراسات غير المحسومة للمراجعة.": [
+    "Only exact safe matches are linked; unresolved studies remain in review.",
+    "يُربط فقط ما يستوفي المطابقة الآمنة؛ وتبقى الدراسات غير المحسومة للمراجعة."
+  ],
+  "It never overrides a different study on a verified or final case.": [
+    "It never overrides a different study on a verified or final case.",
+    "لا يستبدل دراسة مختلفة مرتبطة بحالة ذات تقرير مراجع أو نهائي."
+  ],
+  "لا يستبدل دراسة مختلفة مرتبطة بحالة ذات تقرير مراجع أو نهائي.": [
+    "It never overrides a different study on a verified or final case.",
+    "لا يستبدل دراسة مختلفة مرتبطة بحالة ذات تقرير مراجع أو نهائي."
+  ],
+  "Exam Linking": [
+    "Exam Linking",
+    "ربط الفحوصات"
+  ],
+  "ربط الفحوصات": [
+    "Exam Linking",
+    "ربط الفحوصات"
+  ],
+  "Links one acquired PACS study to an additional RIS Order for the same patient.": [
+    "Links one acquired PACS study to an additional RIS Order for the same patient.",
+    "يربط دراسة واحدة من PACS بأمر شغل إضافي في RIS للمريض نفسه."
+  ],
+  "يربط دراسة واحدة من PACS بأمر شغل إضافي في RIS للمريض نفسه.": [
+    "Links one acquired PACS study to an additional RIS Order for the same patient.",
+    "يربط دراسة واحدة من PACS بأمر شغل إضافي في RIS للمريض نفسه."
+  ],
+  "Use for combined acquisitions such as one CT study covering more than one ordered exam.": [
+    "Use for combined acquisitions such as one CT study covering more than one ordered exam.",
+    "يُستخدم للتصوير المشترك، مثل دراسة CT تشمل أكثر من فحص مطلوب."
+  ],
+  "يُستخدم للتصوير المشترك، مثل دراسة CT تشمل أكثر من فحص مطلوب.": [
+    "Use for combined acquisitions such as one CT study covering more than one ordered exam.",
+    "يُستخدم للتصوير المشترك، مثل دراسة CT تشمل أكثر من فحص مطلوب."
+  ],
+  "Both Orders must belong to the same patient; the secondary Order must remain editable; a documented reason is mandatory.": [
+    "Both Orders must belong to the same patient; the secondary Order must remain editable; a documented reason is mandatory.",
+    "يجب أن يخص أمرا الشغل المريض نفسه، وأن يبقى الأمر الثانوي قابلًا للتعديل، مع توثيق السبب."
+  ],
+  "يجب أن يخص أمرا الشغل المريض نفسه، وأن يبقى الأمر الثانوي قابلًا للتعديل، مع توثيق السبب.": [
+    "Both Orders must belong to the same patient; the secondary Order must remain editable; a documented reason is mandatory.",
+    "يجب أن يخص أمرا الشغل المريض نفسه، وأن يبقى الأمر الثانوي قابلًا للتعديل، مع توثيق السبب."
+  ],
+  "Creates a secondary clinical link only. Reports and notes remain separate for each Order.": [
+    "Creates a secondary clinical link only. Reports and notes remain separate for each Order.",
+    "ينشئ رابطًا سريريًا ثانويًا فقط، وتبقى التقارير والملاحظات منفصلة لكل أمر شغل."
+  ],
+  "ينشئ رابطًا سريريًا ثانويًا فقط، وتبقى التقارير والملاحظات منفصلة لكل أمر شغل.": [
+    "Creates a secondary clinical link only. Reports and notes remain separate for each Order.",
+    "ينشئ رابطًا سريريًا ثانويًا فقط، وتبقى التقارير والملاحظات منفصلة لكل أمر شغل."
+  ],
+  "This is not Patient Merge and does not change, copy, move, or delete DICOM files.": [
+    "This is not Patient Merge and does not change, copy, move, or delete DICOM files.",
+    "هذا الإجراء ليس دمجًا للمرضى، ولا يغيّر ملفات DICOM أو ينسخها أو ينقلها أو يحذفها."
+  ],
+  "هذا الإجراء ليس دمجًا للمرضى، ولا يغيّر ملفات DICOM أو ينسخها أو ينقلها أو يحذفها.": [
+    "This is not Patient Merge and does not change, copy, move, or delete DICOM files.",
+    "هذا الإجراء ليس دمجًا للمرضى، ولا يغيّر ملفات DICOM أو ينسخها أو ينقلها أو يحذفها."
+  ],
+  "View only. Exam Linking requires the": [
+    "View only. Exam Linking requires the",
+    "عرض فقط. ربط الفحوصات يتطلب صلاحية"
+  ],
+  "عرض فقط. ربط الفحوصات يتطلب صلاحية": [
+    "View only. Exam Linking requires the",
+    "عرض فقط. ربط الفحوصات يتطلب صلاحية"
+  ],
+  "permission.": [
+    "permission.",
+    "الصلاحية."
+  ],
+  "الصلاحية.": [
+    "permission.",
+    "الصلاحية."
+  ],
+  "No safe same-patient editable Order pairs are currently eligible for Exam Linking.": [
+    "No safe same-patient editable Order pairs are currently eligible for Exam Linking.",
+    "لا توجد حاليًا أزواج آمنة من أوامر الشغل القابلة للتعديل للمريض نفسه مؤهلة للربط."
+  ],
+  "لا توجد حاليًا أزواج آمنة من أوامر الشغل القابلة للتعديل للمريض نفسه مؤهلة للربط.": [
+    "No safe same-patient editable Order pairs are currently eligible for Exam Linking.",
+    "لا توجد حاليًا أزواج آمنة من أوامر الشغل القابلة للتعديل للمريض نفسه مؤهلة للربط."
+  ],
+  "Safe primary / secondary Order pair": [
+    "Safe primary / secondary Order pair",
+    "أمر الشغل الأساسي والثانوي بعد التحقق"
+  ],
+  "أمر الشغل الأساسي والثانوي بعد التحقق": [
+    "Safe primary / secondary Order pair",
+    "أمر الشغل الأساسي والثانوي بعد التحقق"
+  ],
+  "Select confirmed same-patient Orders": [
+    "Select confirmed same-patient Orders",
+    "اختر أمري شغل تم التأكد من أنهما للمريض نفسه"
+  ],
+  "اختر أمري شغل تم التأكد من أنهما للمريض نفسه": [
+    "Select confirmed same-patient Orders",
+    "اختر أمري شغل تم التأكد من أنهما للمريض نفسه"
+  ],
+  "Primary #": [
+    "Primary #",
+    "الأساسي #"
+  ],
+  "الأساسي #": [
+    "Primary #",
+    "الأساسي #"
+  ],
+  "Secondary #": [
+    "Secondary #",
+    "الثانوي #"
+  ],
+  "الثانوي #": [
+    "Secondary #",
+    "الثانوي #"
+  ],
+  "Documented clinical/operational reason": [
+    "Documented clinical/operational reason",
+    "سبب سريري أو تشغيلي موثّق"
+  ],
+  "سبب سريري أو تشغيلي موثّق": [
+    "Documented clinical/operational reason",
+    "سبب سريري أو تشغيلي موثّق"
+  ],
+  "Explain why the same PACS acquisition belongs to both RIS Orders": [
+    "Explain why the same PACS acquisition belongs to both RIS Orders",
+    "وضّح لماذا يخص التصوير نفسه في PACS أمري الشغل في RIS"
+  ],
+  "وضّح لماذا يخص التصوير نفسه في PACS أمري الشغل في RIS": [
+    "Explain why the same PACS acquisition belongs to both RIS Orders",
+    "وضّح لماذا يخص التصوير نفسه في PACS أمري الشغل في RIS"
+  ],
+  "I confirmed both Orders belong to the same patient and this is not Patient Merge.": [
+    "I confirmed both Orders belong to the same patient and this is not Patient Merge.",
+    "تأكدت أن أمري الشغل يخصان المريض نفسه وأن هذا الإجراء ليس دمجًا للمرضى."
+  ],
+  "تأكدت أن أمري الشغل يخصان المريض نفسه وأن هذا الإجراء ليس دمجًا للمرضى.": [
+    "I confirmed both Orders belong to the same patient and this is not Patient Merge.",
+    "تأكدت أن أمري الشغل يخصان المريض نفسه وأن هذا الإجراء ليس دمجًا للمرضى."
+  ],
+  "Create Exam Link": [
+    "Create Exam Link",
+    "إنشاء رابط الفحوصات"
+  ],
+  "إنشاء رابط الفحوصات": [
+    "Create Exam Link",
+    "إنشاء رابط الفحوصات"
+  ],
+  "Active Exam Links": [
+    "Active Exam Links",
+    "روابط الفحوصات الفعّالة"
+  ],
+  "روابط الفحوصات الفعّالة": [
+    "Active Exam Links",
+    "روابط الفحوصات الفعّالة"
+  ],
+  "Primary Order": [
+    "Primary Order",
+    "أمر الشغل الأساسي"
+  ],
+  "أمر الشغل الأساسي": [
+    "Primary Order",
+    "أمر الشغل الأساسي"
+  ],
+  "Secondary Order": [
+    "Secondary Order",
+    "أمر الشغل الثانوي"
+  ],
+  "أمر الشغل الثانوي": [
+    "Secondary Order",
+    "أمر الشغل الثانوي"
+  ],
+  "Removal reason": [
+    "Removal reason",
+    "سبب إزالة الرابط"
+  ],
+  "سبب إزالة الرابط": [
+    "Removal reason",
+    "سبب إزالة الرابط"
+  ],
+  "Remove Link": [
+    "Remove Link",
+    "إزالة الرابط"
+  ],
+  "إزالة الرابط": [
+    "Remove Link",
+    "إزالة الرابط"
+  ],
+  "Remove Exam Link": [
+    "Remove Exam Link",
+    "إزالة رابط الفحوصات"
+  ],
+  "إزالة رابط الفحوصات": [
+    "Remove Exam Link",
+    "إزالة رابط الفحوصات"
+  ],
+  "Deactivates only the secondary link and preserves its audit history.": [
+    "Deactivates only the secondary link and preserves its audit history.",
+    "يعطّل الرابط الثانوي فقط ويحفظ سجل التدقيق الخاص به."
+  ],
+  "يعطّل الرابط الثانوي فقط ويحفظ سجل التدقيق الخاص به.": [
+    "Deactivates only the secondary link and preserves its audit history.",
+    "يعطّل الرابط الثانوي فقط ويحفظ سجل التدقيق الخاص به."
+  ],
+  "Use when the additional RIS Order was linked in error.": [
+    "Use when the additional RIS Order was linked in error.",
+    "يُستخدم إذا رُبط أمر الشغل الإضافي في RIS بالخطأ."
+  ],
+  "يُستخدم إذا رُبط أمر الشغل الإضافي في RIS بالخطأ.": [
+    "Use when the additional RIS Order was linked in error.",
+    "يُستخدم إذا رُبط أمر الشغل الإضافي في RIS بالخطأ."
+  ],
+  "The secondary Order must still be editable and a reason is required.": [
+    "The secondary Order must still be editable and a reason is required.",
+    "يجب أن يبقى أمر الشغل الثانوي قابلًا للتعديل، مع إدخال سبب."
+  ],
+  "يجب أن يبقى أمر الشغل الثانوي قابلًا للتعديل، مع إدخال سبب.": [
+    "The secondary Order must still be editable and a reason is required.",
+    "يجب أن يبقى أمر الشغل الثانوي قابلًا للتعديل، مع إدخال سبب."
+  ],
+  "The PACS study and primary link remain unchanged.": [
+    "The PACS study and primary link remain unchanged.",
+    "تبقى دراسة PACS والرابط الأساسي دون تغيير."
+  ],
+  "تبقى دراسة PACS والرابط الأساسي دون تغيير.": [
+    "The PACS study and primary link remain unchanged.",
+    "تبقى دراسة PACS والرابط الأساسي دون تغيير."
+  ],
+  "Removal is blocked after the secondary report is verified or final.": [
+    "Removal is blocked after the secondary report is verified or final.",
+    "تُمنع الإزالة بعد مراجعة التقرير الثانوي أو اعتماده نهائيًا."
+  ],
+  "تُمنع الإزالة بعد مراجعة التقرير الثانوي أو اعتماده نهائيًا.": [
+    "Removal is blocked after the secondary report is verified or final.",
+    "تُمنع الإزالة بعد مراجعة التقرير الثانوي أو اعتماده نهائيًا."
+  ],
+  "No PACS demographic exceptions are waiting for review.": [
+    "No PACS demographic exceptions are waiting for review.",
+    "لا توجد اختلافات في بيانات المرضى في PACS تنتظر المراجعة."
+  ],
+  "لا توجد اختلافات في بيانات المرضى في PACS تنتظر المراجعة.": [
+    "No PACS demographic exceptions are waiting for review.",
+    "لا توجد اختلافات في بيانات المرضى في PACS تنتظر المراجعة."
+  ],
+  "Study Exception #": [
+    "Study Exception #",
+    "استثناء الدراسة #"
+  ],
+  "استثناء الدراسة #": [
+    "Study Exception #",
+    "استثناء الدراسة #"
+  ],
+  "REVIEW REQUIRED — AI BLOCKED — FINALIZE BLOCKED": [
+    "REVIEW REQUIRED — AI BLOCKED — FINALIZE BLOCKED",
+    "المراجعة مطلوبة — التحليل بالذكاء الاصطناعي محظور — الاعتماد النهائي محظور"
+  ],
+  "المراجعة مطلوبة — التحليل بالذكاء الاصطناعي محظور — الاعتماد النهائي محظور": [
+    "REVIEW REQUIRED — AI BLOCKED — FINALIZE BLOCKED",
+    "المراجعة مطلوبة — التحليل بالذكاء الاصطناعي محظور — الاعتماد النهائي محظور"
+  ],
+  "Patient name / Patient ID / Accession": [
+    "Patient name / Patient ID / Accession",
+    "اسم المريض / رقم المريض / رقم الفحص"
+  ],
+  "اسم المريض / رقم المريض / رقم الفحص": [
+    "Patient name / Patient ID / Accession",
+    "اسم المريض / رقم المريض / رقم الفحص"
+  ],
+  "Correct value": [
+    "Correct value",
+    "القيمة الصحيحة"
+  ],
+  "القيمة الصحيحة": [
+    "Correct value",
+    "القيمة الصحيحة"
+  ],
+  "Manual PACS Match": [
+    "Manual PACS Match",
+    "المطابقة اليدوية لـPACS"
+  ],
+  "المطابقة اليدوية لـPACS": [
+    "Manual PACS Match",
+    "المطابقة اليدوية لـPACS"
+  ],
+  "Confirms a reviewed RIS Order after a fresh signed preview.": [
+    "Confirms a reviewed RIS Order after a fresh signed preview.",
+    "يؤكد أمر شغل تمت مراجعته في RIS بعد معاينة حديثة موثّقة."
+  ],
+  "يؤكد أمر شغل تمت مراجعته في RIS بعد معاينة حديثة موثّقة.": [
+    "Confirms a reviewed RIS Order after a fresh signed preview.",
+    "يؤكد أمر شغل تمت مراجعته في RIS بعد معاينة حديثة موثّقة."
+  ],
+  "Use after confirming patient identity.": [
+    "Use after confirming patient identity.",
+    "يُستخدم بعد التأكد من هوية المريض."
+  ],
+  "يُستخدم بعد التأكد من هوية المريض.": [
+    "Use after confirming patient identity.",
+    "يُستخدم بعد التأكد من هوية المريض."
+  ],
+  "Permission, confirmation and documented reason required.": [
+    "Permission, confirmation and documented reason required.",
+    "يتطلب صلاحية وتأكيدًا وسببًا موثّقًا."
+  ],
+  "يتطلب صلاحية وتأكيدًا وسببًا موثّقًا.": [
+    "Permission, confirmation and documented reason required.",
+    "يتطلب صلاحية وتأكيدًا وسببًا موثّقًا."
+  ],
+  "Records old and target identity in audit.": [
+    "Records old and target identity in audit.",
+    "يسجّل الهوية السابقة والهوية المستهدفة في سجل التدقيق."
+  ],
+  "يسجّل الهوية السابقة والهوية المستهدفة في سجل التدقيق.": [
+    "Records old and target identity in audit.",
+    "يسجّل الهوية السابقة والهوية المستهدفة في سجل التدقيق."
+  ],
+  "Never use as Patient Merge.": [
+    "Never use as Patient Merge.",
+    "لا يُستخدم لدمج المرضى."
+  ],
+  "لا يُستخدم لدمج المرضى.": [
+    "Never use as Patient Merge.",
+    "لا يُستخدم لدمج المرضى."
+  ],
+  "Reject / Quarantine": [
+    "Reject / Quarantine",
+    "رفض / عزل الدراسة"
+  ],
+  "رفض / عزل الدراسة": [
+    "Reject / Quarantine",
+    "رفض / عزل الدراسة"
+  ],
+  "Quarantine Study": [
+    "Quarantine Study",
+    "عزل الدراسة"
+  ],
+  "عزل الدراسة": [
+    "Quarantine Study",
+    "عزل الدراسة"
+  ],
+  "Separates an unresolved PACS study from RIS workflow for administrator review.": [
+    "Separates an unresolved PACS study from RIS workflow for administrator review.",
+    "يعزل دراسة غير محسومة في PACS عن سير العمل في RIS لمراجعتها من الإدارة."
+  ],
+  "يعزل دراسة غير محسومة في PACS عن سير العمل في RIS لمراجعتها من الإدارة.": [
+    "Separates an unresolved PACS study from RIS workflow for administrator review.",
+    "يعزل دراسة غير محسومة في PACS عن سير العمل في RIS لمراجعتها من الإدارة."
+  ],
+  "Use when identity or ownership cannot be confirmed safely.": [
+    "Use when identity or ownership cannot be confirmed safely.",
+    "يُستخدم عندما يتعذر التأكد بأمان من هوية المريض أو ملكية الدراسة."
+  ],
+  "يُستخدم عندما يتعذر التأكد بأمان من هوية المريض أو ملكية الدراسة.": [
+    "Use when identity or ownership cannot be confirmed safely.",
+    "يُستخدم عندما يتعذر التأكد بأمان من هوية المريض أو ملكية الدراسة."
+  ],
+  "Requires pacs.reconcile permission and a reason.": [
+    "Requires pacs.reconcile permission and a reason.",
+    "يتطلب صلاحية pacs.reconcile وإدخال سبب."
+  ],
+  "يتطلب صلاحية pacs.reconcile وإدخال سبب.": [
+    "Requires pacs.reconcile permission and a reason.",
+    "يتطلب صلاحية pacs.reconcile وإدخال سبب."
+  ],
+  "No DICOM files are deleted; the study is prevented from automatic use.": [
+    "No DICOM files are deleted; the study is prevented from automatic use.",
+    "لا تُحذف ملفات DICOM، ويُمنع الاستخدام التلقائي للدراسة."
+  ],
+  "لا تُحذف ملفات DICOM، ويُمنع الاستخدام التلقائي للدراسة.": [
+    "No DICOM files are deleted; the study is prevented from automatic use.",
+    "لا تُحذف ملفات DICOM، ويُمنع الاستخدام التلقائي للدراسة."
+  ],
+  "Do not quarantine a clinically confirmed study merely because images are incomplete.": [
+    "Do not quarantine a clinically confirmed study merely because images are incomplete.",
+    "لا تعزل دراسة مؤكدة سريريًا لمجرد أن صورها غير مكتملة."
+  ],
+  "لا تعزل دراسة مؤكدة سريريًا لمجرد أن صورها غير مكتملة.": [
+    "Do not quarantine a clinically confirmed study merely because images are incomplete.",
+    "لا تعزل دراسة مؤكدة سريريًا لمجرد أن صورها غير مكتملة."
+  ],
+  "Reason for quarantine": [
+    "Reason for quarantine",
+    "سبب عزل الدراسة"
+  ],
+  "سبب عزل الدراسة": [
+    "Reason for quarantine",
+    "سبب عزل الدراسة"
+  ],
+  "View only. Manual PACS matching and quarantine require the": [
+    "View only. Manual PACS matching and quarantine require the",
+    "عرض فقط. المطابقة اليدوية وعزل دراسات PACS يتطلبان صلاحية"
+  ],
+  "عرض فقط. المطابقة اليدوية وعزل دراسات PACS يتطلبان صلاحية": [
+    "View only. Manual PACS matching and quarantine require the",
+    "عرض فقط. المطابقة اليدوية وعزل دراسات PACS يتطلبان صلاحية"
+  ],
+  "راجع سجل التصحيح قبل استئناف أي عملية غير مؤكدة.": [
+    "Review the correction audit before resuming an unconfirmed operation.",
+    "راجع سجل التصحيح قبل استئناف أي عملية غير مؤكدة."
+  ],
+  "Review the correction audit before resuming an unconfirmed operation.": [
+    "Review the correction audit before resuming an unconfirmed operation.",
+    "راجع سجل التصحيح قبل استئناف أي عملية غير مؤكدة."
+  ],
+  "— لا يتم حفظ أو تعديل أي مريض أو صور.": [
+    "— No patient or image data is saved or changed.",
+    "— لا يتم حفظ أو تعديل أي مريض أو صور."
+  ],
+  "— No patient or image data is saved or changed.": [
+    "— No patient or image data is saved or changed.",
+    "— لا يتم حفظ أو تعديل أي مريض أو صور."
+  ],
+  "البيانات المحفوظة في قائمة الاستقبال؛ المعاينة تقرأ البيانات الحالية من الصور نفسها.": [
+    "These are the stored intake values; preview reads current values from the images themselves.",
+    "البيانات المحفوظة في قائمة الاستقبال؛ المعاينة تقرأ البيانات الحالية من الصور نفسها."
+  ],
+  "These are the stored intake values; preview reads current values from the images themselves.": [
+    "These are the stored intake values; preview reads current values from the images themselves.",
+    "البيانات المحفوظة في قائمة الاستقبال؛ المعاينة تقرأ البيانات الحالية من الصور نفسها."
+  ],
+  "الربط فقط لا يغيّر DICOM. التصحيح ينشئ نسخة جديدة بمعرفات جديدة، يحتفظ بالأصل، ثم يتحقق ويربط النسخة الصحيحة. التقارير النهائية محمية.": [
+    "Linking alone does not change DICOM. Correction creates a new copy with new identifiers, retains the original, verifies the result and links the corrected copy. Final reports are protected.",
+    "الربط فقط لا يغيّر DICOM. التصحيح ينشئ نسخة جديدة بمعرفات جديدة، يحتفظ بالأصل، ثم يتحقق ويربط النسخة الصحيحة. التقارير النهائية محمية."
+  ],
+  "Linking alone does not change DICOM. Correction creates a new copy with new identifiers, retains the original, verifies the result and links the corrected copy. Final reports are protected.": [
+    "Linking alone does not change DICOM. Correction creates a new copy with new identifiers, retains the original, verifies the result and links the corrected copy. Final reports are protected.",
+    "الربط فقط لا يغيّر DICOM. التصحيح ينشئ نسخة جديدة بمعرفات جديدة، يحتفظ بالأصل، ثم يتحقق ويربط النسخة الصحيحة. التقارير النهائية محمية."
+  ],
+  "بعد المعاينة، تظهر خيارات تصحيح DICOM والربط أو الربط فقط للمستخدم المخوّل. الأصل محفوظ وسجل التدقيق يسجل القيم القديمة والجديدة.": [
+    "After preview, authorized users can correct DICOM and map it or link only. The original is retained and the audit records the old and new values.",
+    "بعد المعاينة، تظهر خيارات تصحيح DICOM والربط أو الربط فقط للمستخدم المخوّل. الأصل محفوظ وسجل التدقيق يسجل القيم القديمة والجديدة."
+  ],
+  "After preview, authorized users can correct DICOM and map it or link only. The original is retained and the audit records the old and new values.": [
+    "After preview, authorized users can correct DICOM and map it or link only. The original is retained and the audit records the old and new values.",
+    "بعد المعاينة، تظهر خيارات تصحيح DICOM والربط أو الربط فقط للمستخدم المخوّل. الأصل محفوظ وسجل التدقيق يسجل القيم القديمة والجديدة."
+  ],
+  "لم تُؤكد البيانات الصحيحة بعد. اختر أمر الشغل واضغط معاينة أولًا.": [
+    "The correct values have not been confirmed. Select the work order and preview it first.",
+    "لم تُؤكد البيانات الصحيحة بعد. اختر أمر الشغل واضغط معاينة أولًا."
+  ],
+  "The correct values have not been confirmed. Select the work order and preview it first.": [
+    "The correct values have not been confirmed. Select the work order and preview it first.",
+    "لم تُؤكد البيانات الصحيحة بعد. اختر أمر الشغل واضغط معاينة أولًا."
   ]
 }

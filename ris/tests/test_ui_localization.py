@@ -67,3 +67,20 @@ def test_imported_action_guidance_macro_keeps_its_language(app_ctx):
         ar=macro('اختبار','ملخص',lang='ar')
         assert 'aria-label="Close"' in en
         assert 'aria-label="إغلاق"' in ar
+
+
+@pytest.mark.parametrize('lang',['en','ar'])
+def test_reconciliation_labels_and_imported_guidance_use_selected_language(app_ctx,lang):
+    with app_ctx.app.test_request_context():
+        body=render(app_ctx,'pacs_reconciliation.html',lang,correction_paused=False,
+            can_reconcile=True,demo_mode=False,can_exam_link=True,
+            eligible_exam_pairs=[],active_exam_links=[],exceptions=[])
+        macro=app_ctx.app.jinja_env.get_template('_action_guidance.html').module.action_info
+        guidance=macro('Safe Auto Match','Use after correcting RIS or PACS demographics.',lang=lang)
+    if lang=='ar':
+        assert 'مراجعة استثناءات PACS' in body and 'PACS Exception Review' not in body
+        assert 'إعادة المطابقة التلقائية الآمنة' in body and 'Re-run Safe Auto Match' not in body
+        assert 'يُستخدم بعد تصحيح' in guidance and 'Use after correcting' not in guidance
+    else:
+        assert 'PACS Exception Review' in body and 'مراجعة استثناءات PACS' not in body
+        assert 'Use after correcting' in guidance and 'يُستخدم بعد تصحيح' not in guidance
