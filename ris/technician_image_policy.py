@@ -1,5 +1,12 @@
 """Acquisition checks for exam completion, separate from nursing readiness."""
 from case_readiness_service import evaluate_required_series
+from dataclasses import dataclass
+from workflow_engine import TransitionDecision
+
+
+@dataclass(frozen=True)
+class ImageCompletionDecision(TransitionDecision):
+    details: dict
 
 
 def completion_image_policy(*, matched, pacs_present, error, image_count,
@@ -21,4 +28,6 @@ def completion_image_policy(*, matched, pacs_present, error, image_count,
     warning = '' if policy_defined else 'Procedure image policy is incomplete; confirmed PACS images are required.'
     return {'allowed': not blockers, 'reason': '; '.join(blockers),
             'warning': warning, 'image_count': count, 'minimum': minimum,
+            'identity_verified': bool(matched),
+            'images_verified': bool(pacs_present and not error),
             'missing_series': missing, 'policy_defined': bool(policy_defined)}

@@ -297,7 +297,7 @@
 {% endif %}
 
 <section class="page-heading"><h1>{{self.page_title()}}</h1></section>
-{% with msgs=get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flash-stack">{% for cat,msg in msgs %}<div class="flash {{cat}}"><div>{{msg}}</div><button class="flash-close">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
+{% with msgs=get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flash-stack">{% for cat,msg in msgs %}<div class="flash {{'danger' if cat=='exam-completion-blocked' else cat}}">{% if cat=='exam-completion-blocked' %}{% include 'exam_completion_message.html' %}{% else %}<div>{{msg}}</div>{% endif %}<button class="flash-close" aria-label="إغلاق / Close">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
 <div class="page-content">{% block content %}{% endblock %}</div>
 {% if has_perm("users.view") %}<div class="admin-quick-link"><a href="{{url_for('admin_printer_profiles')}}">🖨️ Printer Profiles</a></div>{% endif %}
 <div class="registration-default-links"><a href="{{url_for('my_registration_defaults')}}">⚙ Registration Defaults</a>{% if has_perm("users.view") %} · <a href="{{url_for('admin_registration_defaults')}}">Admin Defaults</a>{% endif %}</div>

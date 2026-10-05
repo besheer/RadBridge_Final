@@ -1,0 +1,26 @@
+<div class="exam-completion-message" style="min-width:0;flex:1">
+  <strong>لا يمكن إنهاء الفحص الآن / Cannot complete the exam yet</strong>
+  <div dir="rtl" lang="ar" style="margin-top:12px">
+    <p>لم يتم استيفاء متطلبات الصور. لم يتم تغيير حالة الفحص.</p>
+    <p><strong>الصور المستلمة: {{msg.details.image_count}} — الحد الأدنى المطلوب: {{msg.details.minimum}}</strong><br><small>العدد يشير إلى ملفات DICOM المستلمة، وليس عدد الإطارات داخل الملف.</small></p>
+    <ul>
+      {% if not msg.details.identity_verified %}<li>لم يتم تأكيد مطابقة بيانات الصور مع المريض وطلب الفحص.</li>{% endif %}
+      {% if not msg.details.images_verified %}<li>تعذر التحقق من الصور على PACS؛ هذا لا يعني بالضرورة أنها لم تُرسل.</li>{% endif %}
+      {% if msg.details.image_count < msg.details.minimum %}<li>عدد الصور أقل من الحد المطلوب.</li>{% endif %}
+      {% if msg.details.missing_series %}<li>السلاسل المطلوبة التي لم تصل: {{msg.details.missing_series|join('، ')}}.</li>{% endif %}
+    </ul>
+    <p><strong>الخطوة التالية:</strong> أرسل الصور المطلوبة إلى PACS، ثم افتح تفاصيل الفحص واضغط «التحقق من الصور المستلمة / Check received images». إذا استمرت مشكلة المطابقة، اطلب مراجعتها من المسؤول قبل الإكمال. بعد استيفاء المتطلبات، اضغط «إنهاء الفحص / Complete Exam» مرة أخرى.</p>
+  </div>
+  <div lang="en" dir="ltr" style="border-top:1px solid currentColor;padding-top:12px;margin-top:12px">
+    <p>Image requirements have not been met. The exam status has not changed.</p>
+    <p><strong>Images received: {{msg.details.image_count}} — Minimum required: {{msg.details.minimum}}</strong><br><small>This counts received DICOM instances, not frames within a file.</small></p>
+    <ul>
+      {% if not msg.details.identity_verified %}<li>The images have not been confirmed as belonging to this patient and exam order.</li>{% endif %}
+      {% if not msg.details.images_verified %}<li>PACS images could not be verified; this does not necessarily mean they were not sent.</li>{% endif %}
+      {% if msg.details.image_count < msg.details.minimum %}<li>The image count is below the required minimum.</li>{% endif %}
+      {% if msg.details.missing_series %}<li>Required series not received: {{msg.details.missing_series|join(', ')}}.</li>{% endif %}
+    </ul>
+    <p><strong>Next step:</strong> Send the required images to PACS, open the exam details and select “Check received images”. Ask the administrator to review any remaining identity mismatch. Once requirements are met, select “Complete Exam” again.</p>
+  </div>
+  <a class="btn" href="{{url_for('technician_case_workspace',order_id=msg.order_id)}}">تفاصيل الفحص والتحقق من الصور / Exam details &amp; image check</a>
+</div>

@@ -7157,10 +7157,20 @@ def technician_check_images(order_id):
     evaluate_case_readiness(order,pacs_evidence=evidence)
     audit('TECHNICIAN_IMAGE_CHECK','order',order.id,json.dumps(result,sort_keys=True))
     db.session.commit()
-    flash(result['reason'] or f"Images checked: {result['image_count']}. Image requirements are satisfied.",
-          'success' if result['allowed'] else 'danger')
+    if result['allowed']:
+        flash(f"تم التحقق من الصور: {result['image_count']}. متطلبات الصور مستوفاة. / Images checked: {result['image_count']}. Image requirements are satisfied.",'success')
+    else:
+        flash({'order_id': order.id, 'details': result}, 'exam-completion-blocked')
     if result['warning']: flash(result['warning'],'warning')
     return redirect(url_for('technician_case_workspace',order_id=order.id))
+
+
+def flash_exam_transition_blocked(order, decision, current, target):
+    details = getattr(decision, 'details', None)
+    if details is not None:
+        flash({'order_id': order.id, 'details': details}, 'exam-completion-blocked')
+    else:
+        flash(f'Invalid workflow transition: {current} → {target}. Reason: {decision.reason}.','danger')
 
 
 def _apply_exam_transition(order,target,role_code,override=False):
@@ -7194,7 +7204,8 @@ def _apply_exam_transition(order,target,role_code,override=False):
     if target=='EXAM_COMPLETED':
         result,_evidence=technician_completion_evidence(order)
         if not result['allowed']:
-            return TransitionDecision(False,result['reason']),current
+            from technician_image_policy import ImageCompletionDecision
+            return ImageCompletionDecision(False,result['reason'],result),current
         audit('EXAM_COMPLETION_IMAGES_VERIFIED','order',order.id,json.dumps(result,sort_keys=True))
         if result['warning']: flash(result['warning'],'warning')
 
@@ -7236,10 +7247,7 @@ def technician_status(order_id):
 
     decision,current=_apply_exam_transition(order,target,role_code)
     if not decision.allowed:
-        flash(
-            f'Invalid workflow transition: {current} → {target}. Reason: {decision.reason}.',
-            'danger',
-        )
+        flash_exam_transition_blocked(order,decision,current,target)
         return redirect(url_for('technician_worklist'))
 
     if target=='EXAM_COMPLETED':
@@ -7302,7 +7310,7 @@ def order_exam_status(order_id):
         override=False,
     )
     if not decision.allowed:
-        flash(f'Invalid workflow transition: {current} → {target}. Reason: {decision.reason}.','danger')
+        flash_exam_transition_blocked(order,decision,current,target)
         return redirect(request.referrer or url_for('technician_worklist'))
 
     audit('EXAM_STATUS_FORWARD','order',order.id,f'{current}->{target}')
@@ -7349,7 +7357,7 @@ def order_exam_status_override(order_id):
         override=True,
     )
     if not decision.allowed:
-        flash(f'Override blocked: {decision.reason}.','danger')
+        flash_exam_transition_blocked(order,decision,old,target)
         return redirect(request.referrer or url_for('order_detail',order_id=order.id))
 
     audit('EXAM_STATUS_OVERRIDE','order',order.id,f'{old}->{target} reason={reason}')
