@@ -1,3 +1,4 @@
+import { createReportFetch } from './reportIdentity';
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -73,6 +74,8 @@ export default function OnlyOfficeReportEditor({
   useEffect(() => () => window.dispatchEvent(new CustomEvent('radbridge-report-layout', {
     detail: { viewerPercent: 0, active: false },
   })), []);
+
+  const reportFetch = createReportFetch({ orderId: String(orderId), studyInstanceUID, identity });
 
   function configUrl() {
     const query = new URLSearchParams();
@@ -189,7 +192,7 @@ export default function OnlyOfficeReportEditor({
         leaseToken;
     }
 
-    const response = await fetch(
+    const response = await reportFetch(
       workflowUrl('forcesave'),
       {
         method: 'POST',
@@ -283,7 +286,7 @@ export default function OnlyOfficeReportEditor({
               base_version_no: baseVersionNo,
             };
 
-      const response = await fetch(
+      const response = await reportFetch(
         workflowUrl(action),
         {
           method: 'POST',
@@ -370,7 +373,7 @@ export default function OnlyOfficeReportEditor({
         }
 
         if (leaseToken) headers['X-RadBridge-Report-Lease'] = leaseToken;
-        const optionsResponse = await fetch(workflowUrl('template-options'), {
+        const optionsResponse = await reportFetch(workflowUrl('template-options'), {
           credentials: 'omit', headers,
         });
         const options = await optionsResponse.json();
@@ -390,7 +393,7 @@ export default function OnlyOfficeReportEditor({
 
         const editorUrl = new URL(configUrl(), window.location.origin);
         if (!options.can_initialize) editorUrl.searchParams.delete('template_id');
-        const response = await fetch(
+        const response = await reportFetch(
           editorUrl.pathname + editorUrl.search,
           {
             credentials: 'omit',

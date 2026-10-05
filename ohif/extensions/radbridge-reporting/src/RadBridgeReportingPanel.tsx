@@ -1,3 +1,4 @@
+import { createReportFetch } from './reportIdentity';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import OnlyOfficeReportEditor from './OnlyOfficeReportEditor';
 
@@ -65,6 +66,8 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
     params.get('StudyInstanceUID') ||
     '';
 
+  const reportFetch = createReportFetch({ orderId: String(orderId), studyInstanceUID, identity });
+
   function reportApiUrl(suffix = '') {
     const base =
       `/radbridge-api/api/ohif/report/${encodeURIComponent(orderId)}${suffix}`;
@@ -98,7 +101,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
   async function changeReportingLayout(layout: string) {
     setError('');
     try {
-      const response=await fetch(reportApiUrl('/preferences'), {method:'POST', headers:headers(true),body:JSON.stringify({preferred_layout:layout})});
+      const response=await reportFetch(reportApiUrl('/preferences'), {method:'POST', headers:headers(true),body:JSON.stringify({preferred_layout:layout})});
       const result=await response.json();
       if(!response.ok || !result.ok) throw new Error(result.message || 'Could not save reporting layout.');
       setPreferredLayout(result.preferred_layout);
@@ -184,7 +187,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
     const token =
       tokenOverride || leaseTokenRef.current || leaseToken;
 
-    const response = await fetch(
+    const response = await reportFetch(
       reportApiUrl('/lease/acquire'),
       {
         method: 'POST',
@@ -231,7 +234,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
     }
 
     try {
-      await fetch(
+      await reportFetch(
         reportApiUrl('/lease/release'),
         {
           method: 'POST',
@@ -266,7 +269,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
 
       leaseTokenRef.current = '';
 
-      void fetch(
+      void reportFetch(
         reportApiUrl('/lease/release'),
         {
           method: 'POST',
@@ -456,7 +459,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
     }
 
     try {
-      const response = await fetch(
+      const response = await reportFetch(
         reportApiUrl('/preferences'),
         {
           method: 'GET',
@@ -566,7 +569,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
     setMessage('');
 
     try {
-      const r = await fetch(
+      const r = await reportFetch(
         reportApiUrl(),
         {
           credentials: 'omit',
@@ -626,7 +629,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
     setMessage('');
 
     try {
-      const r = await fetch(
+      const r = await reportFetch(
         reportApiUrl('/return'),
         {
           method: 'POST',
@@ -680,7 +683,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
     setMessage('');
 
     try {
-      const r = await fetch(url, {
+      const r = await reportFetch(url, {
         method: 'GET',
         credentials: 'omit',
         headers: headers(false),
@@ -813,7 +816,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
         selectedWordFile.name
       );
 
-      const r = await fetch(
+      const r = await reportFetch(
         reportApiUrl(`/word/${action}`),
         {
           method: 'POST',
