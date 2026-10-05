@@ -183,3 +183,21 @@ def test_resubmission_cannot_bypass_strict_image_policy_with_warning_strategy(qu
     monkeypatch.setattr(f.m,'assignment_readiness_decision',lambda *a,**k:{'allowed':True})
     assert f.client.post(f'/returned-cases/{f.event.id}/resolve',base_url='https://localhost').status_code==302
     assert f.m.case_return_is_open(o.id)
+
+
+def test_missing_history_can_be_explicitly_routed_to_technician(queue_cases):
+    f=queue_cases;o=f.cases['complete']
+    f.user.role=f.m.Role.query.filter_by(code='CASE_COORDINATOR').one()
+    code=f.key+'-HISTORY'
+    f.m.db.session.add(f.m.CaseReturnReason(code=code,label='Missing history',route_to='RECEPTION',active=True));f.m.db.session.commit()
+    response=f.client.post(f'/reports/{o.id}/return-case',data={'reason_code':code,'action_owner':'TECHNICIAN','note':'Please complete history'},base_url='https://localhost')
+    assert response.status_code==302
+    assert f.m.case_return_snapshot(o.id)['owner']=='TECHNICIAN'
+
+
+def test_return_cannot_route_to_a_forged_role(queue_cases):
+    f=queue_cases;o=f.cases['complete']
+    f.user.role=f.m.Role.query.filter_by(code='CASE_COORDINATOR').one()
+    f.m.db.session.add(f.m.CaseReturnReason(code=f.key,label='Missing images',route_to='TECHNICIAN',active=True));f.m.db.session.commit()
+    response=f.client.post(f'/reports/{o.id}/return-case',data={'reason_code':f.key,'action_owner':'SUPER_ADMIN','note':'Forged destination'},base_url='https://localhost')
+    assert response.status_code==400 and not f.m.case_return_is_open(o.id)

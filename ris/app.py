@@ -27169,7 +27169,10 @@ def return_case_to_workflow(order_id):
     note=(request.form.get('note') or '').strip()
     if not rr or len(note)<5 or len(note)>10000:
         abort(400)
-    route=rr.route_to
+    action_owner=(request.form.get('action_owner') or '').strip().upper()
+    if action_owner not in ('','TECHNICIAN'):
+        abort(400)
+    route=action_owner or rr.route_to
     db.session.add(CaseWorkflowEvent(order_id=o.id,event_type='RETURNED',owner_role=route,reason_code=code,note=note,created_by=current_user().id))
     now=datetime.utcnow()
     for a in CaseAssignment.query.filter_by(order_id=o.id,active=True).all():
@@ -33496,7 +33499,10 @@ def api_ohif_report_return(order_id):
 
     if not rr or len(note)<5 or len(note)>10000:
         abort(400)
-    route = rr.route_to
+    action_owner=str(data.get('action_owner') or '').strip().upper()
+    if action_owner not in ('','TECHNICIAN'):
+        abort(400)
+    route = action_owner or rr.route_to
 
     db.session.add(
         CaseWorkflowEvent(
