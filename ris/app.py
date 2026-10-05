@@ -4890,6 +4890,26 @@ def patient_worklist_display_name(patient):
         getattr(patient,'worklist_name',''),
     )
 
+def dicom_worklist_patient_name(patient):
+    """Use the reviewed Latin name or a suggestion, preserving RIS demographics."""
+    import unicodedata
+    source=str(getattr(patient,'worklist_name','') or getattr(patient,'name','') or '')
+    for ch in source:
+        if not (ch.isascii() or ch in ARABIC_NAME_MAP or ch.isspace() or ch=='ـ'
+                or unicodedata.category(ch) in ('Mn','Cf')):
+            raise ValueError('Enter a reviewed English Worklist name before sending to the device.')
+    name=patient_worklist_display_name(patient)
+    if not name or not re.search(r'[A-Z]',name):
+        raise ValueError('Enter a reviewed English Worklist name before sending to the device.')
+    parts=name.split()
+    # PN permits five components; retain any further words inside the last one.
+    if len(parts)>5:parts=parts[:4]+[' '.join(parts[4:])]
+    result='^'.join(parts)
+    if len(result)>64:
+        raise ValueError('English Worklist name exceeds the DICOM limit of 64 characters. Review it without truncating the patient identity.')
+    return result
+
+
 def dicom_person_name(value):
     value=re.sub(r'\s+',' ',str(value or '').strip().upper())
     return '^'.join([x for x in value.split(' ') if x])
@@ -4986,7 +5006,8 @@ def _rb_registration_v2_patient_name(form):
     return ' '.join(x for x in _rb_registration_v2_name_parts(form) if x).strip()
 
 def _rb_registration_v2_worklist_name(form):
-    return '^'.join(x for x in _rb_registration_v2_name_parts(form) if x).strip('^')
+    return normalized_worklist_name(_rb_registration_v2_patient_name(form),
+        form.get('new_worklist_name') or form.get('worklist_name') or '')
 
 def _rb_registration_v2_dob(form):
     return resolve_patient_dob(form, prefix='new_').dob
@@ -5060,7 +5081,7 @@ def price_order(proc, contract):
 
 def send_mwl(order):
     p=order.patient
-    patient_name=(p.worklist_name or p.name or '').replace(' ','^')
+    patient_name=dicom_worklist_patient_name(p)
     tags={
         'SpecificCharacterSet':'ISO_IR 192',
         'PatientName':patient_name,
@@ -5228,6 +5249,7 @@ def template_globals():
         'ui_role':lambda role: __import__('ui_localization').role_label(role, lang),
         'ui_client_catalog':__import__('ui_localization').client_catalog(lang),
         'ui_dir':'rtl' if lang=='ar' else 'ltr',
+        'worklist_name_map':ARABIC_NAME_MAP,
         'user_profile':profile,
         'ribbon_actions':ribbon_actions_for_user(u,'GLOBAL') if u else [],
         'unread_chat_count':unread_chat_count(u) if u else 0,
@@ -5490,7 +5512,7 @@ def new_patient():
                   phone=phone,national_id=national_id,
                   address=request.form.get('address','').strip(),
                   email=request.form.get('email','').strip(),
-                  worklist_name=(request.form.get('worklist_name','').strip() or arabic_to_latin_name(name)))
+                  worklist_name=normalized_worklist_name(name,request.form.get('worklist_name','')))
         db.session.add(p); db.session.flush(); p.patient_id=generate_patient_id(p)
         db.session.add(PatientDemographicsExtra(patient_id=p.id,nationality=request.form.get('nationality','').strip()))
         audit('PATIENT_CREATE','patient',p.id,f'{p.patient_id} {p.name}'); db.session.commit()
@@ -5592,7 +5614,7 @@ def new_order():
                 national_id=national_id,
                 address=(request.form.get('new_address') or '').strip(),
                 email=(request.form.get('new_email') or '').strip(),
-                worklist_name=((request.form.get('new_worklist_name') or '').strip() or arabic_to_latin_name(name))
+                worklist_name=normalized_worklist_name(name,request.form.get('new_worklist_name',''))
             )
             db.session.add(p);db.session.flush()
             extra=PatientDemographicsExtra.query.filter_by(patient_id=p.id).first()

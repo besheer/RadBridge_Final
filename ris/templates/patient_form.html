@@ -4,7 +4,7 @@
 <div class="grid2">
 <div><label>Full Name *</label><input name="name" required value="{{(form_data or {}).get('name','')}}"></div><div class="form-group">
 <label>{{'الاسم بالإنجليزية / Worklist Name' if ui_lang=='ar' else 'English / Worklist Name'}}</label>
-<input id="worklist_name" name="worklist_name" value="{{(form_data or {}).get('worklist_name', patient.worklist_name if patient is defined and patient else '')}}" placeholder="MOHAMED AHMED ALI">
+<input id="worklist_name" name="worklist_name" value="{{(form_data or {}).get('worklist_name', patient.worklist_name if patient is defined and patient else '')}}" placeholder="MOHAMED AHMED ALI"><small>{{'عند تركه فارغًا يُقترح الاسم بالحروف الإنجليزية تلقائيًا. راجع الإملاء؛ الاسم الأصلي يبقى محفوظًا.' if ui_lang=='ar' else 'Leave blank for an automatic Latin-letter suggestion. Review spelling; the original name is preserved.'}}</small>
 <small>{{'يستخدم في DICOM Worklist ويمكن تعديله قبل الحفظ.' if ui_lang=='ar' else 'Used in DICOM Worklist and can be edited before saving.'}}</small>
 </div>
 <div><label>{{ ui_phrase('National ID') }}</label><input name="national_id" value="{{(form_data or {}).get('national_id','')}}"></div>
