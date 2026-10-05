@@ -50,7 +50,7 @@
 </section>
 
 {% if return_state.open and return_state.owner=='TECHNICIAN' %}
-<section class="panel" style="border-color:#d97706">
+<section id="returned-correction" class="panel" style="border-color:#d97706;scroll-margin-top:100px">
   <h3>{{'مطلوب استكمال الحالة' if ui_lang=='ar' else 'Returned for correction'}}</h3>
   <p><b>{{return_state.reason}}</b></p><p style="white-space:pre-wrap">{{return_state.return_event.note}}</p>
   <form method="post" action="{{url_for('technician_returned_note',order_id=order.id)}}">
@@ -59,7 +59,7 @@
     <textarea name="text" required minlength="5" maxlength="10000" aria-label="{{'بيانات الاستكمال' if ui_lang=='ar' else 'Correction notes'}}"></textarea>
     <button class="btn primary">{{'حفظ الاستكمال' if ui_lang=='ar' else 'Save correction notes'}}</button>
   </form>
-  <details style="margin-top:16px"><summary>{{'طلب مراجعة الصور وحذفها لإعادة الإرسال' if ui_lang=='ar' else 'Request image review and replacement'}}</summary>
+  <details id="image-correction-request" style="margin-top:16px;scroll-margin-top:100px" ontoggle="this.open &amp;&amp; this.querySelector('textarea').focus()"><summary>{{'طلب مراجعة الصور وحذفها لإعادة الإرسال' if ui_lang=='ar' else 'Request image review and replacement'}}</summary>
     <p>{{'هذا طلب مراجعة فقط؛ حذف الصور يتطلب الموافقة ومسار التصحيح الموثق.' if ui_lang=='ar' else 'This submits a request. Image deletion requires approval through the audited correction workflow.'}}</p>
     {% for r in image_requests %}<p>#{{r.id}} · {{ui_phrase(r.status)}} · {{r.reason}}</p>{% endfor %}
     <form method="post" action="{{url_for('technician_image_replacement_request',order_id=order.id)}}">
@@ -262,4 +262,12 @@
     </section>
   </main>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  if(window.location.hash==='#image-correction-request'){
+    const section=document.getElementById('image-correction-request');
+    if(section){section.open=true;section.scrollIntoView({block:'start'});}
+  }
+});
+</script>
 {% endblock %}

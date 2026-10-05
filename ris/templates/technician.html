@@ -179,7 +179,7 @@
           <small>{{o.patient.patient_id}} · {{o.accession}}</small>
         </div>
         <span class="status-chip status-{{st|lower|replace('_','-')}}">
-          {{ui_phrase(st)}}
+          {{('مطلوب استكمال' if ui_lang=='ar' else 'Returned for correction') if returned and returned.open and returned.owner=='TECHNICIAN' else ui_phrase(st)}}
         </span>
       </div>
 
@@ -201,6 +201,16 @@
              href="{{url_for('technician_case_workspace',order_id=o.id)}}">
             {{ ui_phrase('🧰 Open Case Workspace') }}
           </a>
+
+        {% if returned and returned.open and returned.owner=='TECHNICIAN' %}
+          <a class="btn" href="{{url_for('technician_case_workspace',order_id=o.id)}}#returned-correction">{{'استكمال التاريخ المرضي والنواقص' if ui_lang=='ar' else 'Complete history and missing information'}}</a>
+          <a class="btn" href="{{url_for('technician_case_workspace',order_id=o.id)}}#image-correction-request">{{'طلب تصحيح الصور لإعادة الإرسال' if ui_lang=='ar' else 'Request image correction for resend'}}</a>
+          {% if st=='EXAM_COMPLETED' %}
+          <form method="post" action="{{url_for('resolve_returned_case',event_id=returned.return_event.id)}}">
+            <button class="btn primary">{{'التحقق وإعادة إرسال للمراجعة' if ui_lang=='ar' else 'Check and resubmit for review'}}</button>
+          </form>
+          {% endif %}
+        {% endif %}
 
         {% if st in ['BOOKED','ORDERED'] %}
           <form method="post" action="{{url_for('order_exam_status',order_id=o.id)}}">
