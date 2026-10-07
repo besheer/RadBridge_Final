@@ -114,12 +114,17 @@ def callback_bytes(m,url):
     # The URL is trusted only when JWT validation also bound the signed payload.
     # Redirects and arbitrary network destinations are never fetched.
     actual=urlparse(url)
-    decoded=unquote(unquote(actual.path))
+    artifact_path=actual.path
+    # Browser-facing Document Server links include our fixed reverse-proxy
+    # prefix. Remove only this known prefix, then apply the same cache guard.
+    if artifact_path.startswith('/onlyoffice/cache/files/'):
+        artifact_path=artifact_path[len('/onlyoffice'):]
+    decoded=unquote(unquote(artifact_path))
     if not decoded.startswith('/cache/files/') or '..' in decoded.split('/') or '\\' in decoded:
         raise service.RevisionError('CALLBACK_DESTINATION_DENIED')
     # ONLYOFFICE can announce its browser-facing host. Fetch only the signed
     # cache artifact path from our configured internal server, never that host.
-    internal=m.ONLYOFFICE_INTERNAL_URL.rstrip('/')+actual.path+('?' + actual.query if actual.query else '')
+    internal=m.ONLYOFFICE_INTERNAL_URL.rstrip('/')+artifact_path+('?' + actual.query if actual.query else '')
     r=m.requests.get(internal,timeout=(5,15),stream=True,allow_redirects=False)
     try:
         if r.status_code!=200:raise service.RevisionError('CALLBACK_DOWNLOAD_FAILED')

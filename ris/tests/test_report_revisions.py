@@ -225,6 +225,16 @@ def test_unsafe_cache_path_never_fetched(revision_case,monkeypatch):
         with pytest.raises(s.RevisionError):e.callback_bytes(c.m,url)
     fetch.assert_not_called()
 
+def test_proxy_prefixed_callback_fetches_only_internal_cache(revision_case,monkeypatch):
+    c=revision_case
+    from unittest.mock import Mock
+    response=Mock(status_code=200);response.iter_content.return_value=[b'CODEX-UAT']
+    fetch=Mock(return_value=response);monkeypatch.setattr(c.m.requests,'get',fetch)
+    assert e.callback_bytes(c.m,'https://untrusted-host/onlyoffice/cache/files/test.docx?signature=test')==b'CODEX-UAT'
+    assert fetch.call_args.args[0]==c.m.ONLYOFFICE_INTERNAL_URL.rstrip('/')+'/cache/files/test.docx?signature=test'
+    assert fetch.call_args.kwargs['allow_redirects'] is False
+    with pytest.raises(s.RevisionError):e.callback_bytes(c.m,'https://untrusted-host/onlyoffice/cache/files/%2e%2e/secret')
+
 def test_tampered_callback_payload_is_rejected_before_fetch(revision_case,monkeypatch):
     c=revision_case;row=request(c);approve(c,row);token(row);e.prepare(c.m,row,c.order)
     from unittest.mock import Mock
