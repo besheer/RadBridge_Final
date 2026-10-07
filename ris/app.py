@@ -14075,24 +14075,8 @@ def appointments():
     from registration_policy import allowed_registration_branches,require_registration_branch
     allowed=allowed_registration_branches()
     if request.method=='POST':
-        require_registration_branch(request.form.get('branch_id',type=int))
-        scheduled=datetime.fromisoformat(request.form['scheduled'])
-        a=Appointment(
-            patient_id=int(request.form['patient_id']),
-            branch_id=int(request.form['branch_id']),
-            procedure_id=int(request.form['procedure_id']),
-            device_id=int(request.form['device_id']) if request.form.get('device_id') else None,
-            scheduled=scheduled,
-            status='BOOKED',
-            source=request.form.get('source','CALL_CENTER'),
-            notes=request.form.get('notes',''),
-            created_by=current_user().id
-        )
-        db.session.add(a)
-        audit('APPOINTMENT_CREATE','appointment','',str(a.scheduled))
-        db.session.commit()
-        flash('Appointment booked.','success')
-        return redirect(url_for('appointments'))
+        from legacy_booking import create_booking
+        return create_booking()
 
     rows=Appointment.query.filter(Appointment.branch_id.in_(allowed) if allowed is not None else True).order_by(Appointment.scheduled.desc()).limit(500).all()
     return render_template(
