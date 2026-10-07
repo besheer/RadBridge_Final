@@ -10961,21 +10961,8 @@ def referral_commission_for_order(order):
     return round(base*val/100.0 if rule.rule_type=='PERCENT' else val,2),rule
 
 def daily_payment_totals(branch_id,closing_date):
-    from datetime import datetime as _dt,timedelta
-    start=_dt.combine(closing_date,_dt.min.time()); end=start+timedelta(days=1)
-    totals={'CASH':0.0,'CARD':0.0,'OTHER':0.0}
-    try:
-        rows=Payment.query.filter(Payment.created_at>=start,Payment.created_at<end).all()
-        for p in rows:
-            order=Order.query.get(getattr(p,'order_id',None)) if getattr(p,'order_id',None) else None
-            if branch_id and order and order.branch_id!=branch_id: continue
-            method=str(getattr(p,'method','') or getattr(p,'payment_method','') or '').upper()
-            amount=float(getattr(p,'amount',0) or 0)
-            if method=='CASH': totals['CASH']+=amount
-            elif method in ('VISA','MASTERCARD','CARD','POS'): totals['CARD']+=amount
-            else: totals['OTHER']+=amount
-    except Exception: pass
-    return totals
+    from daily_closing_policy import payment_totals
+    return payment_totals(branch_id,closing_date)
 
 def studio_shortcuts_for(placement,context=None):
     context=context or {}
@@ -29863,25 +29850,10 @@ def admin_referral_commissions():
     return render_template('admin_referral_commissions.html',rows=ReferralCommissionRule.query.order_by(ReferralCommissionRule.id.desc()).all(),referrers=ReferringDoctor.query.filter_by(active=True).order_by(ReferringDoctor.name).all(),branches=Branch.query.filter_by(active=True).order_by(Branch.name).all(),procedures=Procedure.query.filter_by(active=True).order_by(Procedure.modality,Procedure.name).all())
 
 @app.route('/accounting/daily-closing',methods=['GET','POST'])
-@require_perm('orders.view')
+@login_required
 def daily_closing():
-    from datetime import date as _date
-    branch_id=request.args.get('branch_id',type=int) or request.form.get('branch_id',type=int)
-    try: closing_date=datetime.strptime(request.args.get('date') or request.form.get('date') or '','%Y-%m-%d').date()
-    except Exception: closing_date=_date.today()
-    totals=daily_payment_totals(branch_id,closing_date) if branch_id else {'CASH':0,'CARD':0,'OTHER':0}
-    row=DailyClosing.query.filter_by(branch_id=branch_id,closing_date=closing_date).order_by(DailyClosing.id.desc()).first() if branch_id else None
-    if request.method=='POST':
-        if not branch_id: flash('Select branch.','danger'); return redirect(url_for('daily_closing'))
-        if not row: row=DailyClosing(branch_id=branch_id,closing_date=closing_date,cashier_user_id=current_user().id); db.session.add(row)
-        row.expected_cash=totals['CASH'];row.expected_card=totals['CARD'];row.expected_other=totals['OTHER']
-        row.counted_cash=request.form.get('counted_cash',type=float) or 0;row.counted_card=request.form.get('counted_card',type=float) or 0;row.counted_other=request.form.get('counted_other',type=float) or 0
-        row.difference=(row.counted_cash+row.counted_card+row.counted_other)-(row.expected_cash+row.expected_card+row.expected_other)
-        row.notes=(request.form.get('notes') or '').strip()
-        if (request.form.get('action') or '').upper()=='CLOSE': row.status='CLOSED';row.closed_by=current_user().id;row.closed_at=datetime.utcnow()
-        db.session.commit(); return redirect(url_for('daily_closing',branch_id=branch_id,date=closing_date.isoformat()))
-    return render_template('daily_closing.html',branches=Branch.query.filter_by(active=True).order_by(Branch.name).all(),branch_id=branch_id,closing_date=closing_date,totals=totals,row=row)
-
+    from daily_closing_policy import closing_page
+    return closing_page()
 
 
 @app.route('/admin/doctor-share-rules',methods=['GET','POST'])
