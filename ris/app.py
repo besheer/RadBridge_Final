@@ -38518,3 +38518,6 @@ register_report_identity_routes(_reporting_support_sys.modules[__name__])
 
 from dicom_export_routes import register as register_dicom_export_routes
 register_dicom_export_routes(_reporting_support_sys.modules[__name__])
+
+from report_draft_warnings import register as register_report_draft_warnings
+register_report_draft_warnings(_reporting_support_sys.modules[__name__])

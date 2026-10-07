@@ -1,3 +1,5 @@
+import DraftWarnings from './DraftWarnings';
+import { draftWarningMessages } from './draftWarnings';
 import { createReportFetch } from './reportIdentity';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import OnlyOfficeReportEditor from './OnlyOfficeReportEditor';
@@ -15,6 +17,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
   const [returnNote, setReturnNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [draftWarnings, setDraftWarnings] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [selectedWordFile, setSelectedWordFile] = useState<File | null>(null);
   const [onlyOfficeEditorOpen, setOnlyOfficeEditorOpen] = useState(false);
@@ -66,6 +69,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
     params.get('StudyInstanceUID') ||
     '';
 
+  useEffect(() => { setDraftWarnings([]); }, [orderId]);
   const reportFetch = createReportFetch({ orderId: String(orderId), studyInstanceUID, identity });
 
   function reportApiUrl(suffix = '') {
@@ -848,6 +852,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
       }
 
       applyData(d);
+      setDraftWarnings(action === 'draft' ? draftWarningMessages(d) : []);
 
       setMessage(
         action === 'finalize'
@@ -920,6 +925,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
         </div>
       )}
 
+      <DraftWarnings messages={draftWarnings} />
       {message && (
         <div style={{
           background: '#143b26',

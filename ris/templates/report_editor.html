@@ -212,6 +212,13 @@
 {% endblock %}
 {% block subtitle %}{{order.patient.name}} · {{order.patient.patient_id}} · {{order.modality}}{% endblock %}
 {% block content %}
+{% if draft_warnings and report.status=='DRAFT' %}
+<details class="panel" style="border-inline-start:4px solid #d97706">
+<summary>{{ 'تنبيهات المسودة — لا تمنع الحفظ' if ui_lang=='ar' else 'Draft notices — saving remains available' }}</summary>
+<ul>{% for warning in draft_warnings %}<li>{{ warning.message_ar if ui_lang=='ar' else warning.message_en }}</li>{% endfor %}</ul>
+</details>
+{% endif %}
+
 
 <div class="panel ai-prior-banner">
 <a class="btn primary" href="{{url_for('imaging_ai_workspace',order_id=order.id)}}">🧠 PACS AI Imaging</a>

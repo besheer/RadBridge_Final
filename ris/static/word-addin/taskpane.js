@@ -7,6 +7,32 @@ function setStatus(message, kind='info') {
   el.className = 'wa-status ' + kind;
 }
 
+function renderDraftWarnings(warnings) {
+  let box = document.getElementById('draftWarnings');
+  if (!box) {
+    box = document.createElement('details');
+    box.id = 'draftWarnings';
+    box.className = 'wa-status';
+    box.style.background = '#fff3cd';
+    document.getElementById('status').after(box);
+  }
+  box.replaceChildren();
+  const rows = Array.isArray(warnings) ? warnings.filter(row => row && (row.message_ar || row.message_en)) : [];
+  box.hidden = rows.length === 0;
+  if (!rows.length) return;
+  const summary = document.createElement('summary');
+  summary.textContent = `تنبيهات المسودة — الحفظ متاح / Draft notices — saving remains available (${rows.length})`;
+  box.append(summary);
+  const list = document.createElement('ul');
+  for (const row of rows) {
+    const li = document.createElement('li');
+    li.dir = 'auto';
+    li.textContent = [row.message_ar, row.message_en].filter(Boolean).join(' / ');
+    list.append(li);
+  }
+  box.append(list);
+}
+
 function setBusy(busy) {
   document.querySelectorAll('button').forEach(b => b.disabled = busy);
 }
@@ -26,6 +52,7 @@ async function readAccessionFromDocument() {
 }
 
 function renderCase(data) {
+  renderDraftWarnings([]);
   currentCase = data;
   document.getElementById('caseEmpty').hidden = true;
   document.getElementById('caseCard').hidden = false;
@@ -172,6 +199,7 @@ async function uploadCurrentDocument(action) {
     const caseRes = await fetch(`/api/reporting/cases/${encodeURIComponent(currentCase.accession)}`, { credentials:'include' });
     renderCase(await caseRes.json());
     setStatus(action === 'finalize' ? 'Report finalized. DOCX/PDF saved in RIS.' : 'Draft saved in RIS.', 'ok');
+    renderDraftWarnings(action === 'draft' ? data.draft_warnings : []);
   } catch(e) { setStatus(e.message || String(e), 'error'); }
   finally { setBusy(false); }
 }

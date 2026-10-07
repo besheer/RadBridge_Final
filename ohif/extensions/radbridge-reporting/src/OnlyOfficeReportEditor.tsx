@@ -1,3 +1,5 @@
+import DraftWarnings from './DraftWarnings';
+import { draftWarningMessages } from './draftWarnings';
 import { createReportFetch } from './reportIdentity';
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -43,6 +45,7 @@ export default function OnlyOfficeReportEditor({
   const [error, setError] = useState('');
   const [workflowBusy, setWorkflowBusy] = useState(false);
   const [workflowMessage, setWorkflowMessage] = useState('');
+  const [draftWarnings, setDraftWarnings] = useState<string[]>([]);
   const [baseVersionNo, setBaseVersionNo] = useState(0);
   const [reportStatus, setReportStatus] = useState('DRAFT');
   const [documentKey, setDocumentKey] = useState('');
@@ -75,6 +78,7 @@ export default function OnlyOfficeReportEditor({
     detail: { viewerPercent: 0, active: false },
   })), []);
 
+  useEffect(() => { setDraftWarnings([]); }, [orderId]);
   const reportFetch = createReportFetch({ orderId: String(orderId), studyInstanceUID, identity });
 
   function configUrl() {
@@ -322,6 +326,7 @@ export default function OnlyOfficeReportEditor({
         setBaseVersionNo(nextVersion);
       }
 
+      setDraftWarnings(action === 'commit-draft' ? draftWarningMessages(payload) : []);
       if (action === 'commit-draft') {
         setReportStatus('DRAFT');
         setWorkflowMessage(
@@ -759,6 +764,7 @@ export default function OnlyOfficeReportEditor({
           Edit this report’s header from Insert → Header &amp; Footer. Templates are selected before writing starts.
         </div>
       )}
+      <DraftWarnings messages={draftWarnings} />
       {workflowMessage && (
         <div
           style={{
