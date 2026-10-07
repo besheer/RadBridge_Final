@@ -16,6 +16,7 @@
 <a class="btn" href="{{url_for('returned_cases_queue')}}">{{'الحالات المعادة' if ui_lang=='ar' else 'Returned cases'}}</a>
 <a class="btn" href="{{url_for('case_readiness_dashboard')}}">{{'مراجعة جاهزية الحالات' if ui_lang=='ar' else 'Case readiness'}}</a>
 </div>
+<p class="muted">{{'نقل الحالة للطبيب المختار يتم في عملية واحدة مع إبلاغ الطبيب السابق والجديد وتسجيل السبب. الحالات التي بدأت قراءتها أو تحرير تقريرها، أو وصلت للاعتماد، لا تُنقل من هذه الصفحة.' if ui_lang=='ar' else 'Cases move directly to the selected doctor in one transaction, with notifications and an audited reason. Cases with started reading, an active editor session, or an approved report cannot be moved here.'}}</p>
 {% if error %}<div class="panel bulk-blocked" role="alert">{{error}}</div>{% endif %}
 {% if preview %}
 <section class="panel" aria-label="{{'معاينة الإسناد' if ui_lang=='ar' else 'Assignment preview'}}">
@@ -25,7 +26,7 @@
 <div class="bulk-preview">
 {% for members in preview.accepted %}<article class="panel bulk-ready">
 <b>{{'جاهز للإسناد' if ui_lang=='ar' else 'Ready for assignment'}} · {{members|length}} {{'فحص' if ui_lang=='ar' else 'exam(s)'}}</b>
-{% for o in members %}<p>{{o.accession}} · {{o.patient.name}} · {{o.modality}} · {{o.procedure}}<br>{{'الطبيب الحالي' if ui_lang=='ar' else 'Current doctor'}}: {{o.assigned_doctor.full_name if o.assigned_doctor else '—'}}</p>{% endfor %}
+{% for o in members %}<p>{{o.accession}} · {{o.patient.name}} · {{o.modality}} · {{o.procedure}}<br>{{'الطبيب الحالي' if ui_lang=='ar' else 'Current doctor'}}: {{o.assigned_doctor.full_name if o.assigned_doctor else '—'}} → {{preview.doctor.full_name}}</p>{% endfor %}
 </article>{% endfor %}
 {% for group in preview.blocked %}<article class="panel bulk-blocked"><b>{{labels(group.reason)}}</b>
 {% for o in group.members %}<p>{{o.accession}} · {{o.patient.name}} · {{o.modality}}</p>{% endfor %}
@@ -33,6 +34,7 @@
 </div>
 {% if preview_token %}
 <form method="post" class="panel">
+<input type="hidden" name="assignment_csrf" value="{{assignment_csrf}}">
 <input type="hidden" name="action" value="confirm"><input type="hidden" name="preview_token" value="{{preview_token}}">
 <label><input type="checkbox" name="acknowledge" value="1" required> {{'أوافق على إسناد كل الفحوص الجاهزة المعروضة؛ الحالات الممنوعة لن تتغير.' if ui_lang=='ar' else 'Confirm all eligible examinations shown above. Blocked cases will remain unchanged.'}}</label>
 <p>{{'سبب الإسناد' if ui_lang=='ar' else 'Assignment reason'}}: {{preview.note}}</p>
@@ -49,6 +51,7 @@
 <button class="btn">{{'بحث' if ui_lang=='ar' else 'Search'}}</button>
 </form>
 <form method="post" id="bulk-selection">
+<input type="hidden" name="assignment_csrf" value="{{assignment_csrf}}">
 <input type="hidden" name="action" value="preview">
 <div class="bulk-tools" style="margin:14px 0">
 <label>{{'الطبيب' if ui_lang=='ar' else 'Doctor'}} <select name="doctor_id" required><option value="">{{'اختر الطبيب' if ui_lang=='ar' else 'Select doctor'}}</option>{% for d in doctors %}<option value="{{d.id}}">{{d.full_name}}</option>{% endfor %}</select></label>

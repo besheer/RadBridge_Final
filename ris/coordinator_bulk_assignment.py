@@ -2,6 +2,8 @@
 import hashlib
 import json
 import uuid
+import secrets
+import hmac
 from datetime import datetime, timedelta
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from sqlalchemy import or_
@@ -81,6 +83,8 @@ def member_blocker(m,o):
     if (o.status or '').upper() in ('FINAL','CANCELLED') or (report and (
         (report.status or '').upper() in ('VERIFIED','FINAL','LOCKED') or report.verified_at or report.finalized_at)):
         return 'LOCKED'
+    edit_lease=m.ReportEditLease.query.filter_by(order_id=o.id).filter(m.ReportEditLease.expires_at>datetime.utcnow()).first()
+    if edit_lease:return 'READING'
     active=m.CaseAssignment.query.filter_by(order_id=o.id,active=True).all()
     if any(a.reading_started_at for a in active) or (report and (
         (report.status or '').upper() not in ('','UNREPORTED') or report.findings or report.impression or report.docx_path or report.source_path)):
@@ -148,10 +152,12 @@ def fingerprint(m,selected,doctor):
             report=m.Report.query.filter_by(order_id=o.id).first()
             readiness=m.CaseReadiness.query.filter_by(order_id=o.id).first()
             assignments=m.CaseAssignment.query.filter_by(order_id=o.id,active=True).order_by(m.CaseAssignment.id).all()
+            edit_lease=m.ReportEditLease.query.filter_by(order_id=o.id).first()
             match=m.PacsStudyMatch.query.filter_by(order_id=o.id).order_by(m.PacsStudyMatch.id.desc()).first()
             facts.append({'order':o.id,'branch':o.branch_id,'patient':o.patient_id,'doctor':o.assigned_doctor_id,'visit':o.assignment_visit_id,
                 'status':o.status,'exam':o.exam_status,'pacs':o.pacs_status,'study':o.pacs_study_id,'images':o.pacs_image_count,
                 'report':[(getattr(report,k,None)) for k in ('status','updated_at','verified_at','finalized_at')] if report else None,
+                'edit_lease':(edit_lease.user_id,edit_lease.expires_at,edit_lease.renewed_at) if edit_lease else None,
                 'assignments':[(a.id,a.doctor_user_id,a.reading_started_at,a.assignment_type) for a in assignments],
                 'readiness':(readiness.status,readiness.facts_sha256) if readiness else None,
                 'match':(match.id,match.confidence,match.match_method) if match else None})
@@ -171,6 +177,7 @@ def execute(m,u,claims):
     order_ids=sorted(o.id for group in selected for o in group)
     m.Report.query.filter(m.Report.order_id.in_(order_ids)).order_by(m.Report.order_id).populate_existing().with_for_update().all()
     m.CaseAssignment.query.filter(m.CaseAssignment.order_id.in_(order_ids),m.CaseAssignment.active.is_(True)).order_by(m.CaseAssignment.order_id,m.CaseAssignment.id).populate_existing().with_for_update().all()
+    m.ReportEditLease.query.filter(m.ReportEditLease.order_id.in_(order_ids)).order_by(m.ReportEditLease.order_id).populate_existing().with_for_update().all()
     doctor=m.User.query.filter_by(id=claims['doctor']).populate_existing().with_for_update().first()
     if not doctor or not doctor.active or doctor.role.code not in ('RADIOLOGIST','DOCTOR'):raise BulkError('PROFILE')
     if m.AuditLog.query.filter_by(action='BULK_MANUAL_ASSIGNMENT',entity='assignment_batch',entity_id=claims['batch']).first():raise BulkError('REPLAY')
@@ -179,15 +186,25 @@ def execute(m,u,claims):
     if current['blocked']:raise BulkError('STALE')
     changed=[]
     for members in current['accepted']:
-        before={o.id:o.assigned_doctor_id for o in members}
+        before={o.id:set(a.doctor_user_id for a in m.CaseAssignment.query.filter_by(order_id=o.id,active=True).all())|({o.assigned_doctor_id} if o.assigned_doctor_id else set()) for o in members}
         m.manual_assign_order(members[0],doctor.id,assigned_by=u.id,notes=claims['note'],assignment_type='MANUAL')
         for o in members:
             changed.append(o.id)
             m.audit('BULK_MANUAL_ASSIGNMENT_MEMBER','order',o.id,
-                f'batch={claims["batch"]}; previous_doctor={before[o.id]}; doctor={doctor.id}; visit={o.assignment_visit_id}; note={claims["note"]}')
+                f'batch={claims["batch"]}; previous_doctors={sorted(before[o.id])}; doctor={doctor.id}; visit={o.assignment_visit_id}; note={claims["note"]}')
+            for previous in sorted(before[o.id]-{doctor.id}):
+                notification(m,o,previous,'CASE_REASSIGNED_AWAY','تم نقل الحالة لطبيب آخر / Case reassigned',claims)
+            if before[o.id]!={doctor.id}:
+                notification(m,o,doctor.id,'CASE_MANUALLY_ASSIGNED','تم إسناد حالة لك / Case assigned to you',claims)
     m.audit('BULK_MANUAL_ASSIGNMENT','assignment_batch',claims['batch'],json.dumps({'orders':changed,'doctor':doctor.id,'actor':u.id,'note':claims['note']},sort_keys=True))
     m.db.session.commit()
     return len(changed)
+
+
+def notification(m,order,user_id,event,title,claims):
+    m.db.session.add(m.RISNotification(user_id=user_id,branch_id=order.branch_id,order_id=order.id,
+        event_type=event,severity='INFO',title=title,status='NEW',
+        body='سبب الإسناد / Assignment reason: '+claims['note']))
 
 
 def register(m):
@@ -195,6 +212,10 @@ def register(m):
     @m.login_required
     def coordinator_manual_assignment():
         u=actor(m)
+        csrf_token=m.session.setdefault('coordinator_assignment_csrf',secrets.token_urlsafe(32))
+        if m.request.method=='POST':
+            supplied=m.request.form.get('assignment_csrf','')
+            if not supplied or not hmac.compare_digest(csrf_token,str(supplied)):m.abort(403)
         preview=None;token=None;error=None;status=200
         doctors=m.User.query.join(m.Role).filter(m.User.active.is_(True),m.Role.code.in_(('RADIOLOGIST','DOCTOR'))).order_by(m.User.full_name,m.User.id).all()
         if m.request.method=='POST':
@@ -247,4 +268,4 @@ def register(m):
         return m.render_template('coordinator_manual_assignment.html',orders=rows,doctors=doctors,
             preview=preview,preview_token=token,error=label(m,error) if error else None,
             labels=lambda code:label(m,code),blocks={o.id:member_blocker(m,o) for o in rows},
-            view=view,page=page,total=total,limit=LIMIT),status
+            view=view,page=page,total=total,limit=LIMIT,assignment_csrf=csrf_token),status

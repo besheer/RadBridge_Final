@@ -31,7 +31,7 @@ def bulk_cases(app_ctx,monkeypatch):
     monkeypatch.setattr(m,'quality_rule_for',lambda o:None)
     monkeypatch.setattr(distribution,'policy_snapshot',lambda:{'max_active_cases':20,'special_rules':[],'version_no':0})
     client=m.app.test_client()
-    with client.session_transaction() as s:s['uid']=actor.id
+    with client.session_transaction() as s:s['uid']=actor.id;s['coordinator_assignment_csrf']='CODEX-UAT-CSRF'
     captured={}
     def render(template,**kwargs):captured.clear();captured.update(kwargs);return 'rendered'
     monkeypatch.setattr(m,'render_template',render)
@@ -41,11 +41,11 @@ def bulk_cases(app_ctx,monkeypatch):
 
 def preview(f,ids=None):
     return f.client.post('/coordinator/manual-assignment',base_url='https://localhost',
-        data={'action':'preview','doctor_id':f.doctor.id,'order_ids':[str(o.id) for o in (ids or f.orders)],'note':'CODEX UAT manual assignment'})
+        data={'assignment_csrf':'CODEX-UAT-CSRF','action':'preview','doctor_id':f.doctor.id,'order_ids':[str(o.id) for o in (ids or f.orders)],'note':'CODEX UAT manual assignment'})
 
 
 def confirm(f,token):
-    return f.client.post('/coordinator/manual-assignment',base_url='https://localhost',data={'action':'confirm','preview_token':token,'acknowledge':'1'})
+    return f.client.post('/coordinator/manual-assignment',base_url='https://localhost',data={'assignment_csrf':'CODEX-UAT-CSRF','action':'confirm','preview_token':token,'acknowledge':'1'})
 
 
 def test_preview_is_read_only_and_confirm_assigns_all_with_audit(bulk_cases):
@@ -189,3 +189,56 @@ def test_reading_started_after_preview_invalidates_the_batch(bulk_cases):
     f.m.CaseAssignment.query.filter_by(order_id=o.id,active=True).one().reading_started_at=datetime.utcnow();f.m.db.session.commit()
     assert confirm(f,token).status_code==409
     assert f.orders[1].assigned_doctor_id is None and f.orders[2].assigned_doctor_id is None
+
+
+def test_reassignment_notifies_previous_and_new_doctor_once(bulk_cases):
+    f=bulk_cases;old=f.m.User(username=f.key+'OLD',full_name='CODEX UAT previous doctor',password_hash='disabled',role_id=f.doctor.role_id,branch_id=f.branch.id)
+    f.m.db.session.add(old);f.m.db.session.flush()
+    o=f.orders[0];o.assigned_doctor_id=old.id
+    f.m.db.session.add(f.m.CaseAssignment(order_id=o.id,doctor_user_id=old.id,active=True))
+    f.m.db.session.commit();preview(f,[o]);token=f.captured['preview_token']
+    assert confirm(f,token).status_code==302
+    notices=f.m.RISNotification.query.filter_by(order_id=o.id).filter(f.m.RISNotification.event_type.in_(['CASE_REASSIGNED_AWAY','CASE_MANUALLY_ASSIGNED'])).all()
+    assert {(n.user_id,n.event_type) for n in notices}=={(old.id,'CASE_REASSIGNED_AWAY'),(f.doctor.id,'CASE_MANUALLY_ASSIGNED')}
+    assert all('CODEX UAT manual assignment' in n.body and n.branch_id==o.branch_id for n in notices)
+    assert confirm(f,token).status_code==409
+    assert f.m.RISNotification.query.filter_by(order_id=o.id).count()==2
+
+
+def test_same_doctor_retry_does_not_send_transfer_notice(bulk_cases):
+    f=bulk_cases;o=f.orders[0];o.assigned_doctor_id=f.doctor.id
+    f.m.db.session.add(f.m.CaseAssignment(order_id=o.id,doctor_user_id=f.doctor.id,active=True));f.m.db.session.commit()
+    preview(f,[o]);assert confirm(f,f.captured['preview_token']).status_code==302
+    assert f.m.RISNotification.query.filter_by(order_id=o.id).count()==0
+
+
+def editor_lease(f,expires):
+    o=f.orders[0];r=f.m.Report(order_id=o.id,status='UNREPORTED');f.m.db.session.add(r);f.m.db.session.flush()
+    now=datetime.utcnow()
+    f.m.db.session.add(f.m.ReportEditLease(order_id=o.id,report_id=r.id,user_id=f.doctor.id,editor_type='ONLYOFFICE',lease_token_hash='CODEX-UAT',acquired_at=now,renewed_at=now,expires_at=expires))
+    f.m.db.session.commit()
+
+
+def test_active_editor_without_saved_text_blocks_reassignment(bulk_cases):
+    f=bulk_cases;editor_lease(f,datetime.utcnow()+timedelta(minutes=2))
+    preview(f,[f.orders[0]])
+    assert not f.captured['preview_token'] and f.captured['preview']['blocked'][0]['reason']=='READING'
+
+
+def test_editor_opened_after_preview_denies_entire_batch(bulk_cases):
+    f=bulk_cases;preview(f);token=f.captured['preview_token']
+    editor_lease(f,datetime.utcnow()+timedelta(minutes=2))
+    assert confirm(f,token).status_code==409
+    assert all(o.assigned_doctor_id is None for o in f.orders)
+    assert f.m.RISNotification.query.filter(f.m.RISNotification.order_id.in_([o.id for o in f.orders])).count()==0
+
+
+def test_expired_empty_editor_lease_does_not_block_assignment(bulk_cases):
+    f=bulk_cases;editor_lease(f,datetime.utcnow()-timedelta(minutes=1))
+    preview(f,[f.orders[0]]);assert confirm(f,f.captured['preview_token']).status_code==302
+
+
+def test_assignment_requires_session_csrf(bulk_cases):
+    f=bulk_cases
+    assert f.client.post('/coordinator/manual-assignment',base_url='https://localhost',data={'action':'preview','doctor_id':f.doctor.id,'order_ids':[str(f.orders[0].id)],'note':'CODEX UAT rejected CSRF'}).status_code==403
+    assert all(o.assigned_doctor_id is None for o in f.orders)
