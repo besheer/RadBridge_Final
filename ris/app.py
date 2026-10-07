@@ -10622,13 +10622,18 @@ def default_warehouse_for_order(order):
     return Warehouse.query.filter_by(branch_id=order.branch_id,active=True).order_by(Warehouse.id).first()
 
 def stock_lots(warehouse_id,item_id):
-    return InventoryLot.query.filter_by(warehouse_id=warehouse_id,item_id=item_id).filter(InventoryLot.qty_on_hand>0).order_by(
-        db.case((InventoryLot.expiry_date.is_(None),1),else_=0),
-        InventoryLot.expiry_date,InventoryLot.id
-    ).all()
+    from datetime import date as _date
+    return InventoryLot.query.filter_by(warehouse_id=warehouse_id,item_id=item_id).filter(
+        InventoryLot.qty_on_hand>0,
+        db.or_(InventoryLot.expiry_date.is_(None),InventoryLot.expiry_date>=_date.today())
+    ).order_by(db.case((InventoryLot.expiry_date.is_(None),1),else_=0),
+        InventoryLot.expiry_date,InventoryLot.id).populate_existing().with_for_update().all()
 
 def inventory_available_qty(warehouse_id,item_id):
-    rows=InventoryLot.query.filter_by(warehouse_id=warehouse_id,item_id=item_id).all()
+    from datetime import date as _date
+    rows=InventoryLot.query.filter_by(warehouse_id=warehouse_id,item_id=item_id).filter(
+        db.or_(InventoryLot.expiry_date.is_(None),InventoryLot.expiry_date>=_date.today())
+    ).all()
     return round(sum(max(0,float(x.qty_on_hand or 0)-float(x.qty_reserved or 0)) for x in rows),4)
 
 def inventory_on_hand_qty(warehouse_id,item_id):
@@ -10655,11 +10660,15 @@ def inventory_move(warehouse,item,qty,movement_type,lot=None,unit_cost=None,refe
 def consume_inventory(order,item,qty,usage_type='USED',source='MANUAL',reason='',warehouse=None,user=None):
     warehouse=warehouse or default_warehouse_for_order(order)
     if not warehouse:raise ValueError('No active warehouse is configured for this branch.')
-    qty=float(qty or 0)
-    if qty<=0:raise ValueError('Quantity must be greater than zero.')
+    from inventory_safety import quantity,lock_order
+    qty=quantity(qty)
+    lock_order(order)
     user=user or current_user()
+    lots=stock_lots(warehouse.id,item.id)
+    available_total=sum(max(0,float(lot.qty_on_hand or 0)-float(lot.qty_reserved or 0)) for lot in lots)
+    if qty>available_total+1e-9:raise ValueError('Insufficient unexpired available stock. / المخزون المتاح غير المنتهي لا يكفي.')
     remaining=qty; usages=[]
-    for lot in stock_lots(warehouse.id,item.id):
+    for lot in lots:
         available=max(0,float(lot.qty_on_hand or 0)-float(lot.qty_reserved or 0))
         take=min(available,remaining)
         if take<=0:continue
@@ -10674,15 +10683,8 @@ def consume_inventory(order,item,qty,usage_type='USED',source='MANUAL',reason=''
     return usages
 
 def return_inventory(order,item,qty,warehouse=None,reason='',user=None):
-    warehouse=warehouse or default_warehouse_for_order(order)
-    if not warehouse:raise ValueError('No active warehouse is configured for this branch.')
-    user=user or current_user();qty=float(qty or 0)
-    if qty<=0:raise ValueError('Quantity must be greater than zero.')
-    lot=InventoryLot.query.filter_by(warehouse_id=warehouse.id,item_id=item.id,lot_no='').first()
-    inventory_move(warehouse,item,qty,'RETURN',lot=lot,reference_type='ORDER',reference_id=order.id,notes=reason,user=user)
-    row=OrderConsumableUsage(order_id=order.id,warehouse_id=warehouse.id,item_id=item.id,lot_id=lot.id if lot else None,
-        qty=qty,usage_type='RETURN',source='MANUAL',reason=reason,unit_cost=float(item.default_cost or 0),created_by=user.id)
-    db.session.add(row);return row
+    from inventory_safety import return_to_original_lots
+    return return_to_original_lots(order,item,qty,warehouse=warehouse,reason=reason,user=user)
 
 def order_consumable_cost(order):
     cost=0.0
