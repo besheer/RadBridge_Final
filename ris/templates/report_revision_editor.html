@@ -11,7 +11,7 @@
 {% if can_edit and revision.status=='DRAFT' %}<button class="btn primary" data-action="draft">{{'حفظ مسودة التصحيح' if ui_lang=='ar' else 'Save correction draft'}}</button><button class="btn" data-action="verify">{{'مراجعة النسخة المحفوظة' if ui_lang=='ar' else 'Verify saved version'}}</button>{% endif %}
 {% if can_edit and revision.status=='VERIFIED' %}<button class="btn primary" data-action="finalize">{{'اعتماد التصحيح' if ui_lang=='ar' else 'Finalize correction'}}</button>{% endif %}</div>
 <p id="revisionMessage" role="status" aria-live="polite"></p></div>
-{% if revision.status in ['DRAFT','VERIFIED','FINAL'] %}<div style="height:78vh;min-height:440px" id="revisionEditor"></div>{% else %}<div class="panel">{{'يُفتح المحرر بعد موافقة المنسق وإسناد الطلب.' if ui_lang=='ar' else 'The editor opens after coordinator approval and assignment.'}}</div>{% endif %}
+{% if revision.status in ['DRAFT','VERIFIED','FINAL'] %}<div style="height:78vh;min-height:440px;width:100%"><div id="revisionEditor"></div></div>{% else %}<div class="panel">{{'يُفتح المحرر بعد موافقة المنسق وإسناد الطلب.' if ui_lang=='ar' else 'The editor opens after coordinator approval and assignment.'}}</div>{% endif %}
 </main>
 <script src="{{url_for('static',filename='report-revision-editor.js')}}" defer></script>
 {% endblock %}
