@@ -38536,3 +38536,6 @@ from report_revisions import register as register_report_revisions
 register_report_revisions(_reporting_support_sys.modules[__name__])
 from report_revision_editor import register as register_report_revision_editor
 register_report_revision_editor(_reporting_support_sys.modules[__name__])
+
+from physician_final_counts import register as register_physician_final_counts
+register_physician_final_counts(_reporting_support_sys.modules[__name__])
