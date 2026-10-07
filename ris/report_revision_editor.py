@@ -331,8 +331,10 @@ def register(m):
                 if Path(name).exists():os.unlink(name)
             row.forcesave_nonce=str(data.get('userdata') or '')[:36]
             m.db.session.commit();return jsonify(error=0)
-        except Exception:
-            m.db.session.rollback();return jsonify(error=1),409
+        except Exception as exc:
+            m.db.session.rollback()
+            m.app.logger.warning('Revision callback rejected revision=%s type=%s code=%s',revision_id,type(exc).__name__,getattr(exc,'code','UNEXPECTED'))
+            return jsonify(error=1),409
 
     @m.app.post('/report-revisions/<int:revision_id>/forcesave')
     @m.login_required
