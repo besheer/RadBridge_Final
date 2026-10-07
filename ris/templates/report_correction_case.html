@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ 'تصحيح التقرير المعتمد' if ui_lang=='ar' else 'FINAL Report Corrections' }}{% endblock %}
+{% block content %}
+<div class="panel">
+<h2>{{ order.accession }} — {{ order.patient.name }}</h2>
+<p>{{ 'التقرير الأصلي محفوظ. طلب التصحيح لا يفتح النسخة المعتمدة للتحرير؛ يراجعه المنسق ويُسند التصحيح إلى طبيب مؤهل.' if ui_lang=='ar' else 'The original report is preserved. A correction request does not unlock the FINAL version; a coordinator reviews it and assigns a qualified physician.' }}</p>
+<form method="post">
+<input type="hidden" name="revision_csrf" value="{{report_revision_csrf}}">
+<label>{{ 'نوع التصحيح' if ui_lang=='ar' else 'Correction type' }}
+<select name="kind" required><option value="ADDENDUM">{{ 'إضافة توضيح مع الحفاظ على نص التقرير الأصلي' if ui_lang=='ar' else 'Addendum — preserve the original report text' }}</option><option value="REPLACEMENT">{{ 'تقرير مصحح بديل مع أرشفة الأصل' if ui_lang=='ar' else 'Replacement — corrected report, original remains archived' }}</option></select></label>
+<label>{{ 'سبب طلب التصحيح' if ui_lang=='ar' else 'Reason for correction' }}<textarea name="reason" minlength="10" maxlength="2000" required rows="3"></textarea></label>
+<button class="btn primary">{{ 'إرسال إلى المنسق' if ui_lang=='ar' else 'Submit to coordinator' }}</button>
+</form></div>
+<div class="panel"><h3>{{ 'سجل الطلبات والتصحيحات' if ui_lang=='ar' else 'Requests and correction history' }}</h3>
+{% for row in revisions %}<article style="padding:12px;border-bottom:1px solid var(--line,#ddd)">
+<b>#{{row.revision_no}} · {{row.kind}} · {{row.status}}</b><p>{{row.reason}}</p><small>{{row.requested_at}}</small>
+{% if row.review_reason %}<p>{{ 'قرار المنسق: ' if ui_lang=='ar' else 'Coordinator review: ' }}{{row.review_reason}}</p>{% endif %}
+<a class="btn" href="{{url_for('report_revision_view',revision_id=row.id)}}">{{ 'عرض التصحيح' if ui_lang=='ar' else 'View correction' }}</a>
+</article>{% else %}<p>{{ 'لا توجد طلبات تصحيح.' if ui_lang=='ar' else 'No correction requests.' }}</p>{% endfor %}</div>
+{% endblock %}

@@ -6809,6 +6809,8 @@ def patient_portal_report(token):
     if x.expires_at<datetime.utcnow(): abort(410)
     o=x.order
     if not o or o.status!='FINAL' or not o.report or o.report.status!='FINAL': abort(404)
+    corrected=_rb_final_revision_document(o)
+    if corrected:return _rb_revision_pdf_download(o,corrected)
     path=o.report.pdf_path or o.report.source_path
     if not path or not os.path.exists(path): abort(404)
     return send_file(path,as_attachment=True,download_name=os.path.basename(path))
@@ -27458,6 +27460,8 @@ def report_portal_download(order_id):
         flash('Report is not FINAL yet.','warning')
         return redirect(url_for('reports_portal'))
 
+    corrected=_rb_final_revision_document(order)
+    if corrected:return _rb_revision_pdf_download(order,corrected)
     # Prefer the final PDF.
     if report.pdf_path and os.path.isfile(report.pdf_path):
         return send_file(
@@ -27522,6 +27526,8 @@ def report_portal_download_pdf(order_id):
     if not report or (report.status or '').upper()!='FINAL':
         abort(404)
 
+    corrected=_rb_final_revision_document(order)
+    if corrected:return _rb_revision_pdf_download(order,corrected)
     if not report.pdf_path or not os.path.isfile(report.pdf_path):
         abort(404)
 
@@ -34410,6 +34416,10 @@ def _rb_latest_report_version(report):
 
 
 def _rb_authoritative_docx_download(order, report):
+    if (report.status or '').upper() == 'FINAL':
+        corrected = _rb_final_revision_document(order)
+        if corrected:return corrected
+
     version = _rb_latest_report_version(report)
 
     if not version:
@@ -38521,3 +38531,8 @@ register_dicom_export_routes(_reporting_support_sys.modules[__name__])
 
 from report_draft_warnings import register as register_report_draft_warnings
 register_report_draft_warnings(_reporting_support_sys.modules[__name__])
+
+from report_revisions import register as register_report_revisions
+register_report_revisions(_reporting_support_sys.modules[__name__])
+from report_revision_editor import register as register_report_revision_editor
+register_report_revision_editor(_reporting_support_sys.modules[__name__])

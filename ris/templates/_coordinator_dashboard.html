@@ -11,6 +11,9 @@
     <p>{{ 'متابعة الجاهزية والإسناد والمرتجعات ومراجعة تنسيق التقارير. الاعتماد الطبي مسؤولية الطبيب؛ الأدوات المتاحة تحددها صلاحيات حسابك.' if ui_lang=='ar' else 'Follow readiness, assignments, returned cases and report formatting. Medical approval remains with the physician; available tools depend on your account permissions.' }}</p>
   </div>
   <div class="rb-module-grid">
+    {% if me and me.role and me.role.code in ['SUPER_ADMIN','ADMIN','CASE_COORDINATOR','BRANCH_MANAGER'] and (has_perm('*') or me.branch_id) %}
+    {{ coord_card('coordinator_report_corrections','📝','تصحيح التقارير المعتمدة','FINAL Report Corrections','مراجعة طلب الطبيب واختيار طبيب مؤهل للتصحيح مع حفظ الأصل وسجل التدقيق.','Review physician requests and assign a qualified correction physician; preserve originals and audit history.') }}
+    {% endif %}
     {% if has_perm('reports.coordinate') %}
     {{ coord_card('coordinator_queue','📝','مهام مراجعة التقارير','Report Review Tasks','بدء التنسيق ومراجعة الجودة، ثم الإرسال لاعتماد الطبيب أو الإرجاع إليه.','Start formatting and quality review, then send for physician approval or return to the doctor.') }}
     {% endif %}

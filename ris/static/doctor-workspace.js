@@ -266,6 +266,7 @@
           }
           else controls.append(node('span',say('No linked study','لا توجد دراسة مرتبطة'),'rb-doctor-no-study'));
           if(c.return_allowed&&c.return_url){const returned=node('a',say('Return for review','إرجاع للمراجعة'),'btn small');returned.href=safeReturnLink(c.return_url);controls.append(returned);}
+          if(String(c.report_status||'').toUpperCase()==='FINAL' && Number.isInteger(Number(c.id))){const correction=node('a',say('Request correction','طلب تصحيح'),'btn small');correction.href='/case/'+encodeURIComponent(c.id)+'/report-corrections';controls.append(correction);}
           detailsButton=details; cell.append(controls); row.append(cell); return;
         }
         const badgeKeys=['priority','pacs_status','report_status','sla_status'];

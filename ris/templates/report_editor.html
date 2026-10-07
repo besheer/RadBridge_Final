@@ -336,7 +336,7 @@
     </div>
   </form>
   {% else %}
-    <div class="flash success">This report is FINAL. Create an Addendum to make a new revision.</div>
+    <div class="flash success">{{ 'التقرير معتمد ومحفوظ. يمكنك طلب تصحيح من المنسق.' if ui_lang=='ar' else 'The FINAL report is preserved. You can request a correction from the coordinator.' }}</div><a class="btn" href="{{url_for('report_correction_case',order_id=order.id)}}">{{'طلب تصحيح التقرير' if ui_lang=='ar' else 'Request report correction'}}</a>
   {% endif %}
 </div>
 

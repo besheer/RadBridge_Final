@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ 'طلبات تصحيح التقارير المعتمدة' if ui_lang=='ar' else 'FINAL Report Correction Requests' }}{% endblock %}
+{% block content %}
+<p>{{ 'الموافقة تسمح للطبيب المحدد بكتابة نسخة تصحيح مستقلة. المنسق لا يكتب أو يعتمد التقرير طبيًا، ولا تُحذف النسخة الأصلية.' if ui_lang=='ar' else 'Approval lets the selected physician write a separate correction. Coordinators do not edit or medically approve reports; originals are never deleted.' }}</p>
+{% for row in revisions %}{% set order=orders[row.order_id] %}
+<details class="panel" {% if row.status=='REQUESTED' %}open{% endif %}>
+<summary>{{order.accession}} — {{order.patient.name}} · #{{row.revision_no}} · {{row.kind}} · {{row.status}}</summary>
+<p>{{row.reason}}</p><small>{{row.requested_at}}</small>
+{% if row.status=='REQUESTED' %}
+<form method="post" action="{{url_for('coordinator_report_correction_review',revision_id=row.id)}}">
+<input type="hidden" name="revision_csrf" value="{{report_revision_csrf}}">
+<label>{{ 'الطبيب المؤهل للتصحيح' if ui_lang=='ar' else 'Qualified correction physician' }}<select name="doctor_id"><option value="">{{'اختر الطبيب' if ui_lang=='ar' else 'Select physician'}}</option>{% for doctor in doctors[row.id] %}<option value="{{doctor.id}}">{{doctor.full_name or doctor.username}}</option>{% endfor %}</select></label>
+<label>{{ 'سبب القرار' if ui_lang=='ar' else 'Review reason' }}<textarea name="reason" rows="2" minlength="10" maxlength="2000" required></textarea></label>
+<button class="btn primary" name="action" value="APPROVE">{{ 'موافقة وإسناد' if ui_lang=='ar' else 'Approve and assign' }}</button>
+<button class="btn" name="action" value="REJECT">{{ 'رفض' if ui_lang=='ar' else 'Reject' }}</button>
+{% if not doctors[row.id] %}<p>{{ 'لا يوجد طبيب مؤهل متاح؛ راجع إعدادات تأهيل الأطباء.' if ui_lang=='ar' else 'No qualified physician is available; review physician qualification settings.' }}</p>{% endif %}
+</form>
+{% else %}<p>{{row.review_reason}}</p>{% endif %}
+<a class="btn" href="{{url_for('report_revision_view',revision_id=row.id)}}">{{ 'التصحيح والنسخة الأصلية' if ui_lang=='ar' else 'Correction and original report' }}</a>
+</details>{% else %}<div class="panel">{{ 'لا توجد طلبات في نطاق فروعك.' if ui_lang=='ar' else 'No requests within your branch scope.' }}</div>{% endfor %}
+{% endblock %}
