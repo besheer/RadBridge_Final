@@ -5087,6 +5087,8 @@ def price_order(proc, contract):
     return gross,effective,patient,company,share_pct
 
 def send_mwl(order):
+    from insurance_policy import assert_approval_ready
+    assert_approval_ready(order)
     p=order.patient
     patient_name=dicom_worklist_patient_name(p)
     tags={
@@ -6303,7 +6305,9 @@ def order_detail(order_id):
 @app.post('/orders/<int:order_id>/insurance-approval/start')
 @require_perm('orders.view')
 def insurance_approval_start(order_id):
-    order=Order.query.get_or_404(order_id)
+    order=Order.query.filter_by(id=order_id).with_for_update().first_or_404()
+    from insurance_policy import require_actor
+    require_actor(order)
 
     method=(request.form.get('method') or 'MANUAL').strip().upper()
 
@@ -6361,7 +6365,9 @@ def insurance_approval_start(order_id):
 @app.post('/orders/<int:order_id>/insurance-approval/update')
 @require_perm('orders.view')
 def insurance_approval_update(order_id):
-    order=Order.query.get_or_404(order_id)
+    order=Order.query.filter_by(id=order_id).with_for_update().first_or_404()
+    from insurance_policy import require_actor
+    require_actor(order)
 
     row=InsuranceApprovalRequest.query.filter_by(
         order_id=order.id
@@ -6383,6 +6389,11 @@ def insurance_approval_update(order_id):
         flash('حالة الموافقة غير صحيحة.','danger')
         return redirect(url_for('order_detail',order_id=order.id))
 
+    approval_no=(request.form.get('approval_no') or '').strip()
+    if new_status=='APPROVED' and not approval_no:
+        flash('Approval reference is required. / يلزم رقم موافقة التأمين.','danger')
+        return redirect(url_for('order_detail',order_id=order.id))
+
     old_status=row.status or ''
 
     row.status=new_status
@@ -6393,9 +6404,8 @@ def insurance_approval_update(order_id):
     if new_status in ('APPROVED','REJECTED'):
         row.decided_at=datetime.utcnow()
 
-    if new_status=='APPROVED' and row.approval_no:
-        # Existing Order field only; does NOT modify workflow status.
-        order.approval_no=row.approval_no
+    # Clear stale approval references when the latest decision is unresolved.
+    order.approval_no=row.approval_no if new_status=='APPROVED' else ''
 
     db.session.add(InsuranceApprovalEvent(
         approval_request_id=row.id,
@@ -6426,6 +6436,14 @@ def insurance_approval_update(order_id):
 def convert_to_work_order(order_id):
     order=Order.query.filter_by(id=order_id).with_for_update().first_or_404()
     Patient.query.filter_by(id=order.patient_id).with_for_update().first_or_404()
+
+    from insurance_policy import approval_blocker
+    insurance_blocker=approval_blocker(order)
+    if insurance_blocker:
+        audit('WORK_ORDER_BLOCKED','order',order.id,insurance_blocker)
+        db.session.commit()
+        flash(insurance_blocker,'danger')
+        return redirect(url_for('order_detail',order_id=order.id))
 
     # Legacy contract marker retained for regression traceability:
     # order_balance(order) > 0.01 is enforced inside work_order_gate().
@@ -6487,7 +6505,7 @@ def convert_to_work_order(order_id):
         return redirect(url_for('order_detail',order_id=order.id))
 
     try:
-        order=Order.query.get(order_id)
+        order=Order.query.filter_by(id=order_id).populate_existing().with_for_update().first_or_404()
         send_mwl(order)
 
         mwl_event=EventOutbox.query.get(mwl_event_id)
@@ -6546,7 +6564,7 @@ def convert_to_work_order(order_id):
 @app.route('/orders/<int:order_id>/resend-mwl',methods=['POST'])
 @require_perm('devices.manage')
 def resend_mwl(order_id):
-    order=Order.query.get_or_404(order_id)
+    order=Order.query.filter_by(id=order_id).with_for_update().first_or_404()
 
     # RB_WORK_ORDER_GATE_V5_CANONICAL
     # Legacy regression markers: current_status == 'REGISTERED';

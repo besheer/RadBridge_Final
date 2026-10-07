@@ -4,7 +4,7 @@ import pytest
 
 
 def order(name='محمد أحمد علي', worklist=''):
-    return SimpleNamespace(patient=SimpleNamespace(name=name,worklist_name=worklist,
+    return SimpleNamespace(id=-98765, contract=None, patient=SimpleNamespace(name=name,worklist_name=worklist,
         patient_id='CODEX-UAT-MWL-LATIN',dob='19900101',sex='M'),
         accession='CDUATLATIN',procedure='CODEX UAT X-Ray',station_ae='CODEXUAT',
         modality='DX',scheduled=datetime(2037,2,3,10,30))
