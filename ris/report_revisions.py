@@ -97,6 +97,11 @@ def in_scope(m,user,order):
     if user.role and user.role.code in CLINICAL_ROLES:
         profile=m.DoctorAssignmentProfile.query.filter_by(user_id=user.id).first()
         branches={s.strip() for s in (profile.branches or '').split(',') if s.strip()} if profile else set()
+        # Central physicians have no fixed branch. Access comes from an
+        # explicit original/correction assignment, not unrestricted browsing.
+        if not user.branch_id and not branches:
+            if order.assigned_doctor_id==user.id:return True
+            return m.ReportRevision.query.filter_by(order_id=order.id,doctor_id=user.id).first() is not None
         return str(order.branch_id) in branches
     return False
 
@@ -132,7 +137,7 @@ def eligible(m,order,user):
     if modalities and (order.modality or '').upper() not in modalities:return False
     if branches:
         if str(order.branch_id) not in branches:return False
-    elif user.branch_id!=order.branch_id:return False
+    elif user.branch_id and user.branch_id!=order.branch_id:return False
     from assignment_distribution import validate_special_doctor
     try:validate_special_doctor(order,user)
     except Exception:return False

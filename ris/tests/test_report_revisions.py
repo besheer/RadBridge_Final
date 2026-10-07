@@ -91,6 +91,16 @@ def test_no_duplicate_open_request(revision_case):
     c=revision_case;request(c)
     with pytest.raises(s.RevisionError,match='ACTIVE'):request(c)
 
+def test_central_physician_requires_explicit_assignment_for_access(revision_case):
+    c=revision_case;c.doc.branch_id=None;c.consult.branch_id=None
+    for u in (c.doc,c.consult):c.m.DoctorAssignmentProfile.query.filter_by(user_id=u.id).one().branches=''
+    c.m.db.session.flush()
+    assert s.in_scope(c.m,c.doc,c.order)
+    assert not s.in_scope(c.m,c.consult,c.order)
+    row=request(c);approve(c,row)
+    assert s.in_scope(c.m,c.consult,c.order)
+    assert s.eligible(c.m,c.order,c.consult)
+
 def test_pending_revision_does_not_replace_final_document(revision_case):
     c=revision_case;row=request(c);approve(c,row)
     assert s.final_document(c.m,c.order) is None
