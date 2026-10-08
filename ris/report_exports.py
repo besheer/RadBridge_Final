@@ -232,6 +232,7 @@ def pdf_bytes(data,metadata,rtl=False):
                 line=chunk
         if line:lines.append(line)
         style=ParagraphStyle('cell',fontName=font,fontSize=size,leading=size*1.55,
+            keepWithNext=size>=14,spaceAfter=6 if size>=14 else 0,
             alignment=TA_RIGHT if rtl or re.search(r'[\u0600-\u06ff]',text) else TA_LEFT,
             textColor=colors.white if header else colors.HexColor('#18334a'))
         return Paragraph('<br/>'.join(escape(visual(line)) for line in lines),style)
@@ -247,7 +248,7 @@ def pdf_bytes(data,metadata,rtl=False):
         panels=[list(range(len(headers)))] if len(headers)<=6 else [([0]+list(range(i,min(i+5,len(headers))))) for i in range(1,len(headers),5)]
         for number,columns in enumerate(panels,1):
             title=section['title']+(f' ({number}/{len(panels)})' if len(panels)>1 else '')
-            story.extend([paragraph(title,available,14),Spacer(1,6)])
+            story.append(paragraph(title,available,14))
             col_width=available/len(columns)
             content=[[paragraph(headers[c],col_width,11,True) for c in columns]]
             content.extend([[paragraph(row[c] if c<len(row) else '',col_width) for c in columns] for row in rows])
