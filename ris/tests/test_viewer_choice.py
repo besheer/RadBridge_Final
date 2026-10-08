@@ -192,3 +192,13 @@ def test_access_log_redacts_capability():
     record=logging.LogRecord('gunicorn.access',20,'test',1,'%(r)s',atoms,None)
     assert v.CapabilityLogFilter().filter(record)
     assert 'SECRET' not in record.args['r'] and 'SECRET' not in record.args['U']
+
+
+def test_legacy_long_accession_does_not_break_manifest(imaging):
+    w=imaging;w.mine.accession='SYNTHETIC-LEGACY-ACCESSION-LONGER-THAN-SH'
+    w.payloads['/studies/'+STUDY]['MainDicomTags']['AccessionNumber']=w.mine.accession
+    w.m.db.session.commit()
+    response=w.client.get(launch(w));assert response.status_code==200
+    root=ET.fromstring(response.data)
+    study=root.find('.//{http://www.weasis.org/xsd/2.5}Study')
+    assert study.attrib['StudyInstanceUID']==UID and 'AccessionNumber' not in study.attrib

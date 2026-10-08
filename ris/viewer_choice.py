@@ -188,7 +188,7 @@ def register(m):
         patient = ET.SubElement(arc, 'Patient', {k: str(v) for k, v in (detail.get('PatientMainDicomTags') or {}).items()
             if k in {'PatientID', 'PatientName', 'PatientSex', 'PatientBirthDate'}})
         study = ET.SubElement(patient, 'Study', {k: str(v) for k, v in detail['MainDicomTags'].items()
-            if k in {'StudyInstanceUID', 'StudyID', 'StudyDate', 'StudyTime', 'StudyDescription', 'AccessionNumber'}})
+            if k in {'StudyInstanceUID', 'StudyDate', 'StudyTime', 'StudyDescription'}})
         series_nodes = {}
         for item in instances:
             instance_id = str(item.get('ID') or '')
