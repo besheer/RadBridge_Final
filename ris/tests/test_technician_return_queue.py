@@ -8,7 +8,7 @@ import pytest
 @pytest.fixture
 def queue_cases(app_ctx, monkeypatch):
     m=app_ctx
-    key='CODEX-UAT-QUEUE-'+uuid4().hex[:8].upper()
+    key='UAT-QUEUE-'+uuid4().hex[:8].upper()
     branch=m.Branch(code=key[:20],name=key)
     other=m.Branch(code=(key+'X')[:19]+'X',name=key+' other')
     m.db.session.add_all([branch,other]);m.db.session.flush()

@@ -1,0 +1,63 @@
+{% macro label(ar,en) %}{{ar if ui_lang=='ar' else en}}{% endmacro %}
+{% macro field(name,ar,en,type='text') %}
+<label>{{label(ar,en)}}<input type="{{type}}" name="{{name}}" value="{{request.args.get(name,'')}}"></label>
+{% endmacro %}
+{% macro select(name,ar,en,options) %}
+<label>{{label(ar,en)}}<select name="{{name}}"><option value="">{{label('الكل','All')}}</option>{% for value,a,e in options %}<option value="{{value}}"{% if request.args.get(name,'')==value %} selected{% endif %}>{{label(a,e)}}</option>{% endfor %}</select></label>
+{% endmacro %}
+<style>
+.staff-filters .staff-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.staff-filters label{display:flex;flex-direction:column;gap:6px;min-width:0}
+.staff-filters input,.staff-filters select{width:100%;min-width:0;box-sizing:border-box}
+.staff-filters .actions,.staff-saved .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.staff-saved details{margin:8px 0}.staff-saved summary{overflow-wrap:anywhere}
+@media(max-width:620px){.staff-filters .staff-fields{grid-template-columns:1fr}.staff-saved input{max-width:100%}}
+</style>
+<form method="get" class="panel staff-filters" id="staff-filter-form">
+{% if staff_page_key=='TECHNICIAN' %}<input type="hidden" name="view" value="{{queue_view}}">{% endif %}
+<div class="staff-fields">
+{{field('q','بحث بالاسم، رقم الحالة أو الفحص','Search patient, accession or exam')}}
+{{field('patient_id','رقم المريض (مطابق)','Patient ID (exact)')}}
+{{field('accession','رقم الطلب (مطابق)','Accession (exact)')}}
+</div>
+<div class="actions">
+<button class="btn primary">{{label('بحث','Search')}}</button>
+<a class="btn" href="{{url_for(request.endpoint,date_from=staff_today,date_to=staff_today)}}">{{label('اليوم','Today')}}</a>
+<a class="btn" href="{{url_for(request.endpoint,date_from=staff_yesterday,date_to=staff_yesterday)}}">{{label('أمس','Yesterday')}}</a>
+<a class="btn" href="{{url_for(request.endpoint,clear_filters='1')}}">{{label('مسح الفلاتر','Clear filters')}}</a>
+</div>
+<details open style="margin-top:14px"><summary>{{label('فلاتر إضافية','More filters')}}</summary>
+<div class="staff-fields" style="margin-top:12px">
+{{select('priority','الأولوية','Priority',[('ROUTINE','عادي','Routine'),('URGENT','عاجل','Urgent'),('STAT','طارئ','STAT')])}}
+<label>{{label('نوع الأشعة','Modality')}}<select name="modality"><option value="">{{label('الكل','All')}}</option>{% for mod in staff_modalities %}<option {% if request.args.get('modality')==mod %}selected{% endif %}>{{mod}}</option>{% endfor %}</select></label>
+<label>{{label('الغرفة','Room')}}<select name="room_key"><option value="">{{label('الكل','All')}}</option>{% for room in staff_rooms %}<option value="{{room.key}}" {% if request.args.get('room_key')==room.key %}selected{% endif %}>{{room.label}}</option>{% endfor %}</select></label>
+<label>{{label('الجهاز','Device')}}<select name="device_id"><option value="">{{label('الكل','All')}}</option>{% for device in staff_devices %}<option value="{{device.id}}" {% if request.args.get('device_id')==device.id|string %}selected{% endif %}>{{device.name}} · {{device.room or '—'}}</option>{% endfor %}</select></label>
+{{select('room_status','حالة الغرفة الآن','Room status now',[('open_now','مفتوحة الآن','Open now'),('closed_now','مغلقة الآن','Closed now')])}}
+{{select('exam_status','حالة الفحص','Exam status',[('ORDERED','لم يبدأ','Not started'),('BOOKED','محجوز','Booked'),('IN_PROGRESS','جارٍ الفحص','In progress'),('EXAM_COMPLETED','اكتمل التصوير','Imaging completed')])}}
+{{select('pacs_status','حالة الصور','PACS status',[('NO_IMAGES','لا توجد صور','No images'),('IMAGES_INCOMPLETE','صور ناقصة','Incomplete images'),('IMAGES_COMPLETE','صور مكتملة','Images complete')])}}
+{{select('history','التاريخ المرضي','Clinical history',[('present','موجود','Present'),('missing','ناقص','Missing')])}}
+{{select('attachments','المرفقات','Attachments',[('present','موجودة','Present'),('missing','ناقصة','Missing')])}}
+{% if staff_page_key=='NURSING' %}{{select('consumables','تأكيد المستهلكات','Consumables confirmation',[('present','مؤكدة','Confirmed'),('missing','غير مؤكدة','Not confirmed')])}}{% endif %}
+{{field('date_from','من تاريخ','From date','date')}}{{field('date_to','إلى تاريخ','To date','date')}}
+</div>
+<p class="muted">{{label('الغرف المفتوحة حسب حالة التشغيل وساعات العمل والصيانة والإيقاف المسجل. النتائج تلتزم بصلاحياتك.','Open rooms follow recorded operating status, working hours, maintenance and blocks. Results follow your access permissions.')}}</p>
+<button class="btn primary">{{label('تطبيق الفلاتر','Apply filters')}}</button>
+</details>
+</form>
+<section class="panel staff-saved" style="margin-top:12px" id="staff-saved-views">
+<h3>{{label('الفلاتر المحفوظة الخاصة بي','My saved filters')}}</h3>
+<form method="post" action="{{url_for('saved_view_save',page_key=staff_page_key)}}" class="actions">
+<input type="hidden" name="staff_filters_csrf" value="{{staff_filters_csrf}}">
+{% for key in staff_filter_keys %}{% if request.args.get(key) %}<input type="hidden" name="{{key}}" value="{{request.args.get(key)}}">{% endif %}{% endfor %}
+<input name="view_name" maxlength="120" required aria-label="{{label('اسم الفلتر','Filter name')}}" placeholder="{{label('اسم الفلتر المحفوظ','Saved filter name')}}">
+<button class="btn primary">{{label('حفظ الفلاتر الحالية','Save current filters')}}</button>
+</form>
+{% for view in saved_views %}
+<details><summary>{% if view.is_default %}★ {% endif %}{{view.name}}</summary><div class="actions">
+<a class="btn" href="{{url_for('saved_view_apply',page_key=staff_page_key,view_id=view.id)}}">{{label('تطبيق','Apply')}}</a>
+<form method="post" action="{{url_for('saved_view_set_default',page_key=staff_page_key,view_id=view.id)}}"><input type="hidden" name="staff_filters_csrf" value="{{staff_filters_csrf}}"><button class="btn">{{label('اجعله الافتراضي','Set default')}}</button></form>
+<form method="post" action="{{url_for('saved_view_rename',page_key=staff_page_key,view_id=view.id)}}"><input type="hidden" name="staff_filters_csrf" value="{{staff_filters_csrf}}"><input name="view_name" value="{{view.name}}" maxlength="120" required><button class="btn">{{label('تغيير الاسم','Rename')}}</button></form>
+<form method="post" action="{{url_for('saved_view_delete',page_key=staff_page_key,view_id=view.id)}}"><input type="hidden" name="staff_filters_csrf" value="{{staff_filters_csrf}}"><button class="btn">{{label('حذف','Delete')}}</button></form>
+</div></details>
+{% endfor %}
+</section>

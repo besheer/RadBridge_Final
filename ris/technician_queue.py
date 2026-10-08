@@ -71,6 +71,10 @@ def open_tech_return(m):
 
 
 def render_worklist(m):
+    from staff_worklist_filters import default_redirect, context, apply
+    redirect_default=default_redirect(m,'TECHNICIAN')
+    if redirect_default:return redirect_default
+    staff_context=context(m,'TECHNICIAN')
     user = m.current_user()
     q = m.Order.query.filter(m.Order.status != 'CANCELLED')
     if not m.has_perm('*'):
@@ -86,6 +90,7 @@ def render_worklist(m):
     priority = (m.request.args.get('priority') or '').strip().upper()
     if priority:
         q = q.filter(m.Order.priority == priority)
+    q=apply(m,q,'TECHNICIAN',staff_context)
     returned = open_tech_return(m)
     status = func.upper(func.coalesce(m.Order.exam_status, 'ORDERED'))
     work_order = m.Order.status.in_(('SCHEDULED','ARRIVED','IN_PROGRESS','COMPLETED','IMAGES_RECEIVED','REPORTING','MWL_ERROR'))
@@ -106,15 +111,15 @@ def render_worklist(m):
             m.Patient.phone.ilike(like), m.Patient.national_id.ilike(like),
             m.Order.accession.ilike(like), m.Order.procedure.ilike(like),
             m.Order.modality.ilike(like)))
-    else:
+    elif not (m.request.args.get('patient_id') or m.request.args.get('accession') or m.request.args.get('exam_status')):
         q = q.filter(filters[view])
     rows = q.order_by(m.Order.scheduled.desc(), m.Order.id.desc()).limit(300).all()
     states = {order.id: m.case_return_snapshot(order.id) for order in rows}
     return m.render_template('technician.html', orders=rows, queue_counts=counts,
-        queue_view=view, queue_search=bool(search), return_states=states,
+        queue_view=view, queue_search=bool(search or m.request.args.get('patient_id') or m.request.args.get('accession') or m.request.args.get('exam_status')), return_states=states,
         image_urls={o.id: m.clinical_image_only_url(o) for o in rows},
         attachment_counts={o.id: m._order_attachment_count(o) for o in rows},
-        saved_views=m._saved_views_for('TECHNICIAN'), saved_view_page='TECHNICIAN')
+        saved_views=m._saved_views_for('TECHNICIAN'), saved_view_page='TECHNICIAN', **staff_context)
 
 
 

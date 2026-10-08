@@ -6612,6 +6612,10 @@ def add_payment(order_id):
 @app.route('/nursing')
 @require_perm('nursing.worklist')
 def nursing_worklist():
+    from staff_worklist_filters import default_redirect, context, apply
+    redirect_default=default_redirect(_reporting_support_sys.modules[__name__],'NURSING')
+    if redirect_default:return redirect_default
+    staff_context=context(_reporting_support_sys.modules[__name__],'NURSING')
     # RB_ROLE_WORKLIST_FILTERS_V1
     q = Order.query.filter(Order.status.notin_(['FINAL', 'CANCELLED']))
 
@@ -6649,6 +6653,7 @@ def nursing_worklist():
         except ValueError:
             pass
 
+    q=apply(_reporting_support_sys.modules[__name__],q,'NURSING',staff_context)
     orders = (
         q.order_by(Order.scheduled.desc())
         .limit(300)
@@ -6689,6 +6694,7 @@ def nursing_worklist():
         attachment_counts=attachment_counts,
         saved_views=_saved_views_for('NURSING'),
         saved_view_page='NURSING',
+        **staff_context,
     )
 
 @app.route('/nursing/<int:order_id>',methods=['GET','POST'])
@@ -28523,8 +28529,8 @@ SAVED_VIEW_PAGES = {
 }
 
 SAVED_VIEW_FILTER_KEYS = {
-    'NURSING': {'q','date_from','date_to','priority'},
-    'TECHNICIAN': {'q','date_from','date_to','priority'},
+    'NURSING': __import__('staff_worklist_filters').KEYS - {'view'},
+    'TECHNICIAN': __import__('staff_worklist_filters').KEYS,
     'DOCTOR': {'q','patient_id','accession','priority','modality','exam_status',
                'pacs_status','report_status','sla_status','date_from','date_to'},
 }
@@ -28533,9 +28539,12 @@ def _saved_view_page_or_404(page_key):
     key=(page_key or '').strip().upper()
     if key not in SAVED_VIEW_PAGES:
         abort(404)
+    from staff_worklist_filters import page_access
+    page_access(_reporting_support_sys.modules[__name__],key)
     return key
 
 def _saved_view_filtered_data(page_key, source):
+    if not isinstance(source,dict) and not hasattr(source,'items'):return {}
     allowed=SAVED_VIEW_FILTER_KEYS.get(page_key,set())
     return {
         k:v for k,v in source.items()
