@@ -101,7 +101,12 @@ def validate_content(m,row,order,path):
     raw=Path(path).read_bytes()
     if len(raw)>32*1024*1024:raise service.RevisionError('DOCUMENT_TOO_LARGE')
     meta=validate_docx_bytes(raw)
-    if m.validate_report_patient_file(order,str(path),'.docx').get('result')!='MATCH':raise service.RevisionError('DOCUMENT')
+    identity=m.validate_report_patient_file(order,str(path),'.docx')
+    if identity.get('result')!='MATCH':
+        if identity.get('result')=='BLOCKED':code='DOCUMENT_IDENTITY_MISMATCH'
+        elif not identity.get('found_patient_id') or not identity.get('found_accession'):code='DOCUMENT_IDENTIFIERS_MISSING'
+        else:code='DOCUMENT_IDENTITY_REVIEW_REQUIRED'
+        raise service.RevisionError(code)
     base=service.check_reference(m,order,row)
     content=body_text(path)
     if row.kind=='ADDENDUM':
@@ -134,6 +139,28 @@ def callback_bytes(m,url):
             if len(data)>32*1024*1024:raise service.RevisionError('DOCUMENT_TOO_LARGE')
         return bytes(data)
     finally:r.close()
+
+def callback_failure(m,row,nonce,code):
+    """Record only a signed force-save attempt's technical rejection reason."""
+    try:
+        nonce=str(uuid.UUID(str(nonce)))
+    except (ValueError,TypeError,AttributeError):return
+    code=str(code or 'CORRECTION_CALLBACK_REJECTED')
+    m.audit_as_user(m.db.session.get(m.User,row.doctor_id),
+        'REPORT_REVISION_CALLBACK_REJECTED','report_revision',row.id,
+        json.dumps({'forcesave_nonce':nonce,'error':code}))
+    m.db.session.commit()
+
+def callback_failure_code(m,revision_id,nonce):
+    events=(m.AuditLog.query.filter_by(action='REPORT_REVISION_CALLBACK_REJECTED',
+        entity='report_revision',entity_id=str(revision_id))
+        .order_by(m.AuditLog.id.desc()).limit(20).all())
+    for event in events:
+        try:data=json.loads(event.details or '{}')
+        except (TypeError,ValueError):continue
+        if isinstance(data,dict) and data.get('forcesave_nonce')==nonce:
+            return data.get('error') or 'CORRECTION_CALLBACK_REJECTED'
+    return None
 
 def final_pdf(m,document):
     """Render the exact finalized DOCX. A stale original PDF is never a fallback."""
@@ -338,6 +365,9 @@ def register(m):
             m.db.session.commit();return jsonify(error=0)
         except Exception as exc:
             m.db.session.rollback()
+            # Authentication, payload binding, key and lease checks succeeded
+            # before this try block. A rejected artifact cannot become a save.
+            callback_failure(m,row,data.get('userdata'),getattr(exc,'code','CORRECTION_CALLBACK_REJECTED'))
             m.app.logger.warning('Revision callback rejected revision=%s type=%s code=%s',revision_id,type(exc).__name__,getattr(exc,'code','UNEXPECTED'))
             return jsonify(error=1),409
 
@@ -361,6 +391,8 @@ def register(m):
             while time.monotonic()<deadline:
                 m.db.session.expire_all();fresh=m.db.session.get(m.ReportRevision,row.id)
                 if fresh.forcesave_nonce==nonce:return jsonify(ok=True)
+                failure=callback_failure_code(m,revision_id,nonce)
+                if failure:return jsonify(ok=False,error=failure),409
                 time.sleep(.25)
             return jsonify(ok=False,error='ONLYOFFICE_CALLBACK_TIMEOUT'),504
         except service.RevisionError as exc:return jsonify(ok=False,error=exc.code),409

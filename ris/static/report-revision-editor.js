@@ -6,6 +6,10 @@
   const buttons=[...host.querySelectorAll('button[data-action]')];
   let lease='',version=Number(host.dataset.version),dirty=false,editor=null,pendingCommit=null,heartbeat=null;
   const errors={
+    DOCUMENT_IDENTIFIERS_MISSING:['نسخة التصحيح لا تحتوي على Patient ID و/أو Accession قابلين للقراءة. أعد بيانات الحالة من التقرير الأصلي إلى المستند ثم احفظ. لم تُحفظ التعديلات في نسخة معتمدة؛ احتفظ بها داخل المحرر.','The correction document is missing readable Patient ID and/or Accession. Restore the case identifiers from the original report, then save. These edits are not committed; keep them in the editor.'],
+    DOCUMENT_IDENTITY_MISMATCH:['هوية المستند لا تطابق الحالة. راجع بيانات المريض ورقم الفحص؛ لم يُحفظ التصحيح.','Document identifiers do not match this case. Review the patient and accession; the correction was not saved.'],
+    DOCUMENT_IDENTITY_REVIEW_REQUIRED:['بيانات هوية المستند تحتاج مراجعة قبل الحفظ؛ لم يُحفظ التصحيح.','Document identity needs review before saving; the correction was not saved.'],
+    ONLYOFFICE_CALLBACK_TIMEOUT:['لم يصل تأكيد حفظ صالح من المحرر. احتفظ بالتعديلات وأعد المحاولة؛ لا تعتبر التصحيح محفوظًا.','No valid save confirmation arrived from the editor. Keep your edits and retry; the correction is not confirmed saved.'],
     DOCUMENT:['الوثيقة غير متاحة أو لا تطابق بيانات الحالة.','The document is unavailable or does not match the case.'],
     CORRECTION_CONTENT_REQUIRED:['أضف التصحيح الطبي قبل المراجعة والاعتماد.','Enter the clinical correction before verification and finalization.'],
     SAVE_CORRECTION_DRAFT_FIRST:['احفظ مسودة التصحيح أولًا ثم راجعها.','Save the correction draft before verification.'],
