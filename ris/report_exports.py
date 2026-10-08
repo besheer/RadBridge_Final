@@ -5,6 +5,7 @@ Legacy downloads delegate to the corresponding protected report view.
 """
 import csv
 from datetime import datetime, timezone
+from functools import lru_cache
 from html import escape
 from html.parser import HTMLParser
 from io import BytesIO, StringIO
@@ -211,7 +212,9 @@ def pdf_bytes(data,metadata,rtl=False):
     if font not in pdfmetrics.getRegisteredFontNames():
         pdfmetrics.registerFont(TTFont(font,str(Path(__file__).parent/'assets/fonts/Amiri-Regular.ttf')))
     reshaper=arabic_reshaper.ArabicReshaper({'delete_harakat':False,'shift_harakat_position':True})
+    @lru_cache(maxsize=4096)
     def visual(text):
+        if not re.search(r'[\u0600-\u06ff]',text):return text
         return get_display(reshaper.reshape(text))
     def paragraph(value,width,size=11,header=False):
         text=str(value if value is not None else '')
