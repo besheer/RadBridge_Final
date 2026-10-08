@@ -38559,3 +38559,6 @@ register_physician_final_counts(_reporting_support_sys.modules[__name__])
 
 from replacement_settlements import register as register_replacement_settlements
 register_replacement_settlements(_reporting_support_sys.modules[__name__])
+
+from physician_report_workload import register as register_physician_report_workload
+register_physician_report_workload(_reporting_support_sys.modules[__name__])
