@@ -10790,6 +10790,9 @@ def performing_doctor_for_order(order):
     return assignment.doctor if assignment else None
 
 def performing_doctor_share_for_order(order):
+    from replacement_settlements import effective_share
+    frozen=effective_share(_reporting_support_sys.modules[__name__],order)
+    if frozen is not None:return frozen
     doctor=performing_doctor_for_order(order)
     if not doctor:return 0.0,None,None
     candidates=[]
@@ -18651,6 +18654,10 @@ def financial_entries():
     if request.method=='POST':
         typ=(request.form.get('entry_type') or '').upper().strip()
         if typ not in FINANCE_ENTRY_TYPES:flash('Invalid entry type.','danger');return redirect(url_for('financial_entries'))
+        if typ=='DOCTOR_FEE':
+            from replacement_settlements import guard_case_payout
+            guard_case_payout(_reporting_support_sys.modules[__name__],request.form.get('branch_id',type=int),
+                request.form.get('user_id',type=int),request.form.get('reference_no'))
         try:amount=float(request.form.get('amount') or 0)
         except:amount=0
         try:ed=date.fromisoformat(request.form.get('entry_date') or date.today().isoformat())
@@ -29981,18 +29988,28 @@ def discount_approval_decision(req_id):
 def doctor_earnings_report():
     start,end,start_dt,end_dt=management_date_range()
     doctor_id=request.args.get('doctor_id',type=int)
-    orders=management_orders_query(start_dt,end_dt).all()
+    from replacement_settlements import actor
+    user=actor(_reporting_support_sys.modules[__name__])
+    branch_id=request.args.get('branch_id',type=int)
+    if not has_perm('*'):
+        if branch_id and branch_id!=user.branch_id:abort(403)
+        branch_id=user.branch_id
+    query=management_orders_query(start_dt,end_dt)
+    if branch_id:query=query.filter(Order.branch_id==branch_id)
+    orders=query.all()
+    visible_doctors={}
     rows=[];tot_share=tot_revenue=tot_discount=0.0
     for o in orders:
         share,rule,doctor=performing_doctor_share_for_order(o)
         if not doctor: continue
+        visible_doctors[doctor.id]=doctor
         if doctor_id and doctor.id!=doctor_id: continue
         revenue=float(o.contract_price or o.gross_price or 0)
         discount=total_order_discount(o)
         rows.append({'order':o,'doctor':doctor,'share':share,'rule':rule,'revenue':revenue,'discount':discount,'net':effective_patient_due(o)})
         tot_share+=share;tot_revenue+=revenue;tot_discount+=discount
     return render_template('doctor_earnings.html',rows=rows,start=start,end=end,doctor_id=doctor_id,
-        doctors=User.query.filter_by(active=True).order_by(User.full_name).all(),
+        doctors=sorted(visible_doctors.values(),key=lambda d:d.full_name or d.username),
         total_share=tot_share,total_revenue=tot_revenue,total_discount=tot_discount)
 
 
@@ -38539,3 +38556,6 @@ register_report_revision_editor(_reporting_support_sys.modules[__name__])
 
 from physician_final_counts import register as register_physician_final_counts
 register_physician_final_counts(_reporting_support_sys.modules[__name__])
+
+from replacement_settlements import register as register_replacement_settlements
+register_replacement_settlements(_reporting_support_sys.modules[__name__])
