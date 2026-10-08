@@ -46,7 +46,8 @@ def snapshot(m, lower, upper, branch_id=None, doctor_id=None, status='ALL', page
     if status not in ('ALL', 'VERIFIED', 'FINAL') or not isinstance(page, int) or page < 1:
         m.abort(400)
     source = report_rows(m, lower, upper, branch_id, status)
-    ids = [row[0] for row in m.db.session.query(source.c.doctor_id).filter(source.c.doctor_id.is_not(None)).distinct()]
+    physician_source = source if status == 'ALL' else report_rows(m, lower, upper, branch_id, 'ALL')
+    ids = [row[0] for row in m.db.session.query(physician_source.c.doctor_id).filter(physician_source.c.doctor_id.is_not(None)).distinct()]
     doctors = m.User.query.filter(m.User.id.in_(ids)).order_by(m.User.full_name, m.User.username).all()
     branches_q = m.Branch.query
     if branch_id:

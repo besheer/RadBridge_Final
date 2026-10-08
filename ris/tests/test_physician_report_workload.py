@@ -140,3 +140,12 @@ def test_original_approver_does_not_change_reporting_attribution(workload):
 def test_unassigned_owner_stays_explicit(workload):
     c=workload;c.verified_order.assigned_doctor_id=None;c.m.db.session.flush()
     assert any(row['doctor_id'] is None and row['verified']==1 for row in snapshot(c)['summary'])
+
+
+def test_physician_choice_remains_when_selected_status_has_no_results(workload):
+    c=workload;c.verified_report.status='DRAFT';c.revisions[0].status='DRAFT';c.m.db.session.flush()
+    result=snapshot(c,status='VERIFIED',doctor_id=c.docs[0].id)
+    assert result['total_details']==0 and c.docs[0] in result['doctors']
+    html=c.client.get('/coordinator/physician-reports?start=2038-02-01&end=2038-02-28&status=VERIFIED&doctor_id='+str(c.docs[0].id)).get_data(as_text=True)
+    assert 'value="'+str(c.docs[0].id)+'" selected' in html
+    assert c.orders[1].accession not in html
