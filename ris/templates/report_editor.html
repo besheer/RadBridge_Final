@@ -1,214 +1,5 @@
 {% extends "base.html" %}
 {% block page_title %}Reporting — {{order.accession}}
-<script id="radiology-dictation-js">
-(function(){
- const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
- const status=document.getElementById('dictationStatus');
- document.querySelectorAll('[data-dictate]').forEach(btn=>{
-   btn.addEventListener('click',()=>{
-     if(!SR){status.textContent='Speech recognition is not supported in this browser.';return;}
-     const target=document.querySelector('textarea[name="'+btn.dataset.dictate+'"]');
-     if(!target || target.readOnly)return;
-     const rec=new SR(); rec.lang=document.getElementById('dictationLanguage').value; rec.interimResults=true; rec.continuous=false;
-     const original=target.value; let finalText='';
-     rec.onstart=()=>{status.textContent='Listening…';btn.classList.add('recording');};
-     rec.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=t+' ';else interim+=t;}target.value=(original+(original?' ':'')+finalText+interim).trim();};
-     rec.onerror=e=>status.textContent='Dictation error: '+e.error;
-     rec.onend=()=>{status.textContent='Ready';btn.classList.remove('recording');};
-     rec.start();
-   });
- });
-})();
-</script>
-
-{% if report.status != 'FINAL' %}
-<div id="rb-report-lease-status"
-     style="display:none;margin:10px 0"
-     class="flash warning"></div>
-
-<script>
-(function () {
-  const form = document.getElementById('web-report-form');
-  const webToken = document.getElementById('web-lease-token');
-  const uploadToken = document.getElementById('upload-lease-token');
-  const statusBox = document.getElementById('rb-report-lease-status');
-
-  if (!form || !webToken) return;
-
-  const acquireUrl = "{{ url_for('report_lease_acquire', order_id=order.id) }}";
-  const releaseUrl = "{{ url_for('report_lease_release', order_id=order.id) }}";
-
-  let leaseToken = '';
-  let acquiring = null;
-  let renewTimer = null;
-
-  function setTokens(token) {
-    leaseToken = token || '';
-    webToken.value = leaseToken;
-
-    if (uploadToken) {
-      uploadToken.value = leaseToken;
-    }
-  }
-
-  function showLocked(message) {
-    statusBox.style.display = 'block';
-    statusBox.textContent =
-      message || 'This report is currently being edited by another user.';
-
-    form.querySelectorAll(
-      'textarea, input[name="radiologist"]'
-    ).forEach(function (el) {
-      el.readOnly = true;
-    });
-  }
-
-  async function acquireLease() {
-    if (acquiring) return acquiring;
-
-    acquiring = fetch(acquireUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify({
-        editor_type: 'BROWSER',
-        lease_token: leaseToken || ''
-      })
-    })
-    .then(async function (response) {
-      const data = await response.json().catch(function () {
-        return {};
-      });
-
-      if (!response.ok || !data.ok || !data.lease_token) {
-        if (
-          response.status === 409 &&
-          data.error === 'REPORT_EDIT_LOCKED'
-        ) {
-          showLocked();
-        }
-
-        throw new Error(
-          data.error || 'REPORT_LEASE_ACQUIRE_FAILED'
-        );
-      }
-
-      setTokens(data.lease_token);
-      statusBox.style.display = 'none';
-
-      return data.lease_token;
-    })
-    .finally(function () {
-      acquiring = null;
-    });
-
-    return acquiring;
-  }
-
-  function startRenewTimer() {
-    if (renewTimer) return;
-
-    renewTimer = window.setInterval(function () {
-      if (!leaseToken) return;
-
-      acquireLease().catch(function () {});
-    }, 60000);
-  }
-
-  const editFields = form.querySelectorAll(
-    'textarea[name="findings"], ' +
-    'textarea[name="impression"], ' +
-    'input[name="radiologist"]'
-  );
-
-  editFields.forEach(function (el) {
-    el.addEventListener('beforeinput', function () {
-      if (!leaseToken) {
-        acquireLease()
-          .then(startRenewTimer)
-          .catch(function () {});
-      }
-    }, { once: true });
-
-    el.addEventListener('focus', function () {
-      if (!leaseToken) {
-        acquireLease()
-          .then(startRenewTimer)
-          .catch(function () {});
-      }
-    }, { once: true });
-  });
-
-  form.addEventListener('submit', function (event) {
-    const submitter = event.submitter;
-    const action = submitter
-      ? String(submitter.value || '').toUpperCase()
-      : 'DRAFT';
-
-    if (action !== 'DRAFT') {
-      return;
-    }
-
-    if (leaseToken) {
-      return;
-    }
-
-    event.preventDefault();
-
-    acquireLease()
-      .then(function () {
-        startRenewTimer();
-
-        if (submitter) {
-          form.requestSubmit(submitter);
-        } else {
-          form.submit();
-        }
-      })
-      .catch(function () {});
-  });
-
-  const uploadForm = document.querySelector(
-    'form[action="{{ url_for("report_upload", order_id=order.id) }}"]'
-  );
-
-  if (uploadForm) {
-    uploadForm.addEventListener('submit', function (event) {
-      if (leaseToken) return;
-
-      event.preventDefault();
-
-      acquireLease()
-        .then(function () {
-          startRenewTimer();
-          uploadForm.requestSubmit();
-        })
-        .catch(function () {});
-    });
-  }
-
-  window.addEventListener('pagehide', function () {
-    if (!leaseToken) return;
-
-    const payload = JSON.stringify({
-      lease_token: leaseToken
-    });
-
-    if (navigator.sendBeacon) {
-      const blob = new Blob(
-        [payload],
-        { type: 'application/json' }
-      );
-
-      navigator.sendBeacon(releaseUrl, blob);
-    }
-  });
-})();
-</script>
-{% endif %}
-
 {% endblock %}
 {% block subtitle %}{{order.patient.name}} · {{order.patient.patient_id}} · {{order.modality}}{% endblock %}
 {% block content %}
@@ -565,5 +356,213 @@
     {% for h in history %}<tr><td>v{{'%03d'|format(h.version_no)}}</td><td>{{h.action}}</td><td>{{h.created_role or '-'}}</td><td>{{h.radiologist}}</td><td>{{h.change_summary or '-'}}</td><td><small>{{(h.sha256 or '')[:12]}}</small></td><td>{{h.created_at}}</td></tr>{% endfor %}
   </table>
 </div>
+{% endif %}
+<script id="radiology-dictation-js">
+(function(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ const status=document.getElementById('dictationStatus');
+ document.querySelectorAll('[data-dictate]').forEach(btn=>{
+   btn.addEventListener('click',()=>{
+     if(!SR){status.textContent='Speech recognition is not supported in this browser.';return;}
+     const target=document.querySelector('textarea[name="'+btn.dataset.dictate+'"]');
+     if(!target || target.readOnly)return;
+     const rec=new SR(); rec.lang=document.getElementById('dictationLanguage').value; rec.interimResults=true; rec.continuous=false;
+     const original=target.value; let finalText='';
+     rec.onstart=()=>{status.textContent='Listening…';btn.classList.add('recording');};
+     rec.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=t+' ';else interim+=t;}target.value=(original+(original?' ':'')+finalText+interim).trim();};
+     rec.onerror=e=>status.textContent='Dictation error: '+e.error;
+     rec.onend=()=>{status.textContent='Ready';btn.classList.remove('recording');};
+     rec.start();
+   });
+ });
+})();
+</script>
+
+{% if report.status != 'FINAL' %}
+<div id="rb-report-lease-status"
+     style="display:none;margin:10px 0"
+     class="flash warning"></div>
+
+<script>
+(function () {
+  const form = document.getElementById('web-report-form');
+  const webToken = document.getElementById('web-lease-token');
+  const uploadToken = document.getElementById('upload-lease-token');
+  const statusBox = document.getElementById('rb-report-lease-status');
+
+  if (!form || !webToken) return;
+
+  const acquireUrl = "{{ url_for('report_lease_acquire', order_id=order.id) }}";
+  const releaseUrl = "{{ url_for('report_lease_release', order_id=order.id) }}";
+
+  let leaseToken = '';
+  let acquiring = null;
+  let renewTimer = null;
+
+  function setTokens(token) {
+    leaseToken = token || '';
+    webToken.value = leaseToken;
+
+    if (uploadToken) {
+      uploadToken.value = leaseToken;
+    }
+  }
+
+  function showLocked(message) {
+    statusBox.style.display = 'block';
+    statusBox.textContent =
+      message || 'This report is currently being edited by another user.';
+
+    form.querySelectorAll(
+      'textarea, input[name="radiologist"]'
+    ).forEach(function (el) {
+      el.readOnly = true;
+    });
+  }
+
+  async function acquireLease() {
+    if (acquiring) return acquiring;
+
+    acquiring = fetch(acquireUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        editor_type: 'BROWSER',
+        lease_token: leaseToken || ''
+      })
+    })
+    .then(async function (response) {
+      const data = await response.json().catch(function () {
+        return {};
+      });
+
+      if (!response.ok || !data.ok || !data.lease_token) {
+        if (
+          response.status === 409 &&
+          data.error === 'REPORT_EDIT_LOCKED'
+        ) {
+          showLocked();
+        }
+
+        throw new Error(
+          data.error || 'REPORT_LEASE_ACQUIRE_FAILED'
+        );
+      }
+
+      setTokens(data.lease_token);
+      statusBox.style.display = 'none';
+
+      return data.lease_token;
+    })
+    .finally(function () {
+      acquiring = null;
+    });
+
+    return acquiring;
+  }
+
+  function startRenewTimer() {
+    if (renewTimer) return;
+
+    renewTimer = window.setInterval(function () {
+      if (!leaseToken) return;
+
+      acquireLease().catch(function () {});
+    }, 60000);
+  }
+
+  const editFields = form.querySelectorAll(
+    'textarea[name="findings"], ' +
+    'textarea[name="impression"], ' +
+    'input[name="radiologist"]'
+  );
+
+  editFields.forEach(function (el) {
+    el.addEventListener('beforeinput', function () {
+      if (!leaseToken) {
+        acquireLease()
+          .then(startRenewTimer)
+          .catch(function () {});
+      }
+    }, { once: true });
+
+    el.addEventListener('focus', function () {
+      if (!leaseToken) {
+        acquireLease()
+          .then(startRenewTimer)
+          .catch(function () {});
+      }
+    }, { once: true });
+  });
+
+  form.addEventListener('submit', function (event) {
+    const submitter = event.submitter;
+    const action = submitter
+      ? String(submitter.value || '').toUpperCase()
+      : 'DRAFT';
+
+    if (action !== 'DRAFT') {
+      return;
+    }
+
+    if (leaseToken) {
+      return;
+    }
+
+    event.preventDefault();
+
+    acquireLease()
+      .then(function () {
+        startRenewTimer();
+
+        if (submitter) {
+          form.requestSubmit(submitter);
+        } else {
+          form.submit();
+        }
+      })
+      .catch(function () {});
+  });
+
+  const uploadForm = document.querySelector(
+    'form[action="{{ url_for("report_upload", order_id=order.id) }}"]'
+  );
+
+  if (uploadForm) {
+    uploadForm.addEventListener('submit', function (event) {
+      if (leaseToken) return;
+
+      event.preventDefault();
+
+      acquireLease()
+        .then(function () {
+          startRenewTimer();
+          uploadForm.requestSubmit();
+        })
+        .catch(function () {});
+    });
+  }
+
+  window.addEventListener('pagehide', function () {
+    if (!leaseToken) return;
+
+    const payload = JSON.stringify({
+      lease_token: leaseToken
+    });
+
+    if (navigator.sendBeacon) {
+      const blob = new Blob(
+        [payload],
+        { type: 'application/json' }
+      );
+
+      navigator.sendBeacon(releaseUrl, blob);
+    }
+  });
+})();
+</script>
 {% endif %}
 {% endblock %}
