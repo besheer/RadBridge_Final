@@ -202,3 +202,17 @@ def test_legacy_long_accession_does_not_break_manifest(imaging):
     root=ET.fromstring(response.data)
     study=root.find('.//{http://www.weasis.org/xsd/2.5}Study')
     assert study.attrib['StudyInstanceUID']==UID and 'AccessionNumber' not in study.attrib
+
+
+def test_gunicorn_sendfile_starts_at_original_header(imaging,monkeypatch):
+    import os
+    original=v.send_file
+    def serve(stream,**kwargs):
+        # Gunicorn's zero-copy sendfile uses the descriptor, not Python's
+        # buffered tell(). A shifted offset silently drops the DICOM header.
+        assert os.lseek(stream.fileno(),0,os.SEEK_CUR)==0
+        return original(stream,**kwargs)
+    monkeypatch.setattr(v,'send_file',serve)
+    w=imaging;path=launch(w)
+    response=w.client.get(path.replace('/manifest.xml','/instances/'+INSTANCE+'.dcm'))
+    assert response.status_code==200 and response.data==w.binary

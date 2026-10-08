@@ -223,7 +223,9 @@ def register(m):
         series = data('/series/' + series_id)
         if series.get('ParentStudy') != order.pacs_study_id:
             abort(403)
-        stream = tempfile.TemporaryFile(mode='w+b')
+        # Gunicorn sendfile reads the OS descriptor position, so the validated
+        # stream must not retain a Python read buffer with a different offset.
+        stream = tempfile.TemporaryFile(mode='w+b', buffering=0)
         try:
             with orthanc('/instances/' + instance_id + '/file', stream=True) as upstream:
                 if upstream.status_code != 200:
