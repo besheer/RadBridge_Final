@@ -3,6 +3,7 @@ import { draftWarningMessages } from './draftWarnings';
 import { createReportFetch } from './reportIdentity';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import OnlyOfficeReportEditor from './OnlyOfficeReportEditor';
+import ViewerQuotation from './ViewerQuotation';
 
 export default function RadBridgeReportingPanel({ servicesManager, commandsManager }: { servicesManager?: any; commandsManager?: any }) {
   const [data, setData] = useState<any>(null);
@@ -1198,6 +1199,7 @@ export default function RadBridgeReportingPanel({ servicesManager, commandsManag
 
       {activeTool==='Key Images' && <section style={{padding:10,border:'1px solid #334155',marginBottom:12}}>
         <strong>Key image capture</strong>
+        <ViewerQuotation servicesManager={servicesManager} reportData={data} />
         <p>Select the image in the viewer, then export a preview. This does not save a DICOM Key Object or attach the image to the report automatically.</p>
         <button type="button" style={buttonStyle} onClick={exportActiveImage}>Export active image</button>
       </section>}
