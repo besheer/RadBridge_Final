@@ -1,0 +1,14 @@
+# User CSV transfer
+
+Admin users now provides UTF-8 BOM CSV export, header-only template and reviewed create-only import.
+Use existing role/branch codes to transfer between installations. All 12 template columns required; optional values may be blank.
+Passwords/hashes never exported or imported. Set a 10–128 character temporary password at confirmation; new accounts must change it at first login.
+Existing usernames (case insensitive) skipped without changing accounts or preferences. Duplicate usernames within the file and invalid data block the entire batch.
+500-row / 2 MiB limit. Contact validation and role escalation policy reused. Review holds normalized data in bounded process memory for 15 minutes, bound to actor and single-use. Restart or another preview invalidates it. Confirmation revalidates current users, role permissions and branch identity; all inserts commit atomically. CSRF protects mutations. CSV values are formula neutralized for spreadsheet safety and reversible on reimport.
+users.view permits export/template; users.manage plus users.view permits import. No schema changes or real user imports during acceptance.
+
+Operational context: this continues the user-authorized current Canary on port 18092 with dedicated feature worktree based on d970ea0. AGENTS R8 directory/container/18091 names describe a superseded environment; current inspected Canary configuration is preserved. Live and Stage unchanged.
+
+Clinical scope: optional scope_enabled/modalities/device_keys/room_keys CSV fields transfer existing configured restrictions; keys use branch/AE and branch/room, with | between alternatives. Modalities/devices/rooms combine with AND across dimensions, OR within each dimension. Enabling without a selection is rejected. Creation form and separate per-user clinical scope screen support the same restrictions. Existing accounts remain unrestricted until an administrator explicitly configures a scope. Scope storage preserves profile preferences, requires users.manage, target-role policy and CSRF. Queries for orders, patients and linked report/attachment records are filtered in SQL before pagination/counts; direct case paths and mutations recheck scope. Generic administration/unlinked PACS actions are denied to scoped actors. Current role/branch/doctor assignment boundaries still apply. Manual, visit and automatic assignment validate the doctor's scope, including background workers. Signed OHIF writes and Weasis access recheck current scope. No schema migration or changes to existing scopes/accounts during release.
+
+Viewer limitation: this governs RIS case access and its viewer/report launches, not independently granted direct PACS credentials or a separate archive accessed outside RIS. PACS infrastructure credentials and network access remain their existing security boundary.

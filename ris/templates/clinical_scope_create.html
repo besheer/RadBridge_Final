@@ -1,0 +1,5 @@
+{% set scope_data=clinical_scope_context() %}
+{% with scope_modalities=scope_data.scope_modalities,scope_devices=scope_data.scope_devices,scope_rooms=scope_data.scope_rooms,scope=None %}
+<input type="hidden" name="scope_csrf" value="{{ scope_data.scope_csrf }}">
+{% include 'clinical_scope_fields.html' %}
+{% endwith %}

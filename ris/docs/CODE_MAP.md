@@ -166,457 +166,457 @@
 
 | Function | Decorator(s) | app.py line |
 |---|---|---:|
-| `set_language` | `app.route('/lang/<code>')` | 5279 |
-| `login` | `app.route('/login', methods=['GET', 'POST'])` | 5360 |
-| `logout` | `app.route('/logout')` | 5378 |
-| `dashboard` | `app.route('/')` | 5383 |
-| `patients` | `app.route('/patients')` | 5457 |
-| `new_patient` | `app.route('/patients/new', methods=['GET', 'POST'])` | 5493 |
-| `orders` | `app.route('/orders')` | 5540 |
-| `new_order` | `app.route('/orders/new', methods=['GET', 'POST'])` | 5549 |
-| `change_password` | `app.route('/profile/password', methods=['GET', 'POST'])` | 5925 |
-| `admin_insurance_approvals` | `app.route('/admin/insurance-approvals', methods=['GET', 'POST'])` | 5943 |
-| `admin_insurance_approval_edit` | `app.get('/admin/insurance-approvals/<int:portal_id>')` | 6114 |
-| `admin_insurance_approval_toggle` | `app.post('/admin/insurance-approvals/<int:portal_id>/toggle')` | 6131 |
-| `admin_insurance_approval_test` | `app.post('/admin/insurance-approvals/<int:portal_id>/test')` | 6152 |
-| `insurance_approvals_dashboard` | `app.get('/approvals')` | 6195 |
-| `order_detail` | `app.route('/orders/<int:order_id>')` | 6265 |
-| `insurance_approval_start` | `app.post('/orders/<int:order_id>/insurance-approval/start')` | 6310 |
-| `insurance_approval_update` | `app.post('/orders/<int:order_id>/insurance-approval/update')` | 6370 |
-| `convert_to_work_order` | `app.post('/orders/<int:order_id>/convert-to-work-order')` | 6439 |
-| `resend_mwl` | `app.route('/orders/<int:order_id>/resend-mwl', methods=['POST'])` | 6569 |
-| `add_payment` | `app.route('/payments/<int:order_id>', methods=['POST'])` | 6601 |
-| `nursing_worklist` | `app.route('/nursing')` | 6608 |
-| `nursing_case` | `app.route('/nursing/<int:order_id>', methods=['GET', 'POST'])` | 6690 |
-| `nursing_consumable_correct` | `app.post('/nursing/<int:order_id>/correct')` | 6747 |
-| `procedure_consumables` | `app.route('/admin/procedures/<int:procedure_id>/consumables', methods=['GET', 'POST'])` | 6768 |
-| `procedure_consumable_delete` | `app.post('/admin/procedures/<int:procedure_id>/consumables/<int:row_id>/delete')` | 6782 |
-| `patient_portal` | `app.route('/portal/<token>', methods=['GET', 'POST'])` | 6790 |
-| `patient_portal_report` | `app.route('/portal/<token>/report')` | 6810 |
-| `admin_notifications` | `app.route('/admin/notifications')` | 6823 |
-| `admin_notifications_process` | `app.post('/admin/notifications/process')` | 6829 |
-| `admin_notification_retry` | `app.post('/admin/notifications/<int:notification_id>/retry')` | 6836 |
-| `order_study_thumbnail` | `app.get('/orders/<int:order_id>/study-thumbnail')` | 6846 |
-| `technician_case_workspace` | `app.get('/technician/<int:order_id>')` | 6885 |
-| `technician_case_note` | `app.post('/technician/<int:order_id>/note')` | 6960 |
-| `technician_case_consume` | `app.post('/technician/<int:order_id>/consume')` | 6995 |
-| `technician_worklist` | `app.route('/technician')` | 7056 |
-| `technician_check_images` | `app.post('/technician/<int:order_id>/check-images')` | 7108 |
-| `technician_status` | `app.route('/technician/<int:order_id>/status', methods=['POST'])` | 7184 |
-| `order_exam_status` | `app.post('/orders/<int:order_id>/exam-status')` | 7259 |
-| `order_exam_status_override` | `app.post('/orders/<int:order_id>/exam-status/override')` | 7303 |
-| `pacs_home` | `app.route('/pacs')`<br>`app.route('/pacs/')` | 7335 |
-| `pacs_tracking` | `app.route('/pacs/tracking')` | 7346 |
-| `pacs_tracking_refresh` | `app.post('/pacs/tracking/refresh')` | 7354 |
-| `doctor_presence_heartbeat` | `app.post('/api/doctor/presence/heartbeat')` | 7394 |
-| `doctor_workspace` | `app.route('/doctor')` | 7411 |
-| `doctor_workspace_data` | `app.get('/api/doctor/workspace')` | 7424 |
-| `doctor_workspace_column_layout_save` | `app.post('/api/doctor/workspace/column-layout')` | 7553 |
-| `doctor_workspace_open` | `app.get('/doctor/cases/<int:order_id>/open')` | 7601 |
-| `admin_assignment_visits` | `app.route('/admin/assignment-visits', methods=['GET', 'POST'])` | 7610 |
-| `api_registration_visits` | `app.get('/api/registration/visits')` | 7660 |
-| `complete_visit_registration` | `app.post('/admin/assignment-visits/<visit_id>/complete-registration')` | 7672 |
-| `admin_assignment_monitor` | `app.get('/admin/assignment-monitor')` | 7688 |
-| `coordinator_assignments` | `app.get('/coordinator/assignments')` | 7694 |
-| `admin_assignment_distribution` | `app.route('/admin/assignment-distribution', methods=['GET', 'POST'])` | 7706 |
-| `doctor_reading_start` | `app.post('/doctor/cases/<int:order_id>/start-reading')` | 7790 |
-| `reports` | `app.route('/reports')` | 7803 |
-| `admin_report_reopen` | `app.post('/reports/<int:order_id>/admin-reopen')` | 7809 |
-| `report_lease_acquire` | `app.post('/reports/<int:order_id>/lease/acquire')` | 7855 |
-| `report_lease_release` | `app.post('/reports/<int:order_id>/lease/release')` | 7938 |
-| `report_editor` | `app.route('/reports/<int:order_id>', methods=['GET', 'POST'])` | 7985 |
-| `word_template` | `app.route('/reports/<int:order_id>/word')` | 8462 |
-| `api_reporting_case` | `app.route('/api/reporting/cases/<accession>')` | 8681 |
-| `api_reporting_lease_acquire` | `app.post('/api/reporting/cases/<accession>/lease/acquire')` | 8687 |
-| `api_reporting_lease_release` | `app.post('/api/reporting/cases/<accession>/lease/release')` | 8779 |
-| `api_reporting_draft` | `app.route('/api/reporting/cases/<accession>/draft', methods=['POST'])` | 8830 |
-| `api_reporting_verify` | `app.post('/api/reporting/cases/<accession>/verify')` | 9051 |
-| `api_reporting_finalize` | `app.route('/api/reporting/cases/<accession>/finalize', methods=['POST'])` | 9253 |
-| `schedule_calendar` | `app.route('/schedule/calendar')` | 13466 |
-| `schedule_ocr_preview` | `app.post('/schedule/ocr-preview')` | 13770 |
-| `schedule_unified_submit` | `app.post('/schedule/unified-submit')` | 13846 |
-| `schedule_book` | `app.post('/schedule/book')` | 13989 |
-| `order_workflow_status` | `app.post('/orders/<int:order_id>/workflow-status')` | 14056 |
-| `appointments` | `app.route('/appointments', methods=['GET', 'POST'])` | 14080 |
-| `appointment_action` | `app.route('/appointments/<int:appointment_id>/<action>', methods=['POST'])` | 14100 |
-| `appointment_edit` | `app.route('/appointments/<int:appointment_id>/edit', methods=['GET', 'POST'])` | 14190 |
-| `appointment_reschedule` | `app.post('/appointments/<int:appointment_id>/reschedule')` | 14249 |
-| `appointment_status` | `app.post('/appointments/<int:appointment_id>/status')` | 14278 |
-| `schedule_maintenance` | `app.route('/schedule/maintenance', methods=['POST'])` | 14293 |
-| `schedule_v2` | `app.route('/schedule/v2')` | 14310 |
-| `schedule_v2_book_form` | `app.route('/schedule/v2/book')` | 14315 |
-| `schedule_v2_book_submit` | `app.post('/schedule/v2/book')` | 14320 |
-| `device_booking_status` | `app.post('/devices/<int:device_id>/booking-status')` | 14358 |
-| `admin_booking_availability` | `app.route('/admin/booking-availability', methods=['GET', 'POST'])` | 14379 |
-| `api_smart_booking_availability` | `app.get('/api/booking/smart-availability')` | 14415 |
-| `admin_booking_availability_seed` | `app.post('/admin/booking-availability/seed')` | 14601 |
-| `order_clinical_notes` | `app.route('/orders/<int:order_id>/clinical-notes', methods=['GET', 'POST'])` | 14631 |
-| `my_profile` | `app.route('/my/profile', methods=['GET', 'POST'])` | 14645 |
-| `admin_dictionary` | `app.route('/admin/dictionary', methods=['GET', 'POST'])` | 14752 |
-| `admin_booking_control_center` | `app.get('/admin/booking-control-center')` | 14777 |
-| `admin_booking_control` | `app.route('/admin/booking-control', methods=['GET', 'POST'])` | 14847 |
-| `admin_booking_control_deactivate` | `app.post('/admin/booking-control/<int:block_id>/deactivate')` | 14879 |
-| `ui_language_switch` | `app.post('/ui/language')` | 14891 |
-| `admin_dictionary_reset` | `app.post('/admin/dictionary/<int:entry_id>/reset')` | 14907 |
-| `my_ribbon` | `app.route('/my/ribbon', methods=['GET', 'POST'])` | 14921 |
-| `admin_ribbon_designer` | `app.route('/admin/ribbon-designer', methods=['GET', 'POST'])` | 14948 |
-| `operations_journey` | `app.get('/operations/journey')` | 14974 |
-| `order_journey_stage` | `app.post('/orders/<int:order_id>/journey/<stage>')` | 14982 |
-| `operations_booking_board` | `app.get('/operations/booking-board')` | 14998 |
-| `operations_dashboard` | `app.get('/operations/dashboard')` | 15006 |
-| `chat_home` | `app.get('/chat')` | 15022 |
-| `chat_direct_create` | `app.post('/chat/direct')` | 15029 |
-| `chat_group_create` | `app.post('/chat/group')` | 15040 |
-| `chat_case` | `app.get('/chat/case/<int:order_id>')` | 15049 |
-| `chat_thread` | `app.route('/chat/<int:thread_id>', methods=['GET', 'POST'])` | 15054 |
-| `chat_message_to_clinical_note` | `app.post('/chat/<int:thread_id>/add-to-clinical-note/<int:message_id>')` | 15070 |
-| `patient_documents` | `app.route('/patients/<int:patient_id>/documents', methods=['GET', 'POST'])` | 15078 |
-| `patient_timeline` | `app.get('/patients/<int:patient_id>/timeline')` | 15116 |
-| `document_review` | `app.get('/documents/<int:document_id>/review')` | 15122 |
-| `document_review_save` | `app.post('/documents/<int:document_id>/review')` | 15129 |
-| `telephony_incoming` | `app.post('/api/telephony/incoming')` | 15142 |
-| `telephony_calls` | `app.get('/telephony/calls')` | 15160 |
-| `telephony_caller` | `app.get('/telephony/caller/<int:call_id>')` | 15166 |
-| `telephony_call_notes` | `app.post('/telephony/calls/<int:call_id>/notes')` | 15175 |
-| `admin_referrers` | `app.route('/admin/referrers', methods=['GET', 'POST'])` | 15187 |
-| `admin_import_export` | `app.route('/admin/import-export', methods=['GET', 'POST'])` | 15324 |
-| `admin_export_entity` | `app.route('/admin/export/<entity>.csv')` | 15395 |
-| `report_upload` | `app.route('/reports/<int:order_id>/upload', methods=['POST'])` | 15421 |
-| `report_source` | `app.route('/reports/<int:order_id>/source')` | 15738 |
-| `attachment_upload` | `app.route('/attachments/upload', methods=['POST'])` | 15763 |
-| `attachment_download` | `app.route('/attachments/<int:attachment_id>')` | 15797 |
-| `attachment_preview` | `app.route('/attachments/<int:attachment_id>/preview')` | 15804 |
-| `attachment_delete` | `app.post('/attachments/<int:attachment_id>/delete')` | 15812 |
-| `order_attachments` | `app.get('/orders/<int:order_id>/attachments')` | 15829 |
-| `order_sticker` | `app.route('/orders/<int:order_id>/sticker')` | 15842 |
-| `order_sticker_preview` | `app.route('/orders/<int:order_id>/sticker/preview')` | 15867 |
-| `barcode_scan` | `app.route('/scan', methods=['GET', 'POST'])` | 15875 |
-| `admin_company` | `app.route('/admin/company', methods=['GET', 'POST'])` | 15887 |
-| `company_logo` | `app.route('/company/logo')` | 15904 |
-| `admin_sticker_templates` | `app.route('/admin/sticker-templates', methods=['GET', 'POST'])` | 15911 |
-| `pacs_reconciliation_preview` | `app.get('/pacs/reconciliation/<study_id>/preview')` | 15928 |
-| `pacs_reconciliation_correct_dicom` | `app.post('/pacs/reconciliation/<study_id>/correct-dicom')` | 15948 |
-| `pacs_reconciliation_audit` | `app.get('/pacs/reconciliation/audit')` | 15969 |
-| `pacs_reconciliation_example` | `app.get('/pacs/reconciliation/example')` | 15981 |
-| `pacs_reconciliation` | `app.route('/pacs/reconciliation')` | 15996 |
-| `pacs_exam_link_create` | `app.post('/pacs/exam-link')` | 16133 |
-| `pacs_exam_link_remove` | `app.post('/pacs/exam-link/<int:link_id>/remove')` | 16199 |
-| `pacs_reconciliation_match` | `app.post('/pacs/reconciliation/<study_id>/match')` | 16244 |
-| `pacs_reconciliation_quarantine` | `app.post('/pacs/reconciliation/<study_id>/quarantine')` | 16299 |
-| `pacs_reconciliation_auto_safe` | `app.post('/pacs/reconciliation/auto-safe')` | 16337 |
-| `api_command_center_case_graph_v3` | `app.get('/api/command-center/case/<int:order_id>/graph-v3')` | 16413 |
-| `api_command_center_control_get` | `app.get('/api/command-center/control')` | 17042 |
-| `api_command_center_control_set` | `app.post('/api/command-center/control')` | 17051 |
-| `api_command_center_resources` | `app.get('/api/command-center/resources')` | 17599 |
-| `command_center_events_stream` | `app.get('/api/command-center/events/stream')` | 17673 |
-| `live_command_center` | `app.route('/operations/live-command-center')` | 17815 |
-| `command_center_events` | `app.route('/api/command-center/events')` | 17828 |
-| `command_center_snapshot` | `app.route('/api/command-center/snapshot')` | 18437 |
-| `financial_center` | `app.route('/accounting/financial-center')` | 18635 |
-| `financial_center_export` | `app.route('/accounting/financial-center/export/<fmt>')` | 18646 |
-| `financial_entries` | `app.route('/accounting/entries', methods=['GET', 'POST'])` | 18657 |
-| `financial_entry_void` | `app.post('/accounting/entries/<int:entry_id>/void')` | 18683 |
-| `receivables` | `app.route('/accounting/receivables')` | 18691 |
-| `receivables_csv` | `app.route('/accounting/receivables.csv')` | 18709 |
-| `receive_payment` | `app.route('/orders/<int:order_id>/payment', methods=['POST'])` | 18724 |
-| `receipt_view` | `app.route('/receipts/<int:receipt_id>')` | 18764 |
-| `mark_delivery` | `app.route('/orders/<int:order_id>/delivery/<item_type>', methods=['POST'])` | 18773 |
-| `cashier_workstation` | `app.route('/cashier')` | 18810 |
-| `refund_payment` | `app.post('/payments/<int:payment_id>/refund')` | 18834 |
-| `accounting_reports` | `app.route('/accounting/reports')` | 18873 |
-| `accounting_reports_csv` | `app.route('/accounting/reports.csv')` | 18910 |
-| `admin_diagnostics` | `app.route('/admin/diagnostics')` | 18923 |
-| `admin_reporting_demo` | `app.route('/admin/demo/reporting', methods=['GET', 'POST'])` | 19007 |
-| `admin_assignment` | `app.route('/admin/assignment', methods=['GET', 'POST'])` | 19018 |
-| `admin_assignment_strategies` | `app.route('/admin/assignment-strategies', methods=['GET', 'POST'])` | 19155 |
-| `admin_assignment_strategy_simulate` | `app.post('/admin/assignment-strategies/simulate')` | 19592 |
-| `admin_assignment_strategy_toggle` | `app.post('/admin/assignment-strategies/<int:strategy_id>/toggle')` | 19675 |
-| `admin_assignment_strategy_simulate_ui` | `app.route('/admin/assignment-strategies/simulate-ui', methods=['GET', 'POST'])` | 19722 |
-| `admin_assignment_strategy_clone` | `app.post('/admin/assignment-strategies/<int:strategy_id>/clone')` | 19785 |
-| `admin_assignment_strategy_history` | `app.get('/admin/assignment-strategies/<int:strategy_id>/history')` | 19877 |
-| `admin_assignment_strategy_rollback` | `app.post('/admin/assignment-strategies/<int:strategy_id>/rollback/<int:version_id>')` | 19897 |
-| `assign_case` | `app.route('/orders/<int:order_id>/assign', methods=['GET', 'POST'])` | 19995 |
-| `take_case` | `app.route('/orders/<int:order_id>/take', methods=['POST'])` | 20055 |
-| `unassigned_cases` | `app.route('/assignment/unassigned')` | 20083 |
-| `admin_home` | `app.route('/admin')`<br>`app.route('/admin/')` | 20222 |
-| `admin_users` | `app.route('/admin/users', methods=['GET', 'POST'])` | 20252 |
-| `admin_user_toggle` | `app.post('/admin/users/<int:user_id>/toggle')` | 20275 |
-| `admin_user_edit` | `app.post('/admin/users/<int:user_id>/edit')` | 20286 |
-| `admin_user_reset_password` | `app.post('/admin/users/<int:user_id>/reset-password')` | 20310 |
-| `admin_device_schedules` | `app.route('/admin/device-schedules', methods=['GET', 'POST'])` | 20326 |
-| `admin_device_blocks` | `app.route('/admin/device-blocks', methods=['POST'])` | 20351 |
-| `dicom_connections_page` | `app.get('/admin/dicom-connections')` | 20372 |
-| `dicom_connection_edit` | `app.route('/admin/dicom-connections/branches/<int:branch_id>', methods=['GET', 'POST'])` | 20391 |
-| `dicom_connection_echo` | `app.post('/admin/dicom-connections/<int:endpoint_id>/echo')` | 20415 |
-| `admin_branch_edit` | `app.route('/admin/branches/<int:branch_id>/edit', methods=['GET', 'POST'])` | 20428 |
-| `admin_devices` | `app.route('/admin/devices', methods=['GET', 'POST'])` | 20446 |
-| `admin_device_edit` | `app.route('/admin/devices/<int:device_id>/edit', methods=['POST'])` | 20457 |
-| `admin_procedures` | `app.route('/admin/procedures', methods=['GET', 'POST'])` | 20467 |
-| `admin_contracts` | `app.route('/admin/contracts', methods=['GET', 'POST'])` | 20478 |
-| `admin_contract_prices` | `app.route('/admin/contracts/<int:contract_id>/prices', methods=['GET', 'POST'])` | 20489 |
-| `admin_inventory` | `app.route('/admin/inventory', methods=['GET', 'POST'])` | 20501 |
-| `admin_inventory_edit` | `app.post('/admin/inventory/<int:item_id>/edit')` | 20516 |
-| `admin_inventory_adjust` | `app.post('/admin/inventory/<int:item_id>/adjust')` | 20535 |
-| `admin_inventory_seed_defaults` | `app.post('/admin/inventory/seed-defaults')` | 20551 |
-| `admin_inventory_export` | `app.route('/admin/inventory/export/<fmt>')` | 20559 |
-| `admin_inventory_import_template` | `app.route('/admin/inventory/import-template')` | 20578 |
-| `admin_inventory_import` | `app.post('/admin/inventory/import')` | 20592 |
-| `admin_inventory_movements` | `app.route('/admin/inventory/movements')` | 20635 |
-| `admin_inventory_batches` | `app.route('/admin/inventory/batches', methods=['GET', 'POST'])` | 20641 |
-| `admin_erp` | `app.route('/admin/erp', methods=['GET', 'POST'])` | 20663 |
-| `admin_erp_process` | `app.post('/admin/erp/process')` | 20682 |
-| `admin_erp_sync_items` | `app.post('/admin/erp/sync-items')` | 20689 |
-| `admin_audit` | `app.route('/admin/audit')` | 20705 |
-| `granular_delete_order_images_only` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-images')` | 21245 |
-| `granular_delete_preview_home` | `app.get('/admin/cancellation-center/preview')` | 23043 |
-| `granular_delete_order_preview` | `app.get('/admin/cancellation-center/order/<int:order_id>/preview')` | 23053 |
-| `granular_delete_order_reports_only` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-reports')` | 23076 |
-| `granular_delete_order_ris_case_data_only` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-ris-case-data')` | 23099 |
-| `granular_delete_order_full_case` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-full-case')` | 23405 |
-| `granular_delete_patient_preview` | `app.get('/admin/cancellation-center/patient/<int:patient_id>/preview')` | 23421 |
-| `correction_center` | `app.get('/correction-center')` | 24042 |
-| `patient_demographics_correction` | `app.route('/correction-center/orders/<int:order_id>/demographics', methods=['GET', 'POST'])` | 24064 |
-| `patient_demographics_correction_view` | `app.get('/correction-center/requests/<int:request_id>/demographics')` | 24082 |
-| `correction_request_submit` | `app.post('/correction-center/request')` | 24095 |
-| `correction_execution_queue` | `app.get('/correction-center/executions')` | 24216 |
-| `correction_execution_prepare_route` | `app.post('/correction-center/requests/<int:request_id>/execution/prepare')` | 24307 |
-| `correction_execution_claim_route` | `app.post('/correction-center/executions/<int:execution_id>/claim')` | 24370 |
-| `correction_execution_hold_route` | `app.post('/correction-center/executions/<int:execution_id>/hold')` | 24433 |
-| `correction_execution_release_route` | `app.post('/correction-center/executions/<int:execution_id>/release')` | 24495 |
-| `correction_execution_execute_route` | `app.post('/correction-center/executions/<int:execution_id>/execute')` | 24973 |
-| `correction_request_queue` | `app.get('/correction-center/requests')` | 25085 |
-| `correction_request_action` | `app.post('/correction-center/requests/<int:request_id>/action')` | 25104 |
-| `admin_data_deletion_center` | `app.get('/admin/data-deletion-center')` | 25169 |
-| `admin_cancellation_center` | `app.get('/admin/cancellation-center')` | 25182 |
-| `admin_cancel_appointment` | `app.post('/admin/cancellation-center/appointments/<int:appointment_id>/cancel')` | 25188 |
-| `admin_cancel_order` | `app.post('/admin/cancellation-center/orders/<int:order_id>/cancel')` | 25197 |
-| `admin_remove_order_referral` | `app.post('/admin/cancellation-center/orders/<int:order_id>/remove-referral')` | 25217 |
-| `admin_roles` | `app.route('/admin/roles', methods=['GET', 'POST'])` | 25228 |
-| `admin_access_review` | `app.get('/admin/access-review')` | 25249 |
-| `admin_branches` | `app.route('/admin/branches', methods=['GET', 'POST'])` | 25261 |
-| `admin_device_page` | `app.route('/admin/devices/<int:device_id>', methods=['GET', 'POST'])` | 25276 |
-| `my_registration_style` | `app.post('/my/registration-style')` | 25611 |
-| `admin_field_rules` | `app.route('/admin/field-rules', methods=['GET', 'POST'])` | 25621 |
-| `patient_alerts` | `app.route('/patients/<int:patient_id>/alerts', methods=['GET', 'POST'])` | 25643 |
-| `patient_alert_resolve` | `app.post('/patient-alerts/<int:alert_id>/resolve')` | 25657 |
-| `admin_company_legal` | `app.route('/admin/company-legal', methods=['GET', 'POST'])` | 25663 |
-| `studio_home` | `app.route('/studio')` | 25676 |
-| `studio_templates` | `app.route('/studio/templates/<template_type>', methods=['GET', 'POST'])` | 25680 |
-| `studio_template_publish` | `app.post('/studio/templates/<int:template_id>/publish')` | 25695 |
-| `doctor_templates` | `app.route('/doctor/templates', methods=['GET', 'POST'])` | 25706 |
-| `receipt_studio_print` | `app.get('/receipts/<int:receipt_id>/studio-print')` | 25723 |
-| `studio_template_preview` | `app.get('/studio/templates/<int:template_id>/preview')` | 25739 |
-| `report_word_from_doctor_template` | `app.get('/reports/<int:order_id>/word-template/<int:template_id>')` | 25747 |
-| `admin_ai_reporting` | `app.route('/admin/ai-reporting', methods=['GET', 'POST'])` | 25804 |
-| `ai_report_assistant` | `app.get('/reports/<int:order_id>/ai-assistant')` | 25821 |
-| `ai_report_generate` | `app.post('/reports/<int:order_id>/ai-assistant/generate')` | 25833 |
-| `ai_report_apply` | `app.post('/reports/<int:order_id>/ai-assistant/<int:draft_id>/apply')` | 25850 |
-| `ai_report_reject` | `app.post('/reports/<int:order_id>/ai-assistant/<int:draft_id>/reject')` | 25862 |
-| `report_prior_select` | `app.post('/reports/<int:order_id>/priors/select')` | 25869 |
-| `patient_external_priors` | `app.route('/patients/<int:patient_id>/external-priors', methods=['GET', 'POST'])` | 25881 |
-| `external_prior_confirm_match` | `app.post('/external-priors/<int:prior_id>/confirm-match')` | 25911 |
-| `external_prior_mark_mismatch` | `app.post('/external-priors/<int:prior_id>/mark-mismatch')` | 25917 |
-| `my_quick_actions` | `app.get('/my/quick-actions')` | 25925 |
-| `universal_search` | `app.get('/search')` | 25931 |
-| `admin_communications` | `app.route('/admin/communications', methods=['GET', 'POST'])` | 25969 |
-| `admin_communication_template_save` | `app.route('/admin/communication-templates', methods=['POST'])` | 25992 |
-| `patient_communications` | `app.route('/patients/<int:patient_id>/communications', methods=['GET', 'POST'])` | 26011 |
-| `communication_retry` | `app.post('/communications/<int:comm_id>/retry')` | 26044 |
-| `admin_imaging_ai` | `app.route('/admin/imaging-ai', methods=['GET', 'POST'])` | 26054 |
-| `imaging_ai_workspace` | `app.get('/reports/<int:order_id>/imaging-ai')` | 26074 |
-| `imaging_ai_verify_demographics` | `app.post('/reports/<int:order_id>/imaging-ai/verify-demographics')` | 26081 |
-| `imaging_ai_demographic_override` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/override')` | 26125 |
-| `imaging_ai_analyze` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/analyze')` | 26143 |
-| `imaging_ai_mark_reviewed` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/mark-reviewed')` | 26187 |
-| `admin_qa_control` | `app.route('/admin/qa-control')` | 26200 |
-| `admin_qa_control_run` | `app.post('/admin/qa-control/run')` | 26226 |
-| `admin_qa_retry_failed` | `app.post('/admin/qa-control/retry-failed')` | 26307 |
-| `admin_qa_workflow_control` | `app.post('/admin/qa-control/workflow/<action>')` | 26346 |
-| `api_qa_callback` | `app.post('/api/qa/callback')` | 26381 |
-| `admin_assignment_offers` | `app.route('/admin/assignment-offers', methods=['GET', 'POST'])` | 26505 |
-| `open_pool_cases` | `app.get('/assignment/open-pool')` | 26592 |
-| `assign_case_to_me` | `app.post('/orders/<int:order_id>/assign-to-me')` | 26631 |
-| `my_assignment_offers` | `app.get('/assignment/offers')` | 26711 |
-| `assignment_availability_update` | `app.post('/assignment/availability')` | 26719 |
-| `assignment_offer_respond` | `app.post('/assignment/offers/<int:offer_id>/respond')` | 26734 |
-| `assignment_offer_start` | `app.post('/orders/<int:order_id>/assignment-offer/start')` | 26839 |
-| `assignment_offers_expire_now` | `app.post('/assignment/offers/expire-now')` | 26852 |
-| `case_readiness_dashboard` | `app.get('/operations/case-readiness')` | 26861 |
-| `case_operations_control_center` | `app.get('/operations/case-control-center')` | 26869 |
-| `case_exception_resolver` | `app.get('/operations/case-exceptions')` | 26903 |
-| `case_exception_series_map` | `app.post('/orders/<int:order_id>/exceptions/series-map')` | 27005 |
-| `case_exception_series_map_deactivate` | `app.post('/orders/<int:order_id>/exceptions/series-map/<int:alias_id>/deactivate')` | 27037 |
-| `case_exception_history_add` | `app.post('/orders/<int:order_id>/exceptions/history')` | 27072 |
-| `case_exception_image_minimum` | `app.post('/orders/<int:order_id>/exceptions/image-minimum')` | 27101 |
-| `case_exception_image_minimum_deactivate` | `app.post('/orders/<int:order_id>/exceptions/image-minimum/<int:override_id>/deactivate')` | 27130 |
-| `case_exception_refresh` | `app.post('/orders/<int:order_id>/exceptions/refresh')` | 27152 |
-| `case_readiness_check` | `app.post('/orders/<int:order_id>/readiness/check')` | 27175 |
-| `admin_procedure_quality_rules` | `app.route('/admin/procedure-quality-rules', methods=['GET', 'POST'])` | 27184 |
-| `return_case_to_workflow` | `app.post('/reports/<int:order_id>/return-case')` | 27221 |
-| `return_case_form` | `app.get('/reports/<int:order_id>/return-case')` | 27269 |
-| `returned_cases_queue` | `app.get('/returned-cases')` | 27278 |
-| `resolve_returned_case` | `app.post('/returned-cases/<int:event_id>/resolve')` | 27357 |
-| `report_portal_download` | `app.get('/reports-portal/<int:order_id>/download')` | 27466 |
-| `report_portal_download_pdf` | `app.get('/reports-portal/<int:order_id>/pdf')` | 27533 |
-| `report_portal_download_docx` | `app.get('/reports-portal/<int:order_id>/docx')` | 27554 |
-| `reports_portal` | `app.get('/reports-portal')` | 27712 |
-| `reports_portal_csv` | `app.get('/reports-portal.csv')` | 27990 |
-| `admin_tat_policies` | `app.route('/admin/tat-policies', methods=['GET', 'POST'])` | 28184 |
-| `tat_dashboard` | `app.get('/operations/tat')` | 28459 |
-| `notification_center` | `app.get('/notifications')` | 28466 |
-| `notification_ack` | `app.post('/notifications/<int:notification_id>/ack')` | 28473 |
-| `escalation_board` | `app.get('/operations/escalations')` | 28480 |
-| `advanced_search` | `app.get('/search/advanced')` | 28488 |
-| `saved_view_save` | `app.post('/saved-views/<page_key>/save')` | 28547 |
-| `saved_view_update` | `app.post('/saved-views/<page_key>/<int:view_id>/update')` | 28569 |
-| `saved_view_apply` | `app.get('/saved-views/<page_key>/<int:view_id>/apply')` | 28589 |
-| `saved_view_set_default` | `app.post('/saved-views/<page_key>/<int:view_id>/default')` | 28609 |
-| `saved_view_rename` | `app.post('/saved-views/<page_key>/<int:view_id>/rename')` | 28630 |
-| `saved_view_delete` | `app.post('/saved-views/<page_key>/<int:view_id>/delete')` | 28650 |
-| `advanced_search_save` | `app.post('/search/advanced/save')` | 28669 |
-| `advanced_search_apply_saved` | `app.get('/search/advanced/saved/<int:filter_id>')` | 28681 |
-| `order_actions` | `app.get('/orders/<int:order_id>/actions')` | 28688 |
-| `order_label_print` | `app.get('/orders/<int:order_id>/label-print')` | 28694 |
-| `admin_label_templates` | `app.route('/admin/label-templates', methods=['GET', 'POST'])` | 28705 |
-| `assignment_reports` | `app.get('/operations/assignment-reports')` | 28722 |
-| `assignment_dashboard` | `app.get('/operations/assignment-dashboard')` | 28728 |
-| `assignment_report_csv` | `app.get('/operations/assignment-report.csv')` | 28777 |
-| `smart_intake_start` | `app.route('/intake/smart', methods=['GET', 'POST'])` | 28798 |
-| `smart_intake_workspace` | `app.get('/intake/smart/<int:intake_id>')` | 28809 |
-| `smart_intake_document_file` | `app.get('/intake/smart/<int:intake_id>/document/<int:doc_id>/file')` | 28849 |
-| `smart_intake_upload` | `app.post('/intake/smart/<int:intake_id>/upload')` | 28858 |
-| `smart_intake_run_ocr` | `app.post('/intake/smart/<int:intake_id>/ocr/<int:doc_id>')` | 29144 |
-| `smart_intake_run_all_ocr` | `app.post('/intake/smart/<int:intake_id>/ocr-all')` | 29167 |
-| `smart_intake_document_review` | `app.post('/intake/smart/<int:intake_id>/document/<int:doc_id>/review')` | 29191 |
-| `smart_intake_review_save` | `app.post('/intake/smart/<int:intake_id>/review-save')` | 29298 |
-| `admin_ocr_settings` | `app.route('/admin/ocr-settings', methods=['GET', 'POST'])` | 29437 |
-| `admin_ocr_settings_validate` | `app.post('/admin/ocr-settings/validate')` | 29500 |
-| `doctor_clinical_workspace` | `app.route('/doctor/case/<int:order_id>/workspace', methods=['GET', 'POST'])` | 29519 |
-| `admin_printer_profiles` | `app.route('/admin/printer-profiles', methods=['GET', 'POST'])` | 29625 |
-| `admin_printer_profile_delete` | `app.post('/admin/printer-profiles/<int:profile_id>/delete')` | 29649 |
-| `order_print_center` | `app.get('/orders/<int:order_id>/print-center')` | 29657 |
-| `my_registration_defaults` | `app.route('/my/registration-defaults', methods=['GET', 'POST'])` | 29668 |
-| `admin_registration_defaults` | `app.route('/admin/registration-defaults', methods=['GET', 'POST'])` | 29694 |
-| `studio_shortcuts` | `app.route('/studio/shortcuts', methods=['GET', 'POST'])` | 29738 |
-| `studio_shortcut_toggle` | `app.post('/studio/shortcuts/<int:shortcut_id>/toggle')` | 29777 |
-| `studio_shortcut_delete` | `app.post('/studio/shortcuts/<int:shortcut_id>/delete')` | 29785 |
-| `studio_shortcut_reorder` | `app.post('/studio/shortcuts/reorder')` | 29793 |
-| `management_dashboard` | `app.get('/management')` | 29820 |
-| `referral_analytics` | `app.get('/management/referrals')` | 29832 |
-| `admin_referral_commissions` | `app.route('/admin/referral-commissions', methods=['GET', 'POST'])` | 29846 |
-| `daily_closing` | `app.route('/accounting/daily-closing', methods=['GET', 'POST'])` | 29857 |
-| `admin_doctor_share_rules` | `app.route('/admin/doctor-share-rules', methods=['GET', 'POST'])` | 29864 |
-| `doctor_share_rule_toggle` | `app.post('/admin/doctor-share-rules/<int:rule_id>/toggle')` | 29894 |
-| `set_performing_doctor` | `app.route('/orders/<int:order_id>/performing-doctor', methods=['POST'])` | 29902 |
-| `admin_discount_policies` | `app.route('/admin/discount-policies', methods=['GET', 'POST'])` | 29922 |
-| `discount_policy_toggle` | `app.post('/admin/discount-policies/<int:policy_id>/toggle')` | 29951 |
-| `discount_approval_queue` | `app.get('/finance/discount-approvals')` | 29959 |
-| `discount_approval_decision` | `app.post('/finance/discount-approvals/<int:req_id>/decision')` | 29968 |
-| `doctor_earnings_report` | `app.get('/finance/doctor-earnings')` | 29992 |
-| `inventory_warehouses` | `app.route('/inventory/warehouses', methods=['GET', 'POST'])` | 30023 |
-| `inventory_items` | `app.route('/inventory/items', methods=['GET', 'POST'])` | 30042 |
-| `inventory_migrate_legacy_items` | `app.post('/inventory/migrate-legacy-items')` | 30060 |
-| `inventory_stock` | `app.route('/inventory/stock', methods=['GET', 'POST'])` | 30076 |
-| `inventory_stock_policies` | `app.route('/inventory/stock-policies', methods=['GET', 'POST'])` | 30114 |
-| `inventory_procedure_defaults` | `app.route('/inventory/procedure-defaults', methods=['GET', 'POST'])` | 30132 |
-| `inventory_transfers` | `app.route('/inventory/transfers', methods=['GET', 'POST'])` | 30149 |
-| `inventory_transfer_detail` | `app.get('/inventory/transfers/<int:transfer_id>')` | 30176 |
-| `inventory_transfer_approve` | `app.post('/inventory/transfers/<int:transfer_id>/approve')` | 30183 |
-| `inventory_transfer_reject` | `app.post('/inventory/transfers/<int:transfer_id>/reject')` | 30193 |
-| `inventory_transfer_dispatch` | `app.post('/inventory/transfers/<int:transfer_id>/dispatch')` | 30204 |
-| `inventory_transfer_receive` | `app.post('/inventory/transfers/<int:transfer_id>/receive')` | 30231 |
-| `order_consumables_available_stock` | `app.get('/orders/<int:order_id>/consumables/available-stock')` | 30249 |
-| `order_consumables` | `app.route('/orders/<int:order_id>/consumables', methods=['GET', 'POST'])` | 30262 |
-| `order_consumables_apply_defaults` | `app.post('/orders/<int:order_id>/consumables/apply-defaults')` | 30298 |
-| `inventory_ledger` | `app.get('/inventory/ledger')` | 30316 |
-| `inventory_consumption_report` | `app.get('/inventory/consumption-report')` | 30329 |
-| `inventory_warehouses_auto_create` | `app.post('/inventory/warehouses/auto-create')` | 30339 |
-| `inventory_create_for_branch` | `app.post('/inventory/warehouses/create-for-branch/<int:branch_id>')` | 30358 |
-| `admin_data_management` | `app.get('/admin/data-management')` | 30400 |
-| `admin_export_patient` | `app.post('/admin/data-management/export-patient')` | 30409 |
-| `admin_create_manifest_backup` | `app.post('/admin/data-management/create-manifest-backup')` | 30456 |
-| `admin_anonymize_patient` | `app.post('/admin/data-management/anonymize-patient')` | 30475 |
-| `admin_delete_patient` | `app.post('/admin/data-management/delete-patient')` | 30494 |
-| `admin_reset_module` | `app.post('/admin/data-management/reset-module')` | 30514 |
-| `admin_backup_all_patients` | `app.post('/admin/data-management/backup-all-patients')` | 30536 |
-| `admin_delete_all_patients` | `app.post('/admin/data-management/delete-all-patients')` | 30555 |
-| `executive_analytics` | `app.get('/analytics/executive')` | 30580 |
-| `workflow_command_center` | `app.get('/operations/command-center')` | 30596 |
-| `pacs_unregistered_cases` | `app.get('/pacs/unregistered')` | 30602 |
-| `pacs_unregistered_run` | `app.post('/pacs/unregistered/run')` | 30608 |
-| `pacs_destinations` | `app.route('/admin/pacs/destinations', methods=['GET', 'POST'])` | 30615 |
-| `pacs_routing_rules` | `app.route('/admin/pacs/routing', methods=['GET', 'POST'])` | 30640 |
-| `pacs_case_actions` | `app.get('/pacs/actions/<int:order_id>')` | 30656 |
-| `pacs_case_send` | `app.post('/pacs/actions/<int:order_id>/send')` | 30667 |
-| `pacs_transfer_retry` | `app.post('/pacs/transfers/<int:job_id>/retry')` | 30683 |
-| `pacs_transfer_cancel` | `app.post('/pacs/transfers/<int:job_id>/cancel')` | 30693 |
-| `pacs_destination_echo` | `app.post('/pacs/destinations/<int:destination_id>/echo')` | 30703 |
-| `pacs_transfer_process` | `app.post('/pacs/transfers/process')` | 30715 |
-| `pacs_archive_dashboard` | `app.get('/pacs/archive')` | 30721 |
-| `coordinator_queue` | `app.get('/coordinator')` | 30728 |
-| `coordinator_action` | `app.post('/coordinator/<int:task_id>/action')` | 30738 |
-| `storage_dr_manager` | `app.route('/admin/storage-dr', methods=['GET', 'POST'])` | 30812 |
-| `storage_target_health` | `app.post('/admin/storage-dr/storage/<int:storage_id>/health')` | 30864 |
-| `replication_state_update` | `app.post('/admin/storage-dr/policy/<int:policy_id>/state')` | 30870 |
-| `dr_failover_request` | `app.post('/admin/storage-dr/policy/<int:policy_id>/failover')` | 30881 |
-| `storage_cloud_manager` | `app.route('/admin/storage-cloud', methods=['GET', 'POST'])` | 30892 |
-| `pacs_discovery` | `app.get('/admin/pacs/discovery')` | 30925 |
-| `admin_external_intake` | `app.route('/admin/external-intake', methods=['GET', 'POST'])` | 31329 |
-| `admin_external_intake_attachment_upload` | `app.post('/admin/external-intake/<int:intake_id>/attachments')` | 31399 |
-| `admin_external_intake_decision` | `app.post('/admin/external-intake/<int:intake_id>/decision')` | 31439 |
-| `pacs_discovery_approve` | `app.post('/admin/pacs/discovery/<int:node_id>/approve')` | 31492 |
-| `pacs_discovery_block` | `app.post('/admin/pacs/discovery/<int:node_id>/block')` | 31509 |
-| `pacs_discovery_legacy_endpoint` | `app.post('/admin/pacs/discovery/<int:node_id>/legacy-endpoint')` | 31517 |
-| `pacs_discovery_dismiss` | `app.post('/admin/pacs/discovery/<int:node_id>/dismiss')` | 31578 |
-| `pacs_discovery_manual` | `app.post('/admin/pacs/discovery/manual')` | 31595 |
-| `api_assignment_offer_pending` | `app.get('/api/assignment/offers/pending')` | 31632 |
-| `api_ohif_report_get` | `app.get('/api/ohif/report/<int:order_id>')` | 31851 |
-| `api_ohif_report_word` | `app.get('/api/ohif/report/<int:order_id>/word')` | 31915 |
-| `api_ohif_report_word_draft` | `app.post('/api/ohif/report/<int:order_id>/word/draft')` | 32233 |
-| `api_ohif_report_word_verify` | `app.post('/api/ohif/report/<int:order_id>/word/verify')` | 32452 |
-| `api_ohif_report_word_finalize` | `app.post('/api/ohif/report/<int:order_id>/word/finalize')` | 32615 |
-| `api_ohif_report_lease_acquire` | `app.post('/api/ohif/report/<int:order_id>/lease/acquire')` | 32815 |
-| `api_ohif_report_lease_release` | `app.post('/api/ohif/report/<int:order_id>/lease/release')` | 32907 |
-| `api_ohif_report_draft` | `app.post('/api/ohif/report/<int:order_id>/draft')` | 32963 |
-| `api_ohif_report_verify` | `app.post('/api/ohif/report/<int:order_id>/verify')` | 33186 |
-| `api_ohif_report_finalize` | `app.post('/api/ohif/report/<int:order_id>/finalize')` | 33341 |
-| `api_ohif_report_return` | `app.post('/api/ohif/report/<int:order_id>/return')` | 33531 |
-| `api_ohif_reporting_preferences` | `app.route('/api/ohif/report/<int:order_id>/preferences', methods=['GET', 'POST'])` | 33817 |
-| `api_ohif_onlyoffice_config` | `app.get('/api/ohif/report/<int:order_id>/onlyoffice/config')` | 33909 |
-| `api_ohif_onlyoffice_forcesave` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/forcesave')` | 34156 |
-| `api_ohif_onlyoffice_document` | `app.get('/api/ohif/report/<int:order_id>/onlyoffice/document')` | 34351 |
-| `api_ohif_onlyoffice_commit_draft` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/commit-draft')` | 34912 |
-| `api_ohif_onlyoffice_verify` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/verify')` | 35037 |
-| `api_ohif_onlyoffice_finalize` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/finalize')` | 35151 |
-| `api_ohif_onlyoffice_callback` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/callback')` | 35264 |
-| `voice_api_patient_search` | `app.route('/api/voice/patient/search', methods=['GET'])` | 35582 |
-| `voice_api_patient_create` | `app.route('/api/voice/patient', methods=['POST'])` | 35617 |
-| `voice_api_inquiry` | `app.route('/api/voice/inquiry', methods=['GET'])` | 35712 |
-| `voice_api_book` | `app.route('/api/voice/book', methods=['POST'])` | 35989 |
-| `voice_intake_review` | `app.get('/voice-intake/review')` | 36165 |
-| `voice_intake_audio` | `app.get('/voice-intake/<int:intake_id>/audio')` | 36219 |
-| `voice_intake_status` | `app.post('/voice-intake/<int:intake_id>/status')` | 36272 |
-| `voice_intake_caller_control` | `app.post('/voice-intake/<int:intake_id>/caller-control')` | 36330 |
-| `voice_intake_caller_history` | `app.get('/voice-intake/<int:intake_id>/caller-history')` | 36505 |
-| `telephony_console` | `app.route('/telephony')` | 36644 |
-| `telephony_credentials` | `app.route('/api/telephony/credentials')` | 36699 |
-| `public_click_to_call` | `app.route('/call', methods=['GET'])` | 36777 |
-| `public_call_config` | `app.route('/api/public-call/config', methods=['GET'])` | 36784 |
-| `public_contact_request_create` | `app.post('/api/public-call/request')` | 37003 |
-| `public_chat_start` | `app.post('/api/public-chat/start')` | 37097 |
-| `public_chat_messages` | `app.get('/api/public-chat/<token>/messages')` | 37190 |
-| `public_chat_message` | `app.post('/api/public-chat/<token>/message')` | 37252 |
-| `communications_dashboard` | `app.route('/communications')` | 37474 |
-| `staff_communications_claim` | `app.post('/api/staff/communications/<int:request_id>/claim')` | 37549 |
-| `staff_communications_confirm` | `app.post('/api/staff/communications/<int:request_id>/confirm')` | 37618 |
-| `staff_communications_reject` | `app.post('/api/staff/communications/<int:request_id>/reject')` | 37689 |
-| `staff_chat_message` | `app.post('/api/staff/chat/<int:request_id>/message')` | 37765 |
-| `public_contact_request_details` | `app.post('/api/public-call/request/<int:request_id>/details')` | 37919 |
-| `public_contact_attachment_upload` | `app.post('/api/public-call/request/<int:request_id>/attachments')` | 38070 |
-| `staff_public_attachment_view` | `app.get('/staff/public-attachment/<int:attachment_id>')` | 38312 |
-| `staff_attachment_verify` | `app.post('/api/staff/attachments/<int:attachment_id>/verify')` | 38374 |
-| `staff_attachment_reject` | `app.post('/api/staff/attachments/<int:attachment_id>/reject')` | 38406 |
-| `admin_ivr` | `app.route('/admin/ivr')` | 38439 |
+| `set_language` | `app.route('/lang/<code>')` | 5285 |
+| `login` | `app.route('/login', methods=['GET', 'POST'])` | 5366 |
+| `logout` | `app.route('/logout')` | 5384 |
+| `dashboard` | `app.route('/')` | 5389 |
+| `patients` | `app.route('/patients')` | 5463 |
+| `new_patient` | `app.route('/patients/new', methods=['GET', 'POST'])` | 5499 |
+| `orders` | `app.route('/orders')` | 5546 |
+| `new_order` | `app.route('/orders/new', methods=['GET', 'POST'])` | 5555 |
+| `change_password` | `app.route('/profile/password', methods=['GET', 'POST'])` | 5931 |
+| `admin_insurance_approvals` | `app.route('/admin/insurance-approvals', methods=['GET', 'POST'])` | 5949 |
+| `admin_insurance_approval_edit` | `app.get('/admin/insurance-approvals/<int:portal_id>')` | 6120 |
+| `admin_insurance_approval_toggle` | `app.post('/admin/insurance-approvals/<int:portal_id>/toggle')` | 6137 |
+| `admin_insurance_approval_test` | `app.post('/admin/insurance-approvals/<int:portal_id>/test')` | 6158 |
+| `insurance_approvals_dashboard` | `app.get('/approvals')` | 6201 |
+| `order_detail` | `app.route('/orders/<int:order_id>')` | 6271 |
+| `insurance_approval_start` | `app.post('/orders/<int:order_id>/insurance-approval/start')` | 6316 |
+| `insurance_approval_update` | `app.post('/orders/<int:order_id>/insurance-approval/update')` | 6376 |
+| `convert_to_work_order` | `app.post('/orders/<int:order_id>/convert-to-work-order')` | 6445 |
+| `resend_mwl` | `app.route('/orders/<int:order_id>/resend-mwl', methods=['POST'])` | 6575 |
+| `add_payment` | `app.route('/payments/<int:order_id>', methods=['POST'])` | 6607 |
+| `nursing_worklist` | `app.route('/nursing')` | 6614 |
+| `nursing_case` | `app.route('/nursing/<int:order_id>', methods=['GET', 'POST'])` | 6696 |
+| `nursing_consumable_correct` | `app.post('/nursing/<int:order_id>/correct')` | 6753 |
+| `procedure_consumables` | `app.route('/admin/procedures/<int:procedure_id>/consumables', methods=['GET', 'POST'])` | 6774 |
+| `procedure_consumable_delete` | `app.post('/admin/procedures/<int:procedure_id>/consumables/<int:row_id>/delete')` | 6788 |
+| `patient_portal` | `app.route('/portal/<token>', methods=['GET', 'POST'])` | 6796 |
+| `patient_portal_report` | `app.route('/portal/<token>/report')` | 6816 |
+| `admin_notifications` | `app.route('/admin/notifications')` | 6829 |
+| `admin_notifications_process` | `app.post('/admin/notifications/process')` | 6835 |
+| `admin_notification_retry` | `app.post('/admin/notifications/<int:notification_id>/retry')` | 6842 |
+| `order_study_thumbnail` | `app.get('/orders/<int:order_id>/study-thumbnail')` | 6852 |
+| `technician_case_workspace` | `app.get('/technician/<int:order_id>')` | 6891 |
+| `technician_case_note` | `app.post('/technician/<int:order_id>/note')` | 6966 |
+| `technician_case_consume` | `app.post('/technician/<int:order_id>/consume')` | 7001 |
+| `technician_worklist` | `app.route('/technician')` | 7062 |
+| `technician_check_images` | `app.post('/technician/<int:order_id>/check-images')` | 7114 |
+| `technician_status` | `app.route('/technician/<int:order_id>/status', methods=['POST'])` | 7190 |
+| `order_exam_status` | `app.post('/orders/<int:order_id>/exam-status')` | 7265 |
+| `order_exam_status_override` | `app.post('/orders/<int:order_id>/exam-status/override')` | 7309 |
+| `pacs_home` | `app.route('/pacs')`<br>`app.route('/pacs/')` | 7341 |
+| `pacs_tracking` | `app.route('/pacs/tracking')` | 7352 |
+| `pacs_tracking_refresh` | `app.post('/pacs/tracking/refresh')` | 7360 |
+| `doctor_presence_heartbeat` | `app.post('/api/doctor/presence/heartbeat')` | 7400 |
+| `doctor_workspace` | `app.route('/doctor')` | 7417 |
+| `doctor_workspace_data` | `app.get('/api/doctor/workspace')` | 7430 |
+| `doctor_workspace_column_layout_save` | `app.post('/api/doctor/workspace/column-layout')` | 7559 |
+| `doctor_workspace_open` | `app.get('/doctor/cases/<int:order_id>/open')` | 7610 |
+| `admin_assignment_visits` | `app.route('/admin/assignment-visits', methods=['GET', 'POST'])` | 7619 |
+| `api_registration_visits` | `app.get('/api/registration/visits')` | 7669 |
+| `complete_visit_registration` | `app.post('/admin/assignment-visits/<visit_id>/complete-registration')` | 7681 |
+| `admin_assignment_monitor` | `app.get('/admin/assignment-monitor')` | 7697 |
+| `coordinator_assignments` | `app.get('/coordinator/assignments')` | 7703 |
+| `admin_assignment_distribution` | `app.route('/admin/assignment-distribution', methods=['GET', 'POST'])` | 7715 |
+| `doctor_reading_start` | `app.post('/doctor/cases/<int:order_id>/start-reading')` | 7799 |
+| `reports` | `app.route('/reports')` | 7812 |
+| `admin_report_reopen` | `app.post('/reports/<int:order_id>/admin-reopen')` | 7818 |
+| `report_lease_acquire` | `app.post('/reports/<int:order_id>/lease/acquire')` | 7864 |
+| `report_lease_release` | `app.post('/reports/<int:order_id>/lease/release')` | 7947 |
+| `report_editor` | `app.route('/reports/<int:order_id>', methods=['GET', 'POST'])` | 7994 |
+| `word_template` | `app.route('/reports/<int:order_id>/word')` | 8471 |
+| `api_reporting_case` | `app.route('/api/reporting/cases/<accession>')` | 8690 |
+| `api_reporting_lease_acquire` | `app.post('/api/reporting/cases/<accession>/lease/acquire')` | 8696 |
+| `api_reporting_lease_release` | `app.post('/api/reporting/cases/<accession>/lease/release')` | 8788 |
+| `api_reporting_draft` | `app.route('/api/reporting/cases/<accession>/draft', methods=['POST'])` | 8839 |
+| `api_reporting_verify` | `app.post('/api/reporting/cases/<accession>/verify')` | 9060 |
+| `api_reporting_finalize` | `app.route('/api/reporting/cases/<accession>/finalize', methods=['POST'])` | 9262 |
+| `schedule_calendar` | `app.route('/schedule/calendar')` | 13475 |
+| `schedule_ocr_preview` | `app.post('/schedule/ocr-preview')` | 13779 |
+| `schedule_unified_submit` | `app.post('/schedule/unified-submit')` | 13855 |
+| `schedule_book` | `app.post('/schedule/book')` | 13998 |
+| `order_workflow_status` | `app.post('/orders/<int:order_id>/workflow-status')` | 14065 |
+| `appointments` | `app.route('/appointments', methods=['GET', 'POST'])` | 14089 |
+| `appointment_action` | `app.route('/appointments/<int:appointment_id>/<action>', methods=['POST'])` | 14109 |
+| `appointment_edit` | `app.route('/appointments/<int:appointment_id>/edit', methods=['GET', 'POST'])` | 14199 |
+| `appointment_reschedule` | `app.post('/appointments/<int:appointment_id>/reschedule')` | 14258 |
+| `appointment_status` | `app.post('/appointments/<int:appointment_id>/status')` | 14287 |
+| `schedule_maintenance` | `app.route('/schedule/maintenance', methods=['POST'])` | 14302 |
+| `schedule_v2` | `app.route('/schedule/v2')` | 14319 |
+| `schedule_v2_book_form` | `app.route('/schedule/v2/book')` | 14324 |
+| `schedule_v2_book_submit` | `app.post('/schedule/v2/book')` | 14329 |
+| `device_booking_status` | `app.post('/devices/<int:device_id>/booking-status')` | 14367 |
+| `admin_booking_availability` | `app.route('/admin/booking-availability', methods=['GET', 'POST'])` | 14388 |
+| `api_smart_booking_availability` | `app.get('/api/booking/smart-availability')` | 14424 |
+| `admin_booking_availability_seed` | `app.post('/admin/booking-availability/seed')` | 14610 |
+| `order_clinical_notes` | `app.route('/orders/<int:order_id>/clinical-notes', methods=['GET', 'POST'])` | 14640 |
+| `my_profile` | `app.route('/my/profile', methods=['GET', 'POST'])` | 14654 |
+| `admin_dictionary` | `app.route('/admin/dictionary', methods=['GET', 'POST'])` | 14761 |
+| `admin_booking_control_center` | `app.get('/admin/booking-control-center')` | 14786 |
+| `admin_booking_control` | `app.route('/admin/booking-control', methods=['GET', 'POST'])` | 14856 |
+| `admin_booking_control_deactivate` | `app.post('/admin/booking-control/<int:block_id>/deactivate')` | 14888 |
+| `ui_language_switch` | `app.post('/ui/language')` | 14900 |
+| `admin_dictionary_reset` | `app.post('/admin/dictionary/<int:entry_id>/reset')` | 14916 |
+| `my_ribbon` | `app.route('/my/ribbon', methods=['GET', 'POST'])` | 14930 |
+| `admin_ribbon_designer` | `app.route('/admin/ribbon-designer', methods=['GET', 'POST'])` | 14957 |
+| `operations_journey` | `app.get('/operations/journey')` | 14983 |
+| `order_journey_stage` | `app.post('/orders/<int:order_id>/journey/<stage>')` | 14991 |
+| `operations_booking_board` | `app.get('/operations/booking-board')` | 15007 |
+| `operations_dashboard` | `app.get('/operations/dashboard')` | 15015 |
+| `chat_home` | `app.get('/chat')` | 15031 |
+| `chat_direct_create` | `app.post('/chat/direct')` | 15038 |
+| `chat_group_create` | `app.post('/chat/group')` | 15049 |
+| `chat_case` | `app.get('/chat/case/<int:order_id>')` | 15058 |
+| `chat_thread` | `app.route('/chat/<int:thread_id>', methods=['GET', 'POST'])` | 15063 |
+| `chat_message_to_clinical_note` | `app.post('/chat/<int:thread_id>/add-to-clinical-note/<int:message_id>')` | 15079 |
+| `patient_documents` | `app.route('/patients/<int:patient_id>/documents', methods=['GET', 'POST'])` | 15087 |
+| `patient_timeline` | `app.get('/patients/<int:patient_id>/timeline')` | 15125 |
+| `document_review` | `app.get('/documents/<int:document_id>/review')` | 15131 |
+| `document_review_save` | `app.post('/documents/<int:document_id>/review')` | 15138 |
+| `telephony_incoming` | `app.post('/api/telephony/incoming')` | 15151 |
+| `telephony_calls` | `app.get('/telephony/calls')` | 15169 |
+| `telephony_caller` | `app.get('/telephony/caller/<int:call_id>')` | 15175 |
+| `telephony_call_notes` | `app.post('/telephony/calls/<int:call_id>/notes')` | 15184 |
+| `admin_referrers` | `app.route('/admin/referrers', methods=['GET', 'POST'])` | 15196 |
+| `admin_import_export` | `app.route('/admin/import-export', methods=['GET', 'POST'])` | 15333 |
+| `admin_export_entity` | `app.route('/admin/export/<entity>.csv')` | 15404 |
+| `report_upload` | `app.route('/reports/<int:order_id>/upload', methods=['POST'])` | 15430 |
+| `report_source` | `app.route('/reports/<int:order_id>/source')` | 15747 |
+| `attachment_upload` | `app.route('/attachments/upload', methods=['POST'])` | 15772 |
+| `attachment_download` | `app.route('/attachments/<int:attachment_id>')` | 15806 |
+| `attachment_preview` | `app.route('/attachments/<int:attachment_id>/preview')` | 15813 |
+| `attachment_delete` | `app.post('/attachments/<int:attachment_id>/delete')` | 15821 |
+| `order_attachments` | `app.get('/orders/<int:order_id>/attachments')` | 15838 |
+| `order_sticker` | `app.route('/orders/<int:order_id>/sticker')` | 15851 |
+| `order_sticker_preview` | `app.route('/orders/<int:order_id>/sticker/preview')` | 15876 |
+| `barcode_scan` | `app.route('/scan', methods=['GET', 'POST'])` | 15884 |
+| `admin_company` | `app.route('/admin/company', methods=['GET', 'POST'])` | 15896 |
+| `company_logo` | `app.route('/company/logo')` | 15913 |
+| `admin_sticker_templates` | `app.route('/admin/sticker-templates', methods=['GET', 'POST'])` | 15920 |
+| `pacs_reconciliation_preview` | `app.get('/pacs/reconciliation/<study_id>/preview')` | 15937 |
+| `pacs_reconciliation_correct_dicom` | `app.post('/pacs/reconciliation/<study_id>/correct-dicom')` | 15957 |
+| `pacs_reconciliation_audit` | `app.get('/pacs/reconciliation/audit')` | 15978 |
+| `pacs_reconciliation_example` | `app.get('/pacs/reconciliation/example')` | 15990 |
+| `pacs_reconciliation` | `app.route('/pacs/reconciliation')` | 16005 |
+| `pacs_exam_link_create` | `app.post('/pacs/exam-link')` | 16142 |
+| `pacs_exam_link_remove` | `app.post('/pacs/exam-link/<int:link_id>/remove')` | 16208 |
+| `pacs_reconciliation_match` | `app.post('/pacs/reconciliation/<study_id>/match')` | 16253 |
+| `pacs_reconciliation_quarantine` | `app.post('/pacs/reconciliation/<study_id>/quarantine')` | 16308 |
+| `pacs_reconciliation_auto_safe` | `app.post('/pacs/reconciliation/auto-safe')` | 16346 |
+| `api_command_center_case_graph_v3` | `app.get('/api/command-center/case/<int:order_id>/graph-v3')` | 16422 |
+| `api_command_center_control_get` | `app.get('/api/command-center/control')` | 17051 |
+| `api_command_center_control_set` | `app.post('/api/command-center/control')` | 17060 |
+| `api_command_center_resources` | `app.get('/api/command-center/resources')` | 17608 |
+| `command_center_events_stream` | `app.get('/api/command-center/events/stream')` | 17682 |
+| `live_command_center` | `app.route('/operations/live-command-center')` | 17824 |
+| `command_center_events` | `app.route('/api/command-center/events')` | 17837 |
+| `command_center_snapshot` | `app.route('/api/command-center/snapshot')` | 18446 |
+| `financial_center` | `app.route('/accounting/financial-center')` | 18644 |
+| `financial_center_export` | `app.route('/accounting/financial-center/export/<fmt>')` | 18655 |
+| `financial_entries` | `app.route('/accounting/entries', methods=['GET', 'POST'])` | 18666 |
+| `financial_entry_void` | `app.post('/accounting/entries/<int:entry_id>/void')` | 18692 |
+| `receivables` | `app.route('/accounting/receivables')` | 18700 |
+| `receivables_csv` | `app.route('/accounting/receivables.csv')` | 18718 |
+| `receive_payment` | `app.route('/orders/<int:order_id>/payment', methods=['POST'])` | 18733 |
+| `receipt_view` | `app.route('/receipts/<int:receipt_id>')` | 18773 |
+| `mark_delivery` | `app.route('/orders/<int:order_id>/delivery/<item_type>', methods=['POST'])` | 18782 |
+| `cashier_workstation` | `app.route('/cashier')` | 18819 |
+| `refund_payment` | `app.post('/payments/<int:payment_id>/refund')` | 18843 |
+| `accounting_reports` | `app.route('/accounting/reports')` | 18882 |
+| `accounting_reports_csv` | `app.route('/accounting/reports.csv')` | 18919 |
+| `admin_diagnostics` | `app.route('/admin/diagnostics')` | 18932 |
+| `admin_reporting_demo` | `app.route('/admin/demo/reporting', methods=['GET', 'POST'])` | 19016 |
+| `admin_assignment` | `app.route('/admin/assignment', methods=['GET', 'POST'])` | 19027 |
+| `admin_assignment_strategies` | `app.route('/admin/assignment-strategies', methods=['GET', 'POST'])` | 19164 |
+| `admin_assignment_strategy_simulate` | `app.post('/admin/assignment-strategies/simulate')` | 19601 |
+| `admin_assignment_strategy_toggle` | `app.post('/admin/assignment-strategies/<int:strategy_id>/toggle')` | 19684 |
+| `admin_assignment_strategy_simulate_ui` | `app.route('/admin/assignment-strategies/simulate-ui', methods=['GET', 'POST'])` | 19731 |
+| `admin_assignment_strategy_clone` | `app.post('/admin/assignment-strategies/<int:strategy_id>/clone')` | 19794 |
+| `admin_assignment_strategy_history` | `app.get('/admin/assignment-strategies/<int:strategy_id>/history')` | 19886 |
+| `admin_assignment_strategy_rollback` | `app.post('/admin/assignment-strategies/<int:strategy_id>/rollback/<int:version_id>')` | 19906 |
+| `assign_case` | `app.route('/orders/<int:order_id>/assign', methods=['GET', 'POST'])` | 20004 |
+| `take_case` | `app.route('/orders/<int:order_id>/take', methods=['POST'])` | 20064 |
+| `unassigned_cases` | `app.route('/assignment/unassigned')` | 20092 |
+| `admin_home` | `app.route('/admin')`<br>`app.route('/admin/')` | 20231 |
+| `admin_users` | `app.route('/admin/users', methods=['GET', 'POST'])` | 20261 |
+| `admin_user_toggle` | `app.post('/admin/users/<int:user_id>/toggle')` | 20287 |
+| `admin_user_edit` | `app.post('/admin/users/<int:user_id>/edit')` | 20298 |
+| `admin_user_reset_password` | `app.post('/admin/users/<int:user_id>/reset-password')` | 20324 |
+| `admin_device_schedules` | `app.route('/admin/device-schedules', methods=['GET', 'POST'])` | 20340 |
+| `admin_device_blocks` | `app.route('/admin/device-blocks', methods=['POST'])` | 20365 |
+| `dicom_connections_page` | `app.get('/admin/dicom-connections')` | 20386 |
+| `dicom_connection_edit` | `app.route('/admin/dicom-connections/branches/<int:branch_id>', methods=['GET', 'POST'])` | 20405 |
+| `dicom_connection_echo` | `app.post('/admin/dicom-connections/<int:endpoint_id>/echo')` | 20429 |
+| `admin_branch_edit` | `app.route('/admin/branches/<int:branch_id>/edit', methods=['GET', 'POST'])` | 20442 |
+| `admin_devices` | `app.route('/admin/devices', methods=['GET', 'POST'])` | 20460 |
+| `admin_device_edit` | `app.route('/admin/devices/<int:device_id>/edit', methods=['POST'])` | 20471 |
+| `admin_procedures` | `app.route('/admin/procedures', methods=['GET', 'POST'])` | 20481 |
+| `admin_contracts` | `app.route('/admin/contracts', methods=['GET', 'POST'])` | 20492 |
+| `admin_contract_prices` | `app.route('/admin/contracts/<int:contract_id>/prices', methods=['GET', 'POST'])` | 20503 |
+| `admin_inventory` | `app.route('/admin/inventory', methods=['GET', 'POST'])` | 20515 |
+| `admin_inventory_edit` | `app.post('/admin/inventory/<int:item_id>/edit')` | 20530 |
+| `admin_inventory_adjust` | `app.post('/admin/inventory/<int:item_id>/adjust')` | 20549 |
+| `admin_inventory_seed_defaults` | `app.post('/admin/inventory/seed-defaults')` | 20565 |
+| `admin_inventory_export` | `app.route('/admin/inventory/export/<fmt>')` | 20573 |
+| `admin_inventory_import_template` | `app.route('/admin/inventory/import-template')` | 20592 |
+| `admin_inventory_import` | `app.post('/admin/inventory/import')` | 20606 |
+| `admin_inventory_movements` | `app.route('/admin/inventory/movements')` | 20649 |
+| `admin_inventory_batches` | `app.route('/admin/inventory/batches', methods=['GET', 'POST'])` | 20655 |
+| `admin_erp` | `app.route('/admin/erp', methods=['GET', 'POST'])` | 20677 |
+| `admin_erp_process` | `app.post('/admin/erp/process')` | 20696 |
+| `admin_erp_sync_items` | `app.post('/admin/erp/sync-items')` | 20703 |
+| `admin_audit` | `app.route('/admin/audit')` | 20719 |
+| `granular_delete_order_images_only` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-images')` | 21259 |
+| `granular_delete_preview_home` | `app.get('/admin/cancellation-center/preview')` | 23057 |
+| `granular_delete_order_preview` | `app.get('/admin/cancellation-center/order/<int:order_id>/preview')` | 23067 |
+| `granular_delete_order_reports_only` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-reports')` | 23090 |
+| `granular_delete_order_ris_case_data_only` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-ris-case-data')` | 23113 |
+| `granular_delete_order_full_case` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-full-case')` | 23419 |
+| `granular_delete_patient_preview` | `app.get('/admin/cancellation-center/patient/<int:patient_id>/preview')` | 23435 |
+| `correction_center` | `app.get('/correction-center')` | 24056 |
+| `patient_demographics_correction` | `app.route('/correction-center/orders/<int:order_id>/demographics', methods=['GET', 'POST'])` | 24078 |
+| `patient_demographics_correction_view` | `app.get('/correction-center/requests/<int:request_id>/demographics')` | 24096 |
+| `correction_request_submit` | `app.post('/correction-center/request')` | 24109 |
+| `correction_execution_queue` | `app.get('/correction-center/executions')` | 24230 |
+| `correction_execution_prepare_route` | `app.post('/correction-center/requests/<int:request_id>/execution/prepare')` | 24321 |
+| `correction_execution_claim_route` | `app.post('/correction-center/executions/<int:execution_id>/claim')` | 24384 |
+| `correction_execution_hold_route` | `app.post('/correction-center/executions/<int:execution_id>/hold')` | 24447 |
+| `correction_execution_release_route` | `app.post('/correction-center/executions/<int:execution_id>/release')` | 24509 |
+| `correction_execution_execute_route` | `app.post('/correction-center/executions/<int:execution_id>/execute')` | 24987 |
+| `correction_request_queue` | `app.get('/correction-center/requests')` | 25099 |
+| `correction_request_action` | `app.post('/correction-center/requests/<int:request_id>/action')` | 25118 |
+| `admin_data_deletion_center` | `app.get('/admin/data-deletion-center')` | 25183 |
+| `admin_cancellation_center` | `app.get('/admin/cancellation-center')` | 25196 |
+| `admin_cancel_appointment` | `app.post('/admin/cancellation-center/appointments/<int:appointment_id>/cancel')` | 25202 |
+| `admin_cancel_order` | `app.post('/admin/cancellation-center/orders/<int:order_id>/cancel')` | 25211 |
+| `admin_remove_order_referral` | `app.post('/admin/cancellation-center/orders/<int:order_id>/remove-referral')` | 25231 |
+| `admin_roles` | `app.route('/admin/roles', methods=['GET', 'POST'])` | 25242 |
+| `admin_access_review` | `app.get('/admin/access-review')` | 25263 |
+| `admin_branches` | `app.route('/admin/branches', methods=['GET', 'POST'])` | 25275 |
+| `admin_device_page` | `app.route('/admin/devices/<int:device_id>', methods=['GET', 'POST'])` | 25290 |
+| `my_registration_style` | `app.post('/my/registration-style')` | 25625 |
+| `admin_field_rules` | `app.route('/admin/field-rules', methods=['GET', 'POST'])` | 25635 |
+| `patient_alerts` | `app.route('/patients/<int:patient_id>/alerts', methods=['GET', 'POST'])` | 25657 |
+| `patient_alert_resolve` | `app.post('/patient-alerts/<int:alert_id>/resolve')` | 25671 |
+| `admin_company_legal` | `app.route('/admin/company-legal', methods=['GET', 'POST'])` | 25677 |
+| `studio_home` | `app.route('/studio')` | 25690 |
+| `studio_templates` | `app.route('/studio/templates/<template_type>', methods=['GET', 'POST'])` | 25694 |
+| `studio_template_publish` | `app.post('/studio/templates/<int:template_id>/publish')` | 25709 |
+| `doctor_templates` | `app.route('/doctor/templates', methods=['GET', 'POST'])` | 25720 |
+| `receipt_studio_print` | `app.get('/receipts/<int:receipt_id>/studio-print')` | 25737 |
+| `studio_template_preview` | `app.get('/studio/templates/<int:template_id>/preview')` | 25753 |
+| `report_word_from_doctor_template` | `app.get('/reports/<int:order_id>/word-template/<int:template_id>')` | 25761 |
+| `admin_ai_reporting` | `app.route('/admin/ai-reporting', methods=['GET', 'POST'])` | 25818 |
+| `ai_report_assistant` | `app.get('/reports/<int:order_id>/ai-assistant')` | 25835 |
+| `ai_report_generate` | `app.post('/reports/<int:order_id>/ai-assistant/generate')` | 25847 |
+| `ai_report_apply` | `app.post('/reports/<int:order_id>/ai-assistant/<int:draft_id>/apply')` | 25864 |
+| `ai_report_reject` | `app.post('/reports/<int:order_id>/ai-assistant/<int:draft_id>/reject')` | 25876 |
+| `report_prior_select` | `app.post('/reports/<int:order_id>/priors/select')` | 25883 |
+| `patient_external_priors` | `app.route('/patients/<int:patient_id>/external-priors', methods=['GET', 'POST'])` | 25895 |
+| `external_prior_confirm_match` | `app.post('/external-priors/<int:prior_id>/confirm-match')` | 25925 |
+| `external_prior_mark_mismatch` | `app.post('/external-priors/<int:prior_id>/mark-mismatch')` | 25931 |
+| `my_quick_actions` | `app.get('/my/quick-actions')` | 25939 |
+| `universal_search` | `app.get('/search')` | 25945 |
+| `admin_communications` | `app.route('/admin/communications', methods=['GET', 'POST'])` | 25983 |
+| `admin_communication_template_save` | `app.route('/admin/communication-templates', methods=['POST'])` | 26006 |
+| `patient_communications` | `app.route('/patients/<int:patient_id>/communications', methods=['GET', 'POST'])` | 26025 |
+| `communication_retry` | `app.post('/communications/<int:comm_id>/retry')` | 26058 |
+| `admin_imaging_ai` | `app.route('/admin/imaging-ai', methods=['GET', 'POST'])` | 26068 |
+| `imaging_ai_workspace` | `app.get('/reports/<int:order_id>/imaging-ai')` | 26088 |
+| `imaging_ai_verify_demographics` | `app.post('/reports/<int:order_id>/imaging-ai/verify-demographics')` | 26095 |
+| `imaging_ai_demographic_override` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/override')` | 26139 |
+| `imaging_ai_analyze` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/analyze')` | 26157 |
+| `imaging_ai_mark_reviewed` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/mark-reviewed')` | 26201 |
+| `admin_qa_control` | `app.route('/admin/qa-control')` | 26214 |
+| `admin_qa_control_run` | `app.post('/admin/qa-control/run')` | 26240 |
+| `admin_qa_retry_failed` | `app.post('/admin/qa-control/retry-failed')` | 26321 |
+| `admin_qa_workflow_control` | `app.post('/admin/qa-control/workflow/<action>')` | 26360 |
+| `api_qa_callback` | `app.post('/api/qa/callback')` | 26395 |
+| `admin_assignment_offers` | `app.route('/admin/assignment-offers', methods=['GET', 'POST'])` | 26519 |
+| `open_pool_cases` | `app.get('/assignment/open-pool')` | 26606 |
+| `assign_case_to_me` | `app.post('/orders/<int:order_id>/assign-to-me')` | 26645 |
+| `my_assignment_offers` | `app.get('/assignment/offers')` | 26725 |
+| `assignment_availability_update` | `app.post('/assignment/availability')` | 26733 |
+| `assignment_offer_respond` | `app.post('/assignment/offers/<int:offer_id>/respond')` | 26748 |
+| `assignment_offer_start` | `app.post('/orders/<int:order_id>/assignment-offer/start')` | 26853 |
+| `assignment_offers_expire_now` | `app.post('/assignment/offers/expire-now')` | 26866 |
+| `case_readiness_dashboard` | `app.get('/operations/case-readiness')` | 26875 |
+| `case_operations_control_center` | `app.get('/operations/case-control-center')` | 26883 |
+| `case_exception_resolver` | `app.get('/operations/case-exceptions')` | 26917 |
+| `case_exception_series_map` | `app.post('/orders/<int:order_id>/exceptions/series-map')` | 27019 |
+| `case_exception_series_map_deactivate` | `app.post('/orders/<int:order_id>/exceptions/series-map/<int:alias_id>/deactivate')` | 27051 |
+| `case_exception_history_add` | `app.post('/orders/<int:order_id>/exceptions/history')` | 27086 |
+| `case_exception_image_minimum` | `app.post('/orders/<int:order_id>/exceptions/image-minimum')` | 27115 |
+| `case_exception_image_minimum_deactivate` | `app.post('/orders/<int:order_id>/exceptions/image-minimum/<int:override_id>/deactivate')` | 27144 |
+| `case_exception_refresh` | `app.post('/orders/<int:order_id>/exceptions/refresh')` | 27166 |
+| `case_readiness_check` | `app.post('/orders/<int:order_id>/readiness/check')` | 27189 |
+| `admin_procedure_quality_rules` | `app.route('/admin/procedure-quality-rules', methods=['GET', 'POST'])` | 27198 |
+| `return_case_to_workflow` | `app.post('/reports/<int:order_id>/return-case')` | 27235 |
+| `return_case_form` | `app.get('/reports/<int:order_id>/return-case')` | 27283 |
+| `returned_cases_queue` | `app.get('/returned-cases')` | 27292 |
+| `resolve_returned_case` | `app.post('/returned-cases/<int:event_id>/resolve')` | 27371 |
+| `report_portal_download` | `app.get('/reports-portal/<int:order_id>/download')` | 27480 |
+| `report_portal_download_pdf` | `app.get('/reports-portal/<int:order_id>/pdf')` | 27547 |
+| `report_portal_download_docx` | `app.get('/reports-portal/<int:order_id>/docx')` | 27568 |
+| `reports_portal` | `app.get('/reports-portal')` | 27726 |
+| `reports_portal_csv` | `app.get('/reports-portal.csv')` | 28004 |
+| `admin_tat_policies` | `app.route('/admin/tat-policies', methods=['GET', 'POST'])` | 28198 |
+| `tat_dashboard` | `app.get('/operations/tat')` | 28473 |
+| `notification_center` | `app.get('/notifications')` | 28480 |
+| `notification_ack` | `app.post('/notifications/<int:notification_id>/ack')` | 28487 |
+| `escalation_board` | `app.get('/operations/escalations')` | 28494 |
+| `advanced_search` | `app.get('/search/advanced')` | 28502 |
+| `saved_view_save` | `app.post('/saved-views/<page_key>/save')` | 28561 |
+| `saved_view_update` | `app.post('/saved-views/<page_key>/<int:view_id>/update')` | 28583 |
+| `saved_view_apply` | `app.get('/saved-views/<page_key>/<int:view_id>/apply')` | 28603 |
+| `saved_view_set_default` | `app.post('/saved-views/<page_key>/<int:view_id>/default')` | 28623 |
+| `saved_view_rename` | `app.post('/saved-views/<page_key>/<int:view_id>/rename')` | 28644 |
+| `saved_view_delete` | `app.post('/saved-views/<page_key>/<int:view_id>/delete')` | 28664 |
+| `advanced_search_save` | `app.post('/search/advanced/save')` | 28683 |
+| `advanced_search_apply_saved` | `app.get('/search/advanced/saved/<int:filter_id>')` | 28695 |
+| `order_actions` | `app.get('/orders/<int:order_id>/actions')` | 28702 |
+| `order_label_print` | `app.get('/orders/<int:order_id>/label-print')` | 28708 |
+| `admin_label_templates` | `app.route('/admin/label-templates', methods=['GET', 'POST'])` | 28719 |
+| `assignment_reports` | `app.get('/operations/assignment-reports')` | 28736 |
+| `assignment_dashboard` | `app.get('/operations/assignment-dashboard')` | 28742 |
+| `assignment_report_csv` | `app.get('/operations/assignment-report.csv')` | 28791 |
+| `smart_intake_start` | `app.route('/intake/smart', methods=['GET', 'POST'])` | 28812 |
+| `smart_intake_workspace` | `app.get('/intake/smart/<int:intake_id>')` | 28823 |
+| `smart_intake_document_file` | `app.get('/intake/smart/<int:intake_id>/document/<int:doc_id>/file')` | 28863 |
+| `smart_intake_upload` | `app.post('/intake/smart/<int:intake_id>/upload')` | 28872 |
+| `smart_intake_run_ocr` | `app.post('/intake/smart/<int:intake_id>/ocr/<int:doc_id>')` | 29158 |
+| `smart_intake_run_all_ocr` | `app.post('/intake/smart/<int:intake_id>/ocr-all')` | 29181 |
+| `smart_intake_document_review` | `app.post('/intake/smart/<int:intake_id>/document/<int:doc_id>/review')` | 29205 |
+| `smart_intake_review_save` | `app.post('/intake/smart/<int:intake_id>/review-save')` | 29312 |
+| `admin_ocr_settings` | `app.route('/admin/ocr-settings', methods=['GET', 'POST'])` | 29451 |
+| `admin_ocr_settings_validate` | `app.post('/admin/ocr-settings/validate')` | 29514 |
+| `doctor_clinical_workspace` | `app.route('/doctor/case/<int:order_id>/workspace', methods=['GET', 'POST'])` | 29533 |
+| `admin_printer_profiles` | `app.route('/admin/printer-profiles', methods=['GET', 'POST'])` | 29639 |
+| `admin_printer_profile_delete` | `app.post('/admin/printer-profiles/<int:profile_id>/delete')` | 29663 |
+| `order_print_center` | `app.get('/orders/<int:order_id>/print-center')` | 29671 |
+| `my_registration_defaults` | `app.route('/my/registration-defaults', methods=['GET', 'POST'])` | 29682 |
+| `admin_registration_defaults` | `app.route('/admin/registration-defaults', methods=['GET', 'POST'])` | 29708 |
+| `studio_shortcuts` | `app.route('/studio/shortcuts', methods=['GET', 'POST'])` | 29752 |
+| `studio_shortcut_toggle` | `app.post('/studio/shortcuts/<int:shortcut_id>/toggle')` | 29791 |
+| `studio_shortcut_delete` | `app.post('/studio/shortcuts/<int:shortcut_id>/delete')` | 29799 |
+| `studio_shortcut_reorder` | `app.post('/studio/shortcuts/reorder')` | 29807 |
+| `management_dashboard` | `app.get('/management')` | 29834 |
+| `referral_analytics` | `app.get('/management/referrals')` | 29846 |
+| `admin_referral_commissions` | `app.route('/admin/referral-commissions', methods=['GET', 'POST'])` | 29860 |
+| `daily_closing` | `app.route('/accounting/daily-closing', methods=['GET', 'POST'])` | 29871 |
+| `admin_doctor_share_rules` | `app.route('/admin/doctor-share-rules', methods=['GET', 'POST'])` | 29878 |
+| `doctor_share_rule_toggle` | `app.post('/admin/doctor-share-rules/<int:rule_id>/toggle')` | 29908 |
+| `set_performing_doctor` | `app.route('/orders/<int:order_id>/performing-doctor', methods=['POST'])` | 29916 |
+| `admin_discount_policies` | `app.route('/admin/discount-policies', methods=['GET', 'POST'])` | 29936 |
+| `discount_policy_toggle` | `app.post('/admin/discount-policies/<int:policy_id>/toggle')` | 29965 |
+| `discount_approval_queue` | `app.get('/finance/discount-approvals')` | 29973 |
+| `discount_approval_decision` | `app.post('/finance/discount-approvals/<int:req_id>/decision')` | 29982 |
+| `doctor_earnings_report` | `app.get('/finance/doctor-earnings')` | 30006 |
+| `inventory_warehouses` | `app.route('/inventory/warehouses', methods=['GET', 'POST'])` | 30037 |
+| `inventory_items` | `app.route('/inventory/items', methods=['GET', 'POST'])` | 30056 |
+| `inventory_migrate_legacy_items` | `app.post('/inventory/migrate-legacy-items')` | 30074 |
+| `inventory_stock` | `app.route('/inventory/stock', methods=['GET', 'POST'])` | 30090 |
+| `inventory_stock_policies` | `app.route('/inventory/stock-policies', methods=['GET', 'POST'])` | 30128 |
+| `inventory_procedure_defaults` | `app.route('/inventory/procedure-defaults', methods=['GET', 'POST'])` | 30146 |
+| `inventory_transfers` | `app.route('/inventory/transfers', methods=['GET', 'POST'])` | 30163 |
+| `inventory_transfer_detail` | `app.get('/inventory/transfers/<int:transfer_id>')` | 30190 |
+| `inventory_transfer_approve` | `app.post('/inventory/transfers/<int:transfer_id>/approve')` | 30197 |
+| `inventory_transfer_reject` | `app.post('/inventory/transfers/<int:transfer_id>/reject')` | 30207 |
+| `inventory_transfer_dispatch` | `app.post('/inventory/transfers/<int:transfer_id>/dispatch')` | 30218 |
+| `inventory_transfer_receive` | `app.post('/inventory/transfers/<int:transfer_id>/receive')` | 30245 |
+| `order_consumables_available_stock` | `app.get('/orders/<int:order_id>/consumables/available-stock')` | 30263 |
+| `order_consumables` | `app.route('/orders/<int:order_id>/consumables', methods=['GET', 'POST'])` | 30276 |
+| `order_consumables_apply_defaults` | `app.post('/orders/<int:order_id>/consumables/apply-defaults')` | 30312 |
+| `inventory_ledger` | `app.get('/inventory/ledger')` | 30330 |
+| `inventory_consumption_report` | `app.get('/inventory/consumption-report')` | 30343 |
+| `inventory_warehouses_auto_create` | `app.post('/inventory/warehouses/auto-create')` | 30353 |
+| `inventory_create_for_branch` | `app.post('/inventory/warehouses/create-for-branch/<int:branch_id>')` | 30372 |
+| `admin_data_management` | `app.get('/admin/data-management')` | 30414 |
+| `admin_export_patient` | `app.post('/admin/data-management/export-patient')` | 30423 |
+| `admin_create_manifest_backup` | `app.post('/admin/data-management/create-manifest-backup')` | 30470 |
+| `admin_anonymize_patient` | `app.post('/admin/data-management/anonymize-patient')` | 30489 |
+| `admin_delete_patient` | `app.post('/admin/data-management/delete-patient')` | 30508 |
+| `admin_reset_module` | `app.post('/admin/data-management/reset-module')` | 30528 |
+| `admin_backup_all_patients` | `app.post('/admin/data-management/backup-all-patients')` | 30550 |
+| `admin_delete_all_patients` | `app.post('/admin/data-management/delete-all-patients')` | 30569 |
+| `executive_analytics` | `app.get('/analytics/executive')` | 30594 |
+| `workflow_command_center` | `app.get('/operations/command-center')` | 30610 |
+| `pacs_unregistered_cases` | `app.get('/pacs/unregistered')` | 30616 |
+| `pacs_unregistered_run` | `app.post('/pacs/unregistered/run')` | 30622 |
+| `pacs_destinations` | `app.route('/admin/pacs/destinations', methods=['GET', 'POST'])` | 30629 |
+| `pacs_routing_rules` | `app.route('/admin/pacs/routing', methods=['GET', 'POST'])` | 30654 |
+| `pacs_case_actions` | `app.get('/pacs/actions/<int:order_id>')` | 30670 |
+| `pacs_case_send` | `app.post('/pacs/actions/<int:order_id>/send')` | 30681 |
+| `pacs_transfer_retry` | `app.post('/pacs/transfers/<int:job_id>/retry')` | 30697 |
+| `pacs_transfer_cancel` | `app.post('/pacs/transfers/<int:job_id>/cancel')` | 30707 |
+| `pacs_destination_echo` | `app.post('/pacs/destinations/<int:destination_id>/echo')` | 30717 |
+| `pacs_transfer_process` | `app.post('/pacs/transfers/process')` | 30729 |
+| `pacs_archive_dashboard` | `app.get('/pacs/archive')` | 30735 |
+| `coordinator_queue` | `app.get('/coordinator')` | 30742 |
+| `coordinator_action` | `app.post('/coordinator/<int:task_id>/action')` | 30752 |
+| `storage_dr_manager` | `app.route('/admin/storage-dr', methods=['GET', 'POST'])` | 30826 |
+| `storage_target_health` | `app.post('/admin/storage-dr/storage/<int:storage_id>/health')` | 30878 |
+| `replication_state_update` | `app.post('/admin/storage-dr/policy/<int:policy_id>/state')` | 30884 |
+| `dr_failover_request` | `app.post('/admin/storage-dr/policy/<int:policy_id>/failover')` | 30895 |
+| `storage_cloud_manager` | `app.route('/admin/storage-cloud', methods=['GET', 'POST'])` | 30906 |
+| `pacs_discovery` | `app.get('/admin/pacs/discovery')` | 30939 |
+| `admin_external_intake` | `app.route('/admin/external-intake', methods=['GET', 'POST'])` | 31343 |
+| `admin_external_intake_attachment_upload` | `app.post('/admin/external-intake/<int:intake_id>/attachments')` | 31413 |
+| `admin_external_intake_decision` | `app.post('/admin/external-intake/<int:intake_id>/decision')` | 31453 |
+| `pacs_discovery_approve` | `app.post('/admin/pacs/discovery/<int:node_id>/approve')` | 31506 |
+| `pacs_discovery_block` | `app.post('/admin/pacs/discovery/<int:node_id>/block')` | 31523 |
+| `pacs_discovery_legacy_endpoint` | `app.post('/admin/pacs/discovery/<int:node_id>/legacy-endpoint')` | 31531 |
+| `pacs_discovery_dismiss` | `app.post('/admin/pacs/discovery/<int:node_id>/dismiss')` | 31592 |
+| `pacs_discovery_manual` | `app.post('/admin/pacs/discovery/manual')` | 31609 |
+| `api_assignment_offer_pending` | `app.get('/api/assignment/offers/pending')` | 31646 |
+| `api_ohif_report_get` | `app.get('/api/ohif/report/<int:order_id>')` | 31865 |
+| `api_ohif_report_word` | `app.get('/api/ohif/report/<int:order_id>/word')` | 31929 |
+| `api_ohif_report_word_draft` | `app.post('/api/ohif/report/<int:order_id>/word/draft')` | 32247 |
+| `api_ohif_report_word_verify` | `app.post('/api/ohif/report/<int:order_id>/word/verify')` | 32466 |
+| `api_ohif_report_word_finalize` | `app.post('/api/ohif/report/<int:order_id>/word/finalize')` | 32629 |
+| `api_ohif_report_lease_acquire` | `app.post('/api/ohif/report/<int:order_id>/lease/acquire')` | 32829 |
+| `api_ohif_report_lease_release` | `app.post('/api/ohif/report/<int:order_id>/lease/release')` | 32921 |
+| `api_ohif_report_draft` | `app.post('/api/ohif/report/<int:order_id>/draft')` | 32977 |
+| `api_ohif_report_verify` | `app.post('/api/ohif/report/<int:order_id>/verify')` | 33200 |
+| `api_ohif_report_finalize` | `app.post('/api/ohif/report/<int:order_id>/finalize')` | 33355 |
+| `api_ohif_report_return` | `app.post('/api/ohif/report/<int:order_id>/return')` | 33545 |
+| `api_ohif_reporting_preferences` | `app.route('/api/ohif/report/<int:order_id>/preferences', methods=['GET', 'POST'])` | 33831 |
+| `api_ohif_onlyoffice_config` | `app.get('/api/ohif/report/<int:order_id>/onlyoffice/config')` | 33923 |
+| `api_ohif_onlyoffice_forcesave` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/forcesave')` | 34170 |
+| `api_ohif_onlyoffice_document` | `app.get('/api/ohif/report/<int:order_id>/onlyoffice/document')` | 34365 |
+| `api_ohif_onlyoffice_commit_draft` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/commit-draft')` | 34926 |
+| `api_ohif_onlyoffice_verify` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/verify')` | 35051 |
+| `api_ohif_onlyoffice_finalize` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/finalize')` | 35165 |
+| `api_ohif_onlyoffice_callback` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/callback')` | 35278 |
+| `voice_api_patient_search` | `app.route('/api/voice/patient/search', methods=['GET'])` | 35596 |
+| `voice_api_patient_create` | `app.route('/api/voice/patient', methods=['POST'])` | 35631 |
+| `voice_api_inquiry` | `app.route('/api/voice/inquiry', methods=['GET'])` | 35726 |
+| `voice_api_book` | `app.route('/api/voice/book', methods=['POST'])` | 36003 |
+| `voice_intake_review` | `app.get('/voice-intake/review')` | 36179 |
+| `voice_intake_audio` | `app.get('/voice-intake/<int:intake_id>/audio')` | 36233 |
+| `voice_intake_status` | `app.post('/voice-intake/<int:intake_id>/status')` | 36286 |
+| `voice_intake_caller_control` | `app.post('/voice-intake/<int:intake_id>/caller-control')` | 36344 |
+| `voice_intake_caller_history` | `app.get('/voice-intake/<int:intake_id>/caller-history')` | 36519 |
+| `telephony_console` | `app.route('/telephony')` | 36658 |
+| `telephony_credentials` | `app.route('/api/telephony/credentials')` | 36713 |
+| `public_click_to_call` | `app.route('/call', methods=['GET'])` | 36791 |
+| `public_call_config` | `app.route('/api/public-call/config', methods=['GET'])` | 36798 |
+| `public_contact_request_create` | `app.post('/api/public-call/request')` | 37017 |
+| `public_chat_start` | `app.post('/api/public-chat/start')` | 37111 |
+| `public_chat_messages` | `app.get('/api/public-chat/<token>/messages')` | 37204 |
+| `public_chat_message` | `app.post('/api/public-chat/<token>/message')` | 37266 |
+| `communications_dashboard` | `app.route('/communications')` | 37488 |
+| `staff_communications_claim` | `app.post('/api/staff/communications/<int:request_id>/claim')` | 37563 |
+| `staff_communications_confirm` | `app.post('/api/staff/communications/<int:request_id>/confirm')` | 37632 |
+| `staff_communications_reject` | `app.post('/api/staff/communications/<int:request_id>/reject')` | 37703 |
+| `staff_chat_message` | `app.post('/api/staff/chat/<int:request_id>/message')` | 37779 |
+| `public_contact_request_details` | `app.post('/api/public-call/request/<int:request_id>/details')` | 37933 |
+| `public_contact_attachment_upload` | `app.post('/api/public-call/request/<int:request_id>/attachments')` | 38084 |
+| `staff_public_attachment_view` | `app.get('/staff/public-attachment/<int:attachment_id>')` | 38326 |
+| `staff_attachment_verify` | `app.post('/api/staff/attachments/<int:attachment_id>/verify')` | 38388 |
+| `staff_attachment_reject` | `app.post('/api/staff/attachments/<int:attachment_id>/reject')` | 38420 |
+| `admin_ivr` | `app.route('/admin/ivr')` | 38453 |
 
 ## Key Worker / Module Files
 

@@ -81,6 +81,11 @@ def special_doctor_pool(order,policy=None):
 
 
 def validate_special_doctor(order,doctor):
+    import app as m
+    from clinical_scope import allowed
+    if not allowed(m,doctor,order):
+        from case_assignment_service import CaseAssignmentServiceError
+        raise CaseAssignmentServiceError('DOCTOR_CLINICAL_SCOPE_DENIED')
     pool=special_doctor_pool(order)
     if pool is not None and doctor.id not in pool:
         from case_assignment_service import CaseAssignmentServiceError
@@ -96,6 +101,8 @@ def rank_candidates(candidates, policy=None,order=None):
     for user, online, _old_count, weight in candidates:
         if order is not None:
             from assignment_visit_grouping import group_members
+            from clinical_scope import allowed
+            if any(not allowed(m,user,o) for o in group_members(order)):continue
             pools=[special_doctor_pool(o,policy) for o in group_members(order)]
             if any(pool is not None and user.id not in pool for pool in pools): continue
         active = active_case_count(user.id)

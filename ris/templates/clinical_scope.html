@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block page_title %}نطاق رؤية وعمل المستخدم / Clinical user scope{% endblock %}
+{% block content %}<section class="panel" style="max-width:1100px;margin:auto">
+<h2>{{ scope_user.full_name }} · {{ scope_user.username }}</h2><p>{{ scope_user.role.name }}</p>
+{% if error %}<p role="alert" class="alert alert-danger">{{ error }}</p>{% endif %}
+{% if scope_user.role.code.upper() in clinical_roles %}
+<form method="post"><input type="hidden" name="scope_csrf" value="{{ scope_csrf }}">
+{% include 'clinical_scope_fields.html' %}
+<p><button class="btn primary" type="submit">حفظ نطاق العمل / Save clinical scope</button> <a class="btn" href="{{ url_for('admin_users') }}">المستخدمون / Users</a></p></form>
+<p>يُضاف هذا القيد إلى صلاحيات الدور والفرع وتعيين الطبيب. الحالات خارج النطاق لا تظهر ولا تُفتح أو تُعدّل. الحالات بدون جهاز لا تطابق قيد الجهاز أو الغرفة. / Adds to role, branch and doctor assignment rules. Cases outside scope are hidden and cannot be opened or changed. Cases without a device cannot match device or room restrictions.</p>
+{% else %}<p>التخصيص متاح للأطباء والفنيين والتمريض فقط / Clinical scope applies to doctors, technicians and nursing only.</p>{% endif %}
+</section>{% endblock %}

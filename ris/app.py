@@ -4514,6 +4514,10 @@ def require_ohif_doctor_user(order_id):
             403
         )
 
+    from clinical_scope import allowed as clinical_scope_allowed
+    order=db.session.get(Order,order_id)
+    if not clinical_scope_allowed(_reporting_support_sys.modules[__name__],identity['user'],order):
+        return None,(jsonify(ok=False,error='CLINICAL_SCOPE_DENIED'),403)
     return identity['user'], None
 
 
@@ -4786,6 +4790,8 @@ def eligible_doctors_for_order(order):
         user=p.user
         if not user or not getattr(user,'active',True):
             continue
+        from clinical_scope import allowed as clinical_scope_allowed
+        if not clinical_scope_allowed(_reporting_support_sys.modules[__name__],user,order):continue
         modalities=_csv_values(p.modalities)
         branches=_csv_values(p.branches)
         specialties=_csv_values(p.specialties)
@@ -7575,6 +7581,9 @@ def doctor_case_access_allowed(user,order):
     if not user or not user.active or not order:
         return False
     if not doctor_workspace_user(user):
+        return False
+    from clinical_scope import allowed as clinical_scope_allowed
+    if not clinical_scope_allowed(_reporting_support_sys.modules[__name__],user,order):
         return False
     role=(user.role.code if user.role else '').upper()
     if role in ('SUPER_ADMIN','ADMIN'):
@@ -20257,6 +20266,9 @@ def admin_users():
         except ValueError as exc:flash(str(exc),'danger');return redirect(url_for('admin_users'))
         role=Role.query.get_or_404(request.form.get('role_id',type=int))
         require_manage_target(role=role)
+        from clinical_scope import parse_form,save as save_clinical_scope
+        try:scope=parse_form(_reporting_support_sys.modules[__name__],request.form,role)
+        except ValueError as exc:flash(str(exc),'danger');return redirect(url_for('admin_users'))
         username=request.form['username'].strip()
         password=request.form.get('password','')
         if User.query.filter_by(username=username).first():
@@ -20267,7 +20279,7 @@ def admin_users():
                password_hash=generate_password_hash(password),
                role_id=int(request.form['role_id']),branch_id=(int(request.form['branch_id']) if request.form.get('branch_id') else None),
                active=True,must_change_password=True)
-        db.session.add(u); db.session.flush(); save_contacts(u,data,request.form); audit('USER_CONTACTS_SAVE','user',u.id,'Contact fields updated'); audit('USER_CREATE','user','',u.username); db.session.commit(); flash('User created. Temporary password must be changed at first login.','success')
+        db.session.add(u); db.session.flush(); save_contacts(u,data,request.form); save_clinical_scope(_reporting_support_sys.modules[__name__],u,scope); audit('USER_CONTACTS_SAVE','user',u.id,'Contact fields updated'); audit('USER_CREATE','user','',u.username); db.session.commit(); flash('User created. Temporary password must be changed at first login.','success')
     return render_template('admin_users.html',users=User.query.order_by(User.username).all(),roles=Role.query.order_by(Role.name).all(),branches=Branch.query.order_by(Branch.name).all(),contact_fields=CONTACT_FIELDS,user_contacts=contacts,user_profiles={x.user_id:x for x in UserProfile.query.all()})
 
 @app.post('/admin/users/<int:user_id>/toggle')
@@ -20300,6 +20312,8 @@ def admin_user_edit(user_id):
     u.branch_id=int(request.form['branch_id']) if request.form.get('branch_id') else None
     u.active=request.form.get('active')=='1'
     save_contacts(u,data,request.form)
+    from clinical_scope import CLINICAL_ROLES,save as save_clinical_scope
+    if role.code.upper() not in CLINICAL_ROLES:save_clinical_scope(_reporting_support_sys.modules[__name__],u,None)
     audit('USER_CONTACTS_SAVE','user',u.id,'Contact fields updated')
     audit('USER_EDIT','user',u.id,f'role {old_role}->{Role.query.get(u.role_id).code if u.role_id else ""}; active={u.active}')
     db.session.commit(); flash('User updated.','success')
@@ -38572,3 +38586,9 @@ register_report_exports(_reporting_support_sys.modules[__name__])
 
 from viewer_choice import register as register_viewer_choice
 register_viewer_choice(_reporting_support_sys.modules[__name__])
+
+from user_csv_transfer import register as register_user_csv_transfer
+register_user_csv_transfer(_reporting_support_sys.modules[__name__])
+
+from clinical_scope import register as register_clinical_scope
+register_clinical_scope(_reporting_support_sys.modules[__name__])

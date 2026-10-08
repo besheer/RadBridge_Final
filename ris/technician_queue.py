@@ -11,6 +11,8 @@ def scoped_order(m, order, user=None):
     user = user or m.current_user()
     if not user or not user.active:
         m.abort(403)
+    from clinical_scope import allowed
+    if not allowed(m,user,order):m.abort(403)
     if user.role and ('*' in user.role.permissions() or user.role.code == 'SUPER_ADMIN'):
         return
     if not user.branch_id or user.branch_id != order.branch_id:
