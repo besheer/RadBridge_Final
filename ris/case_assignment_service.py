@@ -68,6 +68,10 @@ def _assert_assignable_lifecycle(session, Report, order):
     ):
         raise CaseAssignmentServiceError("CASE_REPORT_LOCKED")
 
+    from reception_readiness import receiving
+    if receiving(order):
+        raise CaseAssignmentServiceError('PACS_RECEIVING')
+
 
 def _load_assignable_doctor(session, User, doctor_user_id):
     doctor = (

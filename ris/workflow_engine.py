@@ -121,6 +121,22 @@ def _upper(value, default="") -> str:
     return str(value or default).strip().upper()
 
 
+def acquisition_completed(exam_status) -> bool:
+    """REPORTING is a legacy successor of completed acquisition, never FINAL evidence.
+
+    The existing canonical policy only enters REPORTING from EXAM_COMPLETED.
+    Reading that legacy value must not reopen image reception. New writes keep
+    acquisition at EXAM_COMPLETED and move Order.status to REPORTING instead.
+    """
+    return _upper(exam_status) in {"EXAM_COMPLETED", "REPORTING"}
+
+
+def acquisition_state_after_transition(target) -> str:
+    """Called only after the existing role, forward, identity and terminal gates."""
+    value = _upper(target)
+    return "EXAM_COMPLETED" if value == "REPORTING" else value
+
+
 def normalize_state(value: str) -> str:
     """Backward-compatible exam-state normalizer."""
     value = _upper(value, "ORDERED")

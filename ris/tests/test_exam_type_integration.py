@@ -41,8 +41,13 @@ def test_readiness_and_assignment_strategy_cannot_warn_past_mismatch(acquisition
 def test_matching_acquisition_is_ready(acquisition):
     f=acquisition;f.evidence[3][0]['body_part']='KNEE'
     row=f.m.evaluate_case_readiness(f.order)
-    assert row.status=='READY'
+    # Matching images authorize technician completion, but not assignment
+    # while the independent acquisition/reception stage is still open.
+    assert row.status=='BLOCKED'
+    assert 'PACS_RECEIVING' in json.loads(row.details_json)['blockers']
     assert f.m.technician_completion_evidence(f.order)[0]['allowed']
+    f.order.exam_status='EXAM_COMPLETED';f.order.pacs_status='IMAGES_COMPLETE'
+    assert f.m.evaluate_case_readiness(f.order).status=='READY'
 
 def test_configured_recognized_exam_missing_region_requires_review(acquisition):
     f=acquisition;f.evidence[3][0]['body_part']=''

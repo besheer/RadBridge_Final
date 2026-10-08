@@ -118,13 +118,15 @@ def register(m):
         state=(request.args.get('status') or '').upper()
         now=datetime.utcnow()
         for order in q.order_by(m.Order.id.desc()).limit(300).all():
-            row=m.CaseReadiness.query.filter_by(order_id=order.id).first();status=row.status if row else 'NOT_CHECKED'
+            from reception_readiness import receiving, view
+            row=view(order,m.CaseReadiness.query.filter_by(order_id=order.id).first());status='BLOCKED' if receiving(order) else (row.status if row else 'NOT_CHECKED')
             counts[status]=counts.get(status,0)+1
             if state and status!=state:continue
             try:blockers=json.loads(row.details_json or '{}').get('blockers',[]) if row else []
             except ValueError:blockers=['EVIDENCE_UNAVAILABLE']
+            if receiving(order):blockers=sorted(set(blockers+['PACS_RECEIVING']))
             due=(row.checked_at+timedelta(seconds=interval(config,order.modality))) if row and row.checked_at else now
-            rows.append({'order':order,'readiness':row,'delay':m.case_delay_snapshot(order),'blockers':blockers,'eligible':eligible(order),'due':due,'overdue':due<=now})
+            rows.append({'order':order,'readiness':row,'effective_status':status,'delay':m.case_delay_snapshot(order),'blockers':blockers,'eligible':eligible(order),'due':due,'overdue':due<=now})
         bq=m.Branch.query.filter_by(active=True)
         if allowed is not None:bq=bq.filter(m.Branch.id.in_(allowed))
         return render_template('case_readiness_dashboard.html',rows=rows,counts=counts,config=config,profile=profile,config_error=config_error,

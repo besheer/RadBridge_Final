@@ -3336,7 +3336,7 @@ def pacs_lookup_order(order):
 
     if count<=0:
         status='WAITING'
-    elif (order.exam_status or '').upper()!='EXAM_COMPLETED':
+    elif not __import__('workflow_engine').acquisition_completed(order.exam_status):
         status='RECEIVING'
     elif order.pacs_last_change_at and (now-order.pacs_last_change_at).total_seconds()>=PACS_IMAGES_STABLE_SECONDS:
         status='IMAGES_COMPLETE'
@@ -7177,7 +7177,12 @@ def _apply_exam_transition(order,target,role_code,override=False):
         audit('EXAM_COMPLETION_IMAGES_VERIFIED','order',order.id,json.dumps(result,sort_keys=True))
         if result['warning']: flash(result['warning'],'warning')
 
-    order.exam_status=target
+    # Reporting is an operational phase; it never reopens completed acquisition.
+    from workflow_engine import acquisition_state_after_transition
+    order.exam_status=acquisition_state_after_transition(target)
+    if target=='REPORTING':
+        audit('ACQUISITION_PRESERVED_FOR_REPORTING','order',order.id,
+              f'acquisition={order.exam_status}; reporting=STARTED')
     order.status=order_status_for_exam_transition(
         order.status,
         target,
@@ -11856,6 +11861,8 @@ def offer_next_doctor(order,created_by=None):
 
     if not order:
         return None, 'ORDER_NOT_FOUND'
+    from reception_readiness import receiving
+    if receiving(order):return None, 'PACS_RECEIVING'
 
     if order.assigned_doctor_id:
         return None, 'ALREADY_ASSIGNED'
@@ -12466,6 +12473,12 @@ def evaluate_case_readiness(order,pacs_evidence=None):
       require_history=bool(rule.require_history) if rule else False,history_present=has_history,
       require_attachments=bool(rule.require_attachments) if rule else False,attachment_count=attachments,
       required_series=(rule.required_series if rule else ''),series=mapped_series)
+    from reception_readiness import receiving
+    result['details']['pacs_status']=str(order.pacs_status or '')
+    if receiving(order):
+        result['status']='BLOCKED';result['score']=0
+        result['flags']['incomplete_images']=True
+        result['details']['blockers']=sorted(set(result['details'].get('blockers',[])+['PACS_RECEIVING']))
     from exam_type_policy import evidence_exam_match
     type_check=evidence_exam_match(order,(count,pacs,error,series),rule)
     result['details']['exam_type']=type_check
@@ -12474,7 +12487,7 @@ def evaluate_case_readiness(order,pacs_evidence=None):
         result['score']=0
     # Bind readiness evidence to the independent exam-type safety check too.
     import hashlib
-    result['facts_sha256']=hashlib.sha256((result['facts_sha256']+json.dumps(type_check,sort_keys=True)).encode()).hexdigest()
+    result['facts_sha256']=hashlib.sha256((result['facts_sha256']+json.dumps(type_check,sort_keys=True)+str(order.pacs_status or '')).encode()).hexdigest()
     flags=result['flags']
     row=CaseReadiness.query.filter_by(order_id=order.id).first() or CaseReadiness(order_id=order.id)
     row.status=result['status'];row.score=result['score'];row.image_count=count;row.expected_min_images=min_images
@@ -12597,6 +12610,16 @@ def assignment_readiness_decision(order,refresh_stale=True):
     '''
 
     row=CaseReadiness.query.filter_by(order_id=order.id).first()
+    from reception_readiness import receiving, view
+    if receiving(order):
+        blockers=['PACS_RECEIVING']
+        # Preserve independently detected identity/exam safety reasons as well.
+        if row:
+            from exam_type_policy import cached_exam_gate
+            type_ok,type_reason=cached_exam_gate(order,row)
+            if not type_ok:blockers.append(type_reason)
+        return {'allowed':False,'action':'BLOCK','blockers':blockers,
+                'warnings':[],'coordinator':[],'strategy':None,'readiness':view(order,row)}
 
     if refresh_stale and (not row or not row.checked_at or (
         datetime.utcnow()-row.checked_at
