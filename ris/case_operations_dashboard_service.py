@@ -117,7 +117,8 @@ def build_case_operations_snapshot(
 
     for order in orders:
         report = reports.get(order.id)
-        ready = readiness.get(order.id)
+        from reception_readiness import view
+        ready = view(order, readiness.get(order.id))
         assignment = assignments.get(order.id)
         offers = pending_offers.get(order.id, [])
         lease = current_leases.get(order.id)

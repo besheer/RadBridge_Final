@@ -9,7 +9,9 @@ class BlockedReceptionView:
     status='BLOCKED'
     score=0
     incomplete_images=True
-    def __getattr__(self,name):return getattr(self._row,name)
+    def __getattr__(self,name):
+        if self._row is None:return None
+        return getattr(self._row,name)
     @property
     def details_json(self):
         try:details=json.loads(getattr(self._row,'details_json','') or '{}')
@@ -21,4 +23,4 @@ class BlockedReceptionView:
         return json.dumps(details)
 
 def view(order,row):
-    return BlockedReceptionView(row) if row is not None and receiving(order) else row
+    return BlockedReceptionView(row) if receiving(order) else row

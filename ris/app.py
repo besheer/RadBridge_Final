@@ -6954,7 +6954,7 @@ def technician_case_workspace(order_id):
         quality_rule=quality_rule_for(order),
         acquisition_minimum=technician_minimum_requirement(order,quality_rule_for(order))[0],
         acquisition_notes=technician_acquisition_notes(quality_rule_for(order)),
-        image_readiness=CaseReadiness.query.filter_by(order_id=order.id).first(),
+        image_readiness=__import__('reception_readiness').view(order,CaseReadiness.query.filter_by(order_id=order.id).first()),
         order=order,
         image_url=clinical_image_only_url(order),
         warehouse=warehouse,
@@ -12267,7 +12267,7 @@ def assignment_decision_phase1(order,return_open=False):
     """Evaluate phase-1 policy without changing operational behavior."""
     from assignment_decision_engine import evaluate_assignment_decision
 
-    readiness=CaseReadiness.query.filter_by(order_id=order.id).first()
+    readiness=__import__('reception_readiness').view(order,CaseReadiness.query.filter_by(order_id=order.id).first())
     result=evaluate_assignment_decision(
         mode=os.environ.get('RADBRIDGE_DECISION_ENGINE_MODE','DISABLED'),
         facts={
@@ -12772,7 +12772,7 @@ def resolve_tat_policy(priority, modality=None):
 def case_delay_snapshot(order):
     events=CaseWorkflowEvent.query.filter_by(order_id=order.id).order_by(CaseWorkflowEvent.created_at).all()
     now=datetime.utcnow()
-    readiness=CaseReadiness.query.filter_by(order_id=order.id).first()
+    readiness=__import__('reception_readiness').view(order,CaseReadiness.query.filter_by(order_id=order.id).first())
     assignment=CaseAssignment.query.filter_by(order_id=order.id,active=True).order_by(CaseAssignment.assigned_at.desc()).first()
     final=None
     try:
@@ -12843,7 +12843,7 @@ def advanced_order_query():
     rows=q.order_by(Order.id.desc()).limit(1000).all()
 
     def keep(o):
-        r=CaseReadiness.query.filter_by(order_id=o.id).first()
+        r=__import__('reception_readiness').view(o,CaseReadiness.query.filter_by(order_id=o.id).first())
         ca=CaseAssignment.query.filter_by(order_id=o.id,active=True).first()
         rp=Report.query.filter_by(order_id=o.id).order_by(Report.id.desc()).first()
         events=CaseWorkflowEvent.query.filter_by(order_id=o.id).all()
@@ -12883,7 +12883,7 @@ def assignment_report_rows(limit=1000):
             .first()
         )
         offers=AssignmentOffer.query.filter_by(order_id=o.id).order_by(AssignmentOffer.attempt_no).all()
-        rd=CaseReadiness.query.filter_by(order_id=o.id).first()
+        rd=__import__('reception_readiness').view(o,CaseReadiness.query.filter_by(order_id=o.id).first())
         tat=case_delay_snapshot(o)
         rp=Report.query.filter_by(order_id=o.id).order_by(Report.id.desc()).first()
         return_state=case_return_snapshot(o.id)
@@ -12959,7 +12959,7 @@ CASE_LIFECYCLE = [
 
 def order_visual_state(order):
     report=Report.query.filter_by(order_id=order.id).order_by(Report.id.desc()).first()
-    readiness=CaseReadiness.query.filter_by(order_id=order.id).first()
+    readiness=__import__('reception_readiness').view(order,CaseReadiness.query.filter_by(order_id=order.id).first())
     assignment=CaseAssignment.query.filter_by(order_id=order.id,active=True).first()
     attachments=Attachment.query.filter_by(order_id=order.id).count()
 
@@ -20194,6 +20194,8 @@ def unassigned_cases():
 
 def unassigned_case_snapshot(order,readiness,policies,now=None):
     """Build a read-only queue row without refreshing PACS or changing data."""
+    from reception_readiness import view,receiving
+    readiness=view(order,readiness)
     now=now or datetime.utcnow()
     priority=str(order.priority or 'ROUTINE').upper()
     modality=str(order.modality or '').upper()
@@ -20232,6 +20234,8 @@ def unassigned_case_snapshot(order,readiness,policies,now=None):
         for field,code,label,label_ar in flag_fields:
             if bool(getattr(readiness,field,False)):
                 flags.append({'code':code,'label':label,'label_ar':label_ar})
+
+    if receiving(order):flags.append({'code':'PACS_RECEIVING','label':'Images still receiving — assignment blocked','label_ar':'جارٍ استقبال الصور — الإسناد متوقف'})
 
     readiness_status=str(getattr(readiness,'status','NOT_CHECKED') or 'NOT_CHECKED').upper()
     decision=assignment_readiness_decision(order,refresh_stale=False)
@@ -26997,7 +27001,7 @@ def case_exception_resolver():
     selected=Order.query.get_or_404(order_id) if order_id else None
     readiness=None;rule=None;series=[];details={};aliases=[];events=[];report=None;overrides=[]
     if selected:
-        readiness=CaseReadiness.query.filter_by(order_id=selected.id).first()
+        readiness=__import__('reception_readiness').view(selected,CaseReadiness.query.filter_by(order_id=selected.id).first())
         rule=quality_rule_for(selected)
         report=Report.query.filter_by(order_id=selected.id).order_by(Report.id.desc()).first()
         if readiness:
@@ -29644,7 +29648,7 @@ def doctor_clinical_workspace(order_id):
     diagnoses=ClinicalDiagnosis.query.filter_by(order_id=order.id).order_by(ClinicalDiagnosis.created_at.desc()).all()
     medications=ClinicalMedication.query.filter_by(order_id=order.id,active=True).order_by(ClinicalMedication.created_at.desc()).all()
     labs=ClinicalLabItem.query.filter_by(order_id=order.id).order_by(ClinicalLabItem.created_at.desc()).all()
-    readiness=CaseReadiness.query.filter_by(order_id=order.id).first()
+    readiness=__import__('reception_readiness').view(order,CaseReadiness.query.filter_by(order_id=order.id).first())
     assignment=CaseAssignment.query.filter_by(order_id=order.id,active=True).first()
 
     return render_template(
