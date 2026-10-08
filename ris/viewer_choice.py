@@ -1,5 +1,7 @@
 """Doctor viewer selection and short-lived, study-scoped Weasis delivery."""
 import re
+import hashlib
+import logging
 import secrets
 import tempfile
 from urllib.parse import quote
@@ -12,6 +14,21 @@ from itsdangerous import URLSafeTimedSerializer, BadData
 VIEWERS = {'OHIF', 'WEASIS'}
 MAX_AGE = 1200
 ORTHANC_ID = re.compile(r'[a-fA-F0-9-]{36,45}')
+
+
+class CapabilityLogFilter(logging.Filter):
+    """Gunicorn access atoms must never persist a Weasis bearer capability."""
+    def filter(self, record):
+        if isinstance(record.args, dict):
+            for key in ('r', 'U'):
+                value = record.args.get(key)
+                if isinstance(value, str) and '/weasis-images/' in value:
+                    record.args[key] = re.sub(r'(/weasis-images/[0-9]+/)[^/ ?]+', r'\1[redacted]', value)
+        return True
+
+
+def fingerprint(value):
+    return hashlib.sha256(str(value or '').encode()).hexdigest()
 
 
 def preference(m, profile):
@@ -78,8 +95,8 @@ def register(m):
 
     def issue(user, order, detail):
         return signer().dumps({'purpose': 'WEASIS_READ', 'user': user.id, 'order': order.id,
-            'study': order.pacs_study_id, 'uid': detail['MainDicomTags']['StudyInstanceUID'],
-            'patient': order.patient.patient_id, 'nonce': secrets.token_urlsafe(12)})
+            'study': order.pacs_study_id, 'uid': fingerprint(detail['MainDicomTags']['StudyInstanceUID']),
+            'patient': fingerprint(order.patient.patient_id), 'nonce': secrets.token_urlsafe(12)})
 
     def authorize(token, order_id):
         try:
@@ -91,10 +108,10 @@ def register(m):
         user = m.db.session.get(m.User, payload.get('user'))
         order = m.db.session.get(m.Order, order_id)
         allowed(user, order)
-        if payload.get('study') != order.pacs_study_id or payload.get('patient') != order.patient.patient_id:
+        if payload.get('study') != order.pacs_study_id or payload.get('patient') != fingerprint(order.patient.patient_id):
             abort(403)
         detail = checked_study(order)
-        if payload.get('uid') != detail['MainDicomTags']['StudyInstanceUID']:
+        if payload.get('uid') != fingerprint(detail['MainDicomTags']['StudyInstanceUID']):
             abort(403)
         return user, order, detail
 
@@ -158,7 +175,7 @@ def register(m):
         order_id = request.form.get('order_id', type=int)
         return redirect(m.url_for('viewer_choice.choose', order_id=order_id) if order_id else m.url_for('my_profile'))
 
-    @bp.get('/viewer/weasis/<int:order_id>/<token>/manifest.xml')
+    @bp.get('/weasis-images/<int:order_id>/<token>/manifest.xml')
     def manifest(order_id, token):
         user, order, detail = authorize(token, order_id)
         instances = data('/studies/' + order.pacs_study_id + '/instances')
@@ -194,7 +211,7 @@ def register(m):
                 InstanceNumber=str(tags.get('InstanceNumber') or '0'), DirectDownloadFile='/instances/'+instance_id+'.dcm')
         return protected(Response(ET.tostring(root, encoding='utf-8', xml_declaration=True), mimetype='application/xml'))
 
-    @bp.get('/viewer/weasis/<int:order_id>/<token>/instances/<instance_id>.dcm')
+    @bp.get('/weasis-images/<int:order_id>/<token>/instances/<instance_id>.dcm')
     def instance(order_id, token, instance_id):
         user, order, detail = authorize(token, order_id)
         if not ORTHANC_ID.fullmatch(instance_id):
@@ -235,6 +252,7 @@ def register(m):
             raise
 
     m.app.register_blueprint(bp)
+    logging.getLogger('gunicorn.access').addFilter(CapabilityLogFilter())
     m.open_image_viewer_case = open_case
     m.image_viewer_preference = lambda profile: preference(m, profile)
     m.save_image_viewer_preference = lambda profile, value: save_preference(m, profile, value)

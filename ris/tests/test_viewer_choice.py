@@ -65,7 +65,7 @@ def launch(w):
     assert command.startswith('$dicom:get -w "')
     url=command.split('"')[1]
     path=url.removeprefix(w.m.RIS_PUBLIC_URL)
-    assert path.startswith('/viewer/weasis/')
+    assert path.startswith('/weasis-images/')
     return path
 
 
@@ -134,7 +134,7 @@ def test_anonymous_manifest_requires_capability_not_browser_session(imaging):
     w=imaging;path=launch(w)
     client=w.m.app.test_client()
     assert client.get(path).status_code==200
-    assert client.get(f'/viewer/weasis/{w.mine.id}/bad/manifest.xml').status_code==403
+    assert client.get(f'/weasis-images/{w.mine.id}/bad/manifest.xml').status_code==403
     assert client.get(f'/doctor/cases/{w.mine.id}/viewers').status_code==302
     assert client.post(path).status_code==405
 
@@ -183,3 +183,12 @@ def test_profile_save_preserves_reporting_and_unrelated_settings(imaging):
 @pytest.mark.parametrize('raw',['not json','[]','{"image_viewer": []}','{"image_viewer":"unknown"}'])
 def test_corrupt_preference_falls_back(app_ctx,raw):
     assert v.preference(app_ctx,SimpleNamespace(settings_json=raw))=='OHIF'
+
+
+def test_access_log_redacts_capability():
+    import logging
+    atoms={'r':'GET /weasis-images/9/SECRET/manifest.xml HTTP/1.1',
+           'U':'/weasis-images/9/SECRET/instances/a.dcm'}
+    record=logging.LogRecord('gunicorn.access',20,'test',1,'%(r)s',atoms,None)
+    assert v.CapabilityLogFilter().filter(record)
+    assert 'SECRET' not in record.args['r'] and 'SECRET' not in record.args['U']
