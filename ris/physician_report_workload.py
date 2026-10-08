@@ -41,7 +41,7 @@ def report_rows(m, lower, upper, branch_id, status):
     return original.union_all(corrections).subquery()
 
 
-def snapshot(m, lower, upper, branch_id=None, doctor_id=None, status='ALL', page=1):
+def snapshot(m, lower, upper, branch_id=None, doctor_id=None, status='ALL', page=1, all_rows=False):
     branch_id = scope(m, branch_id)
     if status not in ('ALL', 'VERIFIED', 'FINAL') or not isinstance(page, int) or page < 1:
         m.abort(400)
@@ -76,7 +76,9 @@ def snapshot(m, lower, upper, branch_id=None, doctor_id=None, status='ALL', page
     if page > pages:
         m.abort(400)
     details=[]
-    for row in details_q.order_by(source.c.status_at.desc(), source.c.order_id.desc(), source.c.kind, source.c.report_id.desc()).offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE):
+    ordered=details_q.order_by(source.c.status_at.desc(), source.c.order_id.desc(), source.c.kind, source.c.report_id.desc())
+    if not all_rows:ordered=ordered.offset((page-1)*PAGE_SIZE).limit(PAGE_SIZE)
+    for row in ordered:
         values=dict(row._mapping)
         values.update(doctor_name=physician_names.get(row.doctor_id),branch_name=branch_names.get(row.branch_id))
         details.append(values)
@@ -92,5 +94,6 @@ def register(m):
     def physician_report_workload():
         start,end,lower,upper=date_range(m)
         data=snapshot(m,lower,upper,positive_filter(m,'branch_id'),positive_filter(m,'doctor_id'),
-            request.args.get('status','ALL'),positive_filter(m,'page') or 1)
+            request.args.get('status','ALL'),1 if request.args.get('export') else positive_filter(m,'page') or 1,
+            all_rows=bool(request.args.get('export')))
         return m.render_template('physician_report_workload.html',start=start,end=end,**data)

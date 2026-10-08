@@ -300,6 +300,15 @@
 {% endif %}
 
 <section class="page-heading"><h1>{{self.page_title()}}</h1></section>
+{% if report_export_links %}
+<section class="report-export-bar" aria-label="{{'تصدير التقرير' if ui_lang=='ar' else 'Export report'}}" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px">
+<strong>{{'تصدير' if ui_lang=='ar' else 'Export'}}</strong>
+<a class="btn" href="{{report_export_links.csv}}">CSV</a>
+<a class="btn" href="{{report_export_links.xlsx}}">Excel</a>
+<a class="btn" href="{{report_export_links.pdf}}">PDF</a>
+<small>{{('كل الحالات المطابقة للفلاتر' if report_export_all_rows else 'بيانات التقرير المعروضة وفق الفلاتر وحدود العرض') if ui_lang=='ar' else ('All cases matching the filters' if report_export_all_rows else 'Displayed report data, with filters and view limits')}}</small>
+</section>
+{% endif %}
 {% with msgs=get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flash-stack">{% for cat,msg in msgs %}<div class="flash {{'danger' if cat=='exam-completion-blocked' else cat}}">{% if cat=='exam-completion-blocked' %}{% include 'exam_completion_message.html' %}{% else %}<div>{{msg}}</div>{% endif %}<button class="flash-close" aria-label="{{ ui_phrase('إغلاق / Close') }}">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
 <div class="page-content">{% block content %}{% endblock %}</div>
 {% if has_perm("users.view") %}<div class="admin-quick-link"><a href="{{url_for('admin_printer_profiles')}}">{{ ui_phrase('🖨️ Printer Profiles') }}</a></div>{% endif %}

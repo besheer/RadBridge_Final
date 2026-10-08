@@ -2,7 +2,7 @@
 {% block page_title %}{{'التقارير المحاسبية' if ui_lang=='ar' else 'Accounting Reports'}}{% endblock %}
 {% block subtitle %}Collections, balances, payer shares, payment methods and delivery status.{% endblock %}
 {% block content %}
-<form class="panel filterbar" method="get"><input type="date" name="start"><input type="date" name="end"><select name="branch_id"><option value="">{{ ui_phrase('All branches') }}</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select><button class="btn primary">{{ ui_phrase('Apply') }}</button><a class="btn" href="{{url_for('accounting_reports_csv')}}">{{ ui_phrase('Export CSV') }}</a></form>
+<form class="panel filterbar" method="get"><input type="date" name="start"><input type="date" name="end"><select name="branch_id"><option value="">{{ ui_phrase('All branches') }}</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select><button class="btn primary">{{ ui_phrase('Apply') }}</button></form>
 <div class="cards">
 <div class="metric"><small>{{ ui_phrase('Revenue') }}</small><b>{{'%.2f'|format(gross)}}</b></div><div class="metric"><small>{{ ui_phrase('Collected') }}</small><b>{{'%.2f'|format(collected)}}</b></div><div class="metric"><small>{{ ui_phrase('Outstanding') }}</small><b>{{'%.2f'|format(balance)}}</b></div><div class="metric"><small>{{ ui_phrase('Patient Share') }}</small><b>{{'%.2f'|format(patient_share)}}</b></div><div class="metric"><small>{{ ui_phrase('Company Share') }}</small><b>{{'%.2f'|format(company_share)}}</b></div>
 </div>
