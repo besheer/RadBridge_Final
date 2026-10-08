@@ -259,6 +259,8 @@
           details.type='button'; controls.append(details);
           if(c.has_linked_study){
             link.href=openLink(c.open_url);link.target='_blank';link.rel='noopener';controls.append(link);
+            if(c.viewer_choice_url){const viewerChoice=node('a',say('OHIF / Weasis','OHIF / Weasis'),'btn small');viewerChoice.href=openLink(c.viewer_choice_url);viewerChoice.target='_blank';viewerChoice.rel='noopener';controls.append(viewerChoice);}
+
             if(c.start_url && !['VERIFIED','FINAL','CANCELLED'].includes(c.status)){
               const startForm=document.createElement('form');startForm.method='POST';startForm.action=c.start_url;startForm.target='_blank';
               const startButton=document.createElement('button');startButton.className='btn primary';startButton.textContent=say('Start Reading','بدء القراءة');startForm.append(startButton);controls.append(startForm);

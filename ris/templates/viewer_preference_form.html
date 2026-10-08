@@ -1,0 +1,11 @@
+<form method="post" action="{{url_for('viewer_choice.save')}}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:20px 0">
+  <input type="hidden" name="csrf_token" value="{{save_token}}">
+  <input type="hidden" name="order_id" value="{{order.id}}">
+  <label>{{'عارض الصور الافتراضي لي' if ui_lang=='ar' else 'My default image viewer'}}
+    <select name="viewer">
+      <option value="OHIF" {% if preferred_viewer=='OHIF' %}selected{% endif %}>OHIF</option>
+      <option value="WEASIS" {% if preferred_viewer=='WEASIS' %}selected{% endif %}>Weasis</option>
+    </select>
+  </label>
+  <button class="btn primary">{{'حفظ الاختيار' if ui_lang=='ar' else 'Save preference'}}</button>
+</form>

@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block page_title %}Weasis{% endblock %}
+{% block content %}
+<section class="panel rb-viewer-choice">
+  <h2>{{'فتح صور الحالة في Weasis' if ui_lang=='ar' else 'Open case images in Weasis'}}</h2>
+  <p><b>{{order.accession}}</b> · {{order.patient.name}}</p>
+  <p>{{'اضغط فتح Weasis، ثم وافق على فتح التطبيق لو طلب المتصفح. لازم يكون Weasis مثبتًا على جهازك.' if ui_lang=='ar' else 'Click Open Weasis and allow your browser to open the application if prompted. Weasis must be installed on your computer.'}}</p>
+  <div class="actions" style="display:flex;gap:12px;flex-wrap:wrap">
+    <a class="btn primary" id="rbOpenWeasis" href="{{launch_url}}">{{'فتح Weasis' if ui_lang=='ar' else 'Open Weasis'}}</a>
+    <a class="btn" href="{{url_for('doctor_workspace_open',order_id=order.id,viewer='OHIF')}}">{{'فتح في OHIF' if ui_lang=='ar' else 'Open in OHIF'}}</a>
+    <a class="btn" href="{{url_for('report_editor',order_id=order.id)}}">{{'تقرير الحالة' if ui_lang=='ar' else 'Case report'}}</a>
+  </div>
+  <p class="muted">{{'إذا انتهت صلاحية فتح الصور، حدّث هذه الصفحة وأعد فتح Weasis.' if ui_lang=='ar' else 'If image access expires, refresh this page and open Weasis again.'}}</p>
+  <p><a href="https://weasis.org/en/getting-started/download-dicom-viewer/" target="_blank" rel="noopener noreferrer">{{'تنزيل Weasis مجانًا' if ui_lang=='ar' else 'Download Weasis for free'}}</a></p>
+  {% include 'viewer_preference_form.html' %}
+</section>
+{% endblock %}

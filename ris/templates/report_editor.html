@@ -243,6 +243,10 @@
   <div class="actions">
     <span class="badge">{{ ui_phrase('Current:') }} {{report.status.replace('_',' ')}}</span>
     <a class="btn" target="_blank" href="{{pacs_url}}">Open Case Images</a>
+    {% if me and me.role and me.role.code.upper() in ('RADIOLOGIST','DOCTOR','CONSULTANT','RADIOLOGY_CONSULTANT','SUPER_ADMIN','ADMIN') %}
+    <a class="btn" href="{{url_for('viewer_choice.choose',order_id=order.id)}}">{{'اختيار عارض الصور' if ui_lang=='ar' else 'Choose image viewer'}} · OHIF / Weasis</a>
+    {% endif %}
+
   </div>
 </div>
 

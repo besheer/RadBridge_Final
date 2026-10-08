@@ -4582,6 +4582,9 @@ def case_pacs_url(order):
     preserves the signed doctor identity generated
     by ohif_url_for_order().
     """
+    user=current_user()
+    if order and order.pacs_study_id and doctor_case_access_allowed(user,order):
+        return url_for('doctor_workspace_open',order_id=order.id)
     return ohif_url_for_order(order)
 
 
@@ -7483,6 +7486,7 @@ def doctor_workspace_data():
                 'center':external.center.name if external else '',
                 'has_linked_study':bool(o.pacs_study_id),
                 'open_url':url_for('doctor_workspace_open',order_id=o.id),
+                'viewer_choice_url':url_for('viewer_choice.choose',order_id=o.id),
                 'start_url':url_for('doctor_reading_start',order_id=o.id),
                 **assignment_visit_summary(o),
                 'return_url':url_for('return_case_form',order_id=o.id),
@@ -7598,12 +7602,7 @@ def doctor_workspace_open(order_id):
     order=Order.query.get_or_404(order_id)
     if not doctor_case_access_allowed(current_user(),order):
         abort(403)
-    viewer=ohif_url_for_order(order) if order.pacs_study_id else None
-    if not viewer:
-        return 'No linked imaging study is available. Return to the doctor workspace.',409
-    response=redirect(viewer)
-    response.headers['Cache-Control']='no-store'
-    return response
+    return open_image_viewer_case(order)
 
 
 @app.route('/admin/assignment-visits',methods=['GET','POST'])
@@ -14704,6 +14703,10 @@ def my_profile():
                     (request.form.get(k) or '').strip()
                 )
 
+        if 'preferred_image_viewer' in request.form:
+            if not doctor_workspace_user(current_user()):
+                abort(403)
+            save_image_viewer_preference(p,request.form['preferred_image_viewer'])
         prefs=set_user_reporting_preferences(
             p,
             request.form.get('preferred_editor'),
@@ -14738,6 +14741,7 @@ def my_profile():
     return render_template(
         'my_profile.html',
         profile=p,
+        preferred_image_viewer=image_viewer_preference(p),
         reporting_preferences=(
             user_reporting_preferences(p)
         )
@@ -38565,3 +38569,6 @@ register_physician_report_workload(_reporting_support_sys.modules[__name__])
 
 from report_exports import register as register_report_exports
 register_report_exports(_reporting_support_sys.modules[__name__])
+
+from viewer_choice import register as register_viewer_choice
+register_viewer_choice(_reporting_support_sys.modules[__name__])

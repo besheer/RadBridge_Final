@@ -153,6 +153,16 @@
   <h3>
     Reporting Preferences
   </h3>
+  {% if me and me.role and me.role.code.upper() in ('RADIOLOGIST','DOCTOR','CONSULTANT','RADIOLOGY_CONSULTANT','SUPER_ADMIN','ADMIN') %}
+  <label>{{'عارض الصور الافتراضي' if ui_lang=='ar' else 'Default image viewer'}}
+    <select name="preferred_image_viewer">
+      <option value="OHIF" {% if preferred_image_viewer=='OHIF' %}selected{% endif %}>OHIF</option>
+      <option value="WEASIS" {% if preferred_image_viewer=='WEASIS' %}selected{% endif %}>Weasis</option>
+    </select>
+  </label>
+  <p class="muted">{{'يتطلب Weasis تثبيته على جهازك مرة واحدة.' if ui_lang=='ar' else 'Weasis needs to be installed on your computer once.'}}</p>
+  {% endif %}
+
 
   <p class="muted">
     These settings control how RadBridge opens the reporting editor.
