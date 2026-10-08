@@ -4,14 +4,14 @@ import hashlib
 import logging
 import secrets
 import tempfile
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from xml.etree import ElementTree as ET
 
 import pydicom
 from flask import Blueprint, Response, abort, make_response, redirect, request, send_file
 from itsdangerous import URLSafeTimedSerializer, BadData
 
-VIEWERS = {'OHIF', 'WEASIS'}
+VIEWERS = {'OHIF', 'WEASIS', 'RADIANT'}
 MAX_AGE = 1200
 ORTHANC_ID = re.compile(r'[a-fA-F0-9-]{36,45}')
 
@@ -22,8 +22,8 @@ class CapabilityLogFilter(logging.Filter):
         if isinstance(record.args, dict):
             for key in ('r', 'U'):
                 value = record.args.get(key)
-                if isinstance(value, str) and '/weasis-images/' in value:
-                    record.args[key] = re.sub(r'(/weasis-images/[0-9]+/)[^/ ?]+', r'\1[redacted]', value)
+                if isinstance(value, str) and any(prefix in value for prefix in ('/weasis-images/', '/radiant-images/')):
+                    record.args[key] = re.sub(r'(/(?:weasis|radiant)-images/[0-9]+/)[^/ ?]+', r'\1[redacted]', value)
         return True
 
 
@@ -90,25 +90,29 @@ def register(m):
             abort(409, description='Study matching changed; return to RadBridge. / راجع مطابقة الحالة في RadBridge.')
         return detail
 
-    def signer():
-        return URLSafeTimedSerializer(m.app.secret_key, salt='radbridge-weasis-read-v1')
+    def signer(viewer='WEASIS'):
+        salt = 'radbridge-radiant-read-v1' if viewer == 'RADIANT' else 'radbridge-weasis-read-v1'
+        return URLSafeTimedSerializer(m.app.secret_key, salt=salt)
 
-    def issue(user, order, detail):
-        return signer().dumps({'purpose': 'WEASIS_READ', 'user': user.id, 'order': order.id,
+    def issue(user, order, detail, viewer='WEASIS'):
+        return signer(viewer).dumps({'purpose': viewer + '_READ', 'user': user.id, 'order': order.id,
             'study': order.pacs_study_id, 'uid': fingerprint(detail['MainDicomTags']['StudyInstanceUID']),
-            'patient': fingerprint(order.patient.patient_id), 'nonce': secrets.token_urlsafe(12)})
+            'patient': fingerprint(order.patient.patient_id),
+            'dob': fingerprint(order.patient.dob) if viewer == 'RADIANT' else None, 'nonce': secrets.token_urlsafe(12)})
 
-    def authorize(token, order_id):
+    def authorize(token, order_id, viewer='WEASIS'):
         try:
-            payload = signer().loads(token, max_age=MAX_AGE)
+            payload = signer(viewer).loads(token, max_age=MAX_AGE)
         except BadData:
             abort(403)
-        if not isinstance(payload, dict) or payload.get('purpose') != 'WEASIS_READ' or payload.get('order') != order_id:
+        if not isinstance(payload, dict) or payload.get('purpose') != viewer + '_READ' or payload.get('order') != order_id:
             abort(403)
         user = m.db.session.get(m.User, payload.get('user'))
         order = m.db.session.get(m.Order, order_id)
         allowed(user, order)
         if payload.get('study') != order.pacs_study_id or payload.get('patient') != fingerprint(order.patient.patient_id):
+            abort(403)
+        if viewer == 'RADIANT' and payload.get('dob') != fingerprint(order.patient.dob):
             abort(403)
         detail = checked_study(order)
         if payload.get('uid') != fingerprint(detail['MainDicomTags']['StudyInstanceUID']):
@@ -134,6 +138,20 @@ def register(m):
                 abort(409, description='No linked imaging study. / لا توجد دراسة صور مرتبطة.')
             return protected(redirect(url))
         detail = checked_study(order)
+        if viewer == 'RADIANT':
+            if not re.fullmatch(r'\d{8}', str(order.patient.dob or '').strip()[:8]):
+                abort(409, description='Patient identity needs review. / راجع هوية المريض.')
+            origin = urlsplit(m.RIS_PUBLIC_URL)
+            if origin.scheme != 'https' or not origin.netloc or origin.username or origin.password or origin.query or origin.fragment or origin.path not in ('', '/'):
+                abort(503, description='Secure public RIS URL is required for RadiAnt. / يلزم ضبط رابط RIS الآمن.')
+            token = issue(user, order, detail, 'RADIANT')
+            archive = m.RIS_PUBLIC_URL.rstrip('/') + m.url_for('viewer_choice.radiant_archive', order_id=order.id, token=token)
+            launch = 'radbridge-radiant://open?url=' + quote(archive, safe='')
+            m.audit_as_user(user, 'RADIANT_VIEWER_OPEN', 'Order', order.id, 'Scoped original DICOM download; no direct PACS access')
+            m.db.session.commit()
+            return protected(make_response(m.render_template('radiant_launch.html', order=order,
+                launch_url=launch, archive_url=archive, preferred_viewer=preference(m, profile),
+                save_token=preference_token())))
         token = issue(user, order, detail)
         manifest = m.RIS_PUBLIC_URL + m.url_for('viewer_choice.manifest', order_id=order.id, token=token)
         launch = 'weasis://?'+quote('$dicom:get -w "'+manifest+'"', safe='')
@@ -174,6 +192,63 @@ def register(m):
         m.flash('تم حفظ عارض الصور الافتراضي. / Default image viewer saved.', 'success')
         order_id = request.form.get('order_id', type=int)
         return redirect(m.url_for('viewer_choice.choose', order_id=order_id) if order_id else m.url_for('my_profile'))
+
+    @bp.get('/doctor/viewers/radiant/setup.zip')
+    @m.require_perm('reports.view')
+    def radiant_setup():
+        if not m.doctor_workspace_user(m.current_user()):
+            abort(403)
+        from pathlib import Path
+        import io, zipfile
+        folder = Path(__file__).resolve().parent / 'client_tools' / 'RadiAntBridge'
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, 'w', zipfile.ZIP_DEFLATED) as archive:
+            for name in ('Install-RadiAntBridge.ps1', 'Open-RadiAnt.ps1', 'README.md'):
+                archive.writestr(name, (folder / name).read_bytes())
+        stream.seek(0)
+        return protected(send_file(stream, mimetype='application/zip', as_attachment=True,
+            download_name='RadBridge-RadiAnt-Launcher.zip', conditional=False, etag=False))
+
+    @bp.get('/radiant-images/<int:order_id>/<token>/study.zip')
+    def radiant_archive(order_id, token):
+        user, order, detail = authorize(token, order_id, 'RADIANT')
+        from dicom_export_routes import validate_archive, ExportBlocked
+        study_id = order.pacs_study_id
+        uid = str(detail['MainDicomTags']['StudyInstanceUID'])
+        pid = str(order.patient.patient_id or '').strip()
+        dob = str(order.patient.dob or '').strip()[:8]
+        if not pid or not dob:
+            abort(409)
+        stream = tempfile.TemporaryFile(mode='w+b', buffering=0)
+        try:
+            digest = hashlib.sha256(); size = 0
+            with orthanc('/studies/' + study_id + '/archive', stream=True) as upstream:
+                if upstream.status_code != 200:
+                    abort(502)
+                for chunk in upstream.iter_content(1024 * 1024):
+                    size += len(chunk)
+                    if size > 1024**3:
+                        abort(413)
+                    stream.write(chunk); digest.update(chunk)
+            objects = validate_archive(stream, study_uid=uid, patient_id=pid, dob=dob)
+            m.db.session.expire_all()
+            authorize(token, order_id, 'RADIANT')
+            m.audit_as_user(user, 'RADIANT_DICOM_PREPARED', 'Order', order.id,
+                f'objects={objects}; bytes={size}; original files unchanged')
+            m.db.session.commit()
+            stream.seek(0)
+            response = send_file(stream, mimetype='application/zip', as_attachment=True,
+                download_name=f'RadBridge-Study-{order_id}.zip', conditional=False, etag=False)
+            response.headers['X-RadBridge-SHA256'] = digest.hexdigest()
+            response.call_on_close(stream.close)
+            return protected(response)
+        except ExportBlocked:
+            stream.close()
+            abort(409, description='DICOM archive failed identity validation. / تعذر التحقق من هوية الصور.')
+        except m.requests.RequestException:
+            stream.close(); abort(502)
+        except Exception:
+            stream.close(); raise
 
     @bp.get('/weasis-images/<int:order_id>/<token>/manifest.xml')
     def manifest(order_id, token):

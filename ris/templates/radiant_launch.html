@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block page_title %}RadiAnt{% endblock %}
+{% block content %}
+<section class="panel rb-viewer-choice">
+  <h2>{{'فتح صور الحالة في RadiAnt' if ui_lang=='ar' else 'Open case images in RadiAnt'}}</h2>
+  <p><b>{{order.accession}}</b> · {{order.patient.name}}</p>
+  <p>{{'اضغط فتح RadiAnt ووافق على فتح مشغّل RadBridge. يلزم تثبيت RadiAnt ومشغّل RadBridge على Windows مرة واحدة.' if ui_lang=='ar' else 'Click Open RadiAnt and allow the RadBridge launcher to open. Install RadiAnt and the RadBridge launcher on Windows once.'}}</p>
+  <div class="actions" style="display:flex;gap:12px;flex-wrap:wrap">
+    <a class="btn primary" id="rbOpenRadiAnt" href="{{launch_url}}">{{'فتح RadiAnt' if ui_lang=='ar' else 'Open RadiAnt'}}</a>
+    <a class="btn" href="{{url_for('viewer_choice.radiant_setup')}}">{{'تنزيل مشغّل RadBridge' if ui_lang=='ar' else 'Download RadBridge launcher'}}</a>
+    <a class="btn" href="{{url_for('doctor_workspace_open',order_id=order.id,viewer='OHIF')}}">{{'فتح في OHIF' if ui_lang=='ar' else 'Open in OHIF'}}</a>
+    <a class="btn" href="{{url_for('report_editor',order_id=order.id)}}">{{'تقرير الحالة' if ui_lang=='ar' else 'Case report'}}</a>
+  </div>
+  <p>{{'بعد فك ضغط المشغّل، شغّل Install-RadiAntBridge.ps1 وحدد رابط RadBridge ومسار RadiAnt طبقًا للتعليمات المرفقة.' if ui_lang=='ar' else 'Extract the launcher, then run Install-RadiAntBridge.ps1 with your RadBridge URL and RadiAnt path as described in its README.'}}</p>
+  <p class="muted">{{'بدون المشغّل: نزّل ملف الصور وافتح ZIP في RadiAnt يدويًا. صلاحية الرابط 20 دقيقة؛ عد لهذه الصفحة لتجديده. النسخة المحلية تظل على جهازك.' if ui_lang=='ar' else 'Without the launcher: download the images and open the ZIP in RadiAnt manually. Access expires after 20 minutes; return to this page to renew it. Downloaded files remain on your computer.'}}</p>
+  <a class="btn" id="rbRadiAntDownload" href="{{archive_url}}">{{'تنزيل صور الحالة (ZIP)' if ui_lang=='ar' else 'Download case images (ZIP)'}}</a>
+  <p><a href="https://www.radiantviewer.com/download/" target="_blank" rel="noopener noreferrer">{{'تنزيل RadiAnt من الموقع الرسمي' if ui_lang=='ar' else 'Get RadiAnt from the official website'}}</a></p>
+  {% include 'viewer_preference_form.html' %}
+</section>
+{% endblock %}

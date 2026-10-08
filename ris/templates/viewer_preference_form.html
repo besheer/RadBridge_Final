@@ -5,6 +5,7 @@
     <select name="viewer">
       <option value="OHIF" {% if preferred_viewer=='OHIF' %}selected{% endif %}>OHIF</option>
       <option value="WEASIS" {% if preferred_viewer=='WEASIS' %}selected{% endif %}>Weasis</option>
+      <option value="RADIANT" {% if preferred_viewer=='RADIANT' %}selected{% endif %}>RadiAnt</option>
     </select>
   </label>
   <button class="btn primary">{{'حفظ الاختيار' if ui_lang=='ar' else 'Save preference'}}</button>

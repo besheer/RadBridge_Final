@@ -158,6 +158,7 @@
     <select name="preferred_image_viewer">
       <option value="OHIF" {% if preferred_image_viewer=='OHIF' %}selected{% endif %}>OHIF</option>
       <option value="WEASIS" {% if preferred_image_viewer=='WEASIS' %}selected{% endif %}>Weasis</option>
+      <option value="RADIANT" {% if preferred_image_viewer=='RADIANT' %}selected{% endif %}>RadiAnt</option>
     </select>
   </label>
   <p class="muted">{{'يتطلب Weasis تثبيته على جهازك مرة واحدة.' if ui_lang=='ar' else 'Weasis needs to be installed on your computer once.'}}</p>
