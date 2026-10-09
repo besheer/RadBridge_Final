@@ -1,0 +1,23 @@
+{
+  "source_commit": "cf59dc1b4fb07d23434251ef6d1a4ba20ed64bb0",
+  "github_source_commit": "28473d9cb111a904da8107b0a6d49cbb0c53bb96",
+  "prepared_date": "2026-10-10",
+  "document_count": 12,
+  "markdown_link_checks": 729,
+  "broken_local_links": [],
+  "generation": "Source AST inventories plus manually reviewed checkpoint evidence; no production execution or test rerun",
+  "file_sha256": {
+    "docs/handover/ACCEPTANCE_AND_BACKLOG.md": "b7d71b35eb56e5c89fa599bff568fdebff66947dfdec960cdc3a9926449e8c71",
+    "docs/handover/ARCHITECTURE.md": "2729ea1fd673b2da0b51c4baadc20ab7861a64c47f98f125c8d2924133328c2f",
+    "docs/handover/BACKUP_AND_RECOVERY.md": "8e0e918f27f8516ef447ed3fd108ce1a657999721719a3d1686dccf1554e2f07",
+    "docs/handover/OPERATIONS.md": "1d1d0d0fa6b4dac717b5559ad8ccf3f218ea2e693937cc3a07cd679223e7e736",
+    "docs/handover/ORM_INVENTORY.md": "c4ada6a58ac12b2cd6626a1455ec478b9d86563d41581c6d8d19ce91f4abb1e6",
+    "docs/handover/RADIOTHERAPY.md": "84e0b4649f51717a68df058dcbb89862cf1ccc8cd0977c59c60898691ccd4c91",
+    "docs/handover/README.md": "fabd1fcec61dca2e4a761255fce795216e56524ca5dc679d946d8e0237bbe23f",
+    "docs/handover/ROUTE_INVENTORY.md": "23262d73be8ca5141b9dc36a9b54e979c22081e61de49992ddd9c08d1d2cd1bc",
+    "docs/handover/SECURITY.md": "51fb7060d568a9bc4115d2755d135e92b33bc948c159b1cb4fba1ae45b123aed",
+    "docs/handover/USER_GUIDE_AR.md": "3a027e6e86f31da78a296cce50991539e1a02eb238ba3932262c902653779df9",
+    "docs/handover/WORKFLOWS_AND_ROLES.md": "cd8b1cdc650acee5c7326e2dfcf0503dd449f1ab77981854f38ab6fdc278b151",
+    "README.md": "1aa97b85d8853f190d7b813be6366b45ddd8a2669bca0922d447e04941e98324"
+  }
+}
