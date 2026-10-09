@@ -231,6 +231,7 @@
 {% if has_perm("backup.view") %}<a class="nav-link" href="{{url_for('admin_data_management')}}">🗃 <span>{{"إدارة البيانات" if ui_lang=="ar" else "Data Management"}}</span></a>{% endif %}
 {% if has_perm("data.cancel.case") %}<a class="nav-link" href="{{url_for('admin_cancellation_center')}}">⊘ <span>{{"مركز الإلغاء" if ui_lang=="ar" else "Cancellation Center"}}</span></a>{% endif %}
 {% if has_perm("*") %}<a class="nav-link nav-link-featured" href="{{url_for('admin_data_deletion_center')}}">🛡 <span>{{"مركز حذف البيانات" if ui_lang=="ar" else "Data Deletion Center"}}</span></a>{% endif %}
+{% if can_manage_server_security %}<a class="nav-link nav-link-featured" href="{{url_for('admin_security')}}">🛡 <span>{{"أمن السيرفر وVPN" if ui_lang=="ar" else "Server Security & VPN"}}</span></a>{% endif %}
 {% if has_perm("audit.view") %}<a class="nav-link" href="{{url_for('admin_audit')}}">◉ <span>{{"سجل المراجعة" if ui_lang=="ar" else "Audit Log"}}</span></a>{% endif %}
 {% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_diagnostics')}}">🛠 <span>{{"التشخيص" if ui_lang=="ar" else "Diagnostics"}}</span></a>{% endif %}
 {% if has_perm("users.view") %}<a class="nav-link" href="{{url_for('admin_ribbon_designer')}}">⭐ <span>{{"مصمم الاختصارات" if ui_lang=="ar" else "Ribbon Designer"}}</span></a>{% endif %}

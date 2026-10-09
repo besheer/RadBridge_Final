@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+{% set ar=ui_lang=='ar' %}
+<div class="card"><div class="card-body">
+<h2>{{'ملف WireGuard — يظهر مرة واحدة' if ar else 'WireGuard configuration — shown once'}}</h2>
+<p>{{label}} · {{'رقم الجهاز' if ar else 'Device ID'}} {{peer_id}}</p>
+<p>{{'احفظ الملف أو امسح QR قبل مغادرة الصفحة. ملف الاتصال مفتاح وصول سري، لا تشاركه أو تنشره. سيبدأ الاتصال بعد تطبيق الجهاز خلال دقيقة.' if ar else 'Save the file or scan the QR before leaving. This configuration is a secret access credential; do not share or publish it. Connection becomes available after the device is applied within one minute.'}}</p>
+<p>{{'يثبّت المستخدم تطبيق WireGuard الرسمي ويستورد الملف. افتح نفس عنوان RadBridge المعتاد بعد تشغيل VPN؛ DNS داخل الاتصال يوجّه الموقع عبر النفق، ولا يفتح SSH أو قواعد البيانات.' if ar else 'Install the official WireGuard application and import the file. Open the normal RadBridge URL after activating VPN; tunnel DNS routes the site through the tunnel. SSH and databases are not exposed to VPN clients.'}}</p>
+<img alt="WireGuard connection QR" src="data:image/png;base64,{{qr}}" style="max-width:100%;width:300px">
+<p><button type="button" id="download-config" class="btn btn-primary">{{'تنزيل ملف الاتصال' if ar else 'Download configuration'}}</button> <a href="{{url_for('admin_security')}}">{{'العودة لصفحة الأمان' if ar else 'Back to security'}}</a></p>
+<details><summary>{{'عرض الملف' if ar else 'Show configuration'}}</summary><pre dir="ltr" style="white-space:pre-wrap;overflow-wrap:anywhere">{{config}}</pre></details>
+</div></div>
+<script>document.getElementById('download-config').addEventListener('click',()=>{const blob=new Blob([{{config|tojson}}],{type:'text/plain'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download='radbridge-device-{{peer_id}}.conf';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)});</script>
+{% endblock %}

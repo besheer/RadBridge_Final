@@ -4490,10 +4490,7 @@ def audit_as_user(user, action, entity='', entity_id='', details=''):
         entity=entity,
         entity_id=str(entity_id or ''),
         details=str(details or '')[:4000],
-        ip=request.headers.get(
-            'X-Forwarded-For',
-            request.remote_addr or ''
-        )[:80]
+        ip=_security_audit_ip()
     ))
 
 
@@ -4971,11 +4968,17 @@ def require_perm(perm):
         return w
     return deco
 
+def _security_audit_ip():
+    from security_dashboard import client_ip
+    ip=client_ip(request, app.config.get('SECURITY_TRUSTED_PROXIES') or os.environ.get('SECURITY_TRUSTED_PROXIES',''))
+    return str(ip or '')
+
+
 def audit(action, entity='', entity_id='', details=''):
     u=current_user()
     db.session.add(AuditLog(user_id=(u.id if u else None), username=(u.username if u else 'SYSTEM'),
         action=action, entity=entity, entity_id=str(entity_id or ''), details=details[:4000],
-        ip=request.headers.get('X-Forwarded-For',request.remote_addr or '')[:80]))
+        ip=_security_audit_ip()))
 
 
 def next_patient_id():
@@ -5374,7 +5377,7 @@ def login():
             user_id=(u.id if u else None),username=attempted,
             action='LOGIN_FAILED',entity='user',entity_id=str(u.id if u else ''),
             details='reason=INVALID_CREDENTIALS',
-            ip=request.headers.get('X-Forwarded-For',request.remote_addr or '')[:80]
+            ip=_security_audit_ip()
         ))
         db.session.commit()
         flash('Invalid username or password.','danger')
@@ -38628,3 +38631,6 @@ register_user_csv_transfer(_reporting_support_sys.modules[__name__])
 
 from clinical_scope import register as register_clinical_scope
 register_clinical_scope(_reporting_support_sys.modules[__name__])
+
+from security_dashboard import register as register_security_dashboard
+register_security_dashboard(_reporting_support_sys.modules[__name__])
