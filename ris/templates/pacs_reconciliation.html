@@ -4,6 +4,9 @@
 {% block page_title %}{{ ui_phrase('PACS Exception Review') }}{% endblock %}
 
 {% block content %}
+<style>
+.manual-study-table{overflow:auto;margin:18px 0}.manual-study-table table{min-width:720px}.manual-source{overflow-wrap:anywhere}.manual-steps{padding:14px;background:#eff6ff;border-radius:10px;line-height:1.8}.manual-comparison{overflow:auto}.manual-comparison table{min-width:540px}.manual-changed{background:#fff3cd}#combined-acquisition summary{cursor:pointer;padding:12px}
+</style>
 <div class="panel">
 
 <h2>{{ ui_phrase('PACS Demographic Exception Review') }}</h2>
@@ -12,9 +15,11 @@
 {% if demo_mode %}<div class="warn"><strong>{{ ui_phrase('مثال توضيحي فقط / Read-only synthetic example') }}</strong> {{ ui_phrase('— لا يتم حفظ أو تعديل أي مريض أو صور.') }}</div>{% endif %}
 {% if has_perm('audit.view') %}<p><a class="btn" href="{{url_for('pacs_reconciliation_audit')}}">{{ ui_phrase('سجل تصحيح DICOM / Correction audit') }}</a></p>{% endif %}
 
-<p>
-{{ ui_phrase('Studies listed here were blocked because PACS demographics did not satisfy\nthe automatic safety match.') }}
-</p>
+<div class="manual-steps" id="manual-case-link">
+<strong>{{ "تصحيح حالة مرسلة يدويًا وربطها بطلب RIS الصحيح" if ui_lang=="ar" else "Correct a manually sent study and link it to the correct RIS order" }}</strong><br>
+{{ "١. اختر الدراسة ← ٢. ابحث عن طلب RIS الحقيقي ← ٣. راجع الهوية والاختلافات ← ٤. صحّح البيانات واربط." if ui_lang=="ar" else "1. Select the study → 2. Find the real RIS order → 3. Review identity and differences → 4. Correct data and link." }}
+<p>{{ "الاختيار بالاسم وحده لا يؤكد الهوية. راجع الصور ورقم المريض ورقم الطلب والمستندات؛ الصور التابعة لمريض آخر تحتاج مراجعة معتمدة." if ui_lang=="ar" else "A name alone does not confirm identity. Check the images, patient ID, accession and documents; images belonging to another patient require an approved review." }}</p>
+</div>
 
 {% if not demo_mode %}<div style="margin-bottom:18px">
 <form method="post" action="{{ url_for('pacs_reconciliation_auto_safe') }}">
@@ -31,8 +36,125 @@
 </form>
 </div>{% endif %}
 
+{% if not exceptions %}
+<div class="success">
+{{ ui_phrase('No PACS demographic exceptions are waiting for review.') }}
+</div>
+{% endif %}
+
+{% set selected_study=request.args.get('study_id','') %}
+{% if exceptions and not demo_mode %}
+<div class="manual-study-table"><table><thead><tr>
+<th>{{ "بيانات الدراسة المستلمة" if ui_lang=="ar" else "Received study data" }}</th><th>{{ ui_phrase('Patient ID') }}</th><th>{{ ui_phrase('Accession') }}</th><th>{{ ui_phrase('Modality') }}</th><th>{{ ui_phrase('Images') }}</th><th>{{ "وقت الاستقبال / المصدر" if ui_lang=="ar" else "Received / source" }}</th><th>{{ ui_phrase('Action') }}</th>
+</tr></thead><tbody>{% for row in exceptions %}{% set x=row.inbox %}
+<tr{% if selected_study==x.orthanc_study_id %} class="manual-changed"{% endif %}>
+<td>{{x.pacs_patient_name or '—'}}<br><small>{{x.study_description or '—'}}</small></td><td>{{x.pacs_patient_id or '—'}}</td><td>{{x.accession or '—'}}</td><td>{{x.modality or '—'}}</td><td>{{x.image_count}}</td><td>{{x.first_seen_at or '—'}}<br>{{x.source_ae or '—'}}</td>
+<td><a class="btn primary" href="{{url_for('pacs_reconciliation',study_id=x.orthanc_study_id)}}#manual-selected-study">{{ "اختيار ومراجعة" if ui_lang=="ar" else "Select and review" }}</a></td></tr>
+{% endfor %}</tbody></table></div>
+{% if not selected_study %}<p>{{ "اختر دراسة من القائمة لبدء البحث عن طلب RIS الصحيح." if ui_lang=="ar" else "Select a study above to start finding the correct RIS order." }}</p>{% endif %}
+{% endif %}
+{% for row in exceptions %}
+{% if demo_mode or row.inbox.orthanc_study_id==selected_study %}
+{% set x=row.inbox %}
+{% set o=row.candidate %}
+{% set p=row.ris_patient %}
+
+<div class="panel manual-source" id="manual-selected-study" style="margin-top:20px">
+
+<h3>
+{{ ui_phrase('Study Exception #') }}{{ x.id }}
+—
+<span class="warn">{{ x.match_method }}</span>
+</h3>
+
+{% set v=row.preview %}
+<section class="panel" style="border-top:4px solid #dc2626;background:#fff7f7;overflow-wrap:anywhere">
+<h4>{{ ui_phrase('١ — بيانات DICOM الحالية المطلوب مراجعتها / Current PACS data') }}</h4>
+{% if v %}{% set original=v.before.tags %}{% else %}{% set original={'PatientID':x.pacs_patient_id,'PatientName':x.pacs_patient_name,'AccessionNumber':x.accession} %}{% endif %}
+<div style="overflow:auto"><table><tr><th>{{ ui_phrase('الحقل / Field') }}</th><th>{{ ui_phrase('القيمة الحالية / Current value') }}</th></tr>
+{% for field in ['PatientID','PatientName','PatientBirthDate','PatientSex','AccessionNumber'] %}
+<tr><td>{{field}}</td><td>{{original.get(field) or ui_phrase('غير متاح قبل المعاينة / Preview required')}}</td></tr>{% endfor %}
+<tr><td>{{ ui_phrase('Images') }}</td><td>{{v.before.count if v else x.image_count}}</td></tr>
+<tr><td>Study UID</td><td>{{v.before.study_uid if v else x.study_instance_uid or '—'}}</td></tr></table></div>
+<p><strong>{{ ui_phrase('REVIEW REQUIRED — AI BLOCKED — FINALIZE BLOCKED') }}</strong></p>
+{% if not v %}<p>{{ ui_phrase('البيانات المحفوظة في قائمة الاستقبال؛ المعاينة تقرأ البيانات الحالية من الصور نفسها.') }}</p>{% endif %}
+</section>
+<section class="panel" style="border-top:4px solid #16a34a;background:#f0fdf4;margin-top:16px">
+<h4>{{ ui_phrase('٢ — المريض وأمر الشغل الصحيحان / Correct RIS patient and order') }}</h4>
+{% if can_reconcile %}
+<form method="get" action="{{url_for('pacs_reconciliation')}}#manual-selected-study">
+<input type="hidden" name="study_id" value="{{x.orthanc_study_id}}">
+<label>{{ ui_phrase('ابحث بالاسم أو رقم المريض أو رقم الفحص / Search patient or accession') }}</label>
+<input name="q" value="{{search_query}}" placeholder="{{ ui_phrase('Patient name / Patient ID / Accession') }}">
+<button class="btn">{{ ui_phrase('بحث / Search') }}</button></form>
+<form method="get" action="{{url_for('pacs_reconciliation')}}#manual-selected-study">
+<input type="hidden" name="study_id" value="{{x.orthanc_study_id}}">
+<input type="hidden" name="q" value="{{search_query}}">
+<label>{{ ui_phrase('اختر أمر الشغل الصحيح / Correct RIS Order') }}</label>
+<select name="order_id" required aria-label="{{ ui_phrase('اختر أمر الشغل الصحيح / Correct RIS Order') }}"><option value="">{{ ui_phrase('اختر / Select') }}</option>
+{% if o %}<option value="{{o.id}}"{% if v and v.order.id==o.id %} selected{% endif %}>{{ ui_phrase('اقتراح غير مؤكد / Suggestion — #') }}{{o.id}} · {{p.name}} · {{p.patient_id}} · {{o.accession}} · {{o.procedure}} · {{o.branch.name if o.branch else '—'}}</option>{% endif %}
+{% for opt in target_options %}{% if not o or opt.id!=o.id %}<option value="{{opt.id}}"{% if v and v.order.id==opt.id %} selected{% endif %}>#{{opt.id}} · {{opt.patient.name}} · {{opt.patient.patient_id}} · {{opt.accession}} · {{opt.procedure}} · {{opt.branch.name if opt.branch else '—'}}</option>{% endif %}{% endfor %}
+</select><button class="btn primary">{{ ui_phrase('معاينة قبل التأكيد / Preview mapping') }}</button></form>
+{% endif %}
+{% if search_query and not target_options and not o %}<p role="status">{{ "لا يوجد طلب مطابق للبحث. غيّر رقم الطلب أو رقم المريض؛ لا تُنشئ ربطًا عشوائيًا." if ui_lang=="ar" else "No matching RIS order found. Check the accession or patient ID before linking." }}</p>{% endif %}
+{% if v %}
+<p><strong>#{{v.order.id}} — {{v.order.procedure}}</strong> · {{v.order.branch.name if v.order.branch else '—'}}</p>
+<h4>{{ "٣ — مقارنة قبل التنفيذ" if ui_lang=="ar" else "3 — Compare before applying" }}</h4>
+<div class="manual-comparison"><table><tr><th>{{ ui_phrase('Field') }}</th><th>{{ "الصور الحالية" if ui_lang=="ar" else "Current images" }}</th><th>{{ "طلب RIS الصحيح" if ui_lang=="ar" else "Correct RIS order" }}</th><th>{{ ui_phrase('Change') }}</th></tr>
+{% for field,value in v.after.items() %}<tr{% if value!=v.before.tags.get(field) %} class="manual-changed"{% endif %}><td>{{field}}</td><td>{{v.before.tags.get(field) or '—'}}</td><td>{{value}}</td><td>{{ui_phrase('تغيير / Changed') if value!=v.before.tags.get(field) else ui_phrase('مطابق / Same')}}</td></tr>{% endfor %}</table></div>
+{% if not demo_mode %}<form method="post" action="{{url_for('pacs_reconciliation_match',study_id=x.orthanc_study_id)}}">
+<input type="hidden" name="order_id" value="{{v.order.id}}"><input type="hidden" name="preview_token" value="{{v.token}}">
+<label>{{ ui_phrase('سبب التصحيح / Documented reason') }}</label><textarea name="reason" required minlength="5" maxlength="500"></textarea>
+<label style="display:block;margin:12px 0"><input type="checkbox" name="identity_confirmed" value="1" required> {{ ui_phrase('تأكدت من هوية المريض وأن الصور تخص هذا الفحص / I confirmed patient and study identity.') }}</label>
+<p>{{ ui_phrase('الربط فقط لا يغيّر DICOM. التصحيح ينشئ نسخة جديدة بمعرفات جديدة، يحتفظ بالأصل، ثم يتحقق ويربط النسخة الصحيحة. التقارير النهائية محمية.') }}</p>
+{% if has_perm('correction.review') %}<button class="btn primary" formaction="{{url_for('pacs_reconciliation_correct_dicom',study_id=x.orthanc_study_id)}}">{{ '٤ — تصحيح بيانات الصور والربط بطلب RIS' if ui_lang=='ar' else '4 — Correct image data and link to RIS' }}</button>{% endif %}
+<details style="margin-top:16px"><summary>{{ "ربط فقط دون تصحيح البيانات — خيار متقدم" if ui_lang=="ar" else "Link only without correcting data — advanced option" }}</summary><p>{{ "لا يصحّح هذا الخيار البيانات الخاطئة في الصور؛ استخدمه فقط عندما تكون الهوية والبيانات صحيحة." if ui_lang=="ar" else "This option does not correct incorrect image data. Use only when identity and image data are already correct." }}</p><button class="btn">{{ ui_phrase('ربط فقط دون تعديل DICOM / Confirm Manual Match') }}</button></details>
+</form>{% else %}<p>{{ ui_phrase('بعد المعاينة، تظهر خيارات تصحيح DICOM والربط أو الربط فقط للمستخدم المخوّل. الأصل محفوظ وسجل التدقيق يسجل القيم القديمة والجديدة.') }}</p>{% endif %}
+{% else %}<p>{{ ui_phrase('لم تُؤكد البيانات الصحيحة بعد. اختر أمر الشغل واضغط معاينة أولًا.') }}</p>{% endif %}
+</section>
+
+{% if can_reconcile %}
+{{ action_info('Manual PACS Match','Confirms a reviewed RIS Order after a fresh signed preview.','Use after confirming patient identity.','Permission, confirmation and documented reason required.','Records old and target identity in audit.','Never use as Patient Merge.',ui_lang) }}
+
+<hr>
+
+<h4>{{ ui_phrase('Reject / Quarantine') }}</h4>
+{{ action_info(
+  'Quarantine Study',
+  'Separates an unresolved PACS study from RIS workflow for administrator review.',
+  'Use when identity or ownership cannot be confirmed safely.',
+  'Requires pacs.reconcile permission and a reason.',
+  'No DICOM files are deleted; the study is prevented from automatic use.',
+  'Do not quarantine a clinically confirmed study merely because images are incomplete.',
+  ui_lang
+) }}
+
+<form method="post"
+action="{{ url_for('pacs_reconciliation_quarantine',study_id=x.orthanc_study_id) }}">
+
+<textarea
+name="reason"
+required
+minlength="5"
+placeholder="{{ ui_phrase('Reason for quarantine') }}"></textarea>
+
+<button class="btn">
+{{ ui_phrase('Quarantine Study') }}
+</button>
+</form>
+{% elif not demo_mode %}
+<div class="warn">
+{{ ui_phrase('View only. Manual PACS matching and quarantine require the') }}
+<strong>pacs.reconcile</strong> {{ ui_phrase('permission.') }}
+</div>
+{% endif %}
+
+</div>
+{% endif %}
+{% endfor %}
+
 {% if not demo_mode %}<div class="panel" style="margin:20px 0;border-left:4px solid #2563eb">
-<h3>{{ ui_phrase('Exam Linking') }}</h3>
+<details id="combined-acquisition"><summary><strong>{{ "مشاركة دراسة موجودة مع فحص إضافي لنفس المريض" if ui_lang=="ar" else "Share an existing study with an additional exam for the same patient" }}</strong></summary><p>{{ "هذا مسار منفصل عن تصحيح بيانات الحالات المرسلة يدويًا." if ui_lang=="ar" else "This is a separate workflow from correcting manually sent studies." }}</p>
 {{ action_info(
   'Exam Linking',
   'Links one acquired PACS study to an additional RIS Order for the same patient.',
@@ -112,109 +234,9 @@ placeholder="{{ ui_phrase('Explain why the same PACS acquisition belongs to both
 {% endfor %}
 </table>
 {% endif %}
-</div>
+</details></div>
 
 {% endif %}
-{% if not exceptions %}
-<div class="success">
-{{ ui_phrase('No PACS demographic exceptions are waiting for review.') }}
-</div>
-{% endif %}
-
-{% for row in exceptions %}
-{% set x=row.inbox %}
-{% set o=row.candidate %}
-{% set p=row.ris_patient %}
-
-<div class="panel" style="margin-top:20px">
-
-<h3>
-{{ ui_phrase('Study Exception #') }}{{ x.id }}
-—
-<span class="warn">{{ x.match_method }}</span>
-</h3>
-
-{% set v=row.preview %}
-<section class="panel" style="border-top:4px solid #dc2626;background:#fff7f7;overflow-wrap:anywhere">
-<h4>{{ ui_phrase('١ — بيانات DICOM الحالية المطلوب مراجعتها / Current PACS data') }}</h4>
-{% if v %}{% set original=v.before.tags %}{% else %}{% set original={'PatientID':x.pacs_patient_id,'PatientName':x.pacs_patient_name,'AccessionNumber':x.accession} %}{% endif %}
-<div style="overflow:auto"><table><tr><th>{{ ui_phrase('الحقل / Field') }}</th><th>{{ ui_phrase('القيمة الحالية / Current value') }}</th></tr>
-{% for field in ['PatientID','PatientName','PatientBirthDate','PatientSex','AccessionNumber'] %}
-<tr><td>{{field}}</td><td>{{original.get(field) or ui_phrase('غير متاح قبل المعاينة / Preview required')}}</td></tr>{% endfor %}
-<tr><td>{{ ui_phrase('Images') }}</td><td>{{v.before.count if v else x.image_count}}</td></tr>
-<tr><td>Study UID</td><td>{{v.before.study_uid if v else x.study_instance_uid or '—'}}</td></tr></table></div>
-<p><strong>{{ ui_phrase('REVIEW REQUIRED — AI BLOCKED — FINALIZE BLOCKED') }}</strong></p>
-{% if not v %}<p>{{ ui_phrase('البيانات المحفوظة في قائمة الاستقبال؛ المعاينة تقرأ البيانات الحالية من الصور نفسها.') }}</p>{% endif %}
-</section>
-<section class="panel" style="border-top:4px solid #16a34a;background:#f0fdf4;margin-top:16px">
-<h4>{{ ui_phrase('٢ — المريض وأمر الشغل الصحيحان / Correct RIS patient and order') }}</h4>
-{% if can_reconcile %}
-<form method="get" action="{{url_for('pacs_reconciliation')}}">
-<label>{{ ui_phrase('ابحث بالاسم أو رقم المريض أو رقم الفحص / Search patient or accession') }}</label>
-<input name="q" value="{{search_query}}" placeholder="{{ ui_phrase('Patient name / Patient ID / Accession') }}">
-<button class="btn">{{ ui_phrase('بحث / Search') }}</button></form>
-<form method="get" action="{{url_for('pacs_reconciliation')}}">
-<input type="hidden" name="study_id" value="{{x.orthanc_study_id}}">
-<input type="hidden" name="q" value="{{search_query}}">
-<label>{{ ui_phrase('اختر أمر الشغل الصحيح / Correct RIS Order') }}</label>
-<select name="order_id" required><option value="">{{ ui_phrase('اختر / Select') }}</option>
-{% if o %}<option value="{{o.id}}">{{ ui_phrase('اقتراح غير مؤكد / Suggestion — #') }}{{o.id}} · {{p.name}} · {{p.patient_id}} · {{o.accession}}</option>{% endif %}
-{% for opt in target_options %}{% if not o or opt.id!=o.id %}<option value="{{opt.id}}">#{{opt.id}} · {{opt.patient.name}} · {{opt.patient.patient_id}} · {{opt.accession}} · {{opt.procedure}}</option>{% endif %}{% endfor %}
-</select><button class="btn primary">{{ ui_phrase('معاينة قبل التأكيد / Preview mapping') }}</button></form>
-{% endif %}
-{% if v %}
-<p><strong>#{{v.order.id}} — {{v.order.procedure}}</strong> · {{v.order.branch.name if v.order.branch else '—'}}</p>
-<div style="overflow:auto"><table><tr><th>{{ ui_phrase('Field') }}</th><th>{{ ui_phrase('Correct value') }}</th><th>{{ ui_phrase('Change') }}</th></tr>
-{% for field,value in v.after.items() %}<tr><td>{{field}}</td><td>{{value}}</td><td>{{ui_phrase('تغيير / Changed') if value!=v.before.tags.get(field) else ui_phrase('مطابق / Same')}}</td></tr>{% endfor %}</table></div>
-{% if not demo_mode %}<form method="post" action="{{url_for('pacs_reconciliation_match',study_id=x.orthanc_study_id)}}">
-<input type="hidden" name="order_id" value="{{v.order.id}}"><input type="hidden" name="preview_token" value="{{v.token}}">
-<label>{{ ui_phrase('سبب التصحيح / Documented reason') }}</label><textarea name="reason" required minlength="5" maxlength="500"></textarea>
-<label style="display:block;margin:12px 0"><input type="checkbox" name="identity_confirmed" value="1" required> {{ ui_phrase('تأكدت من هوية المريض وأن الصور تخص هذا الفحص / I confirmed patient and study identity.') }}</label>
-<p>{{ ui_phrase('الربط فقط لا يغيّر DICOM. التصحيح ينشئ نسخة جديدة بمعرفات جديدة، يحتفظ بالأصل، ثم يتحقق ويربط النسخة الصحيحة. التقارير النهائية محمية.') }}</p>
-{% if has_perm('correction.review') %}<button class="btn primary" formaction="{{url_for('pacs_reconciliation_correct_dicom',study_id=x.orthanc_study_id)}}">{{ ui_phrase('تصحيح DICOM والربط / Correct DICOM and map') }}</button>{% endif %}
-<button class="btn">{{ ui_phrase('ربط فقط دون تعديل DICOM / Confirm Manual Match') }}</button>
-</form>{% else %}<p>{{ ui_phrase('بعد المعاينة، تظهر خيارات تصحيح DICOM والربط أو الربط فقط للمستخدم المخوّل. الأصل محفوظ وسجل التدقيق يسجل القيم القديمة والجديدة.') }}</p>{% endif %}
-{% else %}<p>{{ ui_phrase('لم تُؤكد البيانات الصحيحة بعد. اختر أمر الشغل واضغط معاينة أولًا.') }}</p>{% endif %}
-</section>
-
-{% if can_reconcile %}
-{{ action_info('Manual PACS Match','Confirms a reviewed RIS Order after a fresh signed preview.','Use after confirming patient identity.','Permission, confirmation and documented reason required.','Records old and target identity in audit.','Never use as Patient Merge.',ui_lang) }}
-
-<hr>
-
-<h4>{{ ui_phrase('Reject / Quarantine') }}</h4>
-{{ action_info(
-  'Quarantine Study',
-  'Separates an unresolved PACS study from RIS workflow for administrator review.',
-  'Use when identity or ownership cannot be confirmed safely.',
-  'Requires pacs.reconcile permission and a reason.',
-  'No DICOM files are deleted; the study is prevented from automatic use.',
-  'Do not quarantine a clinically confirmed study merely because images are incomplete.',
-  ui_lang
-) }}
-
-<form method="post"
-action="{{ url_for('pacs_reconciliation_quarantine',study_id=x.orthanc_study_id) }}">
-
-<textarea
-name="reason"
-required
-minlength="5"
-placeholder="{{ ui_phrase('Reason for quarantine') }}"></textarea>
-
-<button class="btn">
-{{ ui_phrase('Quarantine Study') }}
-</button>
-</form>
-{% elif not demo_mode %}
-<div class="warn">
-{{ ui_phrase('View only. Manual PACS matching and quarantine require the') }}
-<strong>pacs.reconcile</strong> {{ ui_phrase('permission.') }}
-</div>
-{% endif %}
-
-</div>
-{% endfor %}
 
 </div>
 {% endblock %}
