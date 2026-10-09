@@ -5,7 +5,7 @@
 
 {% block content %}
 <style>
-.manual-study-table{overflow:auto;margin:18px 0}.manual-study-table table{min-width:720px}.manual-source{overflow-wrap:anywhere}.manual-steps{padding:14px;background:#eff6ff;border-radius:10px;line-height:1.8}.manual-comparison{overflow:auto}.manual-comparison table{min-width:540px}.manual-changed{background:#fff3cd}#combined-acquisition summary{cursor:pointer;padding:12px}
+.manual-study-table{overflow:auto;margin:18px 0}.manual-study-table table{min-width:720px}.manual-source{overflow-wrap:anywhere}.manual-steps{padding:14px;background:#eff6ff;border-radius:10px;line-height:1.8}.manual-comparison{overflow:auto}.manual-comparison table{min-width:800px}.pacs-source-row th,.ris-target-row th{white-space:nowrap}.manual-changed{background:#fff3cd}.manual-comparison th{word-break:normal;white-space:nowrap}.manual-comparison td{word-break:normal;overflow-wrap:normal}.manual-comparison td:nth-child(5),.manual-comparison td:nth-child(6){white-space:nowrap}
 </style>
 <div class="panel">
 
@@ -68,17 +68,20 @@
 </h3>
 
 {% set v=row.preview %}
-<section class="panel" style="border-top:4px solid #dc2626;background:#fff7f7;overflow-wrap:anywhere">
-<h4>{{ ui_phrase('١ — بيانات DICOM الحالية المطلوب مراجعتها / Current PACS data') }}</h4>
 {% if v %}{% set original=v.before.tags %}{% else %}{% set original={'PatientID':x.pacs_patient_id,'PatientName':x.pacs_patient_name,'AccessionNumber':x.accession} %}{% endif %}
-<div style="overflow:auto"><table><tr><th>{{ ui_phrase('الحقل / Field') }}</th><th>{{ ui_phrase('القيمة الحالية / Current value') }}</th></tr>
-{% for field in ['PatientID','PatientName','PatientBirthDate','PatientSex','AccessionNumber'] %}
-<tr><td>{{field}}</td><td>{{original.get(field) or ui_phrase('غير متاح قبل المعاينة / Preview required')}}</td></tr>{% endfor %}
-<tr><td>{{ ui_phrase('Images') }}</td><td>{{v.before.count if v else x.image_count}}</td></tr>
-<tr><td>Study UID</td><td>{{v.before.study_uid if v else x.study_instance_uid or '—'}}</td></tr></table></div>
-<p><strong>{{ ui_phrase('REVIEW REQUIRED — AI BLOCKED — FINALIZE BLOCKED') }}</strong></p>
+<div class="manual-comparison" id="pacs-ris-rows"><table><thead><tr>
+<th>{{ "المصدر" if ui_lang=="ar" else "Source" }}</th>
+{% for field,label in [('PatientName',('اسم المريض' if ui_lang=='ar' else 'Patient name')),('PatientID',ui_phrase('Patient ID')),('AccessionNumber',ui_phrase('Accession')),('PatientBirthDate',('تاريخ الميلاد' if ui_lang=='ar' else 'Birth date')),('PatientSex',('النوع' if ui_lang=='ar' else 'Sex'))] %}<th>{{label}}</th>{% endfor %}
+<th>{{ "الفحص" if ui_lang=="ar" else "Exam" }}</th></tr></thead><tbody>
+<tr class="pacs-source-row" style="background:#fff7f7"><th>PACS</th>
+{% for field in ['PatientName','PatientID','AccessionNumber','PatientBirthDate','PatientSex'] %}<td>{{original.get(field) or '—'}}</td>{% endfor %}<td>{{x.modality or '—'}} · {{x.study_description or '—'}}</td></tr>
+<tr class="ris-target-row" style="background:#f0fdf4"><th>RIS</th>
+{% for field in ['PatientName','PatientID','AccessionNumber','PatientBirthDate','PatientSex'] %}<td{% if v and v.after.get(field)!=original.get(field) %} class="manual-changed"{% endif %}>{{v.after.get(field) if v else '—'}}</td>{% endfor %}<td>{{v.order.procedure if v else ('اختر طلب RIS من البحث أدناه' if ui_lang=='ar' else 'Choose a RIS order below')}}</td></tr>
+</tbody></table></div>
+{{ action_info('PACS' if ui_lang!='ar' else 'سطر PACS', 'Read the received image identity before choosing a RIS order.' if ui_lang!='ar' else 'راجع هوية الصور المستلمة قبل اختيار طلب RIS.', 'Preview reads the current image data; missing or inconsistent identity requires review.' if ui_lang!='ar' else 'المعاينة تقرأ بيانات الصور الحالية؛ الهوية الناقصة أو المتعارضة تحتاج مراجعة.', lang=ui_lang) }}
+{{ action_info('RIS' if ui_lang!='ar' else 'سطر RIS', 'Search for the real RIS order, select it, and compare the two rows.' if ui_lang!='ar' else 'ابحث عن طلب RIS الحقيقي، اختره وقارن السطرين.', 'A highlighted difference is not permission to change patient identity. Confirm the images belong to this patient and order before correction.' if ui_lang!='ar' else 'تلوين الاختلاف لا يسمح بتغيير هوية المريض تلقائيًا. تأكد أن الصور تخص هذا المريض وهذا الطلب قبل التصحيح.', lang=ui_lang) }}
+<p>{{ ui_phrase('Images') }}: {{v.before.count if v else x.image_count}} · Study UID: {{v.before.study_uid if v else x.study_instance_uid or '—'}}</p>
 {% if not v %}<p>{{ ui_phrase('البيانات المحفوظة في قائمة الاستقبال؛ المعاينة تقرأ البيانات الحالية من الصور نفسها.') }}</p>{% endif %}
-</section>
 <section class="panel" style="border-top:4px solid #16a34a;background:#f0fdf4;margin-top:16px">
 <h4>{{ ui_phrase('٢ — المريض وأمر الشغل الصحيحان / Correct RIS patient and order') }}</h4>
 {% if can_reconcile %}
@@ -87,21 +90,15 @@
 <label>{{ ui_phrase('ابحث بالاسم أو رقم المريض أو رقم الفحص / Search patient or accession') }}</label>
 <input name="q" value="{{search_query}}" placeholder="{{ ui_phrase('Patient name / Patient ID / Accession') }}">
 <button class="btn">{{ ui_phrase('بحث / Search') }}</button></form>
-<form method="get" action="{{url_for('pacs_reconciliation')}}#manual-selected-study">
-<input type="hidden" name="study_id" value="{{x.orthanc_study_id}}">
-<input type="hidden" name="q" value="{{search_query}}">
-<label>{{ ui_phrase('اختر أمر الشغل الصحيح / Correct RIS Order') }}</label>
-<select name="order_id" required aria-label="{{ ui_phrase('اختر أمر الشغل الصحيح / Correct RIS Order') }}"><option value="">{{ ui_phrase('اختر / Select') }}</option>
-{% if o %}<option value="{{o.id}}"{% if v and v.order.id==o.id %} selected{% endif %}>{{ ui_phrase('اقتراح غير مؤكد / Suggestion — #') }}{{o.id}} · {{p.name}} · {{p.patient_id}} · {{o.accession}} · {{o.procedure}} · {{o.branch.name if o.branch else '—'}}</option>{% endif %}
-{% for opt in target_options %}{% if not o or opt.id!=o.id %}<option value="{{opt.id}}"{% if v and v.order.id==opt.id %} selected{% endif %}>#{{opt.id}} · {{opt.patient.name}} · {{opt.patient.patient_id}} · {{opt.accession}} · {{opt.procedure}} · {{opt.branch.name if opt.branch else '—'}}</option>{% endif %}{% endfor %}
-</select><button class="btn primary">{{ ui_phrase('معاينة قبل التأكيد / Preview mapping') }}</button></form>
+{% if o or target_options %}
+<div class="manual-study-table"><table class="ris-search-results"><thead><tr><th>{{('اسم المريض' if ui_lang=='ar' else 'Patient name')}}</th><th>{{ui_phrase('Patient ID')}}</th><th>{{ui_phrase('Accession')}}</th><th>{{ "الفحص / الفرع" if ui_lang=="ar" else "Exam / branch" }}</th><th>{{ui_phrase('Action')}}</th></tr></thead><tbody>
+{% if o %}<tr><td>{{o.patient.name}}</td><td>{{o.patient.patient_id}}</td><td>{{o.accession}}</td><td>{{o.procedure}} · {{o.branch.name if o.branch else '—'}}<br><small>{{ "اقتراح غير مؤكد" if ui_lang=="ar" else "Unconfirmed suggestion" }}</small></td><td><a class="btn" href="{{url_for('pacs_reconciliation',study_id=x.orthanc_study_id,order_id=o.id,q=search_query)}}#manual-selected-study">{{ "اختيار RIS والمعاينة" if ui_lang=="ar" else "Select RIS and preview" }}</a></td></tr>{% endif %}
+{% for opt in target_options %}{% if not o or opt.id!=o.id %}<tr><td>{{opt.patient.name}}</td><td>{{opt.patient.patient_id}}</td><td>{{opt.accession}}</td><td>{{opt.procedure}} · {{opt.branch.name if opt.branch else '—'}}</td><td><a class="btn" href="{{url_for('pacs_reconciliation',study_id=x.orthanc_study_id,order_id=opt.id,q=search_query)}}#manual-selected-study">{{ "اختيار RIS والمعاينة" if ui_lang=="ar" else "Select RIS and preview" }}</a></td></tr>{% endif %}{% endfor %}
+</tbody></table></div>{% endif %}
 {% endif %}
 {% if search_query and not target_options and not o %}<p role="status">{{ "لا يوجد طلب مطابق للبحث. غيّر رقم الطلب أو رقم المريض؛ لا تُنشئ ربطًا عشوائيًا." if ui_lang=="ar" else "No matching RIS order found. Check the accession or patient ID before linking." }}</p>{% endif %}
 {% if v %}
 <p><strong>#{{v.order.id}} — {{v.order.procedure}}</strong> · {{v.order.branch.name if v.order.branch else '—'}}</p>
-<h4>{{ "٣ — مقارنة قبل التنفيذ" if ui_lang=="ar" else "3 — Compare before applying" }}</h4>
-<div class="manual-comparison"><table><tr><th>{{ ui_phrase('Field') }}</th><th>{{ "الصور الحالية" if ui_lang=="ar" else "Current images" }}</th><th>{{ "طلب RIS الصحيح" if ui_lang=="ar" else "Correct RIS order" }}</th><th>{{ ui_phrase('Change') }}</th></tr>
-{% for field,value in v.after.items() %}<tr{% if value!=v.before.tags.get(field) %} class="manual-changed"{% endif %}><td>{{field}}</td><td>{{v.before.tags.get(field) or '—'}}</td><td>{{value}}</td><td>{{ui_phrase('تغيير / Changed') if value!=v.before.tags.get(field) else ui_phrase('مطابق / Same')}}</td></tr>{% endfor %}</table></div>
 {% if not demo_mode %}<form method="post" action="{{url_for('pacs_reconciliation_match',study_id=x.orthanc_study_id)}}">
 <input type="hidden" name="order_id" value="{{v.order.id}}"><input type="hidden" name="preview_token" value="{{v.token}}">
 <label>{{ ui_phrase('سبب التصحيح / Documented reason') }}</label><textarea name="reason" required minlength="5" maxlength="500"></textarea>
@@ -153,90 +150,6 @@ placeholder="{{ ui_phrase('Reason for quarantine') }}"></textarea>
 {% endif %}
 {% endfor %}
 
-{% if not demo_mode %}<div class="panel" style="margin:20px 0;border-left:4px solid #2563eb">
-<details id="combined-acquisition"><summary><strong>{{ "مشاركة دراسة موجودة مع فحص إضافي لنفس المريض" if ui_lang=="ar" else "Share an existing study with an additional exam for the same patient" }}</strong></summary><p>{{ "هذا مسار منفصل عن تصحيح بيانات الحالات المرسلة يدويًا." if ui_lang=="ar" else "This is a separate workflow from correcting manually sent studies." }}</p>
-{{ action_info(
-  'Exam Linking',
-  'Links one acquired PACS study to an additional RIS Order for the same patient.',
-  'Use for combined acquisitions such as one CT study covering more than one ordered exam.',
-  'Both Orders must belong to the same patient; the secondary Order must remain editable; a documented reason is mandatory.',
-  'Creates a secondary clinical link only. Reports and notes remain separate for each Order.',
-  'This is not Patient Merge and does not change, copy, move, or delete DICOM files.',
-  ui_lang
-) }}
-
-{% if not can_exam_link %}
-<div class="warn">
-{{ ui_phrase('View only. Exam Linking requires the') }} <strong>pacs.exam_link</strong> {{ ui_phrase('permission.') }}
-</div>
-{% elif not eligible_exam_pairs %}
-<div class="success">
-{{ ui_phrase('No safe same-patient editable Order pairs are currently eligible for Exam Linking.') }}
-</div>
-{% else %}
-<form method="post" action="{{ url_for('pacs_exam_link_create') }}">
-<label>{{ ui_phrase('Safe primary / secondary Order pair') }}</label>
-<select name="exam_pair" id="exam-link-pair" required
-        onchange="var p=this.value.split(':');document.getElementById('exam-primary').value=p[0]||'';document.getElementById('exam-secondary').value=p[1]||''">
-  <option value="">{{ ui_phrase('Select confirmed same-patient Orders') }}</option>
-  {% for pair in eligible_exam_pairs %}
-  <option value="{{ pair.primary.id }}:{{ pair.secondary.id }}">
-    {{ pair.patient.name if pair.patient else ui_phrase('Patient') }} —
-    Primary #{{ pair.primary.id }} {{ pair.primary.accession }} →
-    Secondary #{{ pair.secondary.id }} {{ pair.secondary.accession }}
-  </option>
-  {% endfor %}
-</select>
-<input type="hidden" id="exam-primary" name="primary_order_id">
-<input type="hidden" id="exam-secondary" name="secondary_order_id">
-
-<label>{{ ui_phrase('Documented clinical/operational reason') }}</label>
-<textarea name="reason" required minlength="5"
-placeholder="{{ ui_phrase('Explain why the same PACS acquisition belongs to both RIS Orders') }}"></textarea>
-
-<label style="display:block;margin:8px 0">
-  <input type="checkbox" required>
-  {{ ui_phrase('I confirmed both Orders belong to the same patient and this is not Patient Merge.') }}
-</label>
-
-<button class="btn primary">{{ ui_phrase('Create Exam Link') }}</button>
-</form>
-{% endif %}
-
-{% if active_exam_links %}
-<h4 style="margin-top:20px">{{ ui_phrase('Active Exam Links') }}</h4>
-<table>
-<tr><th>{{ ui_phrase('Study') }}</th><th>{{ ui_phrase('Primary Order') }}</th><th>{{ ui_phrase('Secondary Order') }}</th><th>{{ ui_phrase('Reason') }}</th><th>{{ ui_phrase('Action') }}</th></tr>
-{% for item in active_exam_links %}
-<tr>
-<td>{{ item.link.orthanc_study_id }}</td>
-<td>{% if item.primary %}#{{ item.primary.id }} — {{ item.primary.accession }}{% else %}-{% endif %}</td>
-<td>{% if item.secondary %}#{{ item.secondary.id }} — {{ item.secondary.accession }}{% else %}-{% endif %}</td>
-<td>{{ item.link.reason }}</td>
-<td>
-{% if can_exam_link %}
-<form method="post" action="{{ url_for('pacs_exam_link_remove',link_id=item.link.id) }}">
-  <input name="reason" required minlength="5" placeholder="{{ ui_phrase('Removal reason') }}">
-  <button class="btn">{{ ui_phrase('Remove Link') }}</button>
-  {{ action_info(
-    'Remove Exam Link',
-    'Deactivates only the secondary link and preserves its audit history.',
-    'Use when the additional RIS Order was linked in error.',
-    'The secondary Order must still be editable and a reason is required.',
-    'The PACS study and primary link remain unchanged.',
-    'Removal is blocked after the secondary report is verified or final.',
-    ui_lang
-  ) }}
-</form>
-{% endif %}
-</td>
-</tr>
-{% endfor %}
-</table>
-{% endif %}
-</details></div>
-
-{% endif %}
 
 </div>
 {% endblock %}

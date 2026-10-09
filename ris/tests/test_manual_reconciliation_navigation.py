@@ -20,5 +20,7 @@ def test_manual_study_selection_keeps_search_scoped_and_preview_compares_identit
     body=response.get_data(as_text=True)
     assert 'WRONG' in body and o.accession in body
     assert 'manual-comparison' in body and 'name="preview_token"' in body
-    assert body.index('id="manual-selected-study"') < body.index('id="combined-acquisition"')
+    assert body.index('class="pacs-source-row"') < body.index('class="ris-target-row"')
+    assert 'exam-link-pair' not in body
+    assert 'ris-search-results' in body
     assert 'name="identity_confirmed"' in body
