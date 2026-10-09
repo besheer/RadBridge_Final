@@ -72,6 +72,8 @@ def context(m,key):
         staff_yesterday=(now-timedelta(days=1)).strftime('%Y-%m-%d'))
 
 def apply(m,q,key,ctx):
+    from procedure_staff_workflow import filter_worklist
+    q=filter_worklist(m,q,key)
     user=m.current_user()
     if not m.has_perm('*'):
         q=q.filter(m.Order.branch_id==user.branch_id) if user.branch_id else q.filter(m.db.false())

@@ -19,6 +19,25 @@
 @media(max-width:900px){.nursing-case-grid{grid-template-columns:1fr}}
 </style>
 
+
+{% set exam_policy=staff_exam_policy(order) %}
+<section class="panel" id="nursing-exam-controls">
+<h3>{{'مهام الفحص' if ui_lang=='ar' else 'Examination tasks'}}</h3>
+<p>{{'صور مطلوبة' if ui_lang=='ar' else 'Images required'}}: {{ui_phrase('Yes') if exam_policy.require_images else ui_phrase('No')}}</p>
+{% if exam_policy.mode=='EXAM' and (order.status or '')|upper not in ['FINAL','CANCELLED'] %}
+{% set exam_state=(order.exam_status or 'ORDERED')|upper %}
+{% if exam_state in ['ORDERED','BOOKED','IN_PROGRESS'] %}
+<form method="post" action="{{url_for('nursing_exam_status',order_id=order.id)}}">
+<input type="hidden" name="csrf_token" value="{{staff_policy_csrf}}">
+<input type="hidden" name="status" value="{{'EXAM_COMPLETED' if exam_state=='IN_PROGRESS' else 'IN_PROGRESS'}}">
+<button class="btn primary">{{('إنهاء الفحص' if exam_state=='IN_PROGRESS' else 'بدء الفحص') if ui_lang=='ar' else ('Complete exam' if exam_state=='IN_PROGRESS' else 'Start exam')}}</button>
+</form>{% endif %}
+{% else %}<p>{{'ملاحظات ومستهلكات فقط' if ui_lang=='ar' else 'Notes and consumables only'}}</p>{% endif %}
+{% set needs=staff_exam_requirements(order) %}
+{% if needs.blockers %}<p>{{'متطلبات الإتمام الناقصة' if ui_lang=='ar' else 'Missing completion requirements'}}: {{needs.blockers|join(' · ')}}</p>{% endif %}
+<p>{{'وقت البدء' if ui_lang=='ar' else 'Started'}}: {{order.exam_started_at or '—'}} · {{'وقت الانتهاء' if ui_lang=='ar' else 'Completed'}}: {{order.exam_completed_at or '—'}}</p>
+</section>
+
 <div class="nursing-case-grid">
   <aside>
     <div class="panel">
@@ -28,7 +47,7 @@
              alt=""
              loading="lazy">
       {% else %}
-        <div class="empty">{{ ui_phrase('No PACS image received') }}</div>
+        <div class="empty">{{ ui_phrase('No PACS image received') if exam_policy.require_images else ('الصور غير مطلوبة لهذا الفحص' if ui_lang=='ar' else 'Images not required for this exam') }}</div>
       {% endif %}
 
       <h3>{{order.patient.name}}</h3>
@@ -36,8 +55,8 @@
       <p>{{order.proc.name if order.proc else order.procedure}}</p>
       <p>
         {{ ui_phrase('Exam:') }} <b>{{order.exam_status or ui_phrase('ORDERED')}}</b><br>
-        PACS: <b>{{order.pacs_status or ui_phrase('WAITING')}}</b>
-        · {{order.pacs_image_count or 0}} {{ ui_phrase('image(s)') }}
+        {% if exam_policy.require_images or order.pacs_study_id %}PACS: <b>{{order.pacs_status or ui_phrase('WAITING')}}</b>
+        · {{order.pacs_image_count or 0}} {{ ui_phrase('image(s)') }}{% endif %}
       </p>
 
       <div class="nursing-actions">

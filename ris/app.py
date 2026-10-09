@@ -7009,11 +7009,15 @@ def technician_case_note(order_id):
 @require_perm('consumables.use')
 def technician_case_consume(order_id):
     order = Order.query.get_or_404(order_id)
+    from technician_queue import scoped_order, mutable_return
+    scoped_order(_reporting_support_sys.modules[__name__],order)
+    mutable_return(_reporting_support_sys.modules[__name__],order)
+    tasks_only=__import__('procedure_staff_workflow').policy(_reporting_support_sys.modules[__name__],order)['mode']=='TASKS'
 
     exam_status = (order.exam_status or 'ORDERED').upper()
 
     # RB_TECHNICIAN_CONSUME_DURING_EXAM_ONLY_V1
-    if exam_status != 'IN_PROGRESS':
+    if exam_status != 'IN_PROGRESS' and not tasks_only:
         flash(
             'Start the examination before recording consumables.',
             'danger',
@@ -7090,6 +7094,12 @@ def technician_minimum_requirement(order,rule):
 
 
 def technician_completion_evidence(order):
+    import procedure_staff_workflow as staff
+    mod=_reporting_support_sys.modules[__name__]
+    configured=staff.policy(mod,order)
+    extra=staff.requirements(mod,order,configured)
+    if configured.get('configured') and not configured.get('require_images') and not order.pacs_study_id and not (order.pacs_image_count or 0) and (order.pacs_status or '').upper()!='RECEIVING':
+        return dict(allowed=extra['allowed'],reason=extra['reason'],warning='',image_count=0,min_images=0,images_required=False,policy_version=configured.get('version'),blockers=extra['blockers']), (0,{},'',[])
     from technician_image_policy import completion_image_policy
     from case_exception_resolution_service import apply_series_aliases
     rule=quality_rule_for(order)
@@ -7115,6 +7125,10 @@ def technician_completion_evidence(order):
         result['warning']+=' Exam region could not be confirmed from DICOM metadata; review the procedure policy.'
     result['rule_id']=rule.id if rule else None
     result['minimum_override_id']=approved.id if approved else None
+    if not extra['allowed']:
+        result['allowed']=False
+        result['reason']+='; '+extra['reason']
+        result['completion_blockers']=extra['blockers']
     return result,evidence
 
 
@@ -7145,6 +7159,12 @@ def flash_exam_transition_blocked(order, decision, current, target):
 
 
 def _apply_exam_transition(order,target,role_code,override=False):
+    import procedure_staff_workflow as staff
+    mod=_reporting_support_sys.modules[__name__]
+    from flask import has_request_context
+    if getattr(order,'procedure_id',None):
+        staff.lock_policy(mod,order.procedure_id)
+        if has_request_context() and current_user() and current_user().role and current_user().role.code.upper() in ('NURSING','TECHNICIAN'):staff.scoped(mod,order)
     current=(order.exam_status or 'ORDERED').upper()
 
     # Legacy BOOKED cases enter the technician workflow at ORDERED.
@@ -7172,6 +7192,13 @@ def _apply_exam_transition(order,target,role_code,override=False):
     if not decision.allowed:
         return decision,current
 
+    import procedure_staff_workflow as staff
+    mod=_reporting_support_sys.modules[__name__]
+    p=staff.policy(mod,order)
+    if target in ('IN_PROGRESS','EXAM_COMPLETED') and (p.get('invalid') or p['mode']!='EXAM'):
+        from technician_image_policy import ImageCompletionDecision
+        return ImageCompletionDecision(False,'This procedure permits notes and consumables only',{}),current
+    if target=='IN_PROGRESS' and getattr(order,'procedure_id',None):staff.freeze(mod,order)
     if target=='EXAM_COMPLETED':
         result,_evidence=technician_completion_evidence(order)
         if not result['allowed']:
@@ -7298,7 +7325,7 @@ def order_exam_status(order_id):
     db.session.commit()
 
     # RB_POST_EXAM_ASSIGNMENT_TRIGGER_V1
-    if target=='EXAM_COMPLETED':
+    if target=='EXAM_COMPLETED' and __import__('procedure_staff_workflow').policy(_reporting_support_sys.modules[__name__],order)['require_images']:
         try:
             pacs_lookup_order(order)
             evaluate_case_readiness(order)
@@ -38634,3 +38661,6 @@ register_clinical_scope(_reporting_support_sys.modules[__name__])
 
 from security_dashboard import register as register_security_dashboard
 register_security_dashboard(_reporting_support_sys.modules[__name__])
+
+from procedure_staff_workflow import register as register_procedure_staff_workflow
+register_procedure_staff_workflow(_reporting_support_sys.modules[__name__])

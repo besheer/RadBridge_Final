@@ -55,7 +55,7 @@
 
 <div class="nurse-summary">
   <div class="nurse-stat">{{ ui_phrase('Open cases') }}<strong>{{ns.total}}</strong></div>
-  <div class="nurse-stat">{{ ui_phrase('Preparation pending') }}<strong>{{ns.pending}}</strong></div>
+  <div class="nurse-stat">{{'المستهلكات غير مؤكدة' if ui_lang=='ar' else 'Consumables pending'}}<strong>{{ns.pending}}</strong></div>
   <div class="nurse-stat">{{ ui_phrase('Consumables confirmed') }}<strong>{{ns.confirmed}}</strong></div>
   <div class="nurse-stat">{{ ui_phrase('Images received') }}<strong>{{ns.images}}</strong></div>
 </div>
@@ -67,6 +67,7 @@
 <div class="nurse-grid">
 {% for o,d,c in rows %}
   {% set st=(o.exam_status or 'ORDERED')|upper %}
+  {% set exam_policy=staff_exam_policy(o) %}
   <article class="nurse-card">
     {% if (o.pacs_image_count or 0)>0 and o.pacs_study_id %}
       <img class="nurse-thumb"
@@ -74,7 +75,7 @@
            alt=""
            loading="lazy">
     {% else %}
-      <div class="nurse-thumb-empty">{{ ui_phrase('No PACS image received') }}</div>
+      <div class="nurse-thumb-empty">{{ ui_phrase('No PACS image received') if exam_policy.require_images else ('الصور غير مطلوبة لهذا الفحص' if ui_lang=='ar' else 'Images not required for this exam') }}</div>
     {% endif %}
 
     <div class="nurse-body">
@@ -90,12 +91,12 @@
         <div><small>{{ ui_phrase('Exam') }}</small>{{o.proc.name if o.proc else o.procedure}}</div>
         <div><small>{{ ui_phrase('Priority') }}</small>{{o.priority or ui_phrase('ROUTINE')}}</div>
         <div><small>{{ ui_phrase('Consumables') }}</small>{{ui_phrase('Confirmed') if c else ui_phrase('Pending')}} · {{d}} {{ ui_phrase('default') }}</div>
-        <div><small>PACS</small>{{ui_phrase(o.pacs_status or 'WAITING')}} · {{o.pacs_image_count or 0}} {{ ui_phrase('image(s)') }}</div>
+        {% if exam_policy.require_images or o.pacs_study_id %}<div><small>PACS</small>{{ui_phrase(o.pacs_status or 'WAITING')}} · {{o.pacs_image_count or 0}} {{ ui_phrase('image(s)') }}</div>{% endif %}
       </div>
 
       <div class="nurse-actions">
         <a class="btn primary" href="{{url_for('nursing_case',order_id=o.id)}}">
-          {{ ui_phrase('Open Preparation') }}
+          {{'الفحص والملاحظات والمستهلكات' if ui_lang=='ar' else 'Exam, notes and consumables'}}
         </a>
 
         {% if image_urls.get(o.id) %}

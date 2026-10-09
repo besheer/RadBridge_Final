@@ -30,6 +30,7 @@
 </style>
 
 {% set st=(order.exam_status or 'ORDERED')|upper %}
+{% set exam_policy=staff_exam_policy(order) %}
 
 <section class="panel">
   <div class="tc-head">
@@ -75,6 +76,7 @@
 </section>
 {% endif %}
 
+{% if exam_policy.require_images %}
 <section class="panel" aria-label="{{ ui_phrase('Acquisition image policy') }}">
   <h3>{{ ui_phrase('سياسة صور الفحص · Acquisition Policy') }}</h3>
   {% if quality_rule %}
@@ -95,6 +97,7 @@
   <p class="muted">{{ ui_phrase('Complete Exam verifies current PACS images and patient matching on the server before completion. Nursing preparation is checked separately.') }}</p>
 </section>
 
+{% else %}<section class="panel"><p>{{'الصور غير مطلوبة لهذا الفحص' if ui_lang=='ar' else 'Images not required for this exam'}}</p></section>{% endif %}
 <div class="tc-grid">
   <aside>
     <section class="panel">
@@ -112,12 +115,12 @@
              target="_blank" rel="noopener noreferrer">{{ ui_phrase('🖼 Open Images') }}</a>
         {% endif %}
 
-        {% if st in ['BOOKED','ORDERED'] %}
+        {% if exam_policy.mode=='EXAM' and st in ['BOOKED','ORDERED'] %}
           <form method="post" action="{{url_for('order_exam_status',order_id=order.id)}}">
             <input type="hidden" name="status" value="IN_PROGRESS">
             <button class="btn primary">{{ ui_phrase('▶ Start Exam') }}</button>
           </form>
-        {% elif st == 'IN_PROGRESS' %}
+        {% elif exam_policy.mode=='EXAM' and st == 'IN_PROGRESS' %}
           <form method="post" action="{{url_for('order_exam_status',order_id=order.id)}}">
             <input type="hidden" name="status" value="EXAM_COMPLETED">
             <button class="btn primary">{{ ui_phrase('✓ Complete Exam') }}</button>
@@ -171,13 +174,13 @@
         {{ ui_phrase('Record only materials actually consumed during this examination.') }}
       </p>
 
-      {% if st != 'IN_PROGRESS' %}
+      {% if st != 'IN_PROGRESS' and exam_policy.mode!='TASKS' %}
         <p class="muted">
           {{ ui_phrase('Start the examination to enable consumable recording.') }}
         </p>
       {% endif %}
 
-      {% if has_perm('consumables.use') and warehouse and st == 'IN_PROGRESS' %}
+      {% if has_perm('consumables.use') and warehouse and (st == 'IN_PROGRESS' or exam_policy.mode=='TASKS') %}
         <form method="post"
               action="{{url_for('technician_case_consume',order_id=order.id)}}">
           <div class="tc-form-grid">

@@ -8,6 +8,8 @@ ACTIVE_CORRECTIONS = ('NEW', 'UNDER_REVIEW', 'NEED_INFO', 'APPROVED')
 
 
 def scoped_order(m, order, user=None):
+    from procedure_staff_workflow import scoped
+    scoped(m,order)
     user = user or m.current_user()
     if not user or not user.active:
         m.abort(403)

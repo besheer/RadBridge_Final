@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block page_title %}{{'إعداد مهام الفحص' if ui_lang=='ar' else 'Procedure staff workflow'}}{% endblock %}
+{% block content %}
+<section class="panel">
+<a href="{{url_for('admin_procedures')}}">{{'دليل الفحوصات' if ui_lang=='ar' else 'Procedure catalog'}}</a>
+<h2>{{procedure.code}} · {{procedure.name_ar if ui_lang=='ar' and procedure.name_ar else procedure.name}}</h2>
+<p>{{'التعديل يطبق على الفحوصات التي لم تبدأ. الفحوصات التي بدأت تحتفظ بنسخة إعداداتها.' if ui_lang=='ar' else 'Changes apply to examinations that have not started. Started examinations retain their recorded policy version.'}}</p>
+{% if not version %}<p>{{'لم يُضبط هذا الفحص بعد؛ القيم المعروضة مقترحة ولا تطبق قبل الحفظ.' if ui_lang=='ar' else 'This procedure is unconfigured. Values shown are recommendations and apply only after saving.'}}</p>{% endif %}
+{% if error %}<p role="alert">{{error}}</p>{% endif %}
+<form method="post" id="procedure-staff-workflow">
+<input type="hidden" name="csrf_token" value="{{csrf}}"><input type="hidden" name="version" value="{{version}}">
+<label>{{'المسؤول عن الفحص' if ui_lang=='ar' else 'Responsible staff'}}</label>
+<select name="owner">{% for key,ar,en in [('TECHNICIAN','الفني','Technician'),('NURSING','التمريض','Nursing'),('BOTH','الفني والتمريض','Both')] %}<option value="{{key}}" {% if policy.owner==key %}selected{% endif %}>{{ar if ui_lang=='ar' else en}}</option>{% endfor %}</select>
+<label>{{'نوع المهام' if ui_lang=='ar' else 'Workflow'}}</label><select name="mode"><option value="EXAM" {% if policy.mode=='EXAM' %}selected{% endif %}>{{'بدء وإنهاء الفحص والملاحظات والمستهلكات' if ui_lang=='ar' else 'Start/end exam, notes and consumables'}}</option><option value="TASKS" {% if policy.mode=='TASKS' %}selected{% endif %}>{{'ملاحظات ومستهلكات فقط' if ui_lang=='ar' else 'Notes and consumables only'}}</option></select>
+{% for key,ar,en in [('require_images','صور PACS مطلوبة','PACS images required'),('require_history','تاريخ مرضي أو ملاحظة مطلوبة','History or note required'),('require_attachments','مرفق للحالة مطلوب','Case attachment required'),('require_consumables','تأكيد المستهلكات مطلوب','Consumables confirmation required')] %}
+<p><label><input type="checkbox" name="{{key}}" value="1" {% if policy[key] %}checked{% endif %}> {{ar if ui_lang=='ar' else en}}</label></p>
+{% endfor %}
+<label>{{'سبب التعديل (مسجل بسجل التدقيق)' if ui_lang=='ar' else 'Reason (recorded in audit log)'}}</label><textarea name="reason" required minlength="5" maxlength="300"></textarea>
+<button class="btn primary">{{'حفظ الإعدادات' if ui_lang=='ar' else 'Save policy'}}</button></form>
+</section>
+{% endblock %}
