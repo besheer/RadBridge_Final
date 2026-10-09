@@ -66,8 +66,11 @@ export default async function init({
     peerImport: appConfig.peerImport,
   });
 
-  // For debugging e2e tests that are failing on CI
-  cornerstone.setUseCPURendering(Boolean(appConfig.useCPURendering));
+  // Preserve the core fallback when WebGL is unavailable. An omitted or false
+  // debug setting must not force an unsupported GPU rendering pipeline.
+  cornerstone.setUseCPURendering(
+    cornerstone.getShouldUseCPURendering() || Boolean(appConfig.useCPURendering)
+  );
 
   cornerstone.setConfiguration({
     ...cornerstone.getConfiguration(),
