@@ -1,0 +1,63 @@
+name: Playwright Tests
+on:
+  pull_request:
+    branches: [master, release/*]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright-tests:
+    timeout-minutes: 120
+    runs-on: [self-hosted, nashua]
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.23
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install Yarn
+        run: npm install -g yarn@1.22.22
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Install Playwright browsers
+        # Only chromium is used (firefox/webkit projects are commented out in
+        # playwright.config.ts). Scoping the install to chromium avoids
+        # downloading + dep-validating browsers we never launch (the WebKit
+        # validation is what surfaces "missing libwoff1/libflite1/..." on hosts
+        # without those libs).
+        run: npx playwright install chromium
+      - name: Run Playwright tests
+        run: |
+          export NODE_OPTIONS="--max_old_space_size=10192"
+          bash .scripts/ci/with-nashua-lock.sh bun run test:e2e:coverage
+      - name: Create directory of test results
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p packaged-test-results
+          cp -r ./tests/test-results packaged-test-results/ || true
+          cp -r ./tests/playwright-report packaged-test-results/ || true
+      - name: Upload directory of test results artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: packaged-test-results/
+          retention-days: 5
+      - name: create the coverage report
+        run: |
+          bun nyc report --reporter=lcov --reporter=text
+      - name: Upload the coverage report to GitHub Actions Artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-pr
+          path: coverage
+          retention-days: 3

@@ -1,0 +1,7 @@
+{% set items=studio_shortcuts_for(placement,shortcut_context or {}) %}
+{% if items %}<div class="studio-launcher">
+{% for x,target,glyph in items %}
+<a class="studio-launcher-item size-{{x.size|lower}} accent-{{x.accent}}" href="{{target}}" {% if x.open_mode=='NEW' %}target="_blank" rel="noopener"{% endif %}>
+<span>{{glyph}}</span><b>{{x.title_ar if ui_lang=='ar' and x.title_ar else x.title_en}}</b>
+</a>{% endfor %}
+</div>{% endif %}

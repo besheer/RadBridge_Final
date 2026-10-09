@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block page_title %}{{ ui_phrase('Clean Booking V2 / الحجز') }}{% endblock %}
+{% block subtitle %}Reliable backend-first booking with device availability restrictions{% endblock %}
+{% block content %}
+
+<div class="panel v2-toolbar">
+  <div class="v2-date-nav">
+    <a class="btn" href="{{url_for('schedule_v2',date=prev_day.isoformat(),branch_id=branch_id or '',modality=modality)}}">‹</a>
+    <a class="btn" href="{{url_for('schedule_v2')}}">{{ ui_phrase('Today') }}</a>
+    <strong>{{selected.strftime('%A %d %B %Y')}}</strong>
+    <a class="btn" href="{{url_for('schedule_v2',date=next_day.isoformat(),branch_id=branch_id or '',modality=modality)}}">›</a>
+  </div>
+  <form method="get" class="v2-filter">
+    <input type="date" name="date" value="{{selected}}">
+    <select name="branch_id"><option value="">{{ ui_phrase('All Branches') }}</option>{% for b in branches %}<option value="{{b.id}}" {% if b.id==branch_id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select>
+    <select name="modality"><option value="">{{ ui_phrase('All Modalities') }}</option>{% for m in modalities %}<option value="{{m}}" {% if m==modality %}selected{% endif %}>{{m}}</option>{% endfor %}</select>
+    <select name="device_id"><option value="">{{ ui_phrase('All Devices') }}</option>{% for d in all_devices %}<option value="{{d.id}}" {% if d.id==selected_device_id %}selected{% endif %}>{{d.modality}} — {{d.name}}</option>{% endfor %}</select>
+    <button class="btn primary">{{ ui_phrase('Apply') }}</button>
+  </form>
+</div>
+
+<div class="booking-rules panel"><span><b>Procedure availability is enforced by branch.</b></span>
+  <b>Booking rules:</b>
+  <span>Out of service = blocked</span>
+  <span>Maintenance = blocked</span>
+  <span>Outside working hours = blocked</span>
+  <span>Existing appointment overlap = blocked</span>
+  <span>Inactive / booking disabled = blocked</span>
+</div>
+
+{% for card in cards %}
+<section class="panel device-schedule-card">
+  <div class="device-schedule-head">
+    <div>
+      <h3>{{card.device.modality}} — {{card.device.name}}</h3>
+      <small>{{card.device.room}} · AE: {{card.device.ae_title}} · {{card.device.workday_start}}–{{card.device.workday_end}}</small>
+    </div>
+    <div>
+      {% if card.device_reason %}
+        <span class="device-state blocked">{{card.device_reason}}</span>
+      {% else %}
+        <span class="device-state available">Available for booking</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if has_perm('devices.manage') %}
+  <details class="device-admin-box">
+    <summary>Device Booking Settings</summary>
+    <form method="post" action="{{url_for('device_booking_status',device_id=card.device.id)}}" class="v2-device-settings">
+      <select name="operational_status">
+        {% for code,label in {'ACTIVE':'Active','OUT_OF_SERVICE':'Out of Service','MAINTENANCE':'Maintenance','DISABLED':'Disabled'}.items() %}
+        <option value="{{code}}" {% if card.device.operational_status==code %}selected{% endif %}>{{label}}</option>
+        {% endfor %}
+      </select>
+      <select name="booking_enabled"><option value="1" {% if card.device.booking_enabled %}selected{% endif %}>{{ ui_phrase('Booking Enabled') }}</option><option value="0" {% if not card.device.booking_enabled %}selected{% endif %}>Booking Disabled</option></select>
+      <input type="time" name="workday_start" value="{{card.device.workday_start or '08:00'}}">
+      <input type="time" name="workday_end" value="{{card.device.workday_end or '22:00'}}">
+      <button class="btn">{{ ui_phrase('Save') }}</button>
+    </form>
+  </details>
+  {% endif %}
+
+  <div class="v2-slots">
+    {% for slot in card.slots %}
+      {% if slot.conflict %}
+      <div class="v2-slot occupied">
+        <b>{{slot.time.strftime('%H:%M')}}</b>
+        <span>{{slot.conflict.patient.name}}</span>
+        <small>{{slot.conflict.procedure.name}} · {{slot.conflict.status}}</small>
+      </div>
+      {% elif slot.available %}
+      <a class="v2-slot free" href="{{url_for('schedule_v2_book_form',scheduled=slot.time.strftime('%Y-%m-%dT%H:%M'),device_id=card.device.id)}}">
+        <b>{{slot.time.strftime('%H:%M')}}</b>
+        <span>{{ ui_phrase('Book Slot') }}</span>
+        <small>{{ ui_phrase('حجز موعد') }}</small>
+      </a>
+      {% else %}
+      <div class="v2-slot blocked">
+        <b>{{slot.time.strftime('%H:%M')}}</b>
+        <span>{{ ui_phrase('Unavailable') }}</span>
+        <small>{{slot.reason}}</small>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<div class="panel empty">No active devices match the selected filters.</div>
+{% endfor %}
+
+{% endblock %}

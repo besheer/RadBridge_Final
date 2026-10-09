@@ -1,0 +1,16 @@
+RIS_TEST_BASELINE_STATUS=ACCEPTED_WITH_LEGACY_FAILURES
+TOTAL_PASSED=221
+TOTAL_FAILED=4
+TOTAL_SKIPPED=1
+
+LEGACY_FAILURE_1=tests/test_v5442_stabilization_contract.py::test_reporting_agent_package_uses_scoped_token
+LEGACY_FAILURE_2=tests/test_v5467_auto_assignment_ohif_recovery.py::test_ohif_recovered_dist_exists
+LEGACY_FAILURE_3=tests/test_v5467_auto_assignment_ohif_recovery.py::test_ohif_recovered_contains_reporting_bundle
+LEGACY_FAILURE_4=tests/test_v5467_auto_assignment_ohif_recovery.py::test_ohif_recovered_contains_word_workflow
+
+CLASSIFICATION=PREEXISTING_BASELINE_FAILURES
+CURRENT_R8_IMAGE_MATCH=YES
+RIS_WEB_ARTIFACTS_FOUND=NO
+CONSOLIDATION_REGRESSION=NO
+TESTS_MODIFIED=NO
+TESTS_DELETED=NO

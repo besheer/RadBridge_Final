@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block page_title %}{{'أعداد التقارير النهائية للأطباء' if ui_lang=='ar' else 'Physician FINAL Report Counts'}}{% endblock %}
+{% block content %}
+<style>.final-counts-table{max-width:100%;overflow-x:auto}.final-counts-table table{min-width:440px}.final-counts-table:focus-visible{outline:2px solid #2563eb}</style>
+<div class="panel">
+<form method="get" class="actions" style="flex-wrap:wrap">
+<label>{{'من' if ui_lang=='ar' else 'From'}} <input type="date" name="start" value="{{start}}" required></label>
+<label>{{'إلى' if ui_lang=='ar' else 'To'}} <input type="date" name="end" value="{{end}}" required></label>
+<label>{{'الفرع' if ui_lang=='ar' else 'Branch'}} <select name="branch_id"><option value="">{{'كل الفروع المسموحة' if ui_lang=='ar' else 'All permitted branches'}}</option>{% for b in branches %}<option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></label>
+<label>{{'الطبيب' if ui_lang=='ar' else 'Physician'}} <select name="doctor_id"><option value="">{{'كل الأطباء' if ui_lang=='ar' else 'All physicians'}}</option>{% for d in doctors %}<option value="{{d.id}}" {% if doctor_id==d.id %}selected{% endif %}>{{d.full_name or d.username}}</option>{% endfor %}</select></label>
+<button class="btn primary">{{'عرض' if ui_lang=='ar' else 'Apply'}}</button>
+</form>
+<p>{{'العد حسب تاريخ الاعتماد النهائي، وليس موعد الفحص. كل حالة أصلية تُعد مرة واحدة للطبيب المسند إليه التقرير الأصلي؛ التصحيحات تظهر منفصلة للطبيب الذي كتبها، ولا تزيد عدد الحالات الأصلية أو المستحقات.' if ui_lang=='ar' else 'Counts use finalization dates, not examination appointments. Each original case counts once for its assigned reporting physician. Corrections are shown separately for their assigned physician and do not increase original case counts or earnings.'}}</p>
+<p class="muted">{{'هذا تقرير أعداد فقط. تسويات مستحقات الاستبدال تُراجع في صفحة المالية المخوّلة. السجلات دون إسناد محفوظ تظهر كغير محددة.' if ui_lang=='ar' else 'Workload counts only. Replacement entitlement adjustments are reviewed on the authorized finance page. Records without an attribution are shown as unspecified.'}}</p>
+</div>
+<div class="management-kpis"><div><b>{{total_originals}}</b><span>{{'حالات أصلية نهائية' if ui_lang=='ar' else 'Original FINAL cases'}}</span></div><div><b>{{total_corrections}}</b><span>{{'تصحيحات نهائية منفصلة' if ui_lang=='ar' else 'Separate FINAL corrections'}}</span></div></div>
+<div class="table-wrap final-counts-table" tabindex="0" role="region" aria-label="{{'أعداد التقارير؛ مرر أفقيًا لرؤية الأعمدة' if ui_lang=='ar' else 'Report counts; scroll horizontally to see columns'}}"><table>
+<thead><tr><th>{{'الطبيب' if ui_lang=='ar' else 'Physician'}}</th><th>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</th><th>{{'الحالات الأصلية النهائية' if ui_lang=='ar' else 'Original FINAL cases'}}</th><th>{{'حالات لها تصحيحات نهائية' if ui_lang=='ar' else 'Distinct corrected cases'}}</th><th>{{'عدد التصحيحات النهائية' if ui_lang=='ar' else 'FINAL corrections'}}</th></tr></thead>
+<tbody>{% for r in rows %}<tr><td>{{r.doctor_name or ('غير محدد' if ui_lang=='ar' else 'Unspecified')}}</td><td>{{r.branch_name or ('غير محدد' if ui_lang=='ar' else 'Unspecified')}}</td><td>{{r.originals}}</td><td>{{r.correction_cases}}</td><td>{{r.corrections}}</td></tr>{% else %}<tr><td colspan="5">{{'لا توجد تقارير نهائية في الفترة والنطاق المختارين.' if ui_lang=='ar' else 'No FINAL reports in the selected period and scope.'}}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

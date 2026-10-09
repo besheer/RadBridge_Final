@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block page_title %}Print Center · {{order.accession}}{% endblock %}
+{% block content %}
+<div class="panel"><h2>🖨️ Print Center</h2><p>{{order.patient.name}} · {{order.accession}} · {{order.procedure}}</p>
+<div class="print-profile-grid">
+{% if ctx.receipt %}<a class="print-tile" target="_blank" href="{{url_for('receipt_studio_print',receipt_id=ctx.receipt.id)}}"><b>🧾 Receipt</b><span>{{profiles.RECEIPT.printer_name if profiles.RECEIPT else 'Browser default printer'}}</span><small>{{profiles.RECEIPT.paper_size if profiles.RECEIPT else 'Receipt template'}}</small></a>{% endif %}
+<a class="print-tile" target="_blank" href="{{url_for('order_label_print',order_id=order.id)}}"><b>🏷️ Sticker / Label</b><span>{{profiles.LABEL.printer_name if profiles.LABEL else 'Browser default printer'}}</span><small>{{profiles.LABEL.paper_size if profiles.LABEL else 'Label template'}}</small></a>
+<a class="print-tile" href="{{url_for('report_editor',order_id=order.id)}}"><b>{{ ui_phrase('📄 Report') }}</b><span>{{profiles.REPORT.printer_name if profiles.REPORT else 'Browser default printer'}}</span><small>{{profiles.REPORT.paper_size if profiles.REPORT else 'A4'}}</small></a>
+<a class="print-tile" href="{{url_for('order_attachments',order_id=order.id)}}"><b>{{ ui_phrase('📎 Documents') }}</b><span>Review before printing</span></a>
+</div>
+<a class="btn" href="{{url_for('admin_printer_profiles')}}">⚙ Printer Profiles</a>
+</div>{% endblock %}

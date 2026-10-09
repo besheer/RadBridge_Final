@@ -1,0 +1,2 @@
+{% extends "base.html" %}{% block page_title %}Live Escalation Board{% endblock %}{% block content %}
+<div class="panel"><h3>Open Operational Alerts</h3></div>{% for n in rows %}<div class="panel notif notif-{{n.severity|lower}}"><b>{{n.title}}</b><span>{{n.role_code}} · {{n.created_at}}</span><p>{{n.body}}</p></div>{% else %}<div class="panel">No open escalations.</div>{% endfor %}{% endblock %}

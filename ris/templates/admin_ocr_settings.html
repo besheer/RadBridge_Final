@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block page_title %}OCR / Smart Intake Settings{% endblock %}
+{% block content %}
+{% set cfg = draft or row %}
+<style>
+  .ocr-page{--navy:#0c2340;--blue:#2563eb;--green:#07875c;--amber:#b45309;--red:#c53030;--muted:#64748b;max-width:1500px;margin:0 auto}
+  .ocr-page *{box-sizing:border-box}.ocr-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px 26px;margin-bottom:18px;border-radius:18px;background:linear-gradient(125deg,#0b1f39,#174f91);color:#fff;box-shadow:0 12px 32px rgba(12,35,64,.18)}
+  .ocr-hero h1{margin:0 0 7px;font-size:27px;color:#fff}.ocr-hero p{margin:0;max-width:790px;color:#dbeafe}.hero-shield{font-size:44px;line-height:1}
+  .status-card,.ocr-card{background:#fff;border:1px solid #dbe4ef;border-radius:16px;box-shadow:0 6px 20px rgba(15,23,42,.05)}
+  .status-card{display:flex;align-items:flex-start;justify-content:space-between;gap:22px;padding:17px 20px;margin-bottom:18px;border-left:5px solid #94a3b8}
+  .status-card.ready{border-left-color:var(--green)}.status-card.failed,.status-card.invalid{border-left-color:var(--red)}.status-card.warning{border-left-color:var(--amber)}
+  .status-main{display:flex;gap:12px;align-items:flex-start}.status-icon{font-size:25px}.status-title{font-weight:800;color:var(--navy);margin-bottom:3px}.status-message{font-size:13px;color:var(--muted)}
+  .status-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;font-size:12px;color:var(--muted)}
+  .badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;font-weight:800;background:#eef2f7;color:#475569}.badge.ready{background:#dcfce7;color:#087443}.badge.failed,.badge.invalid{background:#fee2e2;color:#ad2424}.badge.warning{background:#fef3c7;color:#92400e}
+  .ocr-card{padding:22px 24px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:17px}.section-heading h2{font-size:18px;margin:0;color:var(--navy)}.section-heading small{color:var(--muted)}
+  .ocr-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 22px}.ocr-field.wide{grid-column:1/-1}.field-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px}.field-top label{font-weight:750;color:#172b4d;margin:0}
+  .ocr-page input,.ocr-page select{width:100%;min-height:46px;border:1px solid #cbd5e1;border-radius:10px;padding:10px 13px;background:#fff;color:#0f172a;transition:.15s}.ocr-page input:focus,.ocr-page select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12);outline:0}.ocr-page input[disabled]{background:#f1f5f9;color:#64748b}
+  .indicator{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800;white-space:nowrap}.indicator.valid{background:#dcfce7;color:#087443}.indicator.warning{background:#fef3c7;color:#92400e}.indicator.invalid{background:#fee2e2;color:#ad2424}.indicator.na{background:#e2e8f0;color:#475569}.indicator.pending{background:#dbeafe;color:#1d4ed8}
+  .field-message{min-height:19px;margin-top:6px;font-size:12px;color:var(--muted)}.field-message.invalid{color:#ad2424}.field-message.warning{color:#92400e}.field-message.valid{color:#087443}
+  .provider-note{margin-top:8px;padding:9px 11px;background:#f8fafc;border-radius:9px;color:#475569;font-size:12px}
+  .safety{display:flex;gap:11px;align-items:flex-start;margin:21px 0 18px;padding:14px 16px;border:1px solid #bbf7d0;border-radius:12px;background:#f0fdf4;color:#14532d;font-size:13px}.safety strong{display:block;margin-bottom:2px}
+  .actions{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-top:1px solid #e2e8f0;padding-top:18px}.action-group{display:flex;gap:9px;flex-wrap:wrap}.ocr-btn{min-height:42px;border:0;border-radius:10px;padding:10px 16px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:7px}.ocr-btn.primary{background:var(--blue);color:#fff}.ocr-btn.secondary{background:#e8eef7;color:#183153}.ocr-btn.outline{background:#fff;color:#1d4ed8;border:1px solid #93b4fa}.ocr-btn:disabled{opacity:.55;cursor:not-allowed}
+  .technical{margin-top:16px;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}.technical summary{padding:12px 15px;background:#f8fafc;cursor:pointer;font-weight:750;color:#334155}.technical-body{padding:13px 15px;font-size:12px;color:#475569}.technical-row{display:grid;grid-template-columns:180px 1fr;gap:10px;padding:4px 0}.technical code{overflow-wrap:anywhere}
+  .dirty-note{display:none;color:#92400e;font-size:12px;font-weight:700}.dirty-note.show{display:block}
+  @media(max-width:850px){.ocr-grid{grid-template-columns:1fr}.ocr-field.wide{grid-column:auto}.ocr-hero,.status-card{flex-direction:column}.status-meta{justify-content:flex-start}.technical-row{grid-template-columns:1fr}.ocr-card{padding:18px}.ocr-hero{padding:19px}}
+</style>
+
+<div class="ocr-page">
+  <div class="ocr-hero">
+    <div>
+      <h1>OCR / Smart Intake Settings</h1>
+      <p>Configure document extraction with a provider-specific adapter, field-level checks, and a safe non-patient test before clinical use.</p>
+    </div>
+    <div class="hero-shield" aria-hidden="true">🛡️</div>
+  </div>
+
+  <div id="overall-card" class="status-card">
+    <div class="status-main">
+      <div id="overall-icon" class="status-icon">○</div>
+      <div><div id="overall-title" class="status-title">Checking configuration</div><div id="overall-message" class="status-message">Local validation results appear below.</div></div>
+    </div>
+    <div class="status-meta">
+      <span id="dirty-note" class="dirty-note">Unsaved changes — previous remote validation no longer applies</span>
+      <span id="latency-badge" style="display:none"></span>
+      <span id="overall-badge" class="badge">NOT CHECKED</span>
+    </div>
+  </div>
+
+  <form id="ocr-form" method="post" class="ocr-card" autocomplete="off">
+    <div class="section-heading"><h2>Provider configuration</h2><small>Every field is checked independently.</small></div>
+    <div class="ocr-grid">
+      <div class="ocr-field">
+        <div class="field-top"><label for="enabled">OCR availability</label><span id="indicator-enabled" class="indicator pending">Checking</span></div>
+        <select id="enabled" name="enabled">
+          <option value="0" {% if not cfg or not cfg.enabled %}selected{% endif %}>{{ ui_phrase('Disabled') }}</option>
+          <option value="1" {% if cfg and cfg.enabled %}selected{% endif %}>{{ ui_phrase('Enabled') }}</option>
+        </select>
+        <div id="message-enabled" class="field-message"></div>
+      </div>
+
+      <div class="ocr-field">
+        <div class="field-top"><label for="provider_key">{{ ui_phrase('Provider') }}</label><span id="indicator-provider_key" class="indicator pending">Checking</span></div>
+        <select id="provider_key" name="provider_key">
+          {% for provider in supported_providers %}<option value="{{provider}}" {% if cfg and cfg.provider_key == provider %}selected{% endif %}>{{provider.replace('_',' ')}}</option>{% endfor %}
+        </select>
+        <div id="message-provider_key" class="field-message"></div>
+      </div>
+
+      <div class="ocr-field wide">
+        <div class="field-top"><label for="base_url">{{ ui_phrase('Base URL') }}</label><span id="indicator-base_url" class="indicator pending">Checking</span></div>
+        <input id="base_url" name="base_url" type="url" value="{{cfg.base_url if cfg else ''}}" placeholder="https://vision.googleapis.com/v1" spellcheck="false">
+        <div id="message-base_url" class="field-message"></div>
+        <div id="provider-note" class="provider-note"></div>
+      </div>
+
+      <div class="ocr-field">
+        <div class="field-top"><label for="model_name">{{ ui_phrase('Model') }}</label><span id="indicator-model_name" class="indicator pending">Checking</span></div>
+        <input id="model_name" name="model_name" value="{{cfg.model_name if cfg else ''}}" placeholder="gemini-2.5-flash" spellcheck="false">
+        <div id="message-model_name" class="field-message"></div>
+      </div>
+
+      <div class="ocr-field">
+        <div class="field-top"><label for="timeout_seconds">{{ ui_phrase('Timeout') }}</label><span id="indicator-timeout_seconds" class="indicator pending">Checking</span></div>
+        <input id="timeout_seconds" type="number" name="timeout_seconds" min="5" max="120" value="{{cfg.timeout_seconds if cfg else 60}}">
+        <div id="message-timeout_seconds" class="field-message"></div>
+      </div>
+
+      <div class="ocr-field wide">
+        <div class="field-top"><label for="secret_env_name">Secret environment variable</label><span id="indicator-secret_env_name" class="indicator pending">Checking</span></div>
+        <input id="secret_env_name" name="secret_env_name" value="{{cfg.secret_env_name if cfg else 'RIS_OCR_API_KEY'}}" placeholder="RIS_OCR_API_KEY" spellcheck="false" autocapitalize="characters">
+        <div id="message-secret_env_name" class="field-message"></div>
+        <div class="provider-note">Enter only the environment-variable name. The credential itself is never saved in the database, returned to the browser, or written to the validation audit message.</div>
+      </div>
+    </div>
+
+    <div class="safety"><div>✓</div><div><strong>Patient-safety gate</strong>Validation uses a generated image containing no PHI. Extracted values remain suggestions and must be reviewed before patient or order creation. OCR never finalizes medical or contractual interpretation.</div></div>
+
+    <div class="actions">
+      <div class="action-group">
+        <button id="validate-btn" class="ocr-btn outline" type="button">✓ Validate all settings</button>
+        <button id="ocr-test-btn" class="ocr-btn secondary" type="button">▣ Run safe OCR test</button>
+      </div>
+      <div class="action-group">
+        <button class="ocr-btn secondary" type="submit" name="action" value="save">Save settings</button>
+        <button class="ocr-btn primary" type="submit" name="action" value="save_validate">Save &amp; validate</button>
+      </div>
+    </div>
+
+    <details class="technical">
+      <summary>Technical validation details</summary>
+      <div class="technical-body">
+        <div class="technical-row"><strong>Last saved result</strong><span id="saved-result">—</span></div>
+        <div class="technical-row"><strong>Checked at</strong><span id="checked-at">—</span></div>
+        <div class="technical-row"><strong>Error code</strong><code id="error-code">—</code></div>
+        <div class="technical-row"><strong>Configuration hash</strong><code id="config-hash">—</code></div>
+      </div>
+    </details>
+  </form>
+</div>
+
+<script>
+(() => {
+  const initial = {{ initial_validation|tojson }};
+  const saved = {{ saved_validation|tojson }};
+  const endpoint = {{ url_for('admin_ocr_settings_validate')|tojson }};
+  const form = document.getElementById('ocr-form');
+  const fields = ['enabled','provider_key','base_url','model_name','timeout_seconds','secret_env_name'];
+  const defaults = {
+    GENERIC_OCR_REST: ['http://radbridge-ocr:7400','A trusted internal gateway implementing POST /extract and GET /health.'],
+    GOOGLE_VISION: ['https://vision.googleapis.com/v1','Uses DOCUMENT_TEXT_DETECTION. Direct mode accepts supported image files; PDFs require Gemini or a gateway.'],
+    GEMINI: ['https://generativelanguage.googleapis.com/v1beta','Uses structured JSON output. Select a Gemini model that is enabled for the configured API key.']
+  };
+  const savedApplies = ['READY','READY_WITH_WARNINGS','FAILED'].includes(String(saved.overall || '')) && !!saved.fields;
+  let remoteValidated = savedApplies;
+
+  const label = s => ({valid:'Valid',warning:'Warning',invalid:'Invalid',na:'Not required',pending:'Checking'})[s] || s;
+  function render(result) {
+    const data = result || {};
+    fields.forEach(name => {
+      const item = (data.fields || {})[name] || {status:'pending',message:'Not checked yet.'};
+      const badge = document.getElementById('indicator-'+name);
+      const message = document.getElementById('message-'+name);
+      badge.className = 'indicator '+item.status;
+      badge.textContent = (item.status === 'valid' ? '✓ ' : item.status === 'invalid' ? '× ' : item.status === 'warning' ? '! ' : '') + label(item.status);
+      message.className = 'field-message '+item.status;
+      message.textContent = item.message || '';
+    });
+    const overall = String(data.overall || 'NOT_CHECKED');
+    const kind = data.ok ? (overall.includes('WARNING') ? 'warning' : 'ready') : (overall === 'DISABLED' ? 'warning' : 'invalid');
+    const card = document.getElementById('overall-card');
+    card.className = 'status-card '+kind;
+    document.getElementById('overall-title').textContent = overall.replaceAll('_',' ');
+    document.getElementById('overall-message').textContent = data.message || (data.remote_checked ? 'Provider validation completed.' : 'Local checks only; validate the provider before clinical use.');
+    document.getElementById('overall-icon').textContent = data.ok ? '✓' : (kind === 'warning' ? '!' : '×');
+    const ob = document.getElementById('overall-badge'); ob.className = 'badge '+kind; ob.textContent = overall.replaceAll('_',' ');
+    const latency = document.getElementById('latency-badge');
+    latency.style.display = data.latency_ms == null ? 'none' : 'inline-flex'; latency.className='badge'; latency.textContent = data.latency_ms == null ? '' : data.latency_ms+' ms';
+    document.getElementById('checked-at').textContent = data.checked_at || data.validated_at || '—';
+    document.getElementById('error-code').textContent = data.error_code || '—';
+    document.getElementById('config-hash').textContent = data.config_hash || '—';
+  }
+
+  function providerUi(offerDefault) {
+    const provider = document.getElementById('provider_key').value;
+    const model = document.getElementById('model_name');
+    const base = document.getElementById('base_url');
+    const item = defaults[provider] || ['', ''];
+    document.getElementById('provider-note').textContent = item[1];
+    model.disabled = provider === 'GOOGLE_VISION';
+    if (provider === 'GOOGLE_VISION') model.value = '';
+    if (offerDefault && item[0]) base.value = item[0];
+  }
+
+  function markChanged(name) {
+    const badge = document.getElementById('indicator-'+name);
+    const message = document.getElementById('message-'+name);
+    badge.className = 'indicator pending'; badge.textContent = 'Changed';
+    message.className = 'field-message'; message.textContent = 'Run validation to check this value.';
+    remoteValidated = false;
+    document.getElementById('dirty-note').classList.add('show');
+  }
+
+  function payload(mode) {
+    return {
+      enabled: document.getElementById('enabled').value,
+      provider_key: document.getElementById('provider_key').value,
+      base_url: document.getElementById('base_url').value,
+      model_name: document.getElementById('model_name').value,
+      timeout_seconds: document.getElementById('timeout_seconds').value,
+      secret_env_name: document.getElementById('secret_env_name').value,
+      mode
+    };
+  }
+
+  async function validate(mode) {
+    const buttons = [document.getElementById('validate-btn'),document.getElementById('ocr-test-btn')];
+    buttons.forEach(x => x.disabled=true);
+    document.getElementById('overall-title').textContent = mode === 'ocr' ? 'Running safe OCR test' : 'Validating provider';
+    try {
+      const response = await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload(mode))});
+      const data = await response.json();
+      remoteValidated = !!data.remote_checked;
+      document.getElementById('dirty-note').classList.toggle('show',!data.saved_config_match);
+      render(data);
+    } catch (_) {
+      render({ok:false,overall:'FAILED',message:'The RIS could not complete the validation request.',fields:{}});
+    } finally { buttons.forEach(x => x.disabled=false); }
+  }
+
+  document.getElementById('validate-btn').addEventListener('click',() => validate('connection'));
+  document.getElementById('ocr-test-btn').addEventListener('click',() => validate('ocr'));
+  document.getElementById('provider_key').addEventListener('change',() => { providerUi(true); ['provider_key','base_url','model_name'].forEach(markChanged); });
+  fields.forEach(name => document.getElementById(name).addEventListener('input',() => markChanged(name)));
+  providerUi(false); render(savedApplies ? saved : initial);
+  document.getElementById('dirty-note').classList.toggle('show',saved.overall === 'CONFIG_CHANGED');
+  document.getElementById('saved-result').textContent = (saved.overall || 'NOT CHECKED').replaceAll('_',' ');
+  if(saved.validated_at) document.getElementById('checked-at').textContent = saved.validated_at;
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,17 @@
+<div class="notice info" style="margin-top:10px">
+ <label><input type="checkbox" id="visitMultiple" name="visit_multiple" value="1"> {{ ui_phrase('المريض لديه أكثر من فحص في هذه الزيارة / Multiple examinations in this visit') }}</label>
+ <p class="rb-small">الفحوصات المسجلة معًا تُربط تلقائيًا. لإضافة فحص على جهاز آخر، اختر نفس المريض والزيارة القائمة.</p>
+ <div id="visitLinkControls" class="rb-hidden">
+  <label for="registrationVisit">{{ ui_phrase('الزيارة / Visit') }}</label><select id="registrationVisit" name="assignment_visit_id"><option value="">{{ ui_phrase('زيارة جديدة / New visit') }}</option></select>
+  <label><input type="checkbox" name="visit_registration_open" value="1" id="registrationOpen"> {{ ui_phrase('توجد فحوصات ستُضاف لاحقًا — أوقف التوزيع التلقائي حتى اكتمال الإضافة / More exams will be added; pause auto assignment') }}</label>
+  <p class="rb-small">عند إضافة آخر فحص، ألغِ هذا الاختيار. ويمكن إنهاء إضافة الفحوصات من صفحة ربط الزيارات.</p>
+ </div>
+ <label for="registrationAssignmentMode">{{ ui_phrase('طريقة الإسناد / Assignment mode') }}</label>
+ <select name="assignment_mode" id="registrationAssignmentMode" {% if not has_perm('assignment.manage') %}disabled{% endif %}>
+  <option value="AUTO">{{ ui_phrase('توزيع تلقائي / Automatic') }}</option><option value="MANUAL">{{ ui_phrase('طبيب محدد — خارج الأوتو / Selected doctor — manual') }}</option>
+ </select>
+ <div id="registrationDoctorBox" class="rb-hidden"><label for="registrationDoctor">{{ ui_phrase('الطبيب المسؤول عن كل فحوصات الزيارة / Reporting doctor for the whole visit') }}</label>
+ <select name="selected_doctor_id" id="registrationDoctor" {% if not has_perm('assignment.manage') %}disabled{% endif %}><option value="">{{ ui_phrase('اختر الطبيب / Choose doctor') }}</option>{% for d in registration_doctors %}<option value="{{d.id}}">{{d.full_name or d.username}}</option>{% endfor %}</select>
+ <p class="rb-small">هذا إسناد يدوي، مستبعد من التوزيع والسحب التلقائي. يلزم طبيب مؤهل لكل الفحوصات ولديه سعة كافية.</p></div>
+ {% if not has_perm('assignment.manage') %}<p class="rb-small">اختيار الطبيب يتطلب صلاحية إدارة الإسناد. اختيار زيارة محجوزة لطبيب يحتفظ بالطبيب نفسه.</p>{% endif %}
+</div>

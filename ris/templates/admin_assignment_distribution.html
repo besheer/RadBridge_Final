@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block page_title %}{{'التوزيع العادل ومهلة بدء القراءة' if ui_lang=='ar' else 'Fair Distribution & Reading Start Deadlines'}}{% endblock %}
+{% block content %}<div class="panel"><a class="btn" href="{{url_for('admin_assignment_monitor')}}">{{'متابعة الأطباء والحالات' if ui_lang=='ar' else 'Doctors & Cases Monitor'}}</a> <a class="btn" href="{{url_for('coordinator_assignments')}}">{{'منسق التوزيع' if ui_lang=='ar' else 'Assignment Coordinator'}}</a></div>
+<style>
+.distribution-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.distribution-grid label{display:flex;flex-direction:column;gap:6px}.deadline-row{display:grid;grid-template-columns:repeat(4,minmax(100px,1fr)) auto;gap:10px;align-items:end;padding:12px 0;border-bottom:1px solid var(--line,#ddd)}.deadline-row label{display:flex;flex-direction:column;gap:4px}.distribution-notice{padding:12px;border-inline-start:4px solid #2563eb;background:#2563eb12}.distribution-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}@media(max-width:600px){.deadline-row{grid-template-columns:1fr 1fr}.deadline-row button{grid-column:1/-1}}
+</style>
+<form method="post">
+<input type="hidden" name="version_no" value="{{policy.version_no}}">
+<div class="panel">
+<h3>{{'طريقة التوزيع وحدود الحمل' if ui_lang=='ar' else 'Distribution Method & Capacity'}}</h3>
+<div class="distribution-grid">
+<label>{{'طريقة الاختيار' if ui_lang=='ar' else 'Selection method'}}
+<select name="selection_mode">
+{% for value,label,arabic in [('LEAST_ACTIVE','Least active cases; longest waiting breaks ties','الأقل حالات؛ والأقدم انتظارًا عند التعادل'),('ROUND_ROBIN','Round-Robin: oldest offer / assignment first','بالدور: الأقدم منذ آخر عرض أو إسناد'),('LONGEST_WAITING','Longest waiting, with online doctors preferred','الأقدم انتظارًا، مع تفضيل المتصلين')] %}
+<option value="{{value}}" {% if policy.selection_mode==value %}selected{% endif %}>{{arabic if ui_lang=='ar' else label}}</option>{% endfor %}
+</select></label>
+<label>{{'الحد العام للحالات لكل طبيب' if ui_lang=='ar' else 'Maximum active cases per doctor'}}<input type="number" name="max_active_cases" value="{{policy.max_active_cases}}" min="1" max="1000" required></label>
+<label>{{'مهلة العاجل (% من المهلة العادية)' if ui_lang=='ar' else 'Urgent deadline (% of routine)'}}<input type="number" name="urgent_percent" value="{{policy.urgent_percent}}" min="1" max="100" required></label>
+<label>{{'مهلة STAT (% من المهلة العادية)' if ui_lang=='ar' else 'STAT deadline (% of routine)'}}<input type="number" name="stat_percent" value="{{policy.stat_percent}}" min="1" max="100" required></label>
+</div>
+<p>{{'الحد الفعلي هو الأقل بين هذا الحد وحد الطبيب في إعدادات الأطباء. العروض المعلقة تحجز مكانًا. التقارير النهائية والمعتمدة لا تُحسب ضمن الحمل.' if ui_lang=='ar' else 'The lower of this limit and the doctor profile limit applies. Pending offers reserve capacity. Verified and final reports do not count as active workload.'}}</p>
+<label><input type="checkbox" name="reclaim_enabled" value="1" {% if policy.reclaim_enabled %}checked{% endif %}> {{'تفعيل سحب الإسناد التلقائي الذي لم يبدأ' if ui_lang=='ar' else 'Withdraw automatic assignments when reading has not started'}}</label>
+<p class="distribution-notice">{{'الإسناد اليدوي مستبعد دائمًا. بدء القراءة أو تحرير التقرير أو وجود محتوى محفوظ يمنع السحب. إيقاف السحب يوقف جميع عمليات السحب. المهلة تُحفظ عند الإسناد؛ تعديلها يؤثر على الإسنادات الجديدة فقط.' if ui_lang=='ar' else 'Manual assignments are always excluded. Starting reading, acquiring an editing session or saving report content protects the case. Turning withdrawal off pauses all withdrawals. Each assignment keeps its original deadline; timing changes affect new assignments only.'}}</p>
+</div>
+<div class="panel">
+<h3>{{'مهلة بدء القراءة بعد القبول أو الإسناد المباشر' if ui_lang=='ar' else 'Reading Start Deadline After Acceptance / Direct Assignment'}}</h3>
+<p>{{'هذه المهلة منفصلة عن مهلة قبول العرض في استراتيجيات التوزيع. القاعدة ذات الأولوية المحددة تتقدم، ثم نوع الفحص المحدد، ثم أعلى حد صور مطابق. * تعني جميع الأنواع أو الأولويات.' if ui_lang=='ar' else 'These deadlines are separate from offer acceptance timeouts in Assignment Strategies. Exact priority wins first, then exact modality, then the highest matching image threshold. * means any modality or priority.'}}</p>
+<div id="deadlineRules">
+{% for rule in policy.rules %}
+<div class="deadline-row">
+<label>{{'نوع الفحص' if ui_lang=='ar' else 'Modality'}}<input name="rule_modality" value="{{rule.modality}}" maxlength="8" required></label>
+<label>{{'الأولوية' if ui_lang=='ar' else 'Priority'}}<select name="rule_priority">{% for p in ['*','ROUTINE','URGENT','STAT'] %}<option {% if p==rule.priority %}selected{% endif %}>{{p}}</option>{% endfor %}</select></label>
+<label>{{'عدد الصور يبدأ من' if ui_lang=='ar' else 'Images from'}}<input type="number" name="rule_min_images" value="{{rule.min_images}}" min="0" max="1000000" required></label>
+<label>{{'المهلة بالدقائق' if ui_lang=='ar' else 'Deadline (minutes)'}}<input type="number" name="rule_minutes" value="{{rule.minutes}}" min="1" max="1440" required></label>
+<button type="button" class="btn" onclick="this.closest('.deadline-row').remove()">{{'حذف' if ui_lang=='ar' else 'Remove'}}</button>
+</div>{% endfor %}
+</div>
+<div class="distribution-actions"><button type="button" class="btn" id="addDeadlineRule">{{'إضافة قاعدة' if ui_lang=='ar' else 'Add rule'}}</button><button class="btn primary">{{'حفظ إعدادات التوزيع' if ui_lang=='ar' else 'Save Distribution Settings'}}</button><a class="btn" href="{{url_for('admin_assignment')}}">{{'حدود وإتاحة الأطباء' if ui_lang=='ar' else 'Doctor Limits & Availability'}}</a><a class="btn" href="{{url_for('admin_assignment_strategies')}}">{{'مهلة قبول العرض والجاهزية' if ui_lang=='ar' else 'Offer Timeouts & Readiness'}}</a></div>
+<p>{{'يجب إبقاء قاعدة عامة (*، *، صفر صور). كل تعديل يُسجَّل في سجل التدقيق.' if ui_lang=='ar' else 'Keep a default rule (* modality, * priority, 0 images). Every change is audited.'}}</p>
+</div>
+<div class="panel">
+<h3>{{'توزيع الحالات الخاصة والطوارئ' if ui_lang=='ar' else 'Special Examinations & Emergency Distribution'}}</h3>
+<p>{{'حدد مجموعة الأطباء المؤهلين لكل قاعدة. تطابق الأولوية واسم الفحص تلقائيًا، أو يختار المسؤول التصنيف الخاص من صفحة الزيارة. إذا انطبقت قواعد متعددة يجب أن يكون الطبيب ضمن جميع المجموعات، ومؤهلًا لكل فحوصات الزيارة. لا تُقسّم الزيارة عند غياب طبيب مؤهل.' if ui_lang=='ar' else 'Choose eligible doctors for each rule. Rules match priority and procedure names, or an operator explicitly tags the visit. A doctor must belong to every matching pool and qualify for all visit examinations. Visits are never split when no qualified doctor is available.'}}</p>
+<div id="specialRules">
+{% for rule in policy.special_rules %}
+<div class="distribution-grid special-rule" style="padding:14px 0;border-bottom:1px solid var(--line,#ddd)">
+<input type="hidden" name="special_index" value="{{loop.index0}}">
+<label>{{'رمز التصنيف' if ui_lang=='ar' else 'Classification code'}}<input name="special_code_{{loop.index0}}" value="{{rule.code}}" maxlength="80" required></label>
+<label>{{'الاسم' if ui_lang=='ar' else 'Name'}}<input name="special_label_{{loop.index0}}" value="{{rule.label}}" maxlength="120" required></label>
+<label>{{'الأولوية' if ui_lang=='ar' else 'Priority'}}<select name="special_priority_{{loop.index0}}">{% for p in ['*','ROUTINE','URGENT','STAT'] %}<option {% if rule.priority==p %}selected{% endif %}>{{p}}</option>{% endfor %}</select></label>
+<label>{{'اسم الفحص يحتوي (افصل البدائل بفاصلة)' if ui_lang=='ar' else 'Procedure contains (comma-separated alternatives)'}}<input name="special_pattern_{{loop.index0}}" value="{{rule.procedure_pattern}}" maxlength="180"></label>
+<label>{{'الأطباء المؤهلون' if ui_lang=='ar' else 'Eligible doctors'}}<select multiple name="special_doctors_{{loop.index0}}" size="4">{% for d in doctors %}<option value="{{d.id}}" {% if d.id in rule.doctor_ids %}selected{% endif %}>{{d.full_name or d.username}}</option>{% endfor %}</select></label>
+<label><span><input type="checkbox" name="special_enabled_{{loop.index0}}" value="1" {% if rule.enabled %}checked{% endif %}> {{'مفعّل' if ui_lang=='ar' else 'Enabled'}}</span><button type="button" class="btn" onclick="this.closest('.special-rule').remove()">{{'حذف القاعدة' if ui_lang=='ar' else 'Remove rule'}}</button></label>
+</div>{% endfor %}
+</div>
+<button type="button" id="addSpecialRule" class="btn">{{'إضافة قاعدة خاصة' if ui_lang=='ar' else 'Add special rule'}}</button>
+<p>{{'مثال: STAT للطوارئ؛ أو أسماء فحوصات مثل Fistula / Fistulogram. اختر الأطباء المؤهلين قبل التفعيل. القاعدة ذات الأولوية * واسم فحص فارغ تنطبق على جميع الحالات.' if ui_lang=='ar' else 'Examples: STAT emergencies, or procedures containing Fistula / Fistulogram. Select qualified doctors before enabling. A * priority with an empty procedure pattern matches every case.'}}</p>
+<template id="specialRuleTemplate">
+<div class="distribution-grid special-rule" style="padding:14px 0;border-bottom:1px solid var(--line,#ddd)">
+<input type="hidden" name="special_index" value="">
+<label>{{'رمز التصنيف' if ui_lang=='ar' else 'Classification code'}}<input data-field="code" maxlength="80" placeholder="FISTULA" required></label>
+<label>{{'الاسم' if ui_lang=='ar' else 'Name'}}<input data-field="label" maxlength="120" required></label>
+<label>{{'الأولوية' if ui_lang=='ar' else 'Priority'}}<select data-field="priority"><option>*</option><option value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option><option value="URGENT">{{ ui_phrase('URGENT') }}</option><option value="STAT">{{ ui_phrase('STAT') }}</option></select></label>
+<label>{{'اسم الفحص يحتوي' if ui_lang=='ar' else 'Procedure contains'}}<input data-field="pattern" maxlength="180" placeholder="Fistula,Fistulogram"></label>
+<label>{{'الأطباء المؤهلون' if ui_lang=='ar' else 'Eligible doctors'}}<select multiple data-field="doctors" size="4">{% for d in doctors %}<option value="{{d.id}}">{{d.full_name or d.username}}</option>{% endfor %}</select></label>
+<label><span><input type="checkbox" data-field="enabled" value="1"> {{'مفعّل' if ui_lang=='ar' else 'Enabled'}}</span><button type="button" class="btn" onclick="this.closest('.special-rule').remove()">{{'حذف القاعدة' if ui_lang=='ar' else 'Remove rule'}}</button></label>
+</div></template>
+<div class="distribution-actions"><button class="btn primary">{{'حفظ إعدادات التوزيع' if ui_lang=='ar' else 'Save Distribution Settings'}}</button><a class="btn" href="{{url_for('admin_assignment_visits')}}">{{'ربط فحوصات الزيارة واختيار الطبيب' if ui_lang=='ar' else 'Link Visit Examinations & Choose Doctor'}}</a></div>
+</div>
+</form>
+<script>
+let nextSpecialIndex={{policy.special_rules|length}};
+document.getElementById('addSpecialRule').addEventListener('click',()=>{
+ const index=nextSpecialIndex++;const row=document.getElementById('specialRuleTemplate').content.firstElementChild.cloneNode(true);
+ row.querySelector('[name=special_index]').value=index;
+ row.querySelectorAll('[data-field]').forEach(input=>input.name='special_'+input.dataset.field+'_'+index);
+ document.getElementById('specialRules').append(row);
+});
+
+const deadlineTemplate=document.querySelector('.deadline-row').cloneNode(true);
+document.getElementById('addDeadlineRule').addEventListener('click',()=>{const row=deadlineTemplate.cloneNode(true);row.querySelector('[name=rule_modality]').value='*';row.querySelector('[name=rule_priority]').value='*';row.querySelector('[name=rule_min_images]').value=0;row.querySelector('[name=rule_minutes]').value=10;document.getElementById('deadlineRules').append(row);});
+</script>
+{% endblock %}

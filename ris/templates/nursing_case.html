@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ ui_phrase('Nursing —') }} {{order.patient.name}}{% endblock %}
+{% block subtitle %}
+{{ ui_phrase('Patient preparation, clinical history, attachments and actual consumables') }}
+{% endblock %}
+
+{% block content %}
+<style>
+.nursing-case-grid {
+  display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,2fr);
+  gap:16px;align-items:start;
+}
+.nursing-preview {
+  width:100%;max-height:260px;object-fit:cover;
+  border-radius:10px;background:#071018;
+}
+.nursing-actions { display:flex;flex-wrap:wrap;gap:8px;margin-top:12px; }
+@media(max-width:900px){.nursing-case-grid{grid-template-columns:1fr}}
+</style>
+
+
+{% set exam_policy=staff_exam_policy(order) %}
+<section class="panel" id="nursing-exam-controls">
+<h3>{{'مهام الفحص' if ui_lang=='ar' else 'Examination tasks'}}</h3>
+<p>{{'صور مطلوبة' if ui_lang=='ar' else 'Images required'}}: {{ui_phrase('Yes') if exam_policy.require_images else ui_phrase('No')}}</p>
+{% if exam_policy.mode=='EXAM' and (order.status or '')|upper not in ['FINAL','CANCELLED'] %}
+{% set exam_state=(order.exam_status or 'ORDERED')|upper %}
+{% if exam_state in ['ORDERED','BOOKED','IN_PROGRESS'] %}
+<form method="post" action="{{url_for('nursing_exam_status',order_id=order.id)}}">
+<input type="hidden" name="csrf_token" value="{{staff_policy_csrf}}">
+<input type="hidden" name="status" value="{{'EXAM_COMPLETED' if exam_state=='IN_PROGRESS' else 'IN_PROGRESS'}}">
+<button class="btn primary">{{('إنهاء الفحص' if exam_state=='IN_PROGRESS' else 'بدء الفحص') if ui_lang=='ar' else ('Complete exam' if exam_state=='IN_PROGRESS' else 'Start exam')}}</button>
+</form>{% endif %}
+{% else %}<p>{{'ملاحظات ومستهلكات فقط' if ui_lang=='ar' else 'Notes and consumables only'}}</p>{% endif %}
+{% set needs=staff_exam_requirements(order) %}
+{% if needs.blockers %}<p>{{'متطلبات الإتمام الناقصة' if ui_lang=='ar' else 'Missing completion requirements'}}: {{needs.blockers|join(' · ')}}</p>{% endif %}
+<p>{{'وقت البدء' if ui_lang=='ar' else 'Started'}}: {{order.exam_started_at or '—'}} · {{'وقت الانتهاء' if ui_lang=='ar' else 'Completed'}}: {{order.exam_completed_at or '—'}}</p>
+</section>
+
+<div class="nursing-case-grid">
+  <aside>
+    <div class="panel">
+      {% if (order.pacs_image_count or 0)>0 and order.pacs_study_id %}
+        <img class="nursing-preview"
+             src="{{url_for('order_study_thumbnail',order_id=order.id)}}"
+             alt=""
+             loading="lazy">
+      {% else %}
+        <div class="empty">{{ ui_phrase('No PACS image received') if exam_policy.require_images else ('الصور غير مطلوبة لهذا الفحص' if ui_lang=='ar' else 'Images not required for this exam') }}</div>
+      {% endif %}
+
+      <h3>{{order.patient.name}}</h3>
+      <p>{{order.patient.patient_id}} · <b>{{order.accession}}</b></p>
+      <p>{{order.proc.name if order.proc else order.procedure}}</p>
+      <p>
+        {{ ui_phrase('Exam:') }} <b>{{order.exam_status or ui_phrase('ORDERED')}}</b><br>
+        {% if exam_policy.require_images or order.pacs_study_id %}PACS: <b>{{order.pacs_status or ui_phrase('WAITING')}}</b>
+        · {{order.pacs_image_count or 0}} {{ ui_phrase('image(s)') }}{% endif %}
+      </p>
+
+      <div class="nursing-actions">
+        {% if image_url %}
+          <a class="btn primary" href="{{image_url}}"
+             target="_blank" rel="noopener noreferrer">{{ ui_phrase('🖼 Open Images') }}</a>
+        {% endif %}
+        <a class="btn" href="{{url_for('order_clinical_notes',order_id=order.id)}}">
+          {{ ui_phrase('📝 Add History / Note') }}
+        </a>
+        <a class="btn" href="{{url_for('order_attachments',order_id=order.id)}}">
+          {{ ui_phrase('📎 All Attachments') }}
+        </a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>{{ ui_phrase('Recent Clinical Notes') }}</h3>
+      {% for note in clinical_notes %}
+        <div style="padding:9px 0;border-bottom:1px solid var(--border,#294052)">
+          <b>{{note.note_type}}</b>
+          <small>{{note.created_at}}</small>
+          <div>{{note.text}}</div>
+        </div>
+      {% else %}
+        <p class="muted">{{ ui_phrase('No clinical history or notes recorded.') }}</p>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      <h3>{{ ui_phrase('Attachments') }}</h3>
+
+      {% for attachment in attachments %}
+        <p>
+          <a href="{{url_for('attachment_preview',attachment_id=attachment.id)}}"
+             target="_blank" rel="noopener noreferrer">
+            {{attachment.original_name}}
+          </a>
+        </p>
+      {% else %}
+        <p class="muted">{{ ui_phrase('No attachments.') }}</p>
+      {% endfor %}
+
+      {% if has_perm('attachments.upload') %}
+        <form method="post"
+              action="{{url_for('attachment_upload')}}"
+              enctype="multipart/form-data">
+          <input type="hidden" name="patient_id" value="{{order.patient_id}}">
+          <input type="hidden" name="order_id" value="{{order.id}}">
+          <input type="hidden" name="category" value="CLINICAL">
+          <input type="file" name="files" multiple required>
+          <input name="notes" placeholder="{{ ui_phrase('Attachment note') }}">
+          <button class="btn">{{ ui_phrase('＋ Upload') }}</button>
+        </form>
+      {% endif %}
+    </div>
+  </aside>
+
+  <main>
+    {% set any_confirmed =
+      entries and (entries.values()|selectattr('confirmed')|list|length > 0)
+    %}
+
+    <div class="panel">
+      <h3>{{ ui_phrase('Actual Consumables') }}</h3>
+      <p class="muted">
+        {{ ui_phrase('Suggested quantities come from the examination protocol.\n        Confirm only the quantities actually used.') }}
+      </p>
+
+      {% if not any_confirmed %}
+        <form method="post">
+          <table>
+            <tr><th>{{ ui_phrase('Item') }}</th><th>{{ ui_phrase('Default') }}</th><th>{{ ui_phrase('Actual') }}</th></tr>
+            {% for item in defaults %}
+              <tr>
+                <td>{{item.consumable.name}}</td>
+                <td>{{item.qty}} {{item.consumable.unit}}</td>
+                <td>
+                  <input type="number" min="0" step=".01"
+                         name="qty_{{item.consumable_id}}"
+                         value="{{item.qty}}">
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="empty">{{ ui_phrase('No default consumables.') }}</td></tr>
+            {% endfor %}
+          </table>
+          <button class="btn primary">{{ ui_phrase('Confirm Actual Consumables') }}</button>
+        </form>
+      {% else %}
+        <table>
+          <tr><th>{{ ui_phrase('Item') }}</th><th>{{ ui_phrase('Default') }}</th><th>{{ ui_phrase('Actual') }}</th></tr>
+          {% for item in defaults %}
+            {% set entry=entries.get(item.consumable_id) %}
+            <tr>
+              <td>{{item.consumable.name}}</td>
+              <td>{{item.qty}}</td>
+              <td>{{entry.actual_qty if entry else 0}}</td>
+            </tr>
+          {% endfor %}
+        </table>
+        <p><b>{{ ui_phrase('Locked after confirmation.') }}</b></p>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <h3>{{ ui_phrase('Additional Consumables & Inventory') }}</h3>
+      <p>{{ ui_phrase('Branch warehouse:') }} <b>{{inv_wh.name if inv_wh else ui_phrase('Not configured')}}</b></p>
+
+      <div class="nursing-actions">
+        {% if has_perm('inventory.view') %}
+          <a class="btn primary"
+             href="{{url_for('order_consumables',order_id=order.id)}}">
+            {{ ui_phrase('📦 Full Case Consumables') }}
+          </a>
+        {% endif %}
+        {% if has_perm('inventory.view') %}
+          <a class="btn"
+             href="{{url_for('inventory_stock',warehouse_id=inv_wh.id if inv_wh else '')}}">
+            {{ ui_phrase('🏬 Branch Stock') }}
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if any_confirmed and has_perm('consumables.correct') %}
+      <form method="post"
+            action="{{url_for('nursing_consumable_correct',order_id=order.id)}}"
+            class="panel">
+        <h3>{{ ui_phrase('Supervisor Correction') }}</h3>
+        {% for item in defaults %}
+          {% set entry=entries.get(item.consumable_id) %}
+          <label>{{item.consumable.name}}</label>
+          <input type="number" min="0" step=".01"
+                 name="qty_{{item.consumable_id}}"
+                 value="{{entry.actual_qty if entry else item.qty}}">
+        {% endfor %}
+        <label>{{ ui_phrase('Documented reason') }}</label>
+        <input name="reason" minlength="5" required>
+        <button class="btn">{{ ui_phrase('Save Audited Correction') }}</button>
+      </form>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}

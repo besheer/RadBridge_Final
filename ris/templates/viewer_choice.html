@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block page_title %}{{'اختيار عارض الصور' if ui_lang=='ar' else 'Choose image viewer'}}{% endblock %}
+{% block content %}
+<section class="panel rb-viewer-choice">
+  <h2>{{'فتح صور الحالة باستخدام' if ui_lang=='ar' else 'Open case images using'}}</h2>
+  <p><b>{{order.accession}}</b> · {{order.patient.name}}</p>
+  <div class="actions" style="display:flex;gap:12px;flex-wrap:wrap">
+    <a class="btn {{'primary' if preferred_viewer=='OHIF'}}" href="{{url_for('doctor_workspace_open',order_id=order.id,viewer='OHIF')}}">OHIF · {{'داخل المتصفح' if ui_lang=='ar' else 'In your browser'}}</a>
+    <a class="btn {{'primary' if preferred_viewer=='WEASIS'}}" href="{{url_for('doctor_workspace_open',order_id=order.id,viewer='WEASIS')}}">Weasis · {{'على جهازك' if ui_lang=='ar' else 'On your computer'}}</a>
+    <a class="btn {{'primary' if preferred_viewer=='RADIANT'}}" href="{{url_for('doctor_workspace_open',order_id=order.id,viewer='RADIANT')}}">RadiAnt · Windows</a>
+  </div>
+  <p class="muted">{{'يتطلب Weasis تثبيته على جهازك مرة واحدة. كتابة التقرير واعتماده داخل RadBridge.' if ui_lang=='ar' else 'Weasis needs to be installed on your computer once. Write and approve reports in RadBridge.'}}</p>
+  <p class="muted">{{'يتطلب RadiAnt تثبيته وترخيصه على Windows، مع مشغّل RadBridge مرة واحدة.' if ui_lang=='ar' else 'RadiAnt requires a licensed Windows installation and the one-time RadBridge launcher.'}}</p>
+  {% include 'viewer_preference_form.html' %}
+  <a class="btn" href="{{url_for('report_editor',order_id=order.id)}}">{{'تقرير الحالة' if ui_lang=='ar' else 'Case report'}}</a>
+</section>
+{% endblock %}

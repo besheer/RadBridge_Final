@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block page_title %}{{t('nav.booking_control','Booking Control')}}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{t('nav.booking_control','Booking Control')}}</h1>
+    <p class="muted">Create booking restrictions without affecting staff assignment rules.</p>
+  </div>
+</div>
+
+<form method="post" class="panel grid3">
+  <label><span>Block type</span><select name="block_type" required>
+    <option value="DEVICE">{{ ui_phrase('Device') }}</option><option value="PROCEDURE">{{ ui_phrase('Procedure') }}</option>
+    <option value="BRANCH">{{ ui_phrase('Branch') }}</option><option value="DOCTOR">Doctor availability</option>
+    <option value="TECHNICIAN">Technician availability</option>
+    <option value="OTHER">Other scoped restriction</option>
+  </select></label>
+  <label><span>{{ ui_phrase('Branch') }}</span><select name="branch_id"><option value="">{{ ui_phrase('Any Branch') }}</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select></label>
+  <label><span>{{ ui_phrase('Device') }}</span><select name="device_id"><option value="">Any Device</option>{% for d in devices %}<option value="{{d.id}}">{{d.name}}</option>{% endfor %}</select></label>
+  <label><span>{{ ui_phrase('Procedure') }}</span><select name="procedure_id"><option value="">Any Procedure</option>{% for p in procedures %}<option value="{{p.id}}">{{p.name}}</option>{% endfor %}</select></label>
+  <label><span>{{ ui_phrase('User') }}</span><select name="user_id"><option value="">Any User</option>{% for u in users %}<option value="{{u.id}}">{{u.full_name}}</option>{% endfor %}</select></label>
+  <label><span>Reason category</span><select name="reason_code">{% for r in reason_codes %}<option value="{{r}}">{{r}}</option>{% endfor %}</select></label>
+  <label><span>Start date and time</span><input type="datetime-local" name="start_at" required></label>
+  <label><span>End date and time</span><input type="datetime-local" name="end_at" required></label>
+  <label><span>{{ ui_phrase('Reason') }}</span><input name="reason_text" placeholder="Explain why this block is needed"></label>
+  <button class="btn primary" type="submit">Create Block</button>
+</form>
+
+<div class="panel">
+  <h2>Current and previous blocks</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{ ui_phrase('Status') }}</th><th>{{ ui_phrase('Type') }}</th><th>{{ ui_phrase('Scope') }}</th><th>Period</th><th>{{ ui_phrase('Reason') }}</th><th>{{ ui_phrase('Action') }}</th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+      <tr>
+        <td>{{ui_phrase('Active') if row.active else ui_phrase('Inactive')}}</td><td>{{row.block_type}}</td>
+        <td>{{row.branch.name if row.branch else ui_phrase('All branches')}} · {{row.device.name if row.device else 'All devices'}} · {{row.procedure.name if row.procedure else ui_phrase('All procedures')}}</td>
+        <td>{{row.start_at}} → {{row.end_at}}</td><td>{{row.reason_text or row.reason_code}}</td>
+        <td>{% if row.active %}<form method="post" action="{{url_for('admin_booking_control_deactivate',block_id=row.id)}}"><button class="btn" type="submit">{{ ui_phrase('Deactivate') }}</button></form>{% else %}—{% endif %}</td>
+      </tr>
+    {% else %}<tr><td colspan="6">No booking blocks have been created.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

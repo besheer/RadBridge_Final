@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block page_title %}{{ ui_phrase('New Booking / حجز جديد') }}{% endblock %}
+{% block subtitle %}{{device.modality}} — {{device.name}} · {{scheduled.strftime('%d/%m/%Y %H:%M')}}{% endblock %}
+{% block content %}
+<form method="post" action="{{url_for('schedule_v2_book_submit')}}" class="panel form-card clean-book-form">
+<input type="hidden" name="scheduled" value="{{scheduled.strftime('%Y-%m-%dT%H:%M')}}">
+<input type="hidden" name="device_id" value="{{device.id}}">
+
+<div class="selected-slot-banner">
+  <div><small>{{ ui_phrase('Device') }}</small><b>{{device.modality}} — {{device.name}}</b></div>
+  <div><small>{{ ui_phrase('Room') }}</small><b>{{device.room or '-'}}</b></div>
+  <div><small>{{ ui_phrase('Date') }}</small><b>{{scheduled.strftime('%d/%m/%Y')}}</b></div>
+  <div><small>{{ ui_phrase('Time') }}</small><b>{{scheduled.strftime('%H:%M')}}</b></div>
+</div>
+
+<h3>{{ ui_phrase('Patient / المريض') }}</h3>
+<div class="booking-mode-tabs">
+  <label><input type="radio" name="patient_mode" value="existing" checked onchange="togglePatientMode()"> {{ ui_phrase('Existing Patient') }}</label>
+  <label><input type="radio" name="patient_mode" value="new" onchange="togglePatientMode()"> {{ ui_phrase('New Patient / مريض جديد') }}</label>
+</div>
+
+<section id="existingSection">
+<label>{{ ui_phrase('Existing Patient') }}</label>
+<select name="patient_id">
+<option value="">Choose patient...</option>
+{% for p in patients %}<option value="{{p.id}}">{{p.patient_id}} — {{p.name}}</option>{% endfor %}
+</select>
+</section>
+
+<section id="newSection" hidden>
+<div class="form-grid">
+<div><label>{{ ui_phrase('Name / الاسم *') }}</label><input name="new_name"></div>
+<div><label>{{ ui_phrase('Worklist Name') }}</label><input name="new_worklist_name"></div>
+<div><label>{{ ui_phrase('DOB') }}</label><input type="date" name="new_dob"></div>
+<div><label>{{ ui_phrase('Sex') }}</label><select name="new_sex"><option></option><option value="M">{{ ui_phrase('Male') }}</option><option value="F">{{ ui_phrase('Female') }}</option></select></div>
+<div><label>{{ ui_phrase('Phone') }}</label><input name="new_phone"></div>
+<div><label>{{ ui_phrase('National ID') }}</label><input name="new_national_id"></div>
+<div class="wide"><label>{{ ui_phrase('Address') }}</label><input name="new_address"></div>
+</div>
+</section>
+
+<h3>{{ ui_phrase('Exam / الفحص') }}</h3>
+<div class="form-grid">
+<div><label>{{ ui_phrase('Branch') }}</label><select name="branch_id" required>{% for b in branches %}<option value="{{b.id}}" {% if b.id==device.branch_id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Procedure') }}</label><select name="procedure_id" required><option value="">Choose exam...</option>{% for p in procedures %}<option value="{{p.id}}">{{p.name}} — {{p.duration_min}} {{ ui_phrase('min') }}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Priority') }}</label><select name="priority"><option value="NORMAL">{{ ui_phrase('NORMAL') }}</option><option value="URGENT">{{ ui_phrase('URGENT') }}</option><option value="STAT">{{ ui_phrase('STAT') }}</option></select></div>
+<div><label>{{ ui_phrase('Booking Type') }}</label><select name="waiting_list"><option value="0">Booked Appointment</option><option value="1">{{ ui_phrase('Waiting List') }}</option></select></div>
+<div class="wide"><label>{{ ui_phrase('Notes') }}</label><textarea name="notes" rows="3"></textarea></div>
+</div>
+
+<div class="booking-safety-note">
+The system re-checks device status, maintenance, working hours and overlapping appointments when you press Save.
+</div>
+
+<div class="actions">
+<a class="btn" href="{{url_for('schedule_v2',date=scheduled.date().isoformat(),device_id=device.id)}}">{{ ui_phrase('Cancel') }}</a>
+<button class="btn primary">{{ ui_phrase('Save Booking / حفظ الحجز') }}</button>
+</div>
+</form>
+
+<script>
+function togglePatientMode(){
+ const v=document.querySelector('input[name="patient_mode"]:checked').value;
+ document.getElementById('existingSection').hidden=v!=='existing';
+ document.getElementById('newSection').hidden=v!=='new';
+}
+</script>
+{% endblock %}

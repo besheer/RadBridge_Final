@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="rb-studio">
+
+<div class="rb-studio-hero">
+  <div>
+    <span class="rb-eyebrow">RADBRIDGE CONTROL CENTER</span>
+    <h1>RIS Studio</h1>
+    <p>Configure clinical workflows, reporting, finance, inventory and system operations.</p>
+  </div>
+
+  <div class="rb-studio-hero-icon">R</div>
+</div>
+
+<section class="rb-studio-section">
+<div class="rb-studio-section-head">
+  <div>
+    <span class="rb-section-icon">✦</span>
+    <div>
+      <h2>Design & Configuration</h2>
+      <p>Forms, reports, documents and workflow configuration</p>
+    </div>
+  </div>
+</div>
+
+<div class="rb-studio-grid">
+
+<a class="rb-studio-card" href="{{url_for('studio_templates',template_type='FORM')}}">
+<span class="rb-card-icon">🧩</span>
+<div><b>Form Designer</b><small>Registration layouts and forms</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+<a class="rb-studio-card" href="{{url_for('studio_templates',template_type='RECEIPT')}}">
+<span class="rb-card-icon">🧾</span>
+<div><b>Receipt Designer</b><small>A4, A5 and 80mm layouts</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+<a class="rb-studio-card" href="{{url_for('studio_templates',template_type='REPORT')}}">
+<span class="rb-card-icon">📄</span>
+<div><b>Report Designer</b><small>Medical reporting layouts</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+<a class="rb-studio-card" href="{{url_for('doctor_templates')}}">
+<span class="rb-card-icon">📝</span>
+<div><b>Doctor Templates</b><small>DOCX reporting template library</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+<a class="rb-studio-card" href="{{url_for('admin_field_rules')}}">
+<span class="rb-card-icon">⚙</span>
+<div><b>Field Rules</b><small>Validation, visibility and requirements</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+<a class="rb-studio-card" href="{{url_for('studio_shortcuts')}}">
+<span class="rb-card-icon">⚡</span>
+<div><b>App Launcher</b><small>Shortcuts, applications and role access</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+<a class="rb-studio-card" href="{{url_for('admin_company_legal')}}">
+<span class="rb-card-icon">🏢</span>
+<div><b>Company Profile</b><small>Legal, tax and contact information</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+</div>
+</section>
+
+
+<section class="rb-studio-section">
+<div class="rb-studio-section-head">
+  <div>
+    <span class="rb-section-icon">📊</span>
+    <div>
+      <h2>Management & Finance</h2>
+      <p>Performance, approvals and financial controls</p>
+    </div>
+  </div>
+</div>
+
+<div class="rb-studio-grid">
+
+<a class="rb-studio-card" href="{{url_for('management_dashboard')}}">
+<span class="rb-card-icon">📈</span>
+<div><b>Management Analytics</b><small>KPIs, TAT, referrals and finance</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+{% if has_perm('analytics.executive.view') %}
+<a class="rb-studio-card" href="{{url_for('executive_analytics')}}">
+<span class="rb-card-icon">📊</span>
+<div><b>Executive Analytics</b><small>Branches, doctors, devices and TAT</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+{% endif %}
+
+{% if has_perm('finance.discount.manage') %}
+<a class="rb-studio-card" href="{{url_for('admin_discount_policies')}}">
+<span class="rb-card-icon">🏷</span>
+<div><b>Discount Policies</b><small>Roles, users, exams and limits</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+{% endif %}
+
+{% if has_perm('finance.discount.approve') %}
+<a class="rb-studio-card" href="{{url_for('discount_approval_queue')}}">
+<span class="rb-card-icon">✓</span>
+<div><b>Discount Approvals</b><small>Management approval queue</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+{% endif %}
+
+{% if has_perm('finance.doctor_share.manage') %}
+<a class="rb-studio-card" href="{{url_for('admin_doctor_share_rules')}}">
+<span class="rb-card-icon">🩺</span>
+<div><b>Doctor Share Rules</b><small>Percentage and fixed-fee policies</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+{% endif %}
+
+{% if has_perm('finance.doctor_share.view') %}
+<a class="rb-studio-card" href="{{url_for('doctor_earnings_report')}}">
+<span class="rb-card-icon">💰</span>
+<div><b>Doctor Earnings</b><small>Cases, discounts and share reports</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+{% endif %}
+
+</div>
+</section>
+
+
+{% if has_perm('inventory.manage') or has_perm('inventory.view') or has_perm('inventory.reports') %}
+<section class="rb-studio-section">
+
+<div class="rb-studio-section-head">
+  <div>
+    <span class="rb-section-icon">▦</span>
+    <div>
+      <h2>Inventory & Supply</h2>
+      <p>Warehouses, stock, consumables and movement</p>
+    </div>
+  </div>
+</div>
+
+<div class="rb-studio-grid">
+
+{% if has_perm('inventory.manage') %}
+
+<a class="rb-studio-card" href="{{url_for('inventory_warehouses')}}">
+<span class="rb-card-icon">🏬</span>
+<div><b>Warehouses</b><small>Main, branch and sub-stores</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+<a class="rb-studio-card" href="{{url_for('inventory_items')}}">
+<span class="rb-card-icon">📦</span>
+<div><b>Inventory Items</b><small>Catalog, lot, expiry and cost</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+<a class="rb-studio-card" href="{{url_for('inventory_stock_policies')}}">
+<span class="rb-card-icon">⚠</span>
+<div><b>Stock Policies</b><small>Minimum, reorder and target levels</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+<a class="rb-studio-card" href="{{url_for('inventory_procedure_defaults')}}">
+<span class="rb-card-icon">🧪</span>
+<div><b>Procedure Consumables</b><small>Default consumables by examination</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+{% endif %}
+
+{% if has_perm('inventory.view') %}
+
+<a class="rb-studio-card" href="{{url_for('inventory_stock')}}">
+<span class="rb-card-icon">▥</span>
+<div><b>Warehouse Stock</b><small>Available stock and alerts</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+<a class="rb-studio-card" href="{{url_for('inventory_transfers')}}">
+<span class="rb-card-icon">⇄</span>
+<div><b>Stock Transfers</b><small>Request, dispatch and receive</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+{% endif %}
+
+{% if has_perm('inventory.reports') %}
+
+<a class="rb-studio-card" href="{{url_for('inventory_ledger')}}">
+<span class="rb-card-icon">📚</span>
+<div><b>Stock Ledger</b><small>Immutable movement history</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+<a class="rb-studio-card" href="{{url_for('inventory_consumption_report')}}">
+<span class="rb-card-icon">📉</span>
+<div><b>Consumption Report</b><small>Usage, waste and examination cost</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+
+{% endif %}
+
+</div>
+</section>
+{% endif %}
+
+
+{% if has_perm('backup.view') %}
+<section class="rb-studio-section">
+
+<div class="rb-studio-section-head">
+  <div>
+    <span class="rb-section-icon">🛡</span>
+    <div>
+      <h2>System Administration</h2>
+      <p>Data protection and administrative operations</p>
+    </div>
+  </div>
+</div>
+
+<div class="rb-studio-grid">
+<a class="rb-studio-card rb-studio-card-danger" href="{{url_for('admin_data_management')}}">
+<span class="rb-card-icon">🛡</span>
+<div><b>Backup & Data Admin</b><small>Storage, export, anonymize and safe reset</small></div>
+<span class="rb-card-arrow">›</span>
+</a>
+</div>
+
+</section>
+{% endif %}
+
+</div>
+
+{% endblock %}

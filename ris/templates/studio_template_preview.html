@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block page_title %}Template Preview — {{template.name}}{% endblock %}
+{% block content %}<div class="panel"><div class="actions"><button onclick="window.print()" class="btn primary">Print Preview</button></div>
+<h3>{{template.name}}</h3><p>{{ ui_phrase('Type:') }} {{template.template_type}} · Version: {{template.version_no}} · {{template.status}}</p>
+<pre class="studio-json">{{template.layout_json}}</pre>
+{% if template.template_type=='RECEIPT' %}<div class="receipt-preview mock"><h2>Company Logo / Name</h2><p>Commercial Register · Tax Card · Contact Numbers</p><hr><b>{{ ui_phrase('Patient Name') }}</b><p>Examination / Amount / Payment Method</p><div class="receipt-important-note">Important receipt notes appear here.</div></div>{% endif %}
+</div>{% endblock %}

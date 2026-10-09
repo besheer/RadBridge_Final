@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block page_title %}Correction & Cancellation Center{% endblock %}
+{% block subtitle %}Search cases, report operational errors and request controlled correction{% endblock %}
+{% block content %}
+<div class="panel">
+  <h3>{{ ui_phrase('Search & Case Selection') }}</h3>
+  <p>Search by accession, Patient ID, patient name, phone, or internal Order ID. Results are limited to your branch unless your role has global access.</p>
+  <form method="get" class="actions">
+    <input name="q" value="{{q}}" placeholder="{{ ui_phrase('Accession / Patient ID / Name / Phone / Order ID') }}" required>
+    <button class="btn primary">{{ ui_phrase('🔎 Search') }}</button>
+    <a class="btn" href="{{url_for('correction_center')}}">{{ ui_phrase('Clear') }}</a>
+    {% if can_review %}
+      <a class="btn" href="{{url_for('correction_request_queue')}}">{{ ui_phrase('Coordinator Queue') }}{% if pending_count %} ({{pending_count}}){% endif %}</a>
+    {% endif %}
+  </form>
+</div>
+
+{% if q %}
+<div class="panel">
+  <h3>Matching Orders</h3>
+  <div style="overflow-x:auto"><table>
+    <thead><tr><th>Order / Accession</th><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Exam') }}</th><th>{{ ui_phrase('Branch') }}</th><th>{{ ui_phrase('Workflow') }}</th><th>PACS / Report</th><th>Request correction</th></tr></thead>
+    <tbody>
+    {% for o in orders %}
+      <tr>
+        <td><b>#{{o.id}}</b><br>{{o.accession}}</td>
+        <td>{{o.patient.patient_id}} — {{o.patient.name}}{% if o.patient.phone %}<br><small>{{o.patient.phone}}</small>{% endif %}</td>
+        <td>{{o.modality}} — {{o.procedure}}<br><small>{{o.scheduled}}</small></td>
+        <td>{{o.branch.name if o.branch else '—'}}</td>
+        <td>{{o.status}} / {{o.exam_status}}</td>
+        <td>{{ ui_phrase('Images:') }} {{o.pacs_image_count or 0}}<br>PACS: {{o.pacs_status or '—'}}<br>{{ ui_phrase('Report:') }} {{o.report.status if o.report else 'NONE'}}</td>
+        <td>
+          {% if has_perm('correction.request') %}
+          <form method="post" action="{{url_for('correction_request_submit')}}">
+            <input type="hidden" name="order_id" value="{{o.id}}">
+            <a class="btn" href="{{url_for('patient_demographics_correction',order_id=o.id)}}">{{ ui_phrase('تصحيح بيانات المريض / Patient demographics') }}</a><select name="request_type" required>
+              <option value="">Problem type…</option>
+              {% for code,label in request_types if code!='WRONG_DEMOGRAPHICS' %}<option value="{{code}}">{{label}}</option>{% endfor %}
+            </select>
+            <input name="reason" minlength="5" required placeholder="What is wrong?">
+            <button class="btn primary">{{ ui_phrase('Submit Request') }}</button>
+          </form>
+          {% else %}
+            <small>Review-only access</small>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7">No matching orders in your permitted scope.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+
+<div class="panel">
+  <h3>My Requests</h3>
+  <div style="overflow-x:auto"><table>
+    <thead><tr><th>ID</th><th>{{ ui_phrase('Order') }}</th><th>{{ ui_phrase('Problem') }}</th><th>{{ ui_phrase('Status') }}</th><th>{{ ui_phrase('Coordinator') }}</th><th>{{ ui_phrase('Created') }}</th></tr></thead>
+    <tbody>
+    {% for r in my_requests %}
+      <tr>
+        <td>#{{r.id}}</td>
+        <td>#{{r.order_id}} — {{r.order.accession if r.order else '—'}}</td>
+        <td>{{r.request_type}}<br><small>{{r.reason}}</small>{% if r.demographic_detail %}<br><a href="{{url_for('patient_demographics_correction_view',request_id=r.id)}}">{{ ui_phrase('الحقل والقيم والتأثير / Field and impact') }}</a>{% endif %}</td>
+        <td>{{r.status}}</td>
+        <td>{{r.assignee.full_name if r.assignee else ui_phrase('Unassigned')}}{% if r.review_note %}<br><small>{{r.review_note}}</small>{% endif %}</td>
+        <td>{{r.created_at}}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6">No correction requests submitted yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="panel danger-zone-note">
+  <b>Safety:</b> Submitting or approving a request does not delete, cancel, merge, or re-map data. Destructive correction actions remain behind their dedicated protected workflow and post-action verification.
+</div>
+{% endblock %}

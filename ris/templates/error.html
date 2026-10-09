@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% macro error_card() %}
+<div class="panel error-card">
+  <h2>{{ error_code }} — {{ title }}</h2>
+  <p>{{ message }}</p>
+  <div class="error-id"><b>Error ID:</b> <code>{{ error_id }}</code></div>
+  <div class="actions">
+    <a class="btn primary" href="{{ url_for('dashboard') }}">{{ ui_phrase('Dashboard') }}</a>
+    <button class="btn" onclick="history.back()">{{ ui_phrase('Back') }}</button>
+  </div>
+</div>
+{% endmacro %}
+
+{% block content %}
+{{ error_card() }}
+{% endblock %}
+
+{% block public_content %}
+<div class="page-content" style="max-width:760px;margin:48px auto;padding:0 20px">
+  {{ error_card() }}
+</div>
+{% endblock %}

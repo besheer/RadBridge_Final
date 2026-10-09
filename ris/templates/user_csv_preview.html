@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block page_title %}معاينة استيراد المستخدمين / User import preview{% endblock %}
+{% block content %}
+<div class="panel" style="padding:20px">
+<h2>معاينة استيراد المستخدمين / User import preview</h2>
+<p>جديد / New: <strong>{{ new_count }}</strong> · موجود، سيُتخطى / Existing, skipped: <strong>{{ skip_count }}</strong> · أخطاء / Errors: <strong>{{ error_count }}</strong></p>
+<p>لم يتم حفظ أي مستخدم بعد. / No users have been saved yet.</p>
+<div style="overflow-x:auto"><table class="table"><thead><tr><th>الصف / Row</th><th>الحالة / Status</th><th>اسم الدخول / Username</th><th>الاسم / Name</th><th>الدور / Role</th><th>الفرع / Branch</th><th>نشط / Active</th><th>الملاحظات / Notes</th></tr></thead><tbody>
+{% for item in results %}<tr><td>{{ item.line }}</td><td>{{ {'NEW':'جديد / NEW','SKIP':'تخطي / SKIP','ERROR':'خطأ / ERROR'}[item.status] }}</td><td>{{ item.data.username }}</td><td>{{ item.data.full_name }}</td><td>{{ item.data.role_code }}</td><td>{{ item.data.branch_code or '—' }}</td><td>{{ item.data.active }}</td><td>{% for error in item.errors %}<div>{{ error }}</div>{% endfor %}<details><summary>تفاصيل / Details</summary>{% for key in ['department','specialty','phone','email','whatsapp','telegram','other_contact','scope_enabled','modalities','device_keys','room_keys'] %}{% if item.data[key] %}<div>{{ key }}: {{ item.data[key] }}</div>{% endif %}{% endfor %}</details></td></tr>{% endfor %}
+</tbody></table></div>
+{% if error_count %}<p role="alert">صحح جميع الأخطاء ثم أعد رفع الملف؛ لن يتم حفظ جزء من الملف. / Correct all errors and upload again; partial imports are not allowed.</p>{% endif %}
+{% if token %}<form method="post" action="{{ url_for('user_csv.apply') }}" style="margin-top:20px">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="preview_token" value="{{ token }}">
+<label for="temporary-password">كلمة مرور مؤقتة للحسابات الجديدة (10–128 حرفًا) / Temporary password for new accounts (10–128 characters)</label>
+<input id="temporary-password" name="temporary_password" type="password" minlength="10" maxlength="128" required autocomplete="new-password" style="display:block;max-width:100%;margin:12px 0">
+<p>يجب تغييرها عند أول دخول. الحسابات الموجودة لن تتغير. / First-login password change is required. Existing accounts remain unchanged.</p>
+<button class="btn primary" type="submit">تأكيد إنشاء {{ new_count }} مستخدم / Confirm {{ new_count }} new users</button>
+</form>{% endif %}
+<p><a class="btn" href="{{ url_for('user_csv.upload') }}">إلغاء / ملف آخر — Cancel / another file</a></p>
+</div>
+{% endblock %}

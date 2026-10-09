@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% from "_action_guidance.html" import action_info %}
+{% block page_title %}{{ "مركز عمليات الحالات" if ui_lang=="ar" else "Case Operations Control Center" }}{% endblock %}
+{% block content %}
+<style>
+  .coc-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+  .coc-head h2{margin:0 0 6px}.coc-muted{opacity:.72;font-size:12px}
+  .coc-actions{display:flex;gap:7px;flex-wrap:wrap}.coc-actions .btn{margin:0}
+  .coc-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:14px 0}
+  .coc-card{border:1px solid var(--border,#334155);border-radius:10px;padding:12px;background:var(--panel,#111827)}
+  .coc-card b{font-size:25px;display:block}.coc-card span{font-size:12px;opacity:.78}
+  .coc-danger b{color:#f87171}.coc-warn b{color:#fbbf24}.coc-ok b{color:#4ade80}
+  .coc-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:14px}
+  .coc-section{margin-top:14px}.coc-section h3{display:flex;align-items:center;gap:8px;margin-top:0}
+  .coc-tags{display:flex;flex-wrap:wrap;gap:4px}.coc-tag{font-size:10px;padding:3px 6px;border-radius:10px;background:#7f1d1d;color:#fecaca}
+  .coc-tag.info{background:#164e63;color:#cffafe}.coc-status{font-weight:700}
+  .coc-empty{padding:18px;text-align:center;opacity:.7}.coc-scroll{max-height:560px;overflow:auto}
+  @media(max-width:980px){.coc-grid{grid-template-columns:1fr}}
+</style>
+
+<div class="panel coc-head">
+  <div>
+    <h2>⌘ {{ "مركز عمليات الحالات" if ui_lang=="ar" else "Case Operations Control Center" }}</h2>
+    <div class="coc-muted">
+      {{ "عرض موحد لحالة التوزيع والجاهزية والصور والمحررين. كل إجراء يستخدم مسار العمل الأصلي المحمي." if ui_lang=="ar" else "Unified assignment, readiness, imaging and editor status. Every action continues through its existing protected workflow." }}
+    </div>
+  </div>
+  <div class="coc-actions">
+    <a class="btn" href="{{url_for('assignment_dashboard')}}">{{"التوزيع" if ui_lang=="ar" else "Assignment"}}</a>
+    <a class="btn" href="{{url_for('case_readiness_dashboard')}}">{{"الجاهزية" if ui_lang=="ar" else "Readiness"}}</a>
+    <a class="btn" href="{{url_for('pacs_reconciliation')}}">{{"مشاكل الصور" if ui_lang=="ar" else "PACS Exceptions"}}</a>
+    {% if can_manage_assignment %}<a class="btn" href="{{url_for('admin_assignment_strategies')}}">{{"الاستراتيجيات" if ui_lang=="ar" else "Strategies"}}</a>{% endif %}
+    {{ action_info(
+      "Unified control center",
+      "This page is read-only. It highlights cases requiring attention and opens the existing authorized workflow for each action.",
+      "It does not auto-assign, relink PACS studies, merge patients, recheck readiness, or release editor locks by itself.",
+      lang=ui_lang
+    ) }}
+  </div>
+</div>
+
+<div class="coc-metrics">
+  <div class="coc-card"><b>{{snapshot.metrics.open_cases}}</b><span>{{"حالات مفتوحة" if ui_lang=="ar" else "Open cases"}}</span></div>
+  <div class="coc-card coc-warn"><b>{{snapshot.metrics.attention_cases}}</b><span>{{"تحتاج تدخل" if ui_lang=="ar" else "Need attention"}}</span></div>
+  <div class="coc-card coc-ok"><b>{{snapshot.metrics.ready_cases}}</b><span>{{"جاهزة" if ui_lang=="ar" else "Ready"}}</span></div>
+  <div class="coc-card coc-danger"><b>{{snapshot.metrics.blocked_cases}}</b><span>{{"محجوبة" if ui_lang=="ar" else "Blocked"}}</span></div>
+  <div class="coc-card coc-warn"><b>{{snapshot.metrics.unassigned_cases}}</b><span>{{"غير موزعة" if ui_lang=="ar" else "Unassigned"}}</span></div>
+  <div class="coc-card"><b>{{snapshot.metrics.pending_offers}}</b><span>{{"عروض معلقة" if ui_lang=="ar" else "Pending offers"}}</span></div>
+  <div class="coc-card coc-danger"><b>{{snapshot.metrics.pacs_review}}</b><span>{{"مراجعة PACS" if ui_lang=="ar" else "PACS review"}}</span></div>
+  <div class="coc-card"><b>{{snapshot.metrics.active_editors}}</b><span>{{"محررون نشطون" if ui_lang=="ar" else "Active editors"}}</span></div>
+  <div class="coc-card"><b>{{snapshot.metrics.active_exam_links}}</b><span>{{"روابط فحوص نشطة" if ui_lang=="ar" else "Active exam links"}}</span></div>
+  <div class="coc-card"><b>{{snapshot.metrics.enabled_strategies}}</b><span>{{"استراتيجيات مفعلة" if ui_lang=="ar" else "Enabled strategies"}}</span></div>
+</div>
+
+<div class="coc-grid">
+  <div>
+    <div class="panel coc-section">
+      <h3>
+        ⚠ {{"قائمة التدخل" if ui_lang=="ar" else "Attention Queue"}}
+        {{ action_info(
+          "Attention Queue",
+          "Open cases appear here when readiness, assignment, PACS evidence, an offer, or an active editor requires visibility.",
+          "Terminal reports are excluded. This list does not change case status.",
+          lang=ui_lang
+        ) }}
+      </h3>
+      <div class="table-wrap coc-scroll">
+        <table id="cocAttention">
+          <thead><tr>
+            <th>{{"الحالة" if ui_lang=="ar" else "Case"}}</th>
+            <th>{{"المريض والفحص" if ui_lang=="ar" else "Patient / Exam"}}</th>
+            <th>{{"الجاهزية" if ui_lang=="ar" else "Readiness"}}</th>
+            <th>{{"التوزيع" if ui_lang=="ar" else "Assignment"}}</th>
+            <th>{{"سبب التدخل" if ui_lang=="ar" else "Attention"}}</th>
+          </tr></thead>
+          <tbody>
+          {% for item in snapshot.attention %}
+            <tr>
+              <td><b>{{item.order.accession}}</b><br><span class="coc-muted">{{item.order.status}}</span></td>
+              <td>{{item.order.patient.name if item.order.patient else '-'}}<br><span class="coc-muted">{{item.order.modality}} · {{item.order.procedure}}</span></td>
+              <td class="coc-status">{{item.readiness.status if item.readiness else 'NOT_CHECKED'}}{% if item.readiness %}<br><span class="coc-muted">{{item.readiness.image_count}} / {{item.readiness.expected_min_images}}</span>{% endif %}</td>
+              <td>{% if item.assignment %}{{item.assignment.doctor.full_name or item.assignment.doctor.username}}<br><span class="coc-muted">{{item.assignment.assignment_type}}</span>{% else %}<span class="coc-status">{{ ui_phrase('UNASSIGNED') }}</span>{% endif %}</td>
+              <td><div class="coc-tags">{% for reason in item.attention_reasons %}<span class="coc-tag">{{reason.replace('_',' ')}}</span>{% endfor %}</div>
+                <a class="btn btn-sm" href="{{url_for('case_exception_resolver',order_id=item.order.id)}}">{{'حل المشكلة' if ui_lang=='ar' else 'Resolve Exception'}}</a>
+                {{ action_info('حل مشكلة الحالة' if ui_lang=='ar' else 'Resolve Case Exception','يفتح البحث والمعاينة وأدوات الحل الموثقة لهذه الحالة.' if ui_lang=='ar' else 'Opens search, preview and audited resolution tools for this case.','استخدمه لفهم كل سبب حجب وحله من مصدره.' if ui_lang=='ar' else 'Use it to understand and resolve each blocker at its source.','التنفيذ متاح فقط للمستخدم صاحب صلاحية PACS reconciliation.' if ui_lang=='ar' else 'Write actions require PACS reconciliation permission.','لا يغيّر DICOM ولا يتجاوز الحالات النهائية.' if ui_lang=='ar' else 'It never changes DICOM or overrides terminal cases.','تحقق من هوية المريض والدليل قبل حفظ أي Mapping.' if ui_lang=='ar' else 'Confirm patient identity and evidence before saving any mapping.',ui_lang) }}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="coc-empty">{{"لا توجد حالات مفتوحة تحتاج تدخلاً." if ui_lang=="ar" else "No open cases currently require attention."}}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel coc-section">
+      <h3>🖼 {{"استثناءات الصور" if ui_lang=="ar" else "Imaging Exceptions"}}</h3>
+      <div class="table-wrap">
+        <table><thead><tr><th>{{ ui_phrase('Accession') }}</th><th>{{ ui_phrase('Patient ID') }}</th><th>{{ ui_phrase('Modality') }}</th><th>{{ ui_phrase('Images') }}</th><th>{{ ui_phrase('State') }}</th></tr></thead><tbody>
+        {% for inbox in snapshot.pacs_review %}
+          <tr><td>{{inbox.accession or '-'}}</td><td>{{inbox.pacs_patient_id or '-'}}</td><td>{{inbox.modality or '-'}}</td><td>{{inbox.image_count}}</td><td>{{inbox.state}}</td></tr>
+        {% else %}<tr><td colspan="5" class="coc-empty">{{"لا توجد دراسات تنتظر المراجعة." if ui_lang=="ar" else "No PACS studies await review."}}</td></tr>{% endfor %}
+        </tbody></table>
+      </div>
+      <div class="coc-actions" style="margin-top:10px"><a class="btn" href="{{url_for('pacs_reconciliation')}}">{{"فتح المصالحة وExam Linking" if ui_lang=="ar" else "Open Reconciliation & Exam Linking"}}</a></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel coc-section">
+      <h3>🧠 {{"سياسة التوزيع" if ui_lang=="ar" else "Assignment Policy"}}</h3>
+      {% for strategy in snapshot.enabled_strategies %}
+        <div class="coc-card" style="margin-bottom:8px">
+          <b style="font-size:15px">{{strategy.name}}</b>
+          <span>{{strategy.assignment_mode}} → {{strategy.fallback_mode}} · Priority {{strategy.priority}}</span>
+        </div>
+      {% else %}<div class="coc-empty">{{"لا توجد استراتيجية مفعلة؛ التوزيع اليدوي/Open Pool يظل متاحًا حسب الصلاحية." if ui_lang=="ar" else "No enabled strategy; authorized manual/Open Pool workflows remain available."}}</div>{% endfor %}
+      {% if can_manage_assignment %}<a class="btn" href="{{url_for('admin_assignment_strategies')}}">{{"إدارة الاستراتيجيات" if ui_lang=="ar" else "Manage strategies"}}</a>{% endif %}
+    </div>
+
+    <div class="panel coc-section">
+      <h3>✎ {{"المحررون النشطون" if ui_lang=="ar" else "Active Editors"}}</h3>
+      {% set active_items = snapshot.cases|selectattr('lease')|list %}
+      {% for item in active_items %}
+        <div class="coc-card" style="margin-bottom:8px"><b style="font-size:15px">{{item.order.accession}}</b><span>{{ ui_phrase('User') }} {{item.lease.user_id}} · {{item.lease.editor_type}} · expires {{item.lease.expires_at}}</span></div>
+      {% else %}<div class="coc-empty">{{"لا توجد جلسات تحرير نشطة." if ui_lang=="ar" else "No active editing sessions."}}</div>{% endfor %}
+      {{ action_info(
+        "Active editor",
+        "An active lease prevents two doctors or editor channels from changing the same report concurrently.",
+        "This dashboard never releases a lease. Use the report workflow and its audited lease controls.",
+        lang=ui_lang
+      ) }}
+    </div>
+
+    <div class="panel coc-section">
+      <h3>↗ {{"اختصارات آمنة" if ui_lang=="ar" else "Safe Shortcuts"}}</h3>
+      <div class="coc-actions">
+        {% if can_manage_assignment %}<a class="btn" href="{{url_for('admin_assignment')}}">{{ ui_phrase('Manual Assignment') }}</a>{% endif %}
+        <a class="btn" href="{{url_for('unassigned_cases')}}">{{ ui_phrase('Unassigned') }}</a>
+        <a class="btn" href="{{url_for('escalation_board')}}">{{ ui_phrase('Escalations') }}</a>
+        {% if can_view_audit %}<a class="btn" href="{{url_for('admin_audit')}}">{{ ui_phrase('Audit Log') }}</a>{% endif %}
+        <a class="btn" href="{{url_for('admin_qa_control')}}">{{ ui_phrase('QA Control') }}</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

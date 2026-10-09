@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block page_title %}{{'تسويات استبدال التقارير' if ui_lang=='ar' else 'Report Replacement Settlements'}}{% endblock %}
+{% block content %}
+<style>.settlement-table{max-width:100%;overflow-x:auto}.settlement-table table{min-width:620px}.settlement-form{display:flex;flex-wrap:wrap;gap:12px}.settlement-form label{flex:1 1 210px}.settlement-form input,.settlement-form textarea{width:100%;box-sizing:border-box}.settlement-form label.check{flex-basis:100%}.settlement-form .check input{width:auto}.settlement-preview{border-inline-start:4px solid #2563eb}</style>
+<div class="panel">
+<p>{{'يُنقل المستحق بعد اعتماد الاستبدال REPLACEMENT كـFINAL، حسب قاعدة الطبيب البديل. الإضافة ADDENDUM لا تنقل المستحق. لا يتغير الطبيب أو التقرير الأصلي.' if ui_lang=='ar' else 'Entitlement transfers only after a REPLACEMENT is FINAL, using the replacement physician’s rule. ADDENDUM does not transfer entitlement. The original physician and report remain intact.'}}</p>
+<p>{{'هذه تسوية في حساب المستحقات، وليست صرفًا أو استردادًا نقديًا. يُعكس المستحق السابق ويُثبت مستحق البديل؛ الصرف الأصلي محفوظ. المبالغ المصروفة تحتاج متابعة استرداد أو مقاصة فعلية من المالية.' if ui_lang=='ar' else 'This is a payable adjustment, not a cash payment or recovery. The previous entitlement is reversed and the replacement entitlement recorded; original payouts remain. Paid amounts still require actual recovery or offset by finance.'}}</p>
+<p>{{'راجع قيمة المستحق الأصلي وكل الصرف المرتبط بالحالة، بما فيه قيود الصرف الإجمالية وغير المرتبطة برقم الحالة. السجلات القديمة لا تحتوي مستحقًا تاريخيًا ثابتًا؛ القيمة التي تؤكدها المالية تُحفظ مع السبب والأدلة. تُعالج الاستبدالات بترتيبها ولا تُنفذ تسويات تلقائية بأثر رجعي.' if ui_lang=='ar' else 'Verify the original entitlement and all case payouts, including bulk payouts without case references. Legacy records have no frozen historical entitlement; finance confirms the amount with reason and evidence. Process replacements in sequence. Existing cases are not automatically settled retroactively.'}}</p>
+<a class="btn" href="{{url_for('doctor_earnings_report')}}">{{'مستحقات الأطباء الحالية' if ui_lang=='ar' else 'Current Doctor Entitlements'}}</a>
+</div>
+{% if error %}<div class="panel" role="alert">{{error}}</div>{% endif %}
+{% if draft %}
+<section class="panel settlement-preview">
+<h2>{{'معاينة التسوية — لم تُسجل بعد' if ui_lang=='ar' else 'Settlement Preview — not recorded yet'}}</h2>
+<p>{{'الحالة / الاستبدال' if ui_lang=='ar' else 'Case / replacement'}}: {{draft.accession}} / #{{draft.revision_no}}</p>
+<p>{{'عكس مستحق الطبيب السابق' if ui_lang=='ar' else 'Reverse previous physician entitlement'}}: −{{draft.old_amount}} · {{doctors[draft.old_doctor_id].full_name or doctors[draft.old_doctor_id].username}}</p>
+<p>{{'مستحق الطبيب البديل' if ui_lang=='ar' else 'Replacement physician entitlement'}}: +{{draft.new_amount}} · {{doctors[draft.new_doctor_id].full_name or doctors[draft.new_doctor_id].username}} — {{('نسبة' if draft.new_rule.rule_type=='PERCENT' else 'قيمة ثابتة') if ui_lang=='ar' else draft.new_rule.rule_type}} {{draft.new_rule.value}} / {{draft.new_rule.basis}}</p>
+<p>{{'الصرف المرتبط آليًا / الصرف الكامل المؤكد' if ui_lang=='ar' else 'Automatically linked / verified total payouts'}}: {{draft.linked_paid_amount}} / {{draft.verified_paid_amount}}</p>
+<p>{{'الجزء المصروف الذي يحتاج استردادًا أو مقاصة' if ui_lang=='ar' else 'Paid portion requiring recovery or offset'}}: {{draft.recovery_adjustment}}</p>
+<p>{{'مراجع الصرف المرتبطة' if ui_lang=='ar' else 'Linked payout entry IDs'}}: {% for p in draft.payouts %}#{{p.id}} ({{p.amount}}) {% else %}—{% endfor %}</p>
+<p>{{draft.reason}}</p>{% if draft.payment_note %}<p>{{draft.payment_note}}</p>{% endif %}
+<form method="post"><input type="hidden" name="csrf" value="{{csrf}}"><input type="hidden" name="action" value="confirm"><input type="hidden" name="preview_token" value="{{preview_token}}"><button class="btn primary">{{'تأكيد تسجيل التسوية دون تغيير الصرف الأصلي' if ui_lang=='ar' else 'Confirm adjustment; preserve original payouts'}}</button></form>
+</section>
+{% endif %}
+{% for r in revisions %}{% set o=orders[r.order_id] %}{% set booked_row=booked.get(r.id) %}
+<section class="panel">
+<h2>{{o.accession}} · REPLACEMENT #{{r.revision_no}} · FINAL</h2>
+<p>{{'الطبيب البديل' if ui_lang=='ar' else 'Replacement physician'}}: {% if doctors.get(r.doctor_id) %}{{doctors[r.doctor_id].full_name or doctors[r.doctor_id].username}}{% else %}#{{r.doctor_id}}{% endif %} · {{r.finalized_at}}</p>
+{% if booked_row %}
+<div class="settlement-table" tabindex="0" role="region" aria-label="{{'قيود تسوية المستحقات' if ui_lang=='ar' else 'Entitlement adjustment entries'}}"><table><thead><tr><th>{{'نوع القيد' if ui_lang=='ar' else 'Entry'}}</th><th>{{'الطبيب' if ui_lang=='ar' else 'Physician'}}</th><th>{{'المبلغ' if ui_lang=='ar' else 'Amount'}}</th><th>{{'الصرف الأصلي المؤكد' if ui_lang=='ar' else 'Verified existing payout'}}</th></tr></thead><tbody>
+<tr><td>{{'عكس المستحق السابق' if ui_lang=='ar' else 'Reverse prior entitlement'}}</td><td>{{doctors[booked_row.old_doctor_id].full_name if doctors.get(booked_row.old_doctor_id) else booked_row.old_doctor_id}}</td><td>−{{booked_row.old_amount}}</td><td>{{booked_row.verified_paid_amount}}</td></tr>
+<tr><td>{{'إثبات مستحق البديل' if ui_lang=='ar' else 'Replacement entitlement'}}</td><td>{{doctors[booked_row.new_doctor_id].full_name if doctors.get(booked_row.new_doctor_id) else booked_row.new_doctor_id}}</td><td>+{{booked_row.new_amount}}</td><td>—</td></tr>
+</tbody></table></div><p>{{'سجل التسوية المحفوظ' if ui_lang=='ar' else 'Preserved adjustment record'}} #{{booked_row.id}} · {{booked_row.created_at}} · {{booked_row.reason}}</p>
+{% elif can_manage %}
+<form method="post" class="settlement-form">
+<input type="hidden" name="csrf" value="{{csrf}}"><input type="hidden" name="action" value="preview"><input type="hidden" name="revision_id" value="{{r.id}}">
+<label>{{'المستحق الأصلي المؤكد (أول استبدال فقط)' if ui_lang=='ar' else 'Verified original entitlement (first transfer only)'}}<input type="number" min="0" max="9999999999.99" step="0.01" name="original_amount" required></label>
+<label>{{'إجمالي الصرف المؤكد للطبيب السابق لهذه الحالة' if ui_lang=='ar' else 'Verified total case payouts to previous physician'}}<input type="number" min="0" max="9999999999.99" step="0.01" name="paid_amount" required></label>
+<label>{{'السبب ومصدر تأكيد المستحق' if ui_lang=='ar' else 'Reason and entitlement evidence'}}<textarea name="reason" minlength="10" maxlength="2000" required></textarea></label>
+<label>{{'مراجع الصرف الإضافية؛ مطلوب إذا زاد المؤكد عن المرتبط آليًا' if ui_lang=='ar' else 'Additional payout references; required when verified exceeds linked payouts'}}<textarea name="payment_note" maxlength="2000"></textarea></label>
+<label class="check"><input type="checkbox" name="payments_verified" value="1" required> {{'راجعت جميع الصرف لهذه الحالة، بما فيه الصرف الإجمالي وغير المرتبط.' if ui_lang=='ar' else 'I verified all case payouts, including bulk and unlinked payments.'}}</label>
+<button class="btn">{{'معاينة فقط' if ui_lang=='ar' else 'Preview only'}}</button>
+</form>
+{% else %}<p>{{'بانتظار مراجعة مسؤول المالية المخوّل.' if ui_lang=='ar' else 'Awaiting an authorized finance reviewer.'}}</p>{% endif %}
+</section>
+{% else %}<div class="panel">{{'لا توجد استبدالات FINAL في نطاقك.' if ui_lang=='ar' else 'No FINAL replacements in your scope.'}}</div>{% endfor %}
+{% endblock %}

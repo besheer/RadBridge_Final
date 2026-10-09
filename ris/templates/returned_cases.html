@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+🔁 {{'حالات تحتاج مراجعة' if ui_lang=='ar' else 'Returned Cases'}}
+{% endblock %}
+
+{% block subtitle %}
+{{'طلبات الطبيب التي تحتاج إجراء من الفرع أو الفني'
+  if ui_lang=='ar'
+  else 'Cases requiring branch or technician action'}}
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+{% if rows %}
+
+<div class="table-wrap">
+<table>
+
+<thead>
+<tr>
+<th>{{'المريض' if ui_lang=='ar' else 'Patient'}}</th>
+<th>{{ ui_phrase('Accession') }}</th>
+<th>{{'الفحص' if ui_lang=='ar' else 'Exam'}}</th>
+<th>{{'السبب' if ui_lang=='ar' else 'Reason'}}</th>
+<th>{{'سبب الإرجاع' if ui_lang=='ar' else 'Return note'}}</th>
+<th>{{'الوجهة' if ui_lang=='ar' else 'Owner'}}</th>
+<th>{{'منذ' if ui_lang=='ar' else 'Requested'}}</th>
+<th></th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for ev,o in rows %}
+
+<tr>
+
+<td>
+<b>{{o.patient.name}}</b>
+<small style="display:block">{{o.patient.patient_id}}</small>
+</td>
+
+<td>{{o.accession}}</td>
+
+<td>
+{{o.modality}} · {{o.procedure}}
+</td>
+
+<td>
+<span class="badge">{{ev.reason_code}}</span>
+</td>
+
+<td>
+{{ev.note or '—'}}
+</td>
+
+<td>
+{{ev.owner_role}}
+</td>
+
+<td>
+{{ev.created_at}}
+</td>
+
+<td>
+
+<a class="btn"
+   href="{{url_for('technician_case_workspace' if ev.owner_role=='TECHNICIAN' and has_perm('technician.worklist') else 'order_detail',order_id=o.id)}}">
+{{'فتح الحالة' if ui_lang=='ar' else 'Open'}}
+</a>
+
+<form method="post"
+      action="{{url_for('resolve_returned_case',event_id=ev.id)}}"
+      style="margin-top:8px">
+
+<input name="note"
+       placeholder="{{'ما الذي تم استكماله؟'
+         if ui_lang=='ar'
+         else 'What was completed?'}}">
+
+<button class="btn primary"
+        type="submit">
+✅ {{'تم الاستكمال وإرجاعها للطبيب'
+     if ui_lang=='ar'
+     else 'Complete & Return to Doctor'}}
+</button>
+
+</form>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+</table>
+</div>
+
+{% else %}
+
+<div style="text-align:center;padding:40px">
+<div style="font-size:38px">✅</div>
+<h3>
+{{'لا توجد حالات معلقة تحتاج إجراء'
+  if ui_lang=='ar'
+  else 'No returned cases need action'}}
+</h3>
+</div>
+
+{% endif %}
+
+</div>
+
+{% endblock %}

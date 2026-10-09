@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block page_title %}{{ ui_phrase('Booking Availability / إتاحة الحجز') }}{% endblock %}
+{% block subtitle %}Control which examinations are bookable in each branch{% endblock %}
+{% block content %}
+<div class="panel booking-availability-toolbar">
+<form method="get">
+<label>{{ ui_phrase('Branch / الفرع') }}</label>
+<select name="branch_id" onchange="this.form.submit()">
+{% for b in branches %}<option value="{{b.id}}" {% if b.id==branch_id %}selected{% endif %}>{{b.name}}</option>{% endfor %}
+</select>
+</form>
+<form method="post" action="{{url_for('admin_booking_availability_seed')}}">
+<button class="btn">Initialize Current Procedures</button>
+</form>
+</div>
+
+<div class="panel">
+<table>
+<thead><tr><th>{{ ui_phrase('Code') }}</th><th>{{ ui_phrase('Modality') }}</th><th>{{ ui_phrase('Procedure') }}</th><th>Arabic</th><th>{{ ui_phrase('Duration') }}</th><th>{{ ui_phrase('Booking') }}</th><th>{{ ui_phrase('Change') }}</th></tr></thead>
+<tbody>
+{% for r in rows %}
+<tr>
+<td><b>{{r.procedure.code}}</b></td>
+<td>{{r.procedure.modality}}</td>
+<td>{{r.procedure.name}}</td>
+<td dir="rtl">{{r.procedure.name_ar}}</td>
+<td>{{r.procedure.duration_min}} {{ ui_phrase('min') }}</td>
+<td>{% if r.available %}<span class="availability-ok">{{ ui_phrase('AVAILABLE') }}</span>{% else %}<span class="availability-blocked">NOT AVAILABLE</span>{% endif %}</td>
+<td>
+<form method="post">
+<input type="hidden" name="branch_id" value="{{branch_id}}">
+<input type="hidden" name="procedure_id" value="{{r.procedure.id}}">
+{% if r.available %}
+<input type="hidden" name="active" value="0"><button class="btn small">{{ ui_phrase('Disable') }}</button>
+{% else %}
+<input type="hidden" name="active" value="1"><button class="btn small primary">{{ ui_phrase('Enable') }}</button>
+{% endif %}
+</form>
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<div class="panel">
+<h3>Booking restrictions applied automatically</h3>
+<p>Inactive branch · unavailable procedure · wrong branch · wrong modality · inactive device · booking disabled · out of service · maintenance · outside working hours · maintenance block · overlapping appointment.</p>
+</div>
+{% endblock %}

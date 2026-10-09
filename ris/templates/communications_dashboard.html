@@ -1,0 +1,1560 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+.rb-comms-page{
+ max-width:1500px;
+ margin:0 auto;
+ padding:18px;
+}
+
+.rb-comms-head{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:16px;
+ margin-bottom:16px;
+}
+
+.rb-comms-head-left{
+ display:flex;
+ align-items:center;
+ gap:12px;
+}
+
+.rb-comms-main-icon{
+ width:48px;
+ height:48px;
+ border-radius:15px;
+ background:#2563eb;
+ color:white;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-size:25px;
+}
+
+.rb-comms-head h1{
+ margin:0;
+ font-size:27px;
+}
+
+.rb-comms-head p{
+ margin:4px 0 0;
+ color:#64748b;
+ font-size:13px;
+}
+
+.rb-tabs{
+ display:flex;
+ gap:8px;
+ margin-bottom:16px;
+ border-bottom:1px solid #e2e8f0;
+ overflow:auto;
+}
+
+.rb-tab{
+ padding:11px 15px;
+ border:0;
+ background:transparent;
+ cursor:pointer;
+ color:#64748b;
+ font-weight:700;
+ border-bottom:3px solid transparent;
+ white-space:nowrap;
+}
+
+.rb-tab.active{
+ color:#2563eb;
+ border-bottom-color:#2563eb;
+}
+
+.rb-tab.waiting{
+ color:#dc2626;
+}
+
+.rb-tab .count{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ min-width:20px;
+ height:20px;
+ padding:0 5px;
+ border-radius:999px;
+ background:#e2e8f0;
+ font-size:11px;
+ margin-inline-start:5px;
+}
+
+.rb-layout{
+ display:grid;
+ grid-template-columns:340px minmax(0,1fr);
+ gap:16px;
+}
+
+.rb-panel{
+ background:white;
+ border:1px solid #e2e8f0;
+ border-radius:18px;
+ box-shadow:0 8px 24px rgba(15,23,42,.05);
+}
+
+.rb-queue-panel{
+ overflow:hidden;
+}
+
+.rb-panel-title{
+ padding:14px 16px;
+ border-bottom:1px solid #e2e8f0;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+}
+
+.rb-panel-title strong{
+ font-size:15px;
+}
+
+.rb-refresh{
+ border:0;
+ background:#eff6ff;
+ color:#2563eb;
+ width:34px;
+ height:34px;
+ border-radius:10px;
+ cursor:pointer;
+}
+
+.rb-request-list{
+ padding:10px;
+ max-height:720px;
+ overflow:auto;
+}
+
+.rb-request{
+ border:1px solid #e2e8f0;
+ border-radius:14px;
+ padding:12px;
+ margin-bottom:9px;
+ cursor:pointer;
+ transition:.15s;
+ position:relative;
+}
+
+.rb-request:hover{
+ border-color:#93c5fd;
+ transform:translateY(-1px);
+}
+
+.rb-request.active{
+ border-color:#2563eb;
+ background:#eff6ff;
+}
+
+.rb-request.waiting{
+ border-color:#f87171;
+ background:#fff7f7;
+}
+
+.rb-request-row{
+ display:flex;
+ justify-content:space-between;
+ gap:10px;
+}
+
+.rb-request-name{
+ font-weight:800;
+ font-size:15px;
+}
+
+.rb-request-time{
+ font-size:12px;
+ color:#64748b;
+}
+
+.rb-phone{
+ color:#2563eb;
+ font-size:13px;
+ margin-top:4px;
+ direction:ltr;
+ text-align:right;
+}
+
+.rb-request-message{
+ margin-top:7px;
+ font-size:13px;
+ color:#475569;
+}
+
+.rb-badges{
+ display:flex;
+ gap:5px;
+ flex-wrap:wrap;
+ margin-top:9px;
+}
+
+.rb-badge{
+ display:inline-flex;
+ align-items:center;
+ padding:4px 7px;
+ border-radius:999px;
+ font-size:10px;
+ font-weight:800;
+ background:#eef2ff;
+ color:#4338ca;
+}
+
+.rb-badge.red{
+ background:#fee2e2;
+ color:#b91c1c;
+}
+
+.rb-badge.green{
+ background:#dcfce7;
+ color:#166534;
+}
+
+.rb-badge.orange{
+ background:#ffedd5;
+ color:#c2410c;
+}
+
+.rb-detail-wrap{
+ display:flex;
+ flex-direction:column;
+ gap:14px;
+}
+
+.rb-detail-card{
+ background:#fff;
+ border:1px solid #e2e8f0;
+ border-radius:18px;
+ box-shadow:0 8px 24px rgba(15,23,42,.05);
+ padding:17px;
+}
+
+.rb-empty{
+ text-align:center;
+ padding:90px 20px;
+ color:#64748b;
+}
+
+.rb-detail-header{
+ display:flex;
+ justify-content:space-between;
+ gap:14px;
+ align-items:flex-start;
+ padding-bottom:14px;
+ border-bottom:1px solid #e2e8f0;
+}
+
+.rb-ref{
+ font-size:18px;
+ font-weight:900;
+ direction:ltr;
+ text-align:left;
+}
+
+.rb-state{
+ padding:7px 12px;
+ border-radius:999px;
+ background:#fee2e2;
+ color:#b91c1c;
+ font-weight:800;
+ font-size:12px;
+}
+
+.rb-patient-summary{
+ display:grid;
+ grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:0;
+ margin-top:14px;
+ border:1px solid #e2e8f0;
+ border-radius:14px;
+ overflow:hidden;
+}
+
+.rb-summary-cell{
+ padding:13px;
+ border-left:1px solid #e2e8f0;
+}
+
+.rb-summary-cell:last-child{
+ border-left:0;
+}
+
+.rb-summary-cell span{
+ display:block;
+ color:#64748b;
+ font-size:11px;
+ margin-bottom:5px;
+}
+
+.rb-summary-cell strong{
+ font-size:14px;
+}
+
+.rb-actions{
+ display:flex;
+ gap:9px;
+ flex-wrap:wrap;
+ margin-top:15px;
+}
+
+.rb-action{
+ border:0;
+ border-radius:10px;
+ padding:10px 15px;
+ font-weight:800;
+ cursor:pointer;
+}
+
+.rb-action.blue{
+ background:#2563eb;
+ color:white;
+}
+
+.rb-action.green{
+ background:#16a34a;
+ color:white;
+}
+
+.rb-action.red{
+ background:#dc2626;
+ color:white;
+}
+
+.rb-action.gray{
+ background:#f1f5f9;
+ color:#334155;
+}
+
+.rb-bottom-grid{
+ display:grid;
+ grid-template-columns:1fr 1fr 1.15fr;
+ gap:14px;
+}
+
+.rb-mini-card{
+ background:white;
+ border:1px solid #e2e8f0;
+ border-radius:16px;
+ padding:15px;
+ min-height:260px;
+}
+
+.rb-mini-card h3{
+ margin:0 0 14px;
+ font-size:16px;
+ color:#1e3a8a;
+}
+
+.rb-fields{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:9px;
+}
+
+.rb-field label{
+ display:block;
+ color:#64748b;
+ font-size:11px;
+ margin-bottom:4px;
+}
+
+.rb-field input,
+.rb-field select{
+ width:100%;
+ border:1px solid #cbd5e1;
+ border-radius:9px;
+ padding:9px;
+}
+
+.rb-attachment{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:9px;
+ padding:9px 0;
+ border-bottom:1px solid #f1f5f9;
+}
+
+.rb-attachment:last-child{
+ border-bottom:0;
+}
+
+.rb-file-icon{
+ width:34px;
+ height:34px;
+ border-radius:9px;
+ background:#fee2e2;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ flex:none;
+}
+
+.rb-attachment-name{
+ flex:1;
+ min-width:0;
+}
+
+.rb-attachment-name a{
+ color:#1e3a8a;
+ font-weight:700;
+ text-decoration:none;
+}
+
+.rb-attachment-name small{
+ display:block;
+ color:#64748b;
+ margin-top:2px;
+}
+
+.rb-attachment-actions button{
+ border:0;
+ width:28px;
+ height:28px;
+ border-radius:8px;
+ cursor:pointer;
+}
+
+.rb-chat-status{
+ display:inline-flex;
+ gap:6px;
+ align-items:center;
+ color:#166534;
+ background:#dcfce7;
+ border-radius:999px;
+ padding:5px 8px;
+ font-size:11px;
+ font-weight:800;
+ margin-bottom:8px;
+}
+
+.rb-chat-messages{
+ height:280px;
+ overflow:auto;
+ background:#f8fafc;
+ border-radius:12px;
+ padding:10px;
+}
+
+.rb-msg{
+ max-width:88%;
+ padding:9px 11px;
+ border-radius:11px;
+ margin:6px 0;
+ font-size:13px;
+ line-height:1.5;
+}
+
+.rb-msg.patient{
+ background:#dbeafe;
+ margin-right:auto;
+}
+
+.rb-msg.staff{
+ background:#dcfce7;
+}
+
+.rb-msg.bot{
+ background:#f1f5f9;
+}
+
+.rb-msg.system{
+ background:#fef3c7;
+}
+
+.rb-reply{
+ display:flex;
+ gap:7px;
+ margin-top:8px;
+}
+
+.rb-reply input{
+ flex:1;
+ border:1px solid #cbd5e1;
+ border-radius:10px;
+ padding:10px;
+}
+
+.rb-reply button{
+ border:0;
+ background:#2563eb;
+ color:white;
+ border-radius:10px;
+ width:42px;
+ cursor:pointer;
+}
+
+.rb-no-data{
+ color:#64748b;
+ font-size:13px;
+}
+
+@media(max-width:1150px){
+
+ .rb-layout{
+   grid-template-columns:1fr;
+ }
+
+ .rb-request-list{
+   max-height:300px;
+ }
+
+ .rb-bottom-grid{
+   grid-template-columns:1fr;
+ }
+
+}
+
+@media(max-width:750px){
+
+ .rb-patient-summary{
+   grid-template-columns:1fr 1fr;
+ }
+
+ .rb-fields{
+   grid-template-columns:1fr;
+ }
+
+}
+
+</style>
+
+
+<div class="rb-comms-page">
+
+<div class="rb-comms-head">
+
+<div class="rb-comms-head-left">
+
+<div class="rb-comms-main-icon">
+💬
+</div>
+
+<div>
+<h1>Patient Communications</h1>
+<p>طلبات المرضى، الشات، المرفقات وتأكيد البيانات.</p>
+</div>
+
+</div>
+
+</div>
+
+
+<div class="rb-tabs">
+
+<button
+ class="rb-tab active"
+ data-filter="ALL"
+ onclick="setFilter('ALL',this)">
+
+{{ ui_phrase('الكل') }}
+<span class="count" id="rbCountAll">0</span>
+
+</button>
+
+<button
+ class="rb-tab waiting"
+ data-filter="WAITING"
+ onclick="setFilter('WAITING',this)">
+
+قيد الانتظار
+<span class="count" id="rbCountWaiting">0</span>
+
+</button>
+
+<button
+ class="rb-tab"
+ data-filter="IN_PROGRESS"
+ onclick="setFilter('IN_PROGRESS',this)">
+
+{{ ui_phrase('قيد التنفيذ') }}
+<span class="count" id="rbCountProgress">0</span>
+
+</button>
+
+<button
+ class="rb-tab"
+ data-filter="CONFIRMED"
+ onclick="setFilter('CONFIRMED',this)">
+
+مؤكدة
+<span class="count" id="rbCountConfirmed">0</span>
+
+</button>
+
+</div>
+
+
+<div class="rb-layout">
+
+
+<div class="rb-panel rb-queue-panel">
+
+<div class="rb-panel-title">
+
+<strong>
+Waiting / Active Requests
+</strong>
+
+<button
+ class="rb-refresh"
+ onclick="loadQueue()">
+↻
+</button>
+
+</div>
+
+<div
+ id="rbQueue"
+ class="rb-request-list">
+
+جاري التحميل...
+
+</div>
+
+</div>
+
+
+<div class="rb-detail-wrap">
+
+<div
+ id="rbEmpty"
+ class="rb-detail-card rb-empty">
+
+اختر طلباً من القائمة لعرض التفاصيل.
+
+</div>
+
+
+<div
+ id="rbDetail"
+ style="display:none">
+
+<div class="rb-detail-card">
+
+<div class="rb-detail-header">
+
+<div>
+
+<div
+ id="rbTitle"
+ class="rb-ref">
+</div>
+
+</div>
+
+<div
+ id="rbState"
+ class="rb-state">
+
+قيد الانتظار
+
+</div>
+
+</div>
+
+
+<div class="rb-patient-summary">
+
+<div class="rb-summary-cell">
+<span>{{ ui_phrase('اسم المريض') }}</span>
+<strong id="rbSummaryName">-</strong>
+</div>
+
+<div class="rb-summary-cell">
+<span>رقم الموبايل</span>
+<strong id="rbSummaryPhone">-</strong>
+</div>
+
+<div class="rb-summary-cell">
+<span>{{ ui_phrase('الحجز / Accession') }}</span>
+<strong id="rbSummaryBooking">-</strong>
+</div>
+
+<div class="rb-summary-cell">
+<span>{{ ui_phrase('نوع الطلب') }}</span>
+<strong id="rbSummaryType">-</strong>
+</div>
+
+</div>
+
+
+<div class="rb-actions">
+
+<button
+ class="rb-action blue"
+ onclick="claimCurrent()">
+👤 استلام الطلب
+</button>
+
+<button
+ class="rb-action green"
+ onclick="confirmCurrent()">
+✓ تأكيد البيانات
+</button>
+
+<button
+ class="rb-action red"
+ onclick="rejectCurrent()">
+✕ رفض الطلب
+</button>
+
+<button
+ class="rb-action gray"
+ onclick="callCurrentPatient()">
+☎ اتصال بالمريض
+</button>
+
+</div>
+
+</div>
+
+
+<div class="rb-bottom-grid">
+
+
+<div class="rb-mini-card">
+
+<h3>
+البيانات الأساسية
+</h3>
+
+<div class="rb-fields">
+
+<div class="rb-field">
+<label>{{ ui_phrase('الاسم') }}</label>
+<input id="rbPatientName">
+</div>
+
+<div class="rb-field">
+<label>{{ ui_phrase('الموبايل') }}</label>
+<input id="rbPhone">
+</div>
+
+<div class="rb-field">
+<label>Booking / Accession</label>
+<input id="rbBooking">
+</div>
+
+<div class="rb-field">
+<label>{{ ui_phrase('نوع الطلب') }}</label>
+
+<select id="rbType">
+
+<option value="BOOKING">{{ ui_phrase('Booking') }}</option>
+<option value="REPORT">{{ ui_phrase('Report') }}</option>
+<option value="PRICE">{{ ui_phrase('Price') }}</option>
+<option value="APPOINTMENT">Appointment</option>
+<option value="COMPLAINT">Complaint</option>
+<option value="OTHER">{{ ui_phrase('Other') }}</option>
+
+</select>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="rb-mini-card">
+
+<h3>
+{{ ui_phrase('المرفقات') }}
+</h3>
+
+<div id="rbAttachments">
+<span class="rb-no-data">
+لا توجد مرفقات
+</span>
+</div>
+
+</div>
+
+
+<div class="rb-mini-card">
+
+<h3>
+{{ ui_phrase('المحادثة') }}
+</h3>
+
+<div class="rb-chat-status">
+● محادثة نشطة
+</div>
+
+<div
+ id="rbMessages"
+ class="rb-chat-messages">
+</div>
+
+<div class="rb-reply">
+
+<input
+ id="rbReply"
+ placeholder="اكتب الرد...">
+
+<button
+ onclick="sendReply()">
+➤
+</button>
+
+</div>
+
+</div>
+
+
+</div>
+
+</div>
+
+</div>
+
+
+</div>
+
+</div>
+
+
+<script>
+
+let currentRequest=null;
+let allRequests=[];
+let currentFilter='ALL';
+
+
+async function api(
+ url,
+ options={}
+){
+
+ const r=
+   await fetch(
+     url,
+     {
+       credentials:
+         'same-origin',
+       ...options
+     }
+   );
+
+ return await r.json();
+
+}
+
+
+function statusClass(status){
+
+ if(
+   status==='WAITING_HUMAN' ||
+   status==='NEW'
+ ){
+   return 'red';
+ }
+
+ if(status==='CONFIRMED'){
+   return 'green';
+ }
+
+ return 'orange';
+
+}
+
+
+function matchesFilter(x){
+
+ if(currentFilter==='ALL')
+    return true;
+
+ if(currentFilter==='WAITING'){
+
+   return (
+     x.status==='WAITING_HUMAN' ||
+     x.status==='NEW'
+   );
+
+ }
+
+ return x.status===currentFilter;
+
+}
+
+
+function setFilter(
+ filter,
+ button
+){
+
+ currentFilter=filter;
+
+ document
+ .querySelectorAll('.rb-tab')
+ .forEach(x=>
+   x.classList.remove('active')
+ );
+
+ button.classList.add('active');
+
+ renderQueue();
+
+}
+
+
+function updateCounters(){
+
+ const all=
+   allRequests.length;
+
+ const waiting=
+   allRequests.filter(
+     x=>
+       x.status==='WAITING_HUMAN' ||
+       x.status==='NEW'
+   ).length;
+
+ const progress=
+   allRequests.filter(
+     x=>x.status==='IN_PROGRESS'
+   ).length;
+
+ const confirmed=
+   allRequests.filter(
+     x=>x.status==='CONFIRMED'
+   ).length;
+
+
+ document.getElementById(
+   'rbCountAll'
+ ).textContent=all;
+
+ document.getElementById(
+   'rbCountWaiting'
+ ).textContent=waiting;
+
+ document.getElementById(
+   'rbCountProgress'
+ ).textContent=progress;
+
+ document.getElementById(
+   'rbCountConfirmed'
+ ).textContent=confirmed;
+
+}
+
+
+function renderQueue(){
+
+ const box=
+   document.getElementById(
+     'rbQueue'
+   );
+
+ box.innerHTML='';
+
+
+ const rows=
+   allRequests.filter(
+     matchesFilter
+   );
+
+
+ if(!rows.length){
+
+   box.innerHTML=
+     '<div class="rb-no-data">'+
+     'لا توجد طلبات في هذه القائمة'+
+     '</div>';
+
+   return;
+
+ }
+
+
+ rows.forEach(x=>{
+
+   const div=
+     document.createElement(
+       'div'
+     );
+
+
+   const waiting=
+     x.status==='WAITING_HUMAN' ||
+     x.status==='NEW';
+
+
+   div.className=
+     'rb-request '+
+     (waiting?'waiting ':'')+
+     (
+       currentRequest &&
+       currentRequest.id===x.id
+       ? 'active'
+       : ''
+     );
+
+
+   const created=
+     x.created_at
+       ? new Date(
+           x.created_at
+         ).toLocaleTimeString(
+           'en-US',
+           {
+             hour:'2-digit',
+             minute:'2-digit'
+           }
+         )
+       : '';
+
+
+   div.innerHTML=
+
+     '<div class="rb-request-row">'+
+       '<div>'+
+         '<div class="rb-request-name">'+
+           (x.patient_name || 'Unknown')+
+         '</div>'+
+         '<div class="rb-phone">'+
+           (x.phone || '')+
+         '</div>'+
+       '</div>'+
+       '<div class="rb-request-time">'+
+         created+
+       '</div>'+
+     '</div>'+
+
+     '<div class="rb-request-message">'+
+       (
+         x.message ||
+         'طلب تواصل من المريض'
+       )+
+     '</div>'+
+
+     '<div class="rb-badges">'+
+
+       '<span class="rb-badge '+
+       statusClass(x.status)+
+       '">'+
+       x.status+
+       '</span>'+
+
+       '<span class="rb-badge">'+
+       (x.request_type || 'OTHER')+
+       '</span>'+
+
+     '</div>';
+
+
+   div.onclick=()=>{
+     selectRequest(x);
+   };
+
+
+   box.appendChild(div);
+
+ });
+
+}
+
+
+async function loadQueue(){
+
+ const j=
+   await api(
+     '/api/staff/communications/queue'
+   );
+
+
+ if(!j.ok)
+    return;
+
+
+ allRequests=
+   j.items || [];
+
+
+ updateCounters();
+ renderQueue();
+
+}
+
+
+async function selectRequest(x){
+
+ currentRequest=x;
+
+ renderQueue();
+
+
+ document.getElementById(
+   'rbEmpty'
+ ).style.display='none';
+
+
+ document.getElementById(
+   'rbDetail'
+ ).style.display='block';
+
+
+ document.getElementById(
+   'rbTitle'
+ ).textContent=
+   x.reference || '';
+
+
+ document.getElementById(
+   'rbState'
+ ).textContent=
+   x.status || '';
+
+
+ document.getElementById(
+   'rbSummaryName'
+ ).textContent=
+   x.patient_name || '-';
+
+
+ document.getElementById(
+   'rbSummaryPhone'
+ ).textContent=
+   x.phone || '-';
+
+
+ document.getElementById(
+   'rbSummaryBooking'
+ ).textContent=
+   x.booking_reference || '-';
+
+
+ document.getElementById(
+   'rbSummaryType'
+ ).textContent=
+   x.request_type || '-';
+
+
+ document.getElementById(
+   'rbPatientName'
+ ).value=
+   x.patient_name || '';
+
+
+ document.getElementById(
+   'rbPhone'
+ ).value=
+   x.phone || '';
+
+
+ document.getElementById(
+   'rbBooking'
+ ).value=
+   x.booking_reference || '';
+
+
+ document.getElementById(
+   'rbType'
+ ).value=
+   x.request_type || 'OTHER';
+
+
+ await Promise.all([
+   loadMessages(),
+   loadAttachments()
+ ]);
+
+}
+
+
+async function claimCurrent(){
+
+ if(!currentRequest)
+    return;
+
+
+ await api(
+   '/api/staff/communications/'+
+   currentRequest.id+
+   '/claim',
+   {
+     method:'POST'
+   }
+ );
+
+
+ await loadQueue();
+
+}
+
+
+async function confirmCurrent(){
+
+ if(!currentRequest)
+    return;
+
+
+ await api(
+   '/api/staff/communications/'+
+   currentRequest.id+
+   '/confirm',
+   {
+     method:'POST',
+
+     headers:{
+       'Content-Type':
+         'application/json'
+     },
+
+     body:JSON.stringify({
+
+       patient_name:
+         document.getElementById(
+           'rbPatientName'
+         ).value,
+
+       phone:
+         document.getElementById(
+           'rbPhone'
+         ).value,
+
+       booking_reference:
+         document.getElementById(
+           'rbBooking'
+         ).value,
+
+       request_type:
+         document.getElementById(
+           'rbType'
+         ).value
+
+     })
+   }
+ );
+
+
+ await loadQueue();
+
+}
+
+
+async function rejectCurrent(){
+
+ if(!currentRequest)
+    return;
+
+
+ if(
+   !confirm(
+     'هل تريد رفض الطلب؟'
+   )
+ ){
+   return;
+ }
+
+
+ await api(
+   '/api/staff/communications/'+
+   currentRequest.id+
+   '/reject',
+   {
+     method:'POST'
+   }
+ );
+
+
+ currentRequest=null;
+
+
+ document.getElementById(
+   'rbDetail'
+ ).style.display='none';
+
+
+ document.getElementById(
+   'rbEmpty'
+ ).style.display='block';
+
+
+ await loadQueue();
+
+}
+
+
+function callCurrentPatient(){
+
+ if(
+   !currentRequest ||
+   !currentRequest.phone
+ ){
+   return;
+ }
+
+ window.location.href=
+   'tel:'+
+   currentRequest.phone;
+
+}
+
+
+async function loadMessages(){
+
+ if(!currentRequest)
+    return;
+
+
+ const j=
+   await api(
+     '/api/staff/chat/'+
+     currentRequest.id+
+     '/messages'
+   );
+
+
+ const box=
+   document.getElementById(
+     'rbMessages'
+   );
+
+
+ box.innerHTML='';
+
+
+ if(!j.ok)
+    return;
+
+
+ j.messages.forEach(m=>{
+
+   const div=
+     document.createElement(
+       'div'
+     );
+
+
+   div.className=
+     'rb-msg '+
+     String(
+       m.sender_type || ''
+     ).toLowerCase();
+
+
+   div.textContent=
+     m.message;
+
+
+   box.appendChild(div);
+
+ });
+
+
+ box.scrollTop=
+   box.scrollHeight;
+
+}
+
+
+async function sendReply(){
+
+ if(!currentRequest)
+    return;
+
+
+ const input=
+   document.getElementById(
+     'rbReply'
+   );
+
+
+ const message=
+   input.value.trim();
+
+
+ if(!message)
+    return;
+
+
+ await api(
+   '/api/staff/chat/'+
+   currentRequest.id+
+   '/message',
+   {
+     method:'POST',
+
+     headers:{
+       'Content-Type':
+         'application/json'
+     },
+
+     body:JSON.stringify({
+       message
+     })
+   }
+ );
+
+
+ input.value='';
+
+ await loadMessages();
+
+}
+
+
+async function loadAttachments(){
+
+ if(!currentRequest)
+    return;
+
+
+ const j=
+   await api(
+     '/api/staff/communications/'+
+     currentRequest.id+
+     '/attachments'
+   );
+
+
+ const box=
+   document.getElementById(
+     'rbAttachments'
+   );
+
+
+ box.innerHTML='';
+
+
+ if(
+   !j.ok ||
+   !j.attachments.length
+ ){
+
+   box.innerHTML=
+     '<span class="rb-no-data">'+
+     'لا توجد مرفقات'+
+     '</span>';
+
+   return;
+
+ }
+
+
+ j.attachments.forEach(a=>{
+
+   const div=
+     document.createElement(
+       'div'
+     );
+
+
+   div.className=
+     'rb-attachment';
+
+
+   div.innerHTML=
+
+     '<div class="rb-file-icon">📄</div>'+
+
+     '<div class="rb-attachment-name">'+
+       '<a target="_blank" href="'+
+       a.view_url+
+       '">'+
+       a.original_filename+
+       '</a>'+
+       '<small>'+
+       a.attachment_type+
+       ' · '+
+       a.verification_status+
+       '</small>'+
+     '</div>'+
+
+     '<div class="rb-attachment-actions">'+
+       '<button onclick="verifyAttachment('+
+       a.id+
+       ')">✓</button>'+
+       '<button onclick="rejectAttachment('+
+       a.id+
+       ')">✕</button>'+
+     '</div>';
+
+
+   box.appendChild(div);
+
+ });
+
+}
+
+
+async function verifyAttachment(id){
+
+ await api(
+   '/api/staff/attachments/'+
+   id+
+   '/verify',
+   {
+     method:'POST'
+   }
+ );
+
+ await loadAttachments();
+
+}
+
+
+async function rejectAttachment(id){
+
+ await api(
+   '/api/staff/attachments/'+
+   id+
+   '/reject',
+   {
+     method:'POST'
+   }
+ );
+
+ await loadAttachments();
+
+}
+
+
+document.getElementById(
+ 'rbReply'
+).addEventListener(
+ 'keydown',
+ e=>{
+
+   if(e.key==='Enter'){
+
+     e.preventDefault();
+     sendReply();
+
+   }
+
+ }
+);
+
+
+loadQueue();
+
+
+setInterval(
+ ()=>{
+
+   loadQueue();
+
+   if(currentRequest){
+
+     loadMessages();
+     loadAttachments();
+
+   }
+
+ },
+ 3000
+);
+
+</script>
+
+{% endblock %}

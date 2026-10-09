@@ -1,0 +1,655 @@
+{% extends "base.html" %}
+{% block page_title %}Deletion Preview{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <h2>Granular Data Deletion Preview</h2>
+  <p>
+    Read-only preview. No RIS, PACS, report,
+    patient, or file data is deleted from this page.
+  </p>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <div class="panel" style="min-width:300px">
+      <h3>Order Preview</h3>
+      <label>{{ ui_phrase('Order ID') }}</label>
+      <input id="rb-preview-order-id"
+             type="number"
+             min="1"
+             placeholder="{{ ui_phrase('Order ID') }}">
+      <button type="button"
+              onclick="rbOpenOrderPreview()">
+        Preview Order
+      </button>
+    </div>
+
+    <div class="panel" style="min-width:300px">
+      <h3>Patient Preview</h3>
+      <label>Patient database ID</label>
+      <input id="rb-preview-patient-id"
+             type="number"
+             min="1"
+             placeholder="Patient DB ID">
+      <button type="button"
+              onclick="rbOpenPatientPreview()">
+        Preview Patient
+      </button>
+    </div>
+  </div>
+</div>
+
+{% if preview %}
+<div class="panel">
+  <h3>
+    Preview:
+    {{ preview.kind }}
+  </h3>
+
+  {% if preview.kind == 'ORDER' %}
+    <p>
+      <strong>Patient:</strong>
+      {{ preview.patient.patient_id or '—' }}
+      —
+      {{ preview.patient.name or '—' }}
+    </p>
+
+    <p>
+      <strong>Order:</strong>
+      {{ preview.order.id }}
+      |
+      <strong>{{ ui_phrase('Accession:') }}</strong>
+      {{ preview.order.accession or '—' }}
+    </p>
+
+    <table>
+      <tr>
+        <th>Domain</th>
+        <th>{{ ui_phrase('Status') }}</th>
+        <th>{{ ui_phrase('Details') }}</th>
+      </tr>
+
+      <tr>
+        <td>PACS Images</td>
+        <td>
+          {% if not preview.pacs.linked %}
+            NONE / NOT LINKED
+          {% elif preview.pacs.present == true %}
+            PRESENT
+          {% elif preview.pacs.present == false
+                and preview.pacs.status == 'IMAGES_DELETED' %}
+            DELETED
+          {% elif preview.pacs.present == false %}
+            MISSING — REVIEW
+          {% else %}
+            REVIEW
+          {% endif %}
+        </td>
+        <td>
+          {{ ui_phrase('Study') }} {{ preview.pacs.study_id or '—' }};
+          images {{ preview.pacs.image_count }};
+          status {{ preview.pacs.status or '—' }}
+        </td>
+      </tr>
+
+      <tr>
+        <td>{{ ui_phrase('Reports') }}</td>
+        <td>
+          {% if preview.reports.count %}
+            PRESENT
+          {% else %}
+            NONE
+          {% endif %}
+        </td>
+        <td>
+          {{ preview.reports.count }} row(s);
+          FINAL:
+          {% if preview.reports.final_present %}
+            YES
+          {% else %}
+            NO
+          {% endif %}
+        </td>
+      </tr>
+
+      <tr>
+        <td>RIS Dependencies</td>
+        <td>
+          {{ preview.ris_dependencies.active_table_count }}
+          active table(s)
+        </td>
+        <td>
+          {{ preview.ris_dependencies.row_count }}
+          dependent row(s)
+          across
+          {{ preview.ris_dependencies.table_count }}
+          FK relation(s)
+        </td>
+      </tr>
+    </table>
+
+    <h3>Deletion Actions — Preview State</h3>
+
+    <table>
+      <tr>
+        <th>{{ ui_phrase('Action') }}</th>
+        <th>Current State</th>
+      </tr>
+      <tr>
+        <td>Delete PACS Images Only</td>
+        <td>
+          {% if preview.kind == 'ORDER'
+                and preview.pacs
+                and preview.pacs.present
+                and preview.pacs.image_count > 0
+                and preview.pacs.status != 'IMAGES_DELETED' %}
+            ENABLED — CONFIRMATION REQUIRED
+          {% else %}
+            NOT AVAILABLE — NO PACS IMAGES
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Delete Reports Only</td>
+        <td>
+          {% if preview.reports_only.can_delete_reports_only %}
+            PREFLIGHT READY — EXECUTION NOT ENABLED
+          {% else %}
+            BLOCKED / REVIEW REQUIRED
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Delete RIS Case Data Only</td>
+        <td>
+          {% if preview.ris_case_only.can_prepare_execution %}
+            PREFLIGHT READY — EXECUTION NOT IMPLEMENTED
+          {% else %}
+            BLOCKED / REVIEW REQUIRED
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Full Case Deletion</td>
+        <td>
+          {% if preview.full_case_orchestration.can_execute_full_case %}
+            PLAN READY — CONTROLLED EXECUTION AVAILABLE
+          {% else %}
+            BLOCKED / REVIEW REQUIRED
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+
+    <!-- RB_FULL_CASE_ORCHESTRATION_PREVIEW_UI_V1 -->
+    <div class="panel">
+      <h3>Full Case Deletion — Controlled Orchestration Preview</h3>
+      <p>
+        Read-only plan only. No PACS, report, RIS, patient, audit, or file data
+        is changed here. Future execution must stop immediately if any stage fails.
+      </p>
+
+      <table>
+        <tr><th>Sequence</th><th>Stage</th><th>{{ ui_phrase('State') }}</th><th>Future confirmation</th></tr>
+        {% for stage in preview.full_case_orchestration.stages %}
+        <tr>
+          <td>{{ stage.sequence }}</td>
+          <td>{{ stage.code }}</td>
+          <td>{{ stage.state }}</td>
+          <td>{{ 'REQUIRED' if stage.future_confirmation_required else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+
+      <p>
+        <strong>Required sequence:</strong>
+        {{ preview.full_case_orchestration.required_sequence | join(' → ') }}
+      </p>
+      <p>
+        <strong>Patient preserved:</strong>
+        {{ 'YES' if preview.full_case_orchestration.patient_preserved else 'NO' }}
+        |
+        <strong>Audit append-only:</strong>
+        {{ 'YES' if preview.full_case_orchestration.audit_append_only else 'NO' }}
+        |
+        <strong>Stop on stage failure:</strong>
+        {{ 'YES' if preview.full_case_orchestration.stop_on_stage_failure else 'NO' }}
+      </p>
+      <p>
+        <strong>Can prepare Full Case execution:</strong>
+        {{ 'YES' if preview.full_case_orchestration.can_execute_full_case else 'NO' }}
+        |
+        <strong>Execution enabled:</strong> {{ 'YES' if preview.full_case_orchestration.execution_enabled else 'NO' }}
+      </p>
+
+      {% if preview.full_case_orchestration.blockers %}
+        <h4>Full Case blockers</h4>
+        <ul>
+        {% for blocker in preview.full_case_orchestration.blockers %}
+          <li>{{ blocker }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if preview.full_case_orchestration.warnings %}
+        <h4>Full Case warnings</h4>
+        <ul>
+        {% for warning in preview.full_case_orchestration.warnings %}
+          <li>{{ warning }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+
+
+      {% if preview.full_case_orchestration.can_execute_full_case
+            and preview.full_case_orchestration.execution_enabled %}
+        <div class="panel">
+          <h4>Execute Full Case Deletion</h4>
+          <p>
+            Permanent staged execution: PACS Images Only → Reports Only → RIS Case Data Only.
+            Patient and audit history are preserved. Execution stops immediately when any stage fails.
+          </p>
+          <form
+            method="post"
+            action="{{ url_for('granular_delete_order_full_case', order_id=preview.order.id) }}"
+            onsubmit="return confirm('Permanently execute Full Case Deletion in the required three-stage sequence?');"
+          >
+            <label>
+              Type accession exactly
+              <input type="text" name="confirm_accession" autocomplete="off" required>
+            </label>
+            <label>
+              {{ ui_phrase('Reason') }}
+              <textarea name="reason" minlength="5" required></textarea>
+            </label>
+            <button type="submit" class="danger">Execute Full Case Deletion</button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+
+<!-- RB_GRANULAR_DELETE_IMAGES_ONLY_UI_V2 -->
+{% if preview.kind == 'ORDER'
+      and preview.pacs
+      and preview.pacs.present
+                and preview.pacs.image_count > 0
+                and preview.pacs.status != 'IMAGES_DELETED' %}
+
+<div class="panel">
+  <h3>Delete PACS Images Only</h3>
+
+  <p>
+    This operation deletes only the linked PACS study images.
+    Patient, order, reports, attachments, workflow history,
+    and audit history remain.
+  </p>
+
+  <p>
+    <strong>{{ ui_phrase('Accession:') }}</strong>
+    {{ preview.order.accession }}
+  </p>
+
+  <form
+    method="post"
+    action="{{ url_for(
+      'granular_delete_order_images_only',
+      order_id=preview.order.id
+    ) }}"
+    onsubmit="return confirm(
+      'Permanently delete PACS images for this order?'
+    );"
+  >
+    <label>
+      Type accession exactly
+      <input
+        type="text"
+        name="confirm_accession"
+        autocomplete="off"
+        required
+      >
+    </label>
+
+    <label>
+      {{ ui_phrase('Reason') }}
+      <textarea
+        name="reason"
+        minlength="5"
+        required
+      ></textarea>
+    </label>
+
+    <button
+      type="submit"
+      class="danger"
+    >
+      Delete PACS Images Only
+    </button>
+  </form>
+</div>
+
+{% endif %}
+
+    <h3>Delete Reports Only — Dependency Preview</h3>
+    <p>
+      Read-only preflight only. This section does not delete reports,
+      files, leases, workflow rows, PACS images, or RIS case data.
+    </p>
+    <table>
+      <tr><th>{{ ui_phrase('Check') }}</th><th>{{ ui_phrase('Result') }}</th></tr>
+      <tr><td>Report rows</td><td>{{ preview.reports_only.report_count }}</td></tr>
+      <tr><td>ReportVersion rows</td><td>{{ preview.reports_only.version_count }}</td></tr>
+      <tr><td>CoordinatorTask rows</td><td>{{ preview.reports_only.coordinator_task_count }}</td></tr>
+      <tr><td>Active edit leases</td><td>{{ preview.reports_only.lease.active_count }}</td></tr>
+      <tr><td>Expired edit leases</td><td>{{ preview.reports_only.lease.expired_count }}</td></tr>
+      <tr><td>Report artifacts</td><td>{{ preview.reports_only.storage.artifact_count }}</td></tr>
+      <tr><td>Unsafe artifact paths</td><td>{{ preview.reports_only.storage.unsafe_path_count }}</td></tr>
+      <tr><td>Missing artifacts</td><td>{{ preview.reports_only.storage.missing_artifact_count }}</td></tr>
+      <tr>
+        <td>Reports-only readiness</td>
+        <td>
+          {% if preview.reports_only.can_delete_reports_only %}
+            READY — SUPER ADMIN CONFIRMATION REQUIRED
+          {% else %}
+            {{ ui_phrase('BLOCKED') }}
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+
+    {% if preview.reports_only.blockers %}
+      <h4>Reports-only blockers</h4>
+      <ul>
+      {% for blocker in preview.reports_only.blockers %}
+        <li>{{ blocker }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if preview.reports_only.warnings %}
+      <h4>Reports-only warnings</h4>
+      <ul>
+      {% for warning in preview.reports_only.warnings %}
+        <li>{{ warning }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if preview.reports_only.can_delete_reports_only %}
+      <div class="panel">
+        <h4>Delete Reports Only</h4>
+        <p>
+          Super Admin controlled execution. This removes Report and
+          ReportVersion rows and quarantines this case's report files.
+          Order, Patient, PACS images/state, CoordinatorTask, and Audit
+          history are not deleted. Any CoordinatorTask or active lease
+          blocks execution before this form is enabled.
+        </p>
+        <form
+          method="post"
+          action="{{ url_for(
+            'granular_delete_order_reports_only',
+            order_id=preview.order.id
+          ) }}"
+          onsubmit="return confirm(
+            'Delete report records and quarantine report files for this order?'
+          );"
+        >
+          <label>
+            Type accession exactly
+            <input
+              type="text"
+              name="confirm_accession"
+              autocomplete="off"
+              required
+            >
+          </label>
+          <label>
+            {{ ui_phrase('Reason') }}
+            <textarea
+              name="reason"
+              minlength="5"
+              required
+            ></textarea>
+          </label>
+          <button type="submit" class="danger">
+            Delete Reports Only
+          </button>
+        </form>
+      </div>
+    {% endif %}
+
+    {% if preview.reports_only.storage.artifacts %}
+      <h4>Report artifact inventory</h4>
+      <table>
+        <tr><th>{{ ui_phrase('Path') }}</th><th>Exists</th><th>Inside case root</th></tr>
+        {% for artifact in preview.reports_only.storage.artifacts %}
+        <tr>
+          <td>{{ artifact.path }}</td>
+          <td>{{ 'YES' if artifact.exists else 'NO' }}</td>
+          <td>{{ 'YES' if artifact.inside_case_root else 'NO' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+
+    {% if preview.safety.blockers %}
+<h3>Safety Blockers</h3>
+      <ul>
+      {% for blocker in preview.safety.blockers %}
+        <li>{{ blocker }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+    <h3>Delete RIS Case Data Only — Read-Only Preflight</h3>
+    <p>
+      This preview is read-only. The protected executor preserves the patient, PACS images,
+      report files, attachment/document files, and audit history. Reports must already be zero.
+    </p>
+    <table>
+      <tr><th>{{ ui_phrase('Check') }}</th><th>{{ ui_phrase('Result') }}</th></tr>
+      <tr><td>Patient preserved</td><td>{{ 'YES' if preview.ris_case_only.patient_preserved else 'NO' }}</td></tr>
+      <tr><td>PACS images preserved</td><td>{{ 'YES' if preview.ris_case_only.pacs_images_preserved else 'NO' }}</td></tr>
+      <tr><td>Audit history preserved</td><td>{{ 'YES' if preview.ris_case_only.audit_history_preserved else 'NO' }}</td></tr>
+      <tr><td>Report rows blocking</td><td>{{ preview.ris_case_only.report_count }}</td></tr>
+      <tr><td>Active report edit leases</td><td>{{ preview.ris_case_only.lease.active_count }}</td></tr>
+      <tr><td>Rows classified for future DELETE</td><td>{{ preview.ris_case_only.safe_delete_row_count }}</td></tr>
+      <tr><td>Rows classified for future NULLIFY</td><td>{{ preview.ris_case_only.safe_nullify_row_count }}</td></tr>
+      <tr>
+        <td>RIS-case preflight</td>
+        <td>
+          {% if preview.ris_case_only.can_prepare_execution %}
+            READY — EXECUTION REQUIRES EXACT ACCESSION + REASON
+          {% else %}
+            {{ ui_phrase('BLOCKED') }}
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+
+    {% if preview.ris_case_only.blockers %}
+      <h4>RIS-case blockers</h4>
+      <ul>
+      {% for blocker in preview.ris_case_only.blockers %}
+        <li>{{ blocker }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if preview.ris_case_only.can_prepare_execution and preview.ris_case_only.execution_implemented %}
+      <div class="danger-zone">
+        <h4>Protected RIS Case Data execution</h4>
+        <p>Order is deleted last. Patient, PACS images, report files, attachment/document files, and audit history are preserved.</p>
+        <form
+          method="post"
+          action="{{ url_for('granular_delete_order_ris_case_data_only', order_id=preview.order.id) }}"
+          onsubmit="return confirm('Delete RIS case data for this order while preserving Patient/PACS/files/audit?');"
+        >
+          <label>
+            Type accession exactly
+            <input type="text" name="confirm_accession" autocomplete="off" required>
+          </label>
+          <label>
+            {{ ui_phrase('Reason') }}
+            <textarea name="reason" minlength="5" required></textarea>
+          </label>
+          <button type="submit" class="danger">Delete RIS Case Data Only</button>
+        </form>
+      </div>
+    {% endif %}
+
+    {% if preview.ris_case_only.warnings %}
+      <h4>RIS-case warnings</h4>
+      <ul>
+      {% for warning in preview.ris_case_only.warnings %}
+        <li>{{ warning }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+    <h4>RIS-case dependency policy</h4>
+    <table>
+      <tr>
+        <th>Table</th>
+        <th>Column</th>
+        <th>Rows</th>
+        <th>Classification</th>
+        <th>Future action</th>
+        <th>{{ ui_phrase('State') }}</th>
+      </tr>
+      {% for row in preview.ris_case_only.rows %}
+      <tr>
+        <td>{{ row.table }}</td>
+        <td>{{ row.column }}</td>
+        <td>{{ 'REVIEW' if row.count is none else row.count }}</td>
+        <td>{{ row.classification }}</td>
+        <td>{{ row.action }}</td>
+        <td>{{ 'BLOCK' if row.blocking else ui_phrase('OK') }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h3>RIS Dependency Detail</h3>
+
+    <table>
+      <tr>
+        <th>Table</th>
+        <th>Class</th>
+        <th>Rows</th>
+      </tr>
+
+      {% for row in preview.ris_dependencies.rows %}
+      <tr>
+        <td>{{ row.table }}</td>
+        <td>{{ row.classification }}</td>
+        <td>
+          {% if row.count is none %}
+            REVIEW
+          {% else %}
+            {{ row.count }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+  {% elif preview.kind == 'PATIENT' %}
+
+    <p>
+      <strong>Patient:</strong>
+      {{ preview.patient.patient_id or '—' }}
+      —
+      {{ preview.patient.name or '—' }}
+    </p>
+
+    <table>
+      <tr>
+        <th>{{ ui_phrase('Orders') }}</th>
+        <th>{{ ui_phrase('Appointments') }}</th>
+        <th>{{ ui_phrase('Reports') }}</th>
+        <th>PACS Cases</th>
+        <th>Active Cases</th>
+      </tr>
+      <tr>
+        <td>{{ preview.summary.order_count }}</td>
+        <td>{{ preview.summary.appointment_count }}</td>
+        <td>{{ preview.summary.report_count }}</td>
+        <td>{{ preview.summary.pacs_linked_case_count }}</td>
+        <td>{{ preview.summary.active_case_count }}</td>
+      </tr>
+    </table>
+
+    <h3>{{ ui_phrase('Orders') }}</h3>
+
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>{{ ui_phrase('Accession') }}</th>
+        <th>{{ ui_phrase('Status') }}</th>
+        <th>PACS Study</th>
+        <th>{{ ui_phrase('Images') }}</th>
+        <th>{{ ui_phrase('Reports') }}</th>
+      </tr>
+
+      {% for row in preview.orders %}
+      <tr>
+        <td>{{ row.id }}</td>
+        <td>{{ row.accession or '—' }}</td>
+        <td>{{ row.status or '—' }}</td>
+        <td>{{ row.pacs_study_id or '—' }}</td>
+        <td>{{ row.pacs_image_count }}</td>
+        <td>{{ row.report_count }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h3>Full Patient Purge</h3>
+    <p>
+      BLOCKED — preview only.
+    </p>
+
+    {% if preview.safety.blockers %}
+      <ul>
+      {% for blocker in preview.safety.blockers %}
+        <li>{{ blocker }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+
+  {% endif %}
+</div>
+{% endif %}
+
+<script>
+function rbOpenOrderPreview(){
+  const value=document
+    .getElementById('rb-preview-order-id')
+    .value
+    .trim();
+
+  if(!value){
+    return;
+  }
+
+  window.location.href=
+    '/admin/cancellation-center/order/'
+    + encodeURIComponent(value)
+    + '/preview';
+}
+
+function rbOpenPatientPreview(){
+  const value=document
+    .getElementById('rb-preview-patient-id')
+    .value
+    .trim();
+
+  if(!value){
+    return;
+  }
+
+  window.location.href=
+    '/admin/cancellation-center/patient/'
+    + encodeURIComponent(value)
+    + '/preview';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ 'تصحيحات التقارير الخاصة بي' if ui_lang=='ar' else 'My Report Corrections' }}{% endblock %}
+{% block content %}
+<p>{{'الطلبات التي أرسلتها والتصحيحات المسندة إليك، دون تغيير قائمة الحالات الأصلية أو أعدادها.' if ui_lang=='ar' else 'Requests you submitted and corrections assigned to you, independently from the original case list and counts.'}}</p>
+{% for row in revisions %}{% set order=orders[row.order_id] %}<article class="panel">
+<h3>{{order.accession}} — {{order.patient.name}}</h3><b>{{row.kind}} #{{row.revision_no}} · {{row.status}}</b><p>{{row.reason}}</p>
+<a class="btn primary" href="{{url_for('report_revision_view',revision_id=row.id)}}">{{'فتح التصحيح' if ui_lang=='ar' else 'Open correction'}}</a>
+</article>{% else %}<div class="panel">{{'لا توجد تصحيحات أو طلبات مرتبطة بحسابك.' if ui_lang=='ar' else 'No corrections or requests are linked to your account.'}}</div>{% endfor %}
+{% endblock %}

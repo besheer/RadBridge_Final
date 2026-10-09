@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block page_title %}Assignment Process Dashboard{% endblock %}
+{% block content %}
+
+<div class="metric-grid">
+  {% for key,value in stats.items() %}
+  <div class="metric-card">
+    <b>{{value}}</b>
+    <span>{{key.replace('_',' ')|title}}</span>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="panel">
+  <form method="get" class="actions">
+    <label>
+      Process State
+      <select name="state">
+        {% for value,label in [
+          ('ALL','All Operations'),
+          ('READY_UNASSIGNED','Ready / Unassigned'),
+          ('PENDING_OFFER','Pending Offer'),
+          ('ASSIGNED','Assigned'),
+          ('RETURNED','Returned / Action Required'),
+          ('BLOCKED','Blocked'),
+          ('WAITING_READINESS','Waiting Readiness'),
+          ('OVERDUE','Overdue'),
+          ('FINALIZED','Finalized')
+        ] %}
+        <option value="{{value}}" {% if selected_state==value %}selected{% endif %}>
+          {{label}}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      {{ ui_phrase('Current Owner') }}
+      <select name="owner">
+        <option value="ALL">All Owners</option>
+        {% for value in owners %}
+        <option value="{{value}}" {% if selected_owner==value %}selected{% endif %}>
+          {{value}}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <button class="btn primary" type="submit">{{ ui_phrase('Apply Filters') }}</button>
+    <a class="btn" href="{{url_for('assignment_dashboard')}}">Reset</a>
+    <a class="btn" href="{{url_for('returned_cases_queue')}}">{{ ui_phrase('Returned Cases') }}</a>
+    <a class="btn" href="{{url_for('assignment_reports')}}">Detailed Report</a>
+    <a class="btn" href="{{url_for('assignment_report_csv')}}">{{ ui_phrase('Export CSV') }}</a>
+  </form>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>{{ ui_phrase('Accession') }}</th>
+      <th>{{ ui_phrase('Patient') }}</th>
+      <th>Process State</th>
+      <th>{{ ui_phrase('Current Owner') }}</th>
+      <th>{{ ui_phrase('Readiness') }}</th>
+      <th>{{ ui_phrase('Active Doctor') }}</th>
+      <th>{{ ui_phrase('Offers') }}</th>
+      <th>{{ ui_phrase('Return Reason') }}</th>
+      <th>{{ ui_phrase('TAT') }}</th>
+      <th>{{ ui_phrase('Action') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for x in rows %}
+    <tr>
+      <td>{{x.order.accession}}</td>
+      <td>{{x.order.patient.name}}</td>
+      <td><span class="badge">{{x.process_state}}</span></td>
+      <td>{{x.process_owner or '-'}}</td>
+      <td>{{x.readiness.status if x.readiness else '-'}}</td>
+      <td>{{x.assignment.doctor_user_id if x.assignment else '-'}}</td>
+      <td>{{x.offer_attempts}} / {{x.last_offer_status or '-'}}</td>
+      <td>{{x.return_reason if x.return_open else '-'}}</td>
+      <td>{{x.tat.total_min}} {{ ui_phrase('min') }}</td>
+      <td>
+        <a class="btn" href="{{url_for('order_detail',order_id=x.order.id)}}">{{ ui_phrase('Open') }}</a>
+        {% if x.return_open %}
+        <a class="btn primary" href="{{url_for('returned_cases_queue')}}">Resolve Return</a>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="10">No cases match the selected filters.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+Correction Execution Queue
+{% endblock %}
+
+{% block subtitle %}
+Approved correction requests — preview, claim and hold only
+{% endblock %}
+
+{% block content %}
+
+<div class="panel danger-zone-note">
+  <b>Phase 2A safety mode:</b>
+  this workspace cannot delete images, cancel cases,
+  merge patients, re-map studies, modify demographics,
+  or alter reports.
+</div>
+
+<div class="panel">
+  <h3>Approved Requests Waiting for Ledger</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{{ ui_phrase('Request') }}</th>
+        <th>{{ ui_phrase('Order') }}</th>
+        <th>{{ ui_phrase('Issue') }}</th>
+        <th>Requester / Reviewer</th>
+        <th>{{ ui_phrase('Ledger') }}</th>
+      </tr>
+    </thead>
+
+    <tbody>
+    {% for item in approved_rows %}
+      {% set r=item.request %}
+      {% set e=item.execution %}
+
+      <tr>
+        <td>
+          #{{r.id}}<br>
+          <small>{{r.status}}</small>
+        </td>
+
+        <td>
+          #{{r.order_id}}
+          —
+          {{r.order.accession if r.order else '—'}}
+          <br>
+          <small>
+            {{r.branch.name if r.branch else 'No branch'}}
+          </small>
+        </td>
+
+        <td>
+          <b>{{r.request_type}}</b><br>
+          {{r.reason}}
+        </td>
+
+        <td>
+          Requester:
+          {{r.requester.full_name if r.requester else r.requested_by}}
+          <br>
+          Reviewer:
+          {{r.assignee.full_name if r.assignee else r.assigned_to}}
+        </td>
+
+        <td>
+          {% if e %}
+            Ledger #{{e.id}}
+            —
+            {{e.status}}
+            —
+            v{{e.state_version}}
+          {% else %}
+            <form
+              method="post"
+              action="{{url_for(
+                'correction_execution_prepare_route',
+                request_id=r.id
+              )}}"
+            >
+              <button class="btn primary">
+                Prepare Execution Ledger
+              </button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+
+    {% else %}
+      <tr>
+        <td colspan="5">
+          No approved requests available for execution preparation.
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+
+<div class="panel">
+  <h3>Execution Ledgers</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{{ ui_phrase('Ledger') }}</th>
+        <th>{{ ui_phrase('Order') }}</th>
+        <th>{{ ui_phrase('Type') }}</th>
+        <th>{{ ui_phrase('Status') }}</th>
+        <th>{{ ui_phrase('Claim') }}</th>
+        <th>Safety State</th>
+      </tr>
+    </thead>
+
+    <tbody>
+    {% for e in executions %}
+      <tr>
+        <td>
+          #{{e.id}}
+          <br>
+          <small>
+            Request #{{e.correction_request_id}}
+          </small>
+        </td>
+
+        <td>
+          #{{e.order_id}}
+          <br>
+          <small>
+            {{ ui_phrase('Branch') }} {{e.branch_id or '—'}}
+          </small>
+        </td>
+
+        <td>{{e.execution_type}}</td>
+
+        <td>
+          <b>{{e.status}}</b>
+          <br>
+          <small>
+            State version {{e.state_version}}
+          </small>
+        </td>
+
+        <td>
+          {% if e.status == 'READY_FOR_EXECUTION' %}
+            <form
+              method="post"
+              action="{{url_for(
+                'correction_execution_claim_route',
+                execution_id=e.id
+              )}}"
+            >
+              <input
+                type="hidden"
+                name="expected_version"
+                value="{{e.state_version}}"
+              >
+              <button class="btn">
+                {{ ui_phrase('Claim') }}
+              </button>
+            </form>
+
+          {% elif e.status == 'CLAIMED_FOR_EXECUTION' %}
+
+            <form
+              method="post"
+              action="{{url_for(
+                'correction_execution_hold_route',
+                execution_id=e.id
+              )}}"
+            >
+              <input
+                type="hidden"
+                name="expected_version"
+                value="{{e.state_version}}"
+              >
+              <button class="btn">
+                {{ ui_phrase('Hold') }}
+              </button>
+            </form>
+
+          {% elif e.status == 'ON_HOLD' %}
+
+            <form
+              method="post"
+              action="{{url_for(
+                'correction_execution_release_route',
+                execution_id=e.id
+              )}}"
+            >
+              <input
+                type="hidden"
+                name="expected_version"
+                value="{{e.state_version}}"
+              >
+              <button class="btn">
+                {{ ui_phrase('Release') }}
+              </button>
+            </form>
+
+          {% else %}
+            <small>
+              No Phase 2A action available.
+            </small>
+          {% endif %}
+        </td>
+
+        <td>
+          Preview / workflow state only.
+          <br>
+          <b>No destructive execution enabled.</b>
+        </td>
+      </tr>
+
+    {% else %}
+      <tr>
+        <td colspan="6">
+          No execution ledgers exist.
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

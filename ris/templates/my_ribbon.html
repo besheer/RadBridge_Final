@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block page_title %}{{'شريط الاختصارات' if ui_lang=='ar' else 'My Ribbon'}}{% endblock %}
+{% block subtitle %}{{'اختر الاختصارات المسموح بها ورتبها حسب استخدامك.' if ui_lang=='ar' else 'Choose allowed shortcuts and order them for your workflow.'}}{% endblock %}
+{% block content %}
+<div class="panel">
+<table>
+<thead><tr>
+<th>{{'الأيقونة' if ui_lang=='ar' else 'Icon'}}</th>
+<th>{{'الإجراء' if ui_lang=='ar' else 'Action'}}</th>
+<th>{{'القسم' if ui_lang=='ar' else 'Context'}}</th>
+<th>{{'الصلاحية' if ui_lang=='ar' else 'Permission'}}</th>
+<th>{{'ظاهر' if ui_lang=='ar' else 'Visible'}}</th>
+<th>{{'الترتيب' if ui_lang=='ar' else 'Order'}}</th>
+<th></th>
+</tr></thead>
+<tbody>
+{% for a in actions %}
+{% if not a.required_permission or has_perm(a.required_permission) %}
+{% set c=custom.get(a.id) %}
+<tr>
+<form method="post">
+<td class="ribbon-icon">{{a.icon}}</td>
+<td><b>{{a.label_ar if ui_lang=='ar' and a.label_ar else a.label_en}}</b></td>
+<td>{{a.context}}</td>
+<td><code>{{a.required_permission or '-'}}</code></td>
+<td><select name="visible"><option value="1" {% if not c or c.visible %}selected{% endif %}>{{'نعم' if ui_lang=='ar' else 'Yes'}}</option><option value="0" {% if c and not c.visible %}selected{% endif %}>{{'لا' if ui_lang=='ar' else 'No'}}</option></select></td>
+<td><input type="number" name="order_no" value="{{c.order_no if c else a.order_no}}" min="1" style="width:90px"></td>
+<td><input type="hidden" name="action_id" value="{{a.id}}"><button class="btn small primary">{{'حفظ' if ui_lang=='ar' else 'Save'}}</button></td>
+</form>
+</tr>
+{% endif %}
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}

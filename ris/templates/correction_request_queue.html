@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block page_title %}Correction Requests{% endblock %}
+{% block subtitle %}Coordinator review queue — approval does not execute a destructive action{% endblock %}
+{% block content %}
+<div class="panel">
+  <form method="get" class="actions">
+    <label>{{ ui_phrase('Status') }}
+      <select name="status">
+        {% for item in statuses %}<option value="{{item}}" {% if item==status %}selected{% endif %}>{{item}}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn">{{ ui_phrase('Filter') }}</button>
+    <a class="btn" href="{{url_for('correction_center')}}">Correction Center</a>
+  </form>
+</div>
+<div class="panel">
+  <table>
+    <thead><tr><th>{{ ui_phrase('Request') }}</th><th>{{ ui_phrase('Case') }}</th><th>Requester</th><th>{{ ui_phrase('Issue') }}</th><th>{{ ui_phrase('Status') }}</th><th>Review</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>#{{r.id}}<br><small>{{r.created_at}}</small></td>
+        <td>{{ ui_phrase('Order #') }}{{r.order_id}}<br><b>{{r.order.accession if r.order else '—'}}</b><br>{{r.order.patient.patient_id if r.order and r.order.patient else '—'}} — {{r.order.patient.name if r.order and r.order.patient else '—'}}<br><small>{{r.branch.name if r.branch else 'No branch'}}</small></td>
+        <td>{{r.requester.full_name if r.requester else r.requested_by}}</td>
+        <td><b>{{r.request_type}}{% if r.demographic_detail %}<br><a href="{{url_for('patient_demographics_correction_view',request_id=r.id)}}">{{ ui_phrase('القيم والتأثير / Values and impact') }}</a>{% endif %}</b><br>{{r.reason}}</td>
+        <td>{{r.status}}<br><small>{{r.assignee.full_name if r.assignee else ui_phrase('Unassigned')}}</small></td>
+        <td>
+          <form method="post" action="{{url_for('correction_request_action',request_id=r.id)}}">
+            <input type="hidden" name="return_status" value="{{status}}">
+            <input name="note" placeholder="Coordinator note (required for decisions)">
+            {% if r.status in ('NEW','NEED_INFO','UNDER_REVIEW') %}
+              <button class="btn" name="action" value="CLAIM">{{ ui_phrase('Claim') }}</button>
+              <button class="btn" name="action" value="NEED_INFO">{{ ui_phrase('Need Info') }}</button>
+              <button class="btn primary" name="action" value="APPROVE">{{ ui_phrase('Approve') }}</button>
+              <button class="btn danger" name="action" value="REJECT">{{ ui_phrase('Reject') }}</button>
+            {% elif r.status == 'APPROVED' %}
+              <small>Approved — waiting for a dedicated protected correction action.</small>
+            {% endif %}
+          </form>
+          {% if r.review_note %}<small>{{r.review_note}}</small>{% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6">No requests in this queue.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="panel danger-zone-note"><b>Four-eyes rule:</b> the requester cannot approve or reject their own request. Approval records a decision only; it does not execute deletion, cancellation, merge, or PACS re-mapping.</div>
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+🛡 {{'الموافقات الطبية' if ui_lang=='ar' else 'Medical Approvals'}}
+{% endblock %}
+
+{% block subtitle %}
+{{'متابعة سريعة وواضحة لحالات الموافقات' if ui_lang=='ar'
+   else 'Simple approval tracking'}}
+{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+
+  <div class="actions">
+
+    <a class="btn {% if view=='pending' %}primary{% endif %}"
+       href="{{url_for('insurance_approvals_dashboard',view='pending')}}">
+      🟡 {{'المعلقة' if ui_lang=='ar' else 'Pending'}}
+      ({{counts.pending}})
+    </a>
+
+    <a class="btn {% if view=='approved' %}primary{% endif %}"
+       href="{{url_for('insurance_approvals_dashboard',view='approved')}}">
+      🟢 {{'تمت الموافقة' if ui_lang=='ar' else 'Approved'}}
+      ({{counts.approved}})
+    </a>
+
+    <a class="btn {% if view=='action' %}primary{% endif %}"
+       href="{{url_for('insurance_approvals_dashboard',view='action')}}">
+      🔴 {{'تحتاج تدخل' if ui_lang=='ar' else 'Action Required'}}
+      ({{counts.action}})
+    </a>
+
+    <a class="btn {% if view=='all' %}primary{% endif %}"
+       href="{{url_for('insurance_approvals_dashboard',view='all')}}">
+      {{'الكل' if ui_lang=='ar' else 'All'}}
+      ({{counts.all}})
+    </a>
+
+  </div>
+
+</div>
+
+
+<div class="panel">
+
+{% if rows %}
+
+<table>
+<thead>
+<tr>
+  <th>{{'المريض' if ui_lang=='ar' else 'Patient'}}</th>
+  <th>{{'الفحص' if ui_lang=='ar' else 'Exam'}}</th>
+  <th>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</th>
+  <th>{{'الجهة' if ui_lang=='ar' else 'Payer'}}</th>
+  <th>{{'الحالة' if ui_lang=='ar' else 'Status'}}</th>
+  <th>{{'الطريقة' if ui_lang=='ar' else 'Method'}}</th>
+  <th>{{'منذ' if ui_lang=='ar' else 'Waiting'}}</th>
+  <th></th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for a in rows %}
+
+{% set o=a.order %}
+{% set st=a.status or 'REQUIRED' %}
+
+<tr>
+
+<td>
+  <b>{{o.patient.name if o and o.patient else ''}}</b>
+  <small style="display:block">
+    {{o.patient.patient_id if o and o.patient else ''}}
+  </small>
+</td>
+
+<td>
+  {{o.procedure if o else ''}}
+  <small style="display:block">
+    {{o.accession if o else ''}}
+  </small>
+</td>
+
+<td>
+  {{o.branch.name if o and o.branch else ''}}
+</td>
+
+<td>
+  {{a.payer_name or (o.contract.name if o and o.contract else '')}}
+</td>
+
+<td>
+
+{% if st=='APPROVED' %}
+  🟢 <b>{{'موافق' if ui_lang=='ar' else 'Approved'}}</b>
+
+{% elif st=='REJECTED' %}
+  🔴 <b>{{'مرفوض' if ui_lang=='ar' else 'Rejected'}}</b>
+
+{% elif st=='NEED_INFO' %}
+  🟠 <b>{{'مطلوب استكمال' if ui_lang=='ar' else 'Need Info'}}</b>
+
+{% elif st=='ERROR' %}
+  🔴 <b>{{'مشكلة' if ui_lang=='ar' else 'Error'}}</b>
+
+{% elif st in ['PENDING','SUBMITTED'] %}
+  🟡 <b>{{'تحت المراجعة' if ui_lang=='ar' else 'Pending'}}</b>
+
+{% else %}
+  ⚪ <b>{{'مطلوبة' if ui_lang=='ar' else 'Required'}}</b>
+{% endif %}
+
+{% if a.approval_no %}
+<small style="display:block">
+  # {{a.approval_no}}
+</small>
+{% endif %}
+
+</td>
+
+<td>
+  {% if a.method=='AUTO' %}
+    ⚡ {{'تلقائي' if ui_lang=='ar' else 'Automatic'}}
+  {% elif a.method=='MANUAL' %}
+    ✋ {{'يدوي' if ui_lang=='ar' else 'Manual'}}
+  {% else %}
+    {{a.method}}
+  {% endif %}
+</td>
+
+<td>
+
+{% if a.requested_at %}
+  {% set mins=((now-a.requested_at).total_seconds()/60)|int %}
+
+  {% if mins < 60 %}
+    {{mins}} {{'دقيقة' if ui_lang=='ar' else 'min'}}
+
+  {% elif mins < 1440 %}
+    {{(mins/60)|int}} {{'ساعة' if ui_lang=='ar' else 'hr'}}
+
+  {% else %}
+    {{(mins/1440)|int}} {{'يوم' if ui_lang=='ar' else 'day'}}
+  {% endif %}
+
+{% else %}
+  —
+{% endif %}
+
+</td>
+
+<td>
+{% if o %}
+<a class="btn primary"
+   href="{{url_for('order_detail',order_id=o.id)}}">
+  {{'فتح' if ui_lang=='ar' else 'Open'}}
+</a>
+{% endif %}
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+</table>
+
+{% else %}
+
+<div style="text-align:center;padding:35px">
+  <div style="font-size:38px">🛡</div>
+  <h3>
+    {{'لا توجد حالات في هذه القائمة' if ui_lang=='ar'
+      else 'No approvals in this list'}}
+  </h3>
+</div>
+
+{% endif %}
+
+</div>
+
+{% endblock %}

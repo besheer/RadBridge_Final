@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block page_title %}{{ ui_phrase('Smart Intake / التسجيل الذكي') }}{% endblock %}
+{% block content %}
+<div class="panel smart-intake-hero"><h2>ابدأ بالمستند أو بالطريقة التقليدية</h2>
+<p>ارفع بطاقة، كارنيه، روشتة أو موافقة أولًا؛ النظام يستخرج البيانات ويعرضها للمراجعة قبل الحفظ.</p>
+<form method="post"><button class="btn primary">{{ ui_phrase('+ New Smart Intake') }}</button></form>
+<a class="btn" href="{{url_for('new_order')}}">Manual Registration</a></div>
+<div class="panel"><h3>Recent Sessions</h3>{% for r in recent %}<a class="intake-session-row" href="{{url_for('smart_intake_workspace',intake_id=r.id)}}">#{{r.id}} · {{r.status}} · {{r.updated_at}}</a>{% else %}<p>—</p>{% endfor %}</div>
+{% endblock %}

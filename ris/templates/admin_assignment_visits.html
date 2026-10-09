@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block page_title %}{{'ربط فحوصات المريض في زيارة واحدة' if ui_lang=='ar' else 'Patient Visit Assignment'}}{% endblock %}
+{% block content %}{% if reference and reference.assignment_visit_id %}<form class="panel" method="post" action="{{url_for('complete_visit_registration',visit_id=reference.assignment_visit_id)}}"><button class="btn">{{ ui_phrase('إنهاء إضافة فحوصات الزيارة / Complete Visit Registration') }}</button></form>{% endif %}<div class="panel"><a class="btn" href="{{url_for('admin_assignment_monitor')}}">{{'متابعة الأطباء والحالات' if ui_lang=='ar' else 'Doctors & Cases Monitor'}}</a> <a class="btn" href="{{url_for('coordinator_assignments')}}">{{'منسق التوزيع' if ui_lang=='ar' else 'Assignment Coordinator'}}</a></div>
+<div class="panel">
+<p>{{'اجمع فحوصات المريض في الزيارة نفسها، واختر الطبيب المفضل لكتابة تقاريرها. يجب أن يكون مؤهلًا ولديه سعة للمجموعة كلها؛ وإلا تنتقل المجموعة كلها لطبيب مؤهل آخر دون تقسيمها. كل فحص يحتفظ بتقريره المستقل.' if ui_lang=='ar' else 'Group this visit’s examinations and choose a preferred reporting doctor. The doctor must qualify and have capacity for the entire group; otherwise another doctor receives the whole group. Visits are never split. Each examination keeps its own report.'}}</p>
+<form method="get"><label>{{'رقم أمر فحص من الزيارة' if ui_lang=='ar' else 'Reference order ID'}}<input type="number" name="order_id" min="1" value="{{reference.id if reference else ''}}" required></label><button class="btn">{{'عرض فحوصات المريض' if ui_lang=='ar' else 'Show Patient Examinations'}}</button></form>
+</div>
+{% if reference %}
+<div class="panel">
+<h3>{{reference.patient.name}} · {{reference.patient.patient_id}} · {{reference.scheduled.date()}}</h3>
+<p>{{'اختر فحوصات الزيارة فقط. لا تُجمع زيارات مختلفة تلقائيًا بمجرد تطابق المريض. الحجز متعدد الفحوصات يحصل على رقم زيارة مشترك تلقائيًا.' if ui_lang=='ar' else 'Select examinations from this visit only. Matching patient IDs alone never combines separate visits. Multi-examination bookings automatically receive a shared visit ID.'}}</p>
+<form method="post">
+<input type="hidden" name="reference_id" value="{{reference.id}}">
+<div class="table-wrap"><table><thead><tr><th>{{'اختيار' if ui_lang=='ar' else 'Select'}}</th><th>ID</th><th>{{'الفحص' if ui_lang=='ar' else 'Examination'}}</th><th>{{'الحالة' if ui_lang=='ar' else 'Status'}}</th><th>{{'زيارة' if ui_lang=='ar' else 'Visit'}}</th><th>{{'الطبيب' if ui_lang=='ar' else 'Doctor'}}</th></tr></thead><tbody>
+{% for o in orders %}<tr><td><input type="checkbox" name="order_ids" value="{{o.id}}" {% if o.id==reference.id or (reference.assignment_visit_id and o.assignment_visit_id==reference.assignment_visit_id) %}checked{% endif %}></td><td>{{o.id}}</td><td>{{o.modality}} · {{o.procedure}}</td><td>{{o.status}}</td><td>{{o.assignment_visit_id or '—'}}</td><td>{{o.assigned_doctor.full_name if o.assigned_doctor else '—'}}</td></tr>{% endfor %}
+</tbody></table></div>
+<label>{{'الطبيب المفضل لكل فحوصات الزيارة' if ui_lang=='ar' else 'Preferred doctor for this visit'}}<select name="preferred_doctor_id"><option value="">{{'اختيار تلقائي' if ui_lang=='ar' else 'Automatic selection'}}</option>{% for d in doctors %}<option value="{{d.id}}" {% if visit and visit.preferred_doctor_id==d.id %}selected{% endif %}>{{d.full_name or d.username}}</option>{% endfor %}</select></label>
+<p>{{'هذا الاختيار يحدد أولوية التوزيع ولا ينقل حالات بدأ العمل عليها. استخدم الإسناد اليدوي لنقل حالة مباشرة؛ واليدوي يظل مستبعدًا من السحب.' if ui_lang=='ar' else 'This preference guides future distribution and does not move cases already owned or started. Use Manual Assign for direct assignment; manual assignments remain excluded from withdrawal.'}}</p>
+<label>{{'تصنيف خاص للزيارة' if ui_lang=='ar' else 'Special visit classification'}}<select name="special_code"><option value="">{{'عادي / تطابق تلقائي حسب الفحص والأولوية' if ui_lang=='ar' else 'Normal / match procedure and priority automatically'}}</option>{% for r in special_rules if r.enabled %}<option value="{{r.code}}" {% if reference.assignment_special_code==r.code %}selected{% endif %}>{{r.label}}</option>{% endfor %}</select></label>
+<button class="btn primary">{{'حفظ مجموعة الزيارة والطبيب'  if ui_lang=='ar' else 'Save Visit Group & Doctor'}}</button>
+</form></div>{% endif %}
+{% endblock %}

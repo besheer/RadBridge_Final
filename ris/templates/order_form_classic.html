@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block page_title %}{{'التسجيل الكلاسيك' if ui_lang=='ar' else 'Classic Registration'}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  const rows=document.getElementById('attachmentRows');
+  const add=document.getElementById('addAttachmentRow');
+
+  if(!rows || !add) return;
+
+  function wire(btn) {
+    btn.addEventListener('click', function () {
+
+      const row=btn.closest('.attachment-row');
+      const all=rows.querySelectorAll('.attachment-row');
+
+      if(all.length === 1) {
+        row.querySelector('input[type=file]').value='';
+        row.querySelector('input[name="attachment_notes"]').value='';
+      } else {
+        row.remove();
+      }
+
+    });
+  }
+
+  rows.querySelectorAll('.remove-attachment-row').forEach(wire);
+
+  add.addEventListener('click', function () {
+
+    const first=rows.querySelector('.attachment-row');
+    const clone=first.cloneNode(true);
+
+    clone.querySelector('input[type=file]').value='';
+    clone.querySelector('input[name="attachment_notes"]').value='';
+
+    wire(clone.querySelector('.remove-attachment-row'));
+
+    rows.appendChild(clone);
+  });
+
+});
+</script>
+
+
+<script>
+(function(){
+ const contract=document.querySelector('.approval-contract-select');
+ const box=document.querySelector('.approval-registration-box');
+ const method=document.querySelector('.approval-method-select');
+ const numberBox=document.querySelector('.approval-number-box');
+
+ function refresh(){
+   if(!contract||!box)return;
+   const o=contract.options[contract.selectedIndex];
+   const required=o && o.dataset.approvalRequired==='1';
+
+   box.style.display=required?'block':'none';
+
+   if(numberBox)
+     numberBox.style.display=
+       required && method && method.value==='ALREADY_APPROVED'
+       ?'block':'none';
+ }
+
+ if(contract)contract.addEventListener('change',refresh);
+ if(method)method.addEventListener('change',refresh);
+ refresh();
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+{% set fd=form_data or {} %}{% set rd=registration_defaults %}
+{% set branch_value=(fd.get('branch_id')|int if fd.get('branch_id') else (rd.default_branch_id if rd else 0)) %}
+{% set procedure_value=(fd.get('procedure_id')|int if fd.get('procedure_id') else (rd.default_procedure_id if rd else 0)) %}
+{% set contract_value=(fd.get('contract_id')|int if fd.get('contract_id') else (rd.default_contract_id if rd else 0)) %}
+{% set referrer_value=(fd.get('referring_doctor_id')|int if fd.get('referring_doctor_id') else (rd.default_referrer_id if rd else 0)) %}
+{% set priority_value=(fd.get('priority') or (rd.default_priority if rd else 'ROUTINE')) %}
+{% set patient_mode_value=(fd.get('patient_mode') or (rd.default_patient_mode if rd else 'existing')) %}
+
+{% include "_registration_style_selector.html" %}
+{% include "_patient_created_banner.html" %}
+
+{% if selected_patient_obj %}
+<!-- RB_SELECTED_PATIENT_SUMMARY_V1 -->
+<div class="panel rb-selected-patient-summary"
+     style="margin:0 0 16px 0;padding:14px 16px;">
+  <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <strong>
+      {{ 'بيانات المريض المختار' if ui_lang=='ar' else 'Selected Patient' }}
+    </strong>
+
+    <span>
+      {{ selected_patient_obj.patient_id or '' }}
+    </span>
+  </div>
+
+  <div style="
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+      gap:10px;
+      margin-top:12px;
+  ">
+    <div>
+      <small>{{ 'الاسم' if ui_lang=='ar' else 'Name' }}</small><br>
+      <strong>{{ selected_patient_obj.name or '-' }}</strong>
+    </div>
+
+    <div>
+      <small>{{ 'الرقم القومي' if ui_lang=='ar' else 'National ID' }}</small><br>
+      <strong>{{ selected_patient_obj.national_id or '-' }}</strong>
+    </div>
+
+    <div>
+      <small>{{ 'تاريخ الميلاد' if ui_lang=='ar' else 'DOB' }}</small><br>
+      <strong>{{ selected_patient_obj.dob or '-' }}</strong>
+    </div>
+
+    <div>
+      <small>{{ 'النوع' if ui_lang=='ar' else 'Sex' }}</small><br>
+      <strong>{{ selected_patient_obj.sex or '-' }}</strong>
+    </div>
+
+    <div>
+      <small>{{ 'الهاتف' if ui_lang=='ar' else 'Phone' }}</small><br>
+      <strong>{{ selected_patient_obj.phone or '-' }}</strong>
+    </div>
+
+    <div>
+      <small>{{ 'العنوان' if ui_lang=='ar' else 'Address' }}</small><br>
+      <strong>{{ selected_patient_obj.address or '-' }}</strong>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+<form method="post" enctype="multipart/form-data" class="panel classic-registration"><div class="notice info validation-preserve-note">{{ ui_phrase('Validation errors keep the entered patient/visit data on this screen. Browser security may require re-selecting file attachments after a server-side validation response.') }}</div>
+<input type="hidden" name="patient_mode" id="pmode" value="{{patient_mode_value}}">
+<div class="classic-section">
+<h3>{{'بيانات المريض' if ui_lang=='ar' else 'Patient Information'}}</h3>
+<div class="grid4">
+<div><label>{{'مريض مسجل' if ui_lang=='ar' else 'Existing Patient'}}</label><select name="patient">{% for p in patients %}<option value="{{p.id}}">{{p.patient_id}} · {{p.name}} · {{p.phone or ''}}</option>{% endfor %}</select></div>
+<div><label>{{'مريض جديد' if ui_lang=='ar' else 'New Patient'}}</label><label class="switch-row"><input type="checkbox" onchange="document.getElementById('pmode').value=this.checked?'new':'existing'"> {{'تفعيل' if ui_lang=='ar' else 'Enable'}}</label></div>
+<div><label>{{'الاسم' if ui_lang=='ar' else 'Name'}}</label><input name="new_name" value="{{fd.get('new_name','')}}"></div>
+<div><label>{{'الموبايل' if ui_lang=='ar' else 'Mobile'}}</label><input name="new_phone" inputmode="numeric" pattern="[0-9]*" {% set fr=field_rules.get("patient.phone") %}{% if fr and fr.min_length is not none %}minlength="{{fr.min_length}}"{% endif %}{% if fr and fr.max_length is not none %} maxlength="{{fr.max_length}}"{% endif %}></div>
+<div><label>{{'الرقم القومي' if ui_lang=='ar' else 'National ID'}}</label><input name="new_national_id" inputmode="numeric" pattern="[0-9]*" {% set frid=field_rules.get("patient.national_id") %}{% if frid and frid.exact_length %}minlength="{{frid.exact_length}}" maxlength="{{frid.exact_length}}"{% endif %}></div>
+<div><label>{{'الجنسية' if ui_lang=='ar' else 'Nationality'}}</label><input name="new_nationality" value="{{fd.get('new_nationality','')}}"></div>
+<div><label>{{'نوع الهوية' if ui_lang=='ar' else 'ID Type'}}</label><select name="new_id_type"><option value="NATIONAL_ID">{{ ui_phrase('NATIONAL_ID') }}</option><option>PASSPORT</option><option value="OTHER">{{ ui_phrase('OTHER') }}</option></select></div>
+<div><label>{{'رقم هوية أخرى' if ui_lang=='ar' else 'Other ID'}}</label><input name="new_other_id" value="{{fd.get('new_other_id','')}}"></div>
+{% set age_dob_form=fd %}{% set age_dob_prefix='new_' %}{% include '_patient_age_dob_fields.html' %}
+<div><label>{{ ui_phrase('Sex') }}</label><select name="new_sex"><option></option><option value="M">{{ ui_phrase('Male') }}</option><option value="F">{{ ui_phrase('Female') }}</option></select></div>
+<div><label>{{ ui_phrase('Email') }}</label><input name="new_email" value="{{fd.get('new_email','')}}"></div>
+<div><label>{{'العنوان' if ui_lang=='ar' else 'Address'}}</label><input name="new_address" value="{{fd.get('new_address','')}}"></div>
+</div></div>
+
+<div class="classic-section"><h3>{{'بيانات الزيارة والخدمة' if ui_lang=='ar' else 'Visit / Service Information'}}</h3>
+<div class="grid4">
+<div><label>{{ ui_phrase('Branch') }}</label><select name="branch_id" required>{% for b in branches %}<option value="{{b.id}}" {% if branch_value==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Examination') }}</label><select name="procedure_id" required>{% for p in procedures %}<option value="{{p.id}}" {% if procedure_value==p.id %}selected{% endif %}>{{p.modality}} · {{p.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Date/Time') }}</label><input type="datetime-local" name="scheduled" required value="{{fd.get('scheduled','')}}"></div>
+<div><label>{{ ui_phrase('Priority') }}</label><select name="priority"><option {% if priority_value=="ROUTINE" %}selected{% endif %} value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option><option {% if priority_value=="URGENT" %}selected{% endif %} value="URGENT">{{ ui_phrase('URGENT') }}</option><option {% if priority_value=="STAT" %}selected{% endif %} value="STAT">{{ ui_phrase('STAT') }}</option></select></div>
+<div><label>{{ ui_phrase('Referring Doctor') }}</label><select name="referring_doctor_id"><option value="">—</option>{% for r in referrers %}<option value="{{r.id}}" {% if referrer_value==r.id %}selected{% endif %}>{{r.name}}</option>{% endfor %}</select></div>
+<div>
+<label>{{ ui_phrase('Contract') }}</label>
+<select name="contract_id" class="approval-contract-select">
+<option value="">{{ ui_phrase('Cash') }}</option>
+{% for c in contracts %}
+<option value="{{c.id}}"
+        data-approval-required="{{1 if c.approval_required else 0}}"
+        {% if contract_value==c.id %}selected{% endif %}>
+{{c.name}}
+</option>
+{% endfor %}
+</select>
+</div>
+
+<div class="approval-registration-box" style="display:none">
+<label>🛡 {{'الموافقة' if ui_lang=='ar' else 'Approval'}}</label>
+<select name="approval_method" class="approval-method-select">
+<option value="AUTO">{{ ui_phrase('⚡ Automatic') }}</option>
+<option value="MANUAL">{{ ui_phrase('✋ Manual') }}</option>
+<option value="ALREADY_APPROVED">{{ ui_phrase('📎 Already Approved') }}</option>
+</select>
+</div>
+
+<div class="approval-number-box" style="display:none">
+<label>{{ ui_phrase('Approval No.') }}</label>
+<input name="approval_no" value="{{fd.get('approval_no','')}}">
+</div>
+<div><label>{{ ui_phrase('Payment') }}</label><input type="number" step="0.01" name="payment_amount" value="{{fd.get('payment_amount','0')}}"></div>
+<div><label>{{ ui_phrase('Payment Method') }}</label><select name="payment_method"><option value=""></option><option value="CASH">{{ ui_phrase('CASH') }}</option><option>VISA</option><option>MASTERCARD</option><option value="WALLET">{{ ui_phrase('WALLET') }}</option><option value="BANK_TRANSFER">{{ ui_phrase('BANK_TRANSFER') }}</option></select></div>
+</div></div>
+
+<div class="classic-section"><h3>{{'ملاحظات ومرفقات' if ui_lang=='ar' else 'Notes / Attachments'}}</h3>
+<textarea name="clinical_note" rows="3">{{fd.get("clinical_note","")}}</textarea>
+
+<div class="multi-attachment-manager">
+  <div class="attachment-head">
+    <strong>{{'المرفقات' if ui_lang=='ar' else 'Attachments'}}</strong>
+
+    <button type="button"
+            class="btn small"
+            id="addAttachmentRow">
+      ＋ {{'إضافة مرفق' if ui_lang=='ar' else 'Add Attachment'}}
+    </button>
+  </div>
+
+  <div id="attachmentRows">
+
+    <div class="attachment-row">
+
+      <input type="file"
+             name="attachment_files"
+             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.odt,.dcm,.dicom,.zip">
+
+      <select name="attachment_categories">
+        <option value="PRESCRIPTION">{{ ui_phrase('Prescription / Referral') }}</option>
+        <option value="APPROVAL">{{ ui_phrase('Medical Approval') }}</option>
+        <option value="IDENTITY">{{ ui_phrase('ID / Identity') }}</option>
+        <option value="INSURANCE_CARD">{{ ui_phrase('Insurance / Contract Card') }}</option>
+        <option value="PREVIOUS_REPORT">{{ ui_phrase('Previous Report') }}</option>
+        <option value="PREVIOUS_IMAGES">{{ ui_phrase('Previous Images / DICOM') }}</option>
+        <option value="LAB">{{ ui_phrase('Lab') }}</option>
+        <option value="CONSENT">{{ ui_phrase('Consent') }}</option>
+        <option value="QUESTIONNAIRE">{{ ui_phrase('Questionnaire') }}</option>
+        <option value="CLINICAL">Clinical Document</option>
+        <option value="OTHER">{{ ui_phrase('Other') }}</option>
+      </select>
+
+      <input name="attachment_notes"
+             placeholder="{{'ملاحظة على المرفق' if ui_lang=='ar' else 'Attachment notes'}}">
+
+      <button type="button"
+              class="icon-btn remove-attachment-row">
+        ×
+      </button>
+
+    </div>
+
+  </div>
+
+  <small>
+    {{'يمكن إضافة أكثر من مرفق وتصنيف كل ملف بصورة مستقلة.'
+      if ui_lang=='ar'
+      else 'Add multiple attachments and classify each file separately.'}}
+  </small>
+</div>
+
+</div>
+<button class="btn primary">{{'حفظ الزيارة' if ui_lang=='ar' else 'Save Visit'}}</button>
+</form>
+{% endblock %}

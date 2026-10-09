@@ -1,0 +1,34 @@
+<div class="exam-completion-message" style="min-width:0;flex:1">
+  <details class="exam-completion-details">
+    <summary style="cursor:pointer;display:list-item;font-weight:700">{{ ui_phrase('لا يمكن إنهاء الفحص الآن / Cannot complete the exam yet') }} <span style="font-weight:400">{{ ui_phrase('— الملاحظات / Details') }}</span></summary>
+    {% if ui_lang == 'ar' %}
+    <div dir="rtl" lang="ar" style="margin-top:12px;text-align:right">
+    <p>لم يتم استيفاء متطلبات الصور. لم يتم تغيير حالة الفحص.</p>
+    <p><strong>الصور المستلمة: {{msg.details.image_count}} — الحد الأدنى المطلوب: {{msg.details.minimum}}</strong><br><small>العدد يشير إلى ملفات DICOM المستلمة، وليس عدد الإطارات داخل الملف.</small></p>
+    <ul>
+      {% if msg.details.exam_type and not msg.details.exam_type.allowed %}<li>نوع الفحص أو المنطقة التشريحية في بيانات الصور يحتاج مراجعة. المطلوب: {{msg.details.exam_type.expected_modality}} / {{msg.details.exam_type.expected_regions|join('، ')}}؛ المستلم: {{msg.details.exam_type.observed_modalities|join('، ')}} / {{msg.details.exam_type.observed_regions|join('، ')}}. لا تُرسل صورًا بديلة على نفس الطلب قبل مراجعة المسؤول.</li>{% endif %}
+      {% if not msg.details.identity_verified %}<li>لم يتم تأكيد مطابقة بيانات الصور مع المريض وطلب الفحص.</li>{% endif %}
+      {% if not msg.details.images_verified %}<li>تعذر التحقق من الصور على PACS؛ هذا لا يعني بالضرورة أنها لم تُرسل.</li>{% endif %}
+      {% if msg.details.image_count < msg.details.minimum %}<li>عدد الصور أقل من الحد المطلوب.</li>{% endif %}
+      {% if msg.details.missing_series %}<li>السلاسل المطلوبة التي لم تصل: {{msg.details.missing_series|join('، ')}}.</li>{% endif %}
+    </ul>
+    <p><strong>الخطوة التالية:</strong> أرسل الصور المطلوبة إلى PACS، ثم افتح تفاصيل الفحص واضغط «التحقق من الصور المستلمة». إذا استمرت مشكلة المطابقة، اطلب مراجعتها من المسؤول قبل الإكمال. بعد استيفاء المتطلبات، اضغط «إنهاء الفحص» مرة أخرى.</p>
+  </div>
+  {% else %}
+  <div lang="en" dir="ltr" style="border-top:1px solid currentColor;padding-top:12px;margin-top:12px">
+    <p>Image requirements have not been met. The exam status has not changed.</p>
+    <p><strong>Images received: {{msg.details.image_count}} — Minimum required: {{msg.details.minimum}}</strong><br><small>This counts received DICOM instances, not frames within a file.</small></p>
+    <ul>
+      {% if msg.details.exam_type and not msg.details.exam_type.allowed %}<li>Exam modality or anatomical region in the image metadata requires review. Expected: {{msg.details.exam_type.expected_modality}} / {{msg.details.exam_type.expected_regions|join(', ')}}; received: {{msg.details.exam_type.observed_modalities|join(', ')}} / {{msg.details.exam_type.observed_regions|join(', ')}}. Ask the administrator to review the acquisition before resending images.</li>{% endif %}
+      {% if not msg.details.identity_verified %}<li>The images have not been confirmed as belonging to this patient and exam order.</li>{% endif %}
+      {% if not msg.details.images_verified %}<li>PACS images could not be verified; this does not necessarily mean they were not sent.</li>{% endif %}
+      {% if msg.details.image_count < msg.details.minimum %}<li>The image count is below the required minimum.</li>{% endif %}
+      {% if msg.details.missing_series %}<li>Required series not received: {{msg.details.missing_series|join(', ')}}.</li>{% endif %}
+    </ul>
+    <p><strong>Next step:</strong> Send the required images to PACS, open the exam details and select “Check received images”. Ask the administrator to review any remaining identity mismatch. Once requirements are met, select “Complete Exam” again.</p>
+  </div>
+  {% endif %}
+  <a class="btn" href="{{url_for('technician_case_workspace',order_id=msg.order_id)}}">{{ ui_phrase('تفاصيل الفحص والتحقق من الصور / Exam details & image check') }}</a>
+  </details>
+  <p style="margin:8px 0 0;font-size:0.9em">{{ 'الصور:' if ui_lang == 'ar' else 'Images:' }} <strong>{{msg.details.image_count}} / {{msg.details.minimum}}</strong> {{ '(المستلم / المطلوب)' if ui_lang == 'ar' else '(received / required)' }}</p>
+</div>

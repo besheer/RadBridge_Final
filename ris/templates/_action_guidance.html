@@ -1,0 +1,13 @@
+{% macro action_info(title, summary, when_text='', requirements='', effect='', warning='', lang='en') -%}
+<span class="rb-action-guidance">
+  <button type="button" class="rb-guidance-trigger" title="{{ 'معلومات عن' if lang=='ar' else 'Information about' }} {{ ui_phrase(title, lang) }}" aria-label="{{ 'معلومات عن' if lang=='ar' else 'Information about' }} {{ ui_phrase(title, lang) }}">i</button>
+  <aside popover class="rb-guidance-popover" role="note" dir="{{'rtl' if lang=='ar' else 'ltr'}}">
+    <header><strong>{{ ui_phrase(title, lang) }}</strong><button type="button" class="rb-guidance-close" aria-label="{{'إغلاق' if lang=='ar' else 'Close'}}">×</button></header>
+    <p style="margin:7px 0">{{ ui_phrase(summary, lang) }}</p>
+    {% if when_text %}<p><strong>{{ 'متى يُستخدم:' if lang=='ar' else 'When to use:' }}</strong> {{ ui_phrase(when_text, lang) }}</p>{% endif %}
+    {% if requirements %}<p><strong>{{ 'المتطلبات:' if lang=='ar' else 'Requirements:' }}</strong> {{ ui_phrase(requirements, lang) }}</p>{% endif %}
+    {% if effect %}<p><strong>{{ 'التأثير:' if lang=='ar' else 'Effect:' }}</strong> {{ ui_phrase(effect, lang) }}</p>{% endif %}
+    {% if warning %}<p class="rb-guidance-warning"><strong>{{ 'تحذير:' if lang=='ar' else 'Warning:' }}</strong> {{ ui_phrase(warning, lang) }}</p>{% endif %}
+  </aside>
+</span>
+{%- endmacro %}

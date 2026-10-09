@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ 'تصحيح التقرير' if ui_lang=='ar' else 'Report Correction' }}{% endblock %}
+{% block content %}
+<main id="revisionWorkspace" data-base="/report-revisions/{{revision.id}}" data-status="{{revision.status}}" data-edit="{{'yes' if can_edit else 'no'}}" data-csrf="{{report_revision_csrf}}" data-version="{{current.version_no if current else 0}}" data-ar="{{'yes' if ui_lang=='ar' else 'no'}}">
+<div class="panel"><h2>{{order.accession}} — {{order.patient.name}} · {{revision.kind}} #{{revision.revision_no}}</h2>
+<p>{{revision.reason}}</p><p>{{ 'هذا تصحيح مرتبط بالتقرير الأصلي، وليس إعادة فتح له. النسخة الأصلية وتوقيتها وطبيبها محفوظون.' if ui_lang=='ar' else 'This correction is linked to the original report; it does not reopen it. The original document, time and physician are preserved.' }}</p>
+{% if revision.kind=='ADDENDUM' %}<p>{{'أضف النص في نهاية الوثيقة. تعديل النص الأصلي يمنع حفظ الإضافة.' if ui_lang=='ar' else 'Append your text at the end. Changing the original text prevents saving an addendum.'}}</p>{% endif %}
+<b id="revisionStatus">{{revision.status}}</b>
+<div class="actions"><a class="btn" href="{{url_for('report_revision_original',revision_id=revision.id)}}">{{ 'تحميل الأصل المعتمد' if ui_lang=='ar' else 'Download original FINAL' }}</a>
+{% if revision.status in ['VERIFIED','FINAL'] %}<a class="btn" href="{{url_for('report_revision_download',revision_id=revision.id)}}">{{'تحميل التصحيح' if ui_lang=='ar' else 'Download correction'}}</a>{% endif %}
+{% if can_edit and revision.status=='DRAFT' %}<button class="btn primary" data-action="draft">{{'حفظ مسودة التصحيح' if ui_lang=='ar' else 'Save correction draft'}}</button><button class="btn" data-action="verify">{{'مراجعة النسخة المحفوظة' if ui_lang=='ar' else 'Verify saved version'}}</button>{% endif %}
+{% if can_edit and revision.status=='VERIFIED' %}<button class="btn primary" data-action="finalize">{{'اعتماد التصحيح' if ui_lang=='ar' else 'Finalize correction'}}</button>{% endif %}</div>
+<p id="revisionMessage" role="status" aria-live="polite"></p></div>
+{% if revision.status in ['DRAFT','VERIFIED','FINAL'] %}<div style="height:78vh;min-height:440px;width:100%"><div id="revisionEditor"></div></div>{% else %}<div class="panel">{{'يُفتح المحرر بعد موافقة المنسق وإسناد الطلب.' if ui_lang=='ar' else 'The editor opens after coordinator approval and assignment.'}}</div>{% endif %}
+</main>
+<script src="{{url_for('static',filename='report-revision-editor.js')}}" defer></script>
+{% endblock %}

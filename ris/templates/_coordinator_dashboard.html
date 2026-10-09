@@ -1,0 +1,35 @@
+{% if has_perm('reports.coordinate') or has_perm('assignment.manage') %}
+{% macro coord_card(endpoint, icon, ar, en, ar_description, en_description, state=none) %}
+<a class="rb-module" href="{{ url_for(endpoint, state=state) if state else url_for(endpoint) }}">
+  <span class="rb-module-icon" aria-hidden="true">{{ icon }}</span>
+  <div><h3>{{ ar if ui_lang=='ar' else en }}</h3><p>{{ ar_description if ui_lang=='ar' else en_description }}</p></div>
+</a>
+{% endmacro %}
+<section class="rb-section" id="coordinator-dashboard" aria-labelledby="coordinator-heading">
+  <div class="rb-section-head">
+    <h2 id="coordinator-heading">{{ 'المنسقون وإدارة الحالات' if ui_lang=='ar' else 'Coordinators & Case Management' }}</h2>
+    <p>{{ 'متابعة الجاهزية والإسناد والمرتجعات ومراجعة تنسيق التقارير. الاعتماد الطبي مسؤولية الطبيب؛ الأدوات المتاحة تحددها صلاحيات حسابك.' if ui_lang=='ar' else 'Follow readiness, assignments, returned cases and report formatting. Medical approval remains with the physician; available tools depend on your account permissions.' }}</p>
+  </div>
+  <div class="rb-module-grid">
+    {% if me and me.role and me.role.code in ['SUPER_ADMIN','ADMIN','CASE_COORDINATOR','BRANCH_MANAGER'] and (has_perm('*') or me.branch_id) %}
+    {{ coord_card('coordinator_report_corrections','📝','تصحيح التقارير المعتمدة','FINAL Report Corrections','مراجعة طلب الطبيب واختيار طبيب مؤهل للتصحيح مع حفظ الأصل وسجل التدقيق.','Review physician requests and assign a qualified correction physician; preserve originals and audit history.') }}
+    {% endif %}
+    {% if has_perm('reports.coordinate') %}
+    {{ coord_card('coordinator_queue','📝','مهام مراجعة التقارير','Report Review Tasks','بدء التنسيق ومراجعة الجودة، ثم الإرسال لاعتماد الطبيب أو الإرجاع إليه.','Start formatting and quality review, then send for physician approval or return to the doctor.') }}
+    {% endif %}
+    {{ coord_card('coordinator_assignments','👨‍⚕️','متابعة الأطباء والإسناد','Doctors & Assignments','متابعة الحالات مع كل طبيب وتوافره وحِمل العمل؛ التعديل حسب الصلاحية.','Monitor each doctor’s cases, availability and workload; changes require the appropriate permission.') }}
+    {% if me and me.role and me.role.code in ['SUPER_ADMIN','ADMIN','CASE_COORDINATOR','BRANCH_MANAGER'] and (has_perm('*') or me.branch_id) %}
+    {{ coord_card('coordinator_manual_assignment','☑️','الإسناد اليدوي الجماعي','Bulk Manual Assignment','اختيار عدة حالات ومعاينة الطبيب المؤهل والسعة وربط فحوص الزيارة قبل التأكيد.','Select multiple cases and preview qualification, capacity and visit grouping before confirming.') }}
+    {% endif %}
+    {% if has_perm('orders.view') %}
+    {{ coord_card('assignment_dashboard','📨','حالات جاهزة غير مسندة','Ready Unassigned Cases','مراجعة الحالات الجاهزة التي تنتظر الإسناد؛ وجود صور وحده لا يكفي للجاهزية.','Review ready cases awaiting assignment; images alone do not establish readiness.','READY_UNASSIGNED') }}
+    {{ coord_card('case_readiness_dashboard','✅','جاهزية الحالات والنواقص','Case Readiness & Blockers','مراجعة الصور والمطابقة والملاحظات والتاريخ المرضي والشروط الناقصة.','Review images, identity matching, notes, clinical history and missing requirements.') }}
+    {{ coord_card('returned_cases_queue','↩️','الحالات المرتجعة','Returned Cases','متابعة سبب الإرجاع والجهة المسؤولة والاستكمال قبل إعادة المراجعة.','Follow return reasons, the responsible team and corrections before resubmission.') }}
+    {{ coord_card('assignment_dashboard','⏱️','الحالات المتأخرة','Overdue Cases','متابعة التأخير وتحديد الخطوة والجهة المسؤولة عن الاستكمال.','Track delays and identify the next step and responsible team.','OVERDUE') }}
+    {% endif %}
+    {% if has_perm('correction.request') or has_perm('correction.review') %}
+    {{ coord_card('correction_center','🛡️','طلبات التصحيح والإلغاء','Correction & Cancellation Requests','طلب أو مراجعة تصحيح البيانات والصور من خلال المسار الموثّق حسب الصلاحية.','Request or review data and image corrections through the audited workflow, subject to permissions.') }}
+    {% endif %}
+  </div>
+</section>
+{% endif %}

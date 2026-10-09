@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block page_title %}{{ ui_phrase('Advanced Search / البحث المتقدم') }}{% endblock %}
+{% block content %}
+<form method="get" class="panel advanced-search-panel">
+<div class="filter-grid">
+<input name="q" value="{{request.args.get('q','')}}" placeholder="{{ ui_phrase('Name / Mobile / National ID / Patient ID / Accession') }}">
+<select name="branch_id"><option value="">{{ ui_phrase('All Branches') }}</option>{% for b in branches %}<option value="{{b.id}}" {% if request.args.get('branch_id')|int==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select>
+<input name="modality" value="{{request.args.get('modality','')}}" placeholder="{{ ui_phrase('Modality') }}">
+<input name="procedure" value="{{request.args.get('procedure','')}}" placeholder="{{ ui_phrase('Procedure') }}">
+<select name="priority"><option value="">{{ ui_phrase('Priority') }}</option>{% for x in ['ROUTINE','URGENT','STAT'] %}<option {% if request.args.get('priority')==x %}selected{% endif %}>{{x}}</option>{% endfor %}</select>
+<select name="readiness"><option value="">{{ ui_phrase('Readiness') }}</option>{% for x in ['READY','WARNING','BLOCKED','RETURNED_TO_TECH','DOCTOR_HOLD'] %}<option {% if request.args.get('readiness')==x %}selected{% endif %}>{{x}}</option>{% endfor %}</select>
+<select name="assignment"><option value="">{{ ui_phrase('Assignment') }}</option><option {% if request.args.get('assignment')=='ASSIGNED' %}selected{% endif %}>ASSIGNED</option><option {% if request.args.get('assignment')=='UNASSIGNED' %}selected{% endif %} value="UNASSIGNED">{{ ui_phrase('UNASSIGNED') }}</option></select>
+<select name="doctor_id"><option value="">{{ ui_phrase('Doctor') }}</option>{% for d in doctors %}<option value="{{d.id}}" {% if request.args.get('doctor_id')|int==d.id %}selected{% endif %}>{{d.full_name}}</option>{% endfor %}</select>
+<select name="report_status"><option value="">{{ ui_phrase('Report Status') }}</option>{% for x in ['DRAFT','FINAL'] %}<option {% if request.args.get('report_status')==x %}selected{% endif %}>{{x}}</option>{% endfor %}</select>
+<label><input type="checkbox" name="returned" value="1" {% if request.args.get('returned')=='1' %}checked{% endif %}> Returned</label>
+<label><input type="checkbox" name="overdue" value="1" {% if request.args.get('overdue')=='1' %}checked{% endif %}> {{ ui_phrase('Overdue') }}</label>
+<label><input type="checkbox" name="missing_history" value="1" {% if request.args.get('missing_history')=='1' %}checked{% endif %}> Missing History</label>
+<label><input type="checkbox" name="missing_images" value="1" {% if request.args.get('missing_images')=='1' %}checked{% endif %}> Incomplete Images</label>
+<label><input type="checkbox" name="missing_attachments" value="1" {% if request.args.get('missing_attachments')=='1' %}checked{% endif %}> Missing Attachments</label>
+<label><input type="checkbox" name="has_priors" value="1" {% if request.args.get('has_priors')=='1' %}checked{% endif %}> {{ ui_phrase('Has Priors') }}</label>
+<label><input type="checkbox" name="has_documents" value="1" {% if request.args.get('has_documents')=='1' %}checked{% endif %}> {{ ui_phrase('Has Documents') }}</label>
+</div>
+<div class="actions"><button class="btn primary">{{ ui_phrase('Search') }}</button><a class="btn" href="{{url_for('advanced_search')}}">{{ ui_phrase('Clear') }}</a></div>
+</form>
+<div class="panel"><div class="actions">{% for f in saved %}<a class="btn small" href="{{url_for('advanced_search_apply_saved',filter_id=f.id)}}">{{f.name}}</a>{% endfor %}</div>
+<form method="post" action="{{url_for('advanced_search_save')}}" class="actions"><input name="name" placeholder="Save current filter as...">
+{% for k,v in request.args.items() %}<input type="hidden" name="{{k}}" value="{{v}}">{% endfor %}<button class="btn small">Save Filter</button></form></div>
+
+<div class="table-wrap"><table><tr><th>{{ ui_phrase('Accession') }}</th><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Exam') }}</th><th>{{ ui_phrase('Priority') }}</th><th>{{ ui_phrase('Readiness') }}</th><th>{{ ui_phrase('Assignment') }}</th><th>{{ ui_phrase('Report') }}</th><th>{{ ui_phrase('Actions') }}</th></tr>
+{% for o in rows %}{% set r=CaseReadiness.query.filter_by(order_id=o.id).first() %}{% set a=CaseAssignment.query.filter_by(order_id=o.id,active=True).first() %}{% set rp=Report.query.filter_by(order_id=o.id).order_by(Report.id.desc()).first() %}
+<tr><td>{{o.accession}}</td><td>{{o.patient.name}}</td><td>{{o.modality}} {{o.procedure}}</td><td>{{o.priority}}</td><td>{{r.status if r else 'NOT_CHECKED'}}</td><td>{{'ASSIGNED' if a else ui_phrase('UNASSIGNED')}}</td><td>{{rp.status if rp else '-'}}</td><td><a class="btn small" href="{{url_for('order_actions',order_id=o.id)}}">⚡ Actions</a></td></tr>{% endfor %}</table></div>
+{% endblock %}

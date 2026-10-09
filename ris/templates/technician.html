@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ ui_phrase('Exam Operations') }}{% endblock %}
+{% block subtitle %}
+{{ ui_phrase('Technician workspace · Start and complete examinations, review images, and document technical activity') }}
+{% endblock %}
+
+{% block content %}
+<style>
+.tech-summary,
+.tech-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:14px;
+}
+.tech-summary { margin-bottom:16px; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.tech-summary-card {text-decoration:none;color:inherit}
+.tech-summary-card[aria-current="page"] {border-color:#2563eb;background:rgba(37,99,235,.1)}
+@media(max-width:620px){.tech-summary{grid-template-columns:1fr}.tech-grid{grid-template-columns:1fr}}
+.tech-summary-card,
+.tech-case {
+  border:1px solid var(--border,#294052);
+  border-radius:14px;
+  background:var(--panel,#101d2d);
+}
+.tech-summary-card { padding:16px; }
+.tech-summary-card strong {
+  display:block;
+  font-size:26px;
+  margin-top:5px;
+}
+.tech-case { overflow:hidden; }
+.tech-thumb {
+  display:block;
+  width:100%;
+  height:150px;
+  object-fit:cover;
+  background:#071018;
+}
+.tech-thumb-empty {
+  height:150px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#071018;
+  color:#8fa4b7;
+}
+.tech-body { padding:14px; }
+.tech-title {
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+}
+.tech-title .status-chip {
+  flex:0 0 auto;align-self:flex-start;white-space:nowrap;
+  width:auto;height:auto;min-width:0;
+}
+.tech-meta {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:13px 0;
+  font-size:13px;
+}
+.tech-meta small {
+  display:block;
+  color:#8fa4b7;
+}
+.tech-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.tech-actions form { margin:0; }
+.tech-section-title {
+  margin:20px 0 10px;
+}
+</style>
+
+<nav class="tech-summary" aria-label="{{'قوائم الفني' if ui_lang=='ar' else 'Technician queues'}}">
+  {% for key,ar,en in [('waiting','لم يبدأ','Not started'),('in_progress','جارٍ الفحص','In progress'),('returned','مطلوب استكمال','Returned for correction')] %}
+  <a class="tech-summary-card {% if queue_view==key and not queue_search %}primary{% endif %}" href="{{url_for('technician_worklist',**dict(request.args.to_dict(),view=key))}}" {% if queue_view==key and not queue_search %}aria-current="page"{% endif %}>
+    {{ar if ui_lang=='ar' else en}}<strong>{{queue_counts[key]}}</strong>
+  </a>
+  {% endfor %}
+</nav>
+<p class="muted">{{'الحالات المكتملة تظهر عند البحث فقط. الحالات المعادة تظهر في قائمة مطلوب استكمال.' if ui_lang=='ar' else 'Completed cases appear only in search. Returned cases appear in their correction queue.'}}</p>
+
+{% include 'staff_worklist_filters.html' %}
+
+<div class="tech-grid">
+{% for o in orders %}
+  {% set st=(o.exam_status or 'ORDERED')|upper %}
+  {% set returned=return_states.get(o.id) %}
+  <article class="tech-case" {% if returned and returned.open and returned.owner=='TECHNICIAN' %}style="border-color:#d97706"{% endif %}>
+    {% if (o.pacs_image_count or 0) > 0 and o.pacs_study_id %}
+      <img
+        class="tech-thumb"
+        src="{{url_for('order_study_thumbnail',order_id=o.id)}}"
+        alt=""
+        loading="lazy"
+      >
+    {% else %}
+      <div class="tech-thumb-empty">{{ ui_phrase('No PACS image received') }}</div>
+    {% endif %}
+
+    <div class="tech-body">
+      <div class="tech-title">
+        <div>
+          <strong>{{o.patient.name}}</strong>
+          <small>{{o.patient.patient_id}} · {{o.accession}}</small>
+        </div>
+        <span class="status-chip status-{{st|lower|replace('_','-')}}">
+          {{('مطلوب استكمال' if ui_lang=='ar' else 'Returned for correction') if returned and returned.open and returned.owner=='TECHNICIAN' else ui_phrase(st)}}
+        </span>
+      </div>
+
+      {% if returned and returned.open and returned.owner=='TECHNICIAN' %}
+      <details class="panel" style="margin-top:12px;border-color:#d97706">
+        <summary>{{'مطلوب استكمال · عرض سبب الإرجاع' if ui_lang=='ar' else 'Returned · Show correction reason'}}</summary>
+        <p><b>{{returned.reason}}</b></p><p style="white-space:pre-wrap">{{returned.return_event.note}}</p>
+      </details>
+      {% endif %}
+      <div class="tech-meta">
+        <div><small>{{ ui_phrase('Exam') }}</small>{{o.proc.name if o.proc else o.procedure}}</div>
+        <div><small>{{ ui_phrase('Room / Device') }}</small>{{o.device.name if o.device else ui_phrase('Routing required')}}</div>
+        <div><small>{{ ui_phrase('Scheduled') }}</small>{{o.scheduled.strftime('%Y-%m-%d %H:%M') if o.scheduled else '-'}}</div>
+        <div><small>PACS</small>{{ui_phrase(o.pacs_status or 'WAITING')}} · {{o.pacs_image_count or 0}} {{ ui_phrase('image(s)') }}</div>
+      </div>
+
+      <div class="tech-actions">
+          <a class="btn primary"
+             href="{{url_for('technician_case_workspace',order_id=o.id)}}">
+            {{ ui_phrase('🧰 Open Case Workspace') }}
+          </a>
+
+        {% if returned and returned.open and returned.owner=='TECHNICIAN' %}
+          <a class="btn" href="{{url_for('technician_case_workspace',order_id=o.id)}}#returned-correction">{{'استكمال التاريخ المرضي والنواقص' if ui_lang=='ar' else 'Complete history and missing information'}}</a>
+          <a class="btn" href="{{url_for('technician_case_workspace',order_id=o.id)}}#image-correction-request">{{'طلب تصحيح الصور لإعادة الإرسال' if ui_lang=='ar' else 'Request image correction for resend'}}</a>
+          {% if st=='EXAM_COMPLETED' %}
+          <form method="post" action="{{url_for('resolve_returned_case',event_id=returned.return_event.id)}}">
+            <button class="btn primary">{{'التحقق وإعادة إرسال للمراجعة' if ui_lang=='ar' else 'Check and resubmit for review'}}</button>
+          </form>
+          {% endif %}
+        {% endif %}
+
+        {% if st in ['BOOKED','ORDERED'] %}
+          <form method="post" action="{{url_for('order_exam_status',order_id=o.id)}}">
+            <input type="hidden" name="status" value="IN_PROGRESS">
+            <button class="btn primary">{{ ui_phrase('▶ Start Exam') }}</button>
+          </form>
+        {% elif st == 'IN_PROGRESS' %}
+          <form method="post" action="{{url_for('order_exam_status',order_id=o.id)}}">
+            <input type="hidden" name="status" value="EXAM_COMPLETED">
+            <button class="btn primary">{{ ui_phrase('✓ Complete Exam') }}</button>
+          </form>
+        {% endif %}
+
+        {% if image_urls.get(o.id) and (o.pacs_image_count or 0) > 0 and o.pacs_study_id %}
+          <a
+            class="btn"
+            href="{{image_urls.get(o.id)}}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >{{ ui_phrase('🖼 Open Images') }}</a>
+        {% endif %}
+
+        <a class="btn" href="{{url_for('order_clinical_notes',order_id=o.id)}}">
+          {{ ui_phrase('📝 Notes') }}
+        </a>
+
+        <a class="btn" href="{{url_for('order_attachments',order_id=o.id)}}">
+          {{ ui_phrase('📎 Attachments (') }}{{attachment_counts.get(o.id,0)}})
+        </a>
+
+        {% if has_perm('pacs.transfer') and (o.pacs_image_count or 0) > 0 %}
+          <a class="btn" href="{{url_for('pacs_case_actions',order_id=o.id)}}">
+            {{ ui_phrase('⇄ PACS Send / Resend') }}
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </article>
+{% else %}
+  <div class="panel empty">{{'لا توجد حالات في هذه القائمة.' if ui_lang=='ar' else 'No cases in this queue.'}}</div>
+{% endfor %}
+</div>
+{% endblock %}

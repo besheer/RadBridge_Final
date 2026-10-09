@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block page_title %}PACS Actions — {{order.accession}}{% endblock %}{% block subtitle %}{{order.patient.name}} · {{order.modality}} · Study {{order.pacs_study_id or 'not linked'}}{% endblock %}{% block content %}
+<div class="panel"><h3>Send / Resend Study</h3>
+{% if destinations %}<form method="post" action="{{url_for('pacs_case_send',order_id=order.id)}}" class="inline">
+<select name="destination_id" required>{% for d in destinations %}<option value="{{d.id}}">{{d.name}} · {{d.destination_type}} · {{d.ae_title}}@{{d.host}}:{{d.port}}</option>{% endfor %}</select>
+<label><input type="checkbox" name="resend" value="1"> Force Resend</label><button class="btn primary">Queue Send</button></form>
+<div class="actions" style="margin-top:10px">{% for d in destinations %}<form method="post" action="{{url_for('pacs_destination_echo',destination_id=d.id,order_id=order.id)}}"><button class="btn small">C-ECHO {{d.name}}</button></form>{% endfor %}</div>
+<small>Send back to a modality/workstation, forward to another PACS, or copy to backup/archive. Every manual resend creates a new audited transfer job.</small>
+{% else %}<p class="muted">No approved DICOM destination is available for your branch.</p>{% endif %}</div>
+<div class="panel"><h3>Transfer Queue / History</h3><table><tr><th>When</th><th>{{ ui_phrase('Destination') }}</th><th>{{ ui_phrase('Type') }}</th><th>{{ ui_phrase('Reason') }}</th><th>{{ ui_phrase('Status') }}</th><th>Progress</th><th>{{ ui_phrase('Attempts') }}</th><th>{{ ui_phrase('Error') }}</th><th>{{ ui_phrase('Action') }}</th></tr>
+{% for j in jobs %}<tr><td>{{j.created_at}}</td><td>{{j.destination.name}}</td><td>{{j.destination.destination_type}}</td><td>{{j.reason}}</td><td>{{j.status}}</td><td>{{j.progress_sent or 0}} / {{j.progress_total or order.pacs_image_count or 0}}</td><td>{{j.attempts}}</td><td>{{j.last_error}}</td><td>
+{% if j.status in ['FAILED','CANCELLED','SUCCESS'] %}<form method="post" action="{{url_for('pacs_transfer_retry',job_id=j.id)}}" style="display:inline"><button class="btn small">Retry / Resend</button></form>{% endif %}
+{% if j.status in ['PENDING','FAILED'] %}<form method="post" action="{{url_for('pacs_transfer_cancel',job_id=j.id)}}" style="display:inline"><button class="btn small">{{ ui_phrase('Cancel') }}</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="9">No transfer jobs yet.</td></tr>{% endfor %}</table></div>{% endblock %}

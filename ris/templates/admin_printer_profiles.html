@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block page_title %}{{ ui_phrase('Printer Profiles') }}{% endblock %}
+{% block content %}
+<div class="grid2">
+<form method="post" class="panel"><h3>🖨️ Add Printer Profile</h3>
+<label>{{ ui_phrase('Name') }}</label><input name="name" required placeholder="Reception Receipt">
+<label>{{ ui_phrase('Branch') }}</label><select name="branch_id"><option value="">{{ ui_phrase('Any branch') }}</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select>
+<label>{{ ui_phrase('User') }}</label><select name="user_id"><option value="">{{ ui_phrase('Any user') }}</option>{% for u in users %}<option value="{{u.id}}">{{u.full_name or u.username}}</option>{% endfor %}</select>
+<label>Workstation Code</label><input name="workstation_code" placeholder="RECEPTION-PC01">
+<label>Document Type</label><select name="document_type"><option value="RECEIPT">{{ ui_phrase('RECEIPT') }}</option><option>LABEL</option><option value="REPORT">{{ ui_phrase('REPORT') }}</option><option>A4</option></select>
+<label>Printer Name</label><input name="printer_name" placeholder="EPSON TM-T20 / Zebra ZD220">
+<div class="grid2"><select name="paper_size"><option>A4</option><option>A5</option><option>80MM</option><option>58MM</option><option>50X30</option></select><input name="copies" type="number" min="1" value="1"></div>
+<label><input type="checkbox" name="auto_open_print_dialog" value="1" checked> Open browser print dialog automatically</label>
+<label><input type="checkbox" name="active" value="1" checked> {{ ui_phrase('Active') }}</label>
+<button class="btn primary">{{ ui_phrase('Save Profile') }}</button>
+<p class="hint">Browser security does not allow silent selection of a physical printer. Printer Name is stored for workstation policy / future local Print Agent integration.</p>
+</form>
+<div class="panel"><h3>Configured Profiles</h3>
+{% for p in rows %}<div class="printer-profile-row"><div><b>{{p.name}}</b><small>{{p.document_type}} · {{p.printer_name or 'Browser default'}} · {{p.paper_size}} · x{{p.copies}}</small></div><form method="post" action="{{url_for('admin_printer_profile_delete',profile_id=p.id)}}"><button class="btn small danger">{{ ui_phrase('Disable') }}</button></form></div>{% else %}<p>No printer profiles yet.</p>{% endfor %}
+</div></div>{% endblock %}

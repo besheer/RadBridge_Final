@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ris-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: risadmin
+      POSTGRES_PASSWORD: ${ORTHANC_DB_PASSWORD}
+      POSTGRES_DB: orthanc
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U risadmin -d orthanc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [ris-network]
+
+  orthanc:
+    image: orthancteam/orthanc:latest
+    container_name: ris-pacs
+    restart: unless-stopped
+    depends_on:
+      postgres: {condition: service_healthy}
+    ports:
+      - "11112:11112"
+      - "8042:8042"
+    environment:
+      ORTHANC__NAME: "RadBridge PACS"
+      ORTHANC__DICOM_AET: "DCM4CHEE"
+      ORTHANC__DICOM_PORT: "11112"
+      ORTHANC__REMOTE_ACCESS_ALLOWED: "true"
+      ORTHANC__AUTHENTICATION_ENABLED: "true"
+      ORTHANC__DICOM_ALWAYS_ALLOW_ECHO: "true"
+      ORTHANC__DICOM_ALWAYS_ALLOW_STORE: "true"
+      ORTHANC__DICOM_ALWAYS_ALLOW_FIND: "true"
+      ORTHANC__DICOM_ALWAYS_ALLOW_GET: "true"
+      ORTHANC__DICOM_ALWAYS_ALLOW_MOVE: "true"
+      ORTHANC__DICOM_CHECK_CALLED_AET: "false"
+      ORTHANC__DICOM_CHECK_MODALITY_HOST: "false"
+      ORTHANC__REGISTERED_USERS: |
+        {"admin":"${PACS_ADMIN_PASSWORD}"}
+      POSTGRESQL_PLUGIN_ENABLED: "true"
+      ORTHANC__POSTGRESQL__ENABLE_INDEX: "true"
+      ORTHANC__POSTGRESQL__ENABLE_STORAGE: "false"
+      ORTHANC__POSTGRESQL__HOST: "postgres"
+      ORTHANC__POSTGRESQL__PORT: "5432"
+      ORTHANC__POSTGRESQL__DATABASE: "orthanc"
+      ORTHANC__POSTGRESQL__USERNAME: "risadmin"
+      ORTHANC__POSTGRESQL__PASSWORD: "${ORTHANC_DB_PASSWORD}"
+      WORKLISTS_PLUGIN_ENABLED: "true"
+      ORTHANC__WORKLISTS__ENABLE: "true"
+      ORTHANC__WORKLISTS__SAVE_IN_ORTHANC_DATABASE: "true"
+      DICOM_WEB_PLUGIN_ENABLED: "true"
+      OHIF_PLUGIN_ENABLED: "true"
+    volumes:
+      - ./orthanc-storage:/var/lib/orthanc/db
+    networks: [ris-network]
+networks:
+  ris-network:
+    name: ris-network

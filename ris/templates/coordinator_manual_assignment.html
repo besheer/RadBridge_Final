@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block page_title %}{{'الإسناد اليدوي الجماعي' if ui_lang=='ar' else 'Bulk Manual Assignment'}}{% endblock %}
+{% block subtitle %}{{'اختيار الحالات، معاينة الشروط، ثم تأكيد الإسناد للطبيب' if ui_lang=='ar' else 'Select cases, preview eligibility, then confirm assignment'}}{% endblock %}
+{% block content %}
+<style>
+.bulk-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bulk-table{overflow:auto}.bulk-table table{width:100%;min-width:760px}
+.bulk-table input[type=checkbox]{width:20px;height:20px}
+.bulk-blocked{color:#b45309}.bulk-ready{border-inline-start:4px solid #16a34a}
+.bulk-preview{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
+.bulk-selected{background:rgba(37,99,235,.08)}
+@media(max-width:620px){.bulk-preview{grid-template-columns:1fr}.bulk-tools>*{max-width:100%}}
+</style>
+<div class="bulk-tools">
+<a class="btn" href="{{url_for('coordinator_assignments')}}">{{'متابعة الإسناد' if ui_lang=='ar' else 'Assignment monitor'}}</a>
+<a class="btn" href="{{url_for('returned_cases_queue')}}">{{'الحالات المعادة' if ui_lang=='ar' else 'Returned cases'}}</a>
+<a class="btn" href="{{url_for('case_readiness_dashboard')}}">{{'مراجعة جاهزية الحالات' if ui_lang=='ar' else 'Case readiness'}}</a>
+</div>
+<p class="muted">{{'نقل الحالة للطبيب المختار يتم في عملية واحدة مع إبلاغ الطبيب السابق والجديد وتسجيل السبب. الحالات التي بدأت قراءتها أو تحرير تقريرها، أو وصلت للاعتماد، لا تُنقل من هذه الصفحة.' if ui_lang=='ar' else 'Cases move directly to the selected doctor in one transaction, with notifications and an audited reason. Cases with started reading, an active editor session, or an approved report cannot be moved here.'}}</p>
+{% if error %}<div class="panel bulk-blocked" role="alert">{{error}}</div>{% endif %}
+{% if preview %}
+<section class="panel" aria-label="{{'معاينة الإسناد' if ui_lang=='ar' else 'Assignment preview'}}">
+<h2>{{'معاينة الإسناد' if ui_lang=='ar' else 'Assignment preview'}} · {{preview.doctor.full_name}}</h2>
+<p>{{'المعاينة لا تُغيّر إسناد الحالات. فحوص الزيارة المرتبطة تُنقل كلها إلى الطبيب نفسه، وستُراجع الشروط مجددًا عند التأكيد.' if ui_lang=='ar' else 'Preview changes no assignments. Linked visit examinations move together to the same doctor. Conditions are checked again at confirmation.'}}</p>
+<p>{{'الحمل الحالي / الحد الأقصى' if ui_lang=='ar' else 'Current workload / capacity'}}: {{preview.active}} / {{preview.capacity}} · {{'فحوص إضافية' if ui_lang=='ar' else 'Additional examinations'}}: {{preview.added}} · {{'حجز بعروض معلقة' if ui_lang=='ar' else 'Reserved by pending offers'}}: {{preview.reserved}}</p>
+<div class="bulk-preview">
+{% for members in preview.accepted %}<article class="panel bulk-ready">
+<b>{{'جاهز للإسناد' if ui_lang=='ar' else 'Ready for assignment'}} · {{members|length}} {{'فحص' if ui_lang=='ar' else 'exam(s)'}}</b>
+{% for o in members %}<p>{{o.accession}} · {{o.patient.name}} · {{o.modality}} · {{o.procedure}}<br>{{'الطبيب الحالي' if ui_lang=='ar' else 'Current doctor'}}: {{o.assigned_doctor.full_name if o.assigned_doctor else '—'}} → {{preview.doctor.full_name}}</p>{% endfor %}
+</article>{% endfor %}
+{% for group in preview.blocked %}<article class="panel bulk-blocked"><b>{{labels(group.reason)}}</b>
+{% for o in group.members %}<p>{{o.accession}} · {{o.patient.name}} · {{o.modality}}</p>{% endfor %}
+</article>{% endfor %}
+</div>
+{% if preview_token %}
+<form method="post" class="panel">
+<input type="hidden" name="assignment_csrf" value="{{assignment_csrf}}">
+<input type="hidden" name="action" value="confirm"><input type="hidden" name="preview_token" value="{{preview_token}}">
+<label><input type="checkbox" name="acknowledge" value="1" required> {{'أوافق على إسناد كل الفحوص الجاهزة المعروضة؛ الحالات الممنوعة لن تتغير.' if ui_lang=='ar' else 'Confirm all eligible examinations shown above. Blocked cases will remain unchanged.'}}</label>
+<p>{{'سبب الإسناد' if ui_lang=='ar' else 'Assignment reason'}}: {{preview.note}}</p>
+<button class="btn primary">{{'تأكيد الإسناد اليدوي' if ui_lang=='ar' else 'Confirm manual assignment'}}</button>
+</form>
+{% endif %}
+</section>
+{% endif %}
+<section class="panel">
+<form method="get" class="bulk-tools">
+<input name="q" value="{{request.args.get('q','')}}" placeholder="{{'المريض أو رقم الحالة' if ui_lang=='ar' else 'Patient or accession'}}">
+<select name="view"><option value="unassigned" {% if view=='unassigned' %}selected{% endif %}>{{'غير مسندة' if ui_lang=='ar' else 'Unassigned'}}</option><option value="assigned" {% if view=='assigned' %}selected{% endif %}>{{'مسندة لإعادة الإسناد' if ui_lang=='ar' else 'Assigned / reassignment'}}</option><option value="all" {% if view=='all' %}selected{% endif %}>{{'كل الحالات' if ui_lang=='ar' else 'All cases'}}</option></select>
+<select name="modality"><option value="">{{'كل أنواع الفحص' if ui_lang=='ar' else 'All modalities'}}</option>{% for key in ['DX','CR','CT','MR','US','MG','NM','PT'] %}<option value="{{key}}" {% if request.args.get('modality')==key %}selected{% endif %}>{{key}}</option>{% endfor %}</select>
+<button class="btn">{{'بحث' if ui_lang=='ar' else 'Search'}}</button>
+</form>
+<form method="post" id="bulk-selection">
+<input type="hidden" name="assignment_csrf" value="{{assignment_csrf}}">
+<input type="hidden" name="action" value="preview">
+<div class="bulk-tools" style="margin:14px 0">
+<label>{{'الطبيب' if ui_lang=='ar' else 'Doctor'}} <select name="doctor_id" required><option value="">{{'اختر الطبيب' if ui_lang=='ar' else 'Select doctor'}}</option>{% for d in doctors %}<option value="{{d.id}}">{{d.full_name}}</option>{% endfor %}</select></label>
+<input name="note" required minlength="5" maxlength="500" placeholder="{{'سبب الإسناد أو إعادة الإسناد' if ui_lang=='ar' else 'Assignment or reassignment reason'}}">
+<strong id="bulk-count">{{'المحدد' if ui_lang=='ar' else 'Selected'}}: 0</strong>
+<button class="btn primary">{{'معاينة المحدد' if ui_lang=='ar' else 'Preview selected'}}</button>
+</div>
+<p class="muted">{{'حتى 50 اختيارًا في المرة. قد تُضاف فحوص مرتبطة من الزيارة نفسها إلى المعاينة، دون تقسيم الزيارة بين أطباء.' if ui_lang=='ar' else 'Select up to 50 rows. Preview includes linked visit examinations, preserving one doctor for the visit.'}}</p>
+<div class="bulk-table"><table>
+<thead><tr><th><input type="checkbox" id="bulk-all" aria-label="{{'اختيار كل المتاح في الصفحة' if ui_lang=='ar' else 'Select eligible rows on this page'}}"></th><th>{{'الحالة / المريض' if ui_lang=='ar' else 'Case / Patient'}}</th><th>{{'الفحص' if ui_lang=='ar' else 'Exam'}}</th><th>{{'الطبيب الحالي' if ui_lang=='ar' else 'Current doctor'}}</th><th>{{'الجاهزية' if ui_lang=='ar' else 'Readiness'}}</th></tr></thead>
+<tbody>{% for o in orders %}<tr>
+<td><input type="checkbox" name="order_ids" value="{{o.id}}" {% if blocks[o.id] %}disabled{% endif %} aria-label="{{o.accession}}"></td>
+<td><b>{{o.accession}}</b><br>{{o.patient.name}}<small style="display:block">{{o.patient.patient_id}}</small>{% if o.assignment_visit_id %}<small>{{'زيارة مرتبطة' if ui_lang=='ar' else 'Linked visit'}}</small>{% endif %}</td>
+<td>{{o.modality}} · {{o.procedure}}</td><td>{{o.assigned_doctor.full_name if o.assigned_doctor else '—'}}</td>
+<td class="{% if blocks[o.id] %}bulk-blocked{% endif %}">{{labels(blocks[o.id]) if blocks[o.id] else ('جاهز للمعاينة' if ui_lang=='ar' else 'Ready for preview')}}</td>
+</tr>{% else %}<tr><td colspan="5">{{'لا توجد حالات مطابقة' if ui_lang=='ar' else 'No matching cases'}}</td></tr>{% endfor %}</tbody>
+</table></div>
+</form>
+<div class="bulk-tools" style="margin-top:14px"><span>{{'إجمالي النتائج' if ui_lang=='ar' else 'Total results'}}: {{total}}</span>
+{% if page>1 %}<a class="btn" href="{{url_for('coordinator_manual_assignment',page=page-1,view=view,q=request.args.get('q',''),modality=request.args.get('modality',''))}}">{{'السابق' if ui_lang=='ar' else 'Previous'}}</a>{% endif %}
+{% if page*limit<total %}<a class="btn" href="{{url_for('coordinator_manual_assignment',page=page+1,view=view,q=request.args.get('q',''),modality=request.args.get('modality',''))}}">{{'التالي' if ui_lang=='ar' else 'Next'}}</a>{% endif %}
+</div>
+</section>
+<script>
+(()=>{const all=document.getElementById('bulk-all'),form=document.getElementById('bulk-selection'),counter=document.getElementById('bulk-count');const boxes=Array.from(form.querySelectorAll('input[name="order_ids"]:not(:disabled)'));const update=()=>{const n=boxes.filter(b=>b.checked).length;counter.textContent={{('المحدد' if ui_lang=='ar' else 'Selected')|tojson}}+': '+n;all.checked=boxes.length>0&&n===boxes.length;all.indeterminate=n>0&&n<boxes.length;boxes.forEach(b=>b.closest('tr').classList.toggle('bulk-selected',b.checked));};all.addEventListener('change',()=>{boxes.forEach(b=>b.checked=all.checked);update();});boxes.forEach(b=>b.addEventListener('change',update));})();
+</script>
+{% endblock %}

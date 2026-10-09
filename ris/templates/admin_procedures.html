@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block page_title %}{{'دليل الفحوصات' if ui_lang=='ar' else 'Procedure Catalog'}}{% endblock %}
+{% block subtitle %}{{'دليل شامل ثنائي اللغة للفحوصات ويمكن استيراده وتصديره وتعديله' if ui_lang=='ar' else 'Comprehensive bilingual radiology catalog; editable and import/export enabled'}}{% endblock %}
+{% block content %}
+<div class="panel">
+<div class="panel-head"><div><h3>{{procedures|length}} {{'فحص' if ui_lang=='ar' else 'Procedures'}}</h3><p class="muted">{{'الأسعار الجديدة الافتراضية صفر حتى يتم تحميل قائمة أسعار المنشأة أو جهة التعاقد.' if ui_lang=='ar' else 'New catalog items default to zero price until your cash/contract price lists are loaded.'}}</p></div>
+<div class="actions"><a class="btn" href="{{url_for('admin_export_entity',entity='procedures')}}">{{ ui_phrase('Export CSV') }}</a><a class="btn" href="{{url_for('admin_import_export')}}">{{ ui_phrase('Import CSV') }}</a></div></div>
+{% if has_perm('*') or has_perm('contracts.manage') %}
+<details class="form-card"><summary><b>{{'إضافة فحص جديد' if ui_lang=='ar' else 'Add New Procedure'}}</b></summary>
+<form method="post"><div class="grid3">
+<div><label>{{ ui_phrase('Code') }}</label><input name="code" required></div>
+<div><label>{{ ui_phrase('English Name') }}</label><input name="name" required></div>
+<div><label>{{ ui_phrase('الاسم العربي') }}</label><input name="name_ar"></div>
+<div><label>{{ ui_phrase('Category / المجموعة') }}</label><input name="category"></div>
+<div><label>{{ ui_phrase('Modality') }}</label><select name="modality">{% for m in ['DX','CT','MR','US','MG','RF','PX','IO','NM','PT','OT'] %}<option>{{m}}</option>{% endfor %}</select></div>
+<div><label>Body Part</label><input name="body_part"></div>
+<div><label>Cash/Base Price</label><input type="number" step="0.01" name="base_price" value="0"></div>
+<div><label>Duration (min)</label><input type="number" name="duration_min" value="20"></div>
+<div><label>Contrast</label><select name="contrast"><option value="0">{{ ui_phrase('No') }}</option><option value="1">{{ ui_phrase('Yes') }}</option></select></div>
+</div><button class="btn primary">{{'حفظ الفحص' if ui_lang=='ar' else 'Save Procedure'}}</button></form></details>
+{% endif %}
+<div class="table-wrap"><table><thead><tr><th>{{ ui_phrase('Code') }}</th><th>English</th><th>العربي</th><th>{{ ui_phrase('Category') }}</th><th>{{ ui_phrase('Modality') }}</th><th>Body Part</th><th>{{ ui_phrase('Base Price') }}</th><th>{{ ui_phrase('Duration') }}</th><th>Contrast</th><th>{{ ui_phrase('Consumables') }}</th><th>{{"مهام الفحص" if ui_lang=="ar" else "Staff workflow"}}</th></tr></thead><tbody>
+{% for p in procedures %}<tr><td>{{p.code}}</td><td>{{p.name}}</td><td>{{p.name_ar}}</td><td>{{p.category}}</td><td><span class="badge">{{p.modality}}</span></td><td>{{p.body_part}}</td><td>{{p.base_price}}</td><td>{{p.duration_min}} {{ ui_phrase('min') }}</td><td>{{ui_phrase('Yes') if p.contrast else ui_phrase('No')}}</td><td><a class="btn" href="{{url_for('procedure_consumables',procedure_id=p.id)}}">Defaults</a></td><td>{% if has_perm("*") or has_perm("workflow.override") %}<a class="btn" href="{{url_for("procedure_staff_workflow",procedure_id=p.id)}}">{{"الإعدادات" if ui_lang=="ar" else "Configure"}}</a>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div></div>{% endblock %}

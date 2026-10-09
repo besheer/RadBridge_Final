@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block page_title %}Assignment & Case Tracking Reports{% endblock %}
+{% block content %}
+<div class="panel actions">
+  <a class="btn" href="{{url_for('assignment_dashboard')}}">{{ ui_phrase('Dashboard') }}</a>
+  <a class="btn" href="{{url_for('returned_cases_queue')}}">{{ ui_phrase('Returned Cases') }}</a>
+
+</div>
+<div class="table-wrap">
+<table>
+<tr>
+  <th>{{ ui_phrase('Accession') }}</th><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Exam') }}</th><th>{{ ui_phrase('Priority') }}</th>
+  <th>Process</th><th>{{ ui_phrase('Owner') }}</th><th>{{ ui_phrase('Readiness') }}</th>
+  <th>{{ ui_phrase('Active Doctor') }}</th><th>{{ ui_phrase('Type') }}</th><th>{{ ui_phrase('Offers') }}</th>
+  <th>Last Offer</th><th>{{ ui_phrase('Return Reason') }}</th><th>{{ ui_phrase('Report') }}</th>
+  <th>{{ ui_phrase('TAT') }}</th><th>Delay Owner</th>
+</tr>
+{% for x in rows %}
+<tr>
+  <td>{{x.order.accession}}</td>
+  <td>{{x.order.patient.name}}</td>
+  <td>{{x.order.modality}} {{x.order.procedure}}</td>
+  <td>{{x.order.priority}}</td>
+  <td>{{x.process_state}}</td>
+  <td>{{x.process_owner}}</td>
+  <td>{{x.readiness.status if x.readiness else '-'}}</td>
+  <td>{{x.assignment.doctor_user_id if x.assignment else '-'}}</td>
+  <td>{{x.assignment.assignment_type if x.assignment else '-'}}</td>
+  <td>{{x.offer_attempts}}</td>
+  <td>{{x.last_offer_status or '-'}}</td>
+  <td>{{x.return_reason if x.return_open else '-'}}</td>
+  <td>{{x.report.status if x.report else '-'}}</td>
+  <td>{{x.tat.total_min}} {{ ui_phrase('min') }}</td>
+  <td>{{x.tat.owner}} / {{x.tat.reason}}</td>
+</tr>
+{% endfor %}
+</table>
+</div>
+{% endblock %}

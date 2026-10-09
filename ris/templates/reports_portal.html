@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+📄 {{'بوابة التقارير' if ui_lang=='ar' else 'Report Portal'}}
+{% endblock %}
+
+{% block subtitle %}
+{{'متابعة الحالات والتقارير والملاحظات والتنزيل'
+  if ui_lang=='ar'
+  else 'Case tracking, reports, actions and downloads'}}
+{% endblock %}
+
+{% block content %}
+
+
+<div class="cards" style="margin-bottom:16px">
+
+  <div class="metric">
+    <small>{{'إجمالي الحالات' if ui_lang=='ar' else 'Total Cases'}}</small>
+    <b>{{stats.total}}</b>
+  </div>
+
+  <div class="metric">
+    <small>🟢 {{'نهائي' if ui_lang=='ar' else 'Final'}}</small>
+    <b>{{stats.final}}</b>
+  </div>
+
+  <div class="metric">
+    <small>🟡 {{'جاري التقرير' if ui_lang=='ar' else 'Reporting'}}</small>
+    <b>{{stats.reporting}}</b>
+  </div>
+
+  <div class="metric">
+    <small>⚪ {{'غير جاهز' if ui_lang=='ar' else 'Not Ready'}}</small>
+    <b>{{stats.waiting}}</b>
+  </div>
+
+  <div class="metric">
+    <small>🟠 {{'يحتاج إجراء' if ui_lang=='ar' else 'Needs Action'}}</small>
+    <b>{{stats.needs_action}}</b>
+  </div>
+
+  <div class="metric">
+    <small>🔵 {{'إعادة مراجعة' if ui_lang=='ar' else 'Re-review'}}</small>
+    <b>{{stats.rereview}}</b>
+  </div>
+
+  <div class="metric">
+    <small>📤 {{'تم التسليم' if ui_lang=='ar' else 'Delivered'}}</small>
+    <b>{{stats.delivered}}</b>
+  </div>
+
+  <div class="metric">
+    <small>{{'متوسط زمن التقرير' if ui_lang=='ar' else 'Average TAT'}}</small>
+    <b>
+      {% if stats.avg_tat_minutes is not none %}
+        {{stats.avg_tat_minutes//60}}{{ ui_phrase('h') }} {{stats.avg_tat_minutes%60}}{{ ui_phrase('m') }}
+      {% else %}
+        —
+      {% endif %}
+    </b>
+  </div>
+
+  <div class="metric">
+    <small>{{'نسبة التقارير النهائية' if ui_lang=='ar' else 'Finalization Rate'}}</small>
+    <b>{{stats.finalization_rate}}%</b>
+  </div>
+
+
+</div>
+
+<div class="cards" style="margin-bottom:16px">
+
+  <div class="metric">
+    <small>🚨 STAT / Emergency Open</small>
+    <b>{{stats.stat_open}}</b>
+  </div>
+
+  <div class="metric">
+    <small>⚡ Urgent Open</small>
+    <b>{{stats.urgent_open}}</b>
+  </div>
+
+  <div class="metric">
+    <small>⭐ VIP Open</small>
+    <b>{{stats.vip_open}}</b>
+  </div>
+
+  <div class="metric">
+    <small>🟢 SLA On Time</small>
+    <b>{{stats.sla_on_time}}</b>
+  </div>
+
+  <div class="metric">
+    <small>🟡 Near SLA</small>
+    <b>{{stats.sla_near}}</b>
+  </div>
+
+  <div class="metric">
+    <small>🔴 SLA Breached</small>
+    <b>{{stats.sla_breached}}</b>
+  </div>
+
+</div>
+
+
+<div class="panel">
+
+  <div class="section-title">
+    🔎 {{'فلترة التقارير' if ui_lang=='ar' else 'Report Filters'}}
+  </div>
+
+  <form method="get" class="grid2">
+
+    <div>
+      <label>{{'من تاريخ' if ui_lang=='ar' else 'From'}}</label>
+      <input type="date" name="date_from" value="{{date_from}}">
+    </div>
+
+    <div>
+      <label>{{'إلى تاريخ' if ui_lang=='ar' else 'To'}}</label>
+      <input type="date" name="date_to" value="{{date_to}}">
+    </div>
+
+    <div>
+      <label>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</label>
+      <select name="branch_id">
+        <option value="">{{ ui_phrase('All') }}</option>
+        {% for b in branches %}
+        <option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>
+          {{b.name}}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label>{{ ui_phrase('Modality') }}</label>
+      <select name="modality">
+        <option value="">{{ ui_phrase('All') }}</option>
+        {% for m in modalities %}
+        <option value="{{m}}" {% if modality==m %}selected{% endif %}>
+          {{m}}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label>{{'الطبيب' if ui_lang=='ar' else 'Doctor'}}</label>
+      <select name="doctor_id">
+        <option value="">{{ ui_phrase('All') }}</option>
+        {% for d in doctors %}
+        <option value="{{d.id}}" {% if doctor_id==d.id %}selected{% endif %}>
+          {{d.full_name or d.username}}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label>{{'حالة التقرير' if ui_lang=='ar' else 'Report Status'}}</label>
+      <select name="report_status">
+        <option value="">{{ ui_phrase('All') }}</option>
+        {% for st in [
+          'UNREPORTED',
+          'DRAFT',
+          'PARTIAL',
+          'READY_FORMATTING',
+          'FORMATTING',
+          'READY_APPROVAL',
+          'VERIFIED',
+          'SECOND_VERIFIED',
+          'FINAL',
+          'ADDENDUM'
+        ] %}
+        <option value="{{st}}" {% if report_status==st %}selected{% endif %}>
+          {{st.replace('_',' ')}}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="grid-column:1/-1">
+      <label>{{'بحث' if ui_lang=='ar' else 'Search'}}</label>
+      <input
+        name="q"
+        value="{{q}}"
+        placeholder="{{'اسم المريض / Patient ID / Accession / Exam'
+          if ui_lang=='ar'
+          else 'Patient / Patient ID / Accession / Exam'}}">
+    </div>
+
+    <input type="hidden" name="view" value="{{view}}">
+
+    <div style="grid-column:1/-1" class="actions">
+
+      <button class="btn primary">
+        🔎 {{'تطبيق الفلاتر' if ui_lang=='ar' else 'Apply Filters'}}
+      </button>
+
+      <a class="btn"
+         href="{{url_for('reports_portal')}}">
+        ↺ {{'مسح الفلاتر' if ui_lang=='ar' else 'Clear'}}
+      </a>
+
+      <a class="btn"
+         href="{{url_for(
+           'reports_portal_csv',
+           q=q,
+           view=view,
+           branch_id=branch_id or '',
+           doctor_id=doctor_id or '',
+           modality=modality,
+           report_status=report_status,
+           date_from=date_from,
+           date_to=date_to
+         )}}">
+        ⬇ Export CSV
+      </a>
+
+    </div>
+
+  </form>
+
+  <hr>
+
+  <div class="actions">
+
+    <a class="btn {{'primary' if view=='all' else ''}}"
+       href="{{url_for('reports_portal',
+         view='all',
+         q=q,
+         branch_id=branch_id or '',
+         doctor_id=doctor_id or '',
+         modality=modality,
+         report_status=report_status,
+         date_from=date_from,
+         date_to=date_to)}}">
+      {{ ui_phrase('All') }}
+    </a>
+
+    <a class="btn {{'primary' if view=='waiting' else ''}}"
+       href="{{url_for('reports_portal',
+         view='waiting',
+         q=q,
+         branch_id=branch_id or '',
+         doctor_id=doctor_id or '',
+         modality=modality,
+         report_status=report_status,
+         date_from=date_from,
+         date_to=date_to)}}">
+      ⚪ Not Ready
+    </a>
+
+    <a class="btn {{'primary' if view=='reporting' else ''}}"
+       href="{{url_for('reports_portal',
+         view='reporting',
+         q=q,
+         branch_id=branch_id or '',
+         doctor_id=doctor_id or '',
+         modality=modality,
+         report_status=report_status,
+         date_from=date_from,
+         date_to=date_to)}}">
+      🟡 Reporting
+    </a>
+
+    <a class="btn {{'primary' if view=='needs_action' else ''}}"
+       href="{{url_for('reports_portal',
+         view='needs_action',
+         q=q,
+         branch_id=branch_id or '',
+         doctor_id=doctor_id or '',
+         modality=modality,
+         report_status=report_status,
+         date_from=date_from,
+         date_to=date_to)}}">
+      🟠 Needs Action
+    </a>
+
+    <a class="btn {{'primary' if view=='ready_for_rereview' else ''}}"
+       href="{{url_for('reports_portal',
+         view='ready_for_rereview',
+         q=q,
+         branch_id=branch_id or '',
+         doctor_id=doctor_id or '',
+         modality=modality,
+         report_status=report_status,
+         date_from=date_from,
+         date_to=date_to)}}">
+      🔵 Ready for Re-review
+    </a>
+
+    <a class="btn {{'primary' if view=='final' else ''}}"
+       href="{{url_for('reports_portal',
+         view='final',
+         q=q,
+         branch_id=branch_id or '',
+         doctor_id=doctor_id or '',
+         modality=modality,
+         report_status=report_status,
+         date_from=date_from,
+         date_to=date_to)}}">
+      🟢 Final
+    </a>
+
+  </div>
+
+</div>
+
+<div class="panel">
+
+<div class="table-wrap">
+<table>
+
+<thead>
+<tr>
+<th>{{'المريض' if ui_lang=='ar' else 'Patient'}}</th>
+<th>{{ ui_phrase('Accession') }}</th>
+<th>{{'الفحص' if ui_lang=='ar' else 'Exam'}}</th>
+<th>{{'الطبيب' if ui_lang=='ar' else 'Doctor'}}</th>
+<th>{{'الأولوية' if ui_lang=='ar' else 'Priority'}}</th>
+<th>SLA</th>
+<th>{{'حالة التقرير' if ui_lang=='ar' else 'Report Status'}}</th>
+<th>{{'حالة المتابعة' if ui_lang=='ar' else 'Case State'}}</th>
+<th>{{'ملاحظة الطبيب' if ui_lang=='ar' else 'Doctor Request'}}</th>
+<th></th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for row in rows %}
+{% set o=row.order %}
+{% set r=row.report %}
+
+<tr>
+
+<td>
+<b>{{o.patient.name}}</b>
+<small style="display:block">{{o.patient.patient_id}}</small>
+</td>
+
+<td>{{o.accession}}</td>
+
+<td>
+{{o.modality}} · {{o.procedure}}
+</td>
+
+<td>
+{{o.assigned_doctor.full_name if o.assigned_doctor else '—'}}
+</td>
+
+<td>
+{% set p=row.sla.priority %}
+{% if p in ('STAT','EMERGENCY') %}
+🚨 <b>{{p}}</b>
+{% elif p=='URGENT' %}
+⚡ <b>{{ ui_phrase('URGENT') }}</b>
+{% elif p=='VIP' %}
+⭐ <b>VIP</b>
+{% else %}
+{{p}}
+{% endif %}
+</td>
+
+<td>
+{% if row.sla.status=='BREACHED' %}
+🔴 <b>BREACHED</b><br>
+<small>
+{{ ui_phrase('Target') }} {{format_sla_minutes(row.sla.target_minutes)}}<br>
+{{ ui_phrase('Overdue') }} {{format_sla_minutes(-row.sla.remaining_minutes)}}
+</small>
+
+{% elif row.sla.status=='NEAR_SLA' %}
+🟡 <b>NEAR SLA</b><br>
+<small>
+Remaining {{format_sla_minutes(row.sla.remaining_minutes)}}
+</small>
+
+{% elif row.sla.status=='ON_TIME' %}
+🟢 <b>ON TIME</b><br>
+<small>
+Remaining {{format_sla_minutes(row.sla.remaining_minutes)}}
+</small>
+
+{% else %}
+⚪ <b>NOT STARTED</b>
+{% endif %}
+</td>
+
+<td>
+<span class="badge">
+{{r.status if r else ui_phrase('WAITING')}}
+</span>
+</td>
+
+<td>
+
+{% if row.portal_state=='NEEDS_ACTION' %}
+🟠 <b>{{ ui_phrase('Needs Action') }}</b>
+
+{% elif row.portal_state=='READY_FOR_REREVIEW' %}
+🔵 <b>Ready for Re-review</b>
+
+{% elif row.portal_state=='FINAL' %}
+🟢 <b>{{ ui_phrase('Final') }}</b>
+
+{% elif row.portal_state=='REPORTING' %}
+🟡 <b>{{ ui_phrase('Reporting') }}</b>
+
+{% else %}
+⚪ <b>{{ ui_phrase('Waiting') }}</b>
+{% endif %}
+
+</td>
+
+<td>
+
+{% if row.latest_return and row.portal_state=='NEEDS_ACTION' %}
+<b>{{row.latest_return.reason_code}}</b>
+<small style="display:block">
+{{row.latest_return.note or ''}}
+</small>
+{% elif row.latest_ready and row.portal_state=='READY_FOR_REREVIEW' %}
+{{row.latest_ready.note or 'Completed'}}
+{% else %}
+—
+{% endif %}
+
+</td>
+
+<td class="actions">
+
+<a class="btn"
+   href="{{url_for('order_detail',order_id=o.id)}}">
+{{ ui_phrase('Open') }}
+</a>
+
+{% if r and r.status=='FINAL' %}
+<a class="btn primary"
+   href="{{url_for('report_portal_download',order_id=o.id)}}">
+⬇ {{'تحميل التقرير' if ui_lang=='ar' else 'Download Report'}}
+</a>
+
+{% else %}
+<span class="badge">
+{{'التقرير غير جاهز للتحميل' if ui_lang=='ar' else 'Report not ready'}}
+</span>
+{% endif %}
+
+</td>
+
+</tr>
+
+{% else %}
+
+<tr>
+<td colspan="8" class="empty">
+{{'لا توجد حالات' if ui_lang=='ar' else 'No cases found'}}
+</td>
+</tr>
+
+{% endfor %}
+
+</tbody>
+</table>
+</div>
+
+</div>
+
+{% endblock %}

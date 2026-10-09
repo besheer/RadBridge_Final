@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div style="max-width:1400px;margin:auto">
+
+  <div class="panel">
+
+    <h2>{{ ui_phrase('Voice Intake Review') }}</h2>
+    <p>
+      مراجعة الطلبات الصوتية التي تحتاج تدخل موظف الاستقبال
+    </p>
+
+    <div class="actions">
+
+      <a class="btn"
+         href="{{ url_for('voice_intake_review',status='PENDING') }}">
+        {{ ui_phrase('انتظار') }}
+      </a>
+
+      <a class="btn"
+         href="{{ url_for('voice_intake_review',status='REVIEWED') }}">
+        {{ ui_phrase('تمت المراجعة') }}
+      </a>
+
+      <a class="btn"
+         href="{{ url_for('voice_intake_review',status='CONVERTED') }}">
+        تم الحجز
+      </a>
+
+      <a class="btn"
+         href="{{ url_for('voice_intake_review',status='CANCELLED') }}">
+        {{ ui_phrase('ملغي') }}
+      </a>
+
+    </div>
+
+  </div>
+
+  {% for r in rows %}
+
+  <div class="panel" style="margin-top:16px">
+
+    <div style="
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+      gap:15px;
+    ">
+
+      <div>
+        <small>{{ ui_phrase('Reference') }}</small>
+        <div><strong>{{ r.reference }}</strong></div>
+      </div>
+
+      <div>
+        <small>{{ ui_phrase('Status') }}</small>
+        <div>{{ r.status }}</div>
+      </div>
+
+      <div>
+        <small>{{ ui_phrase('التاريخ') }}</small>
+        <div>
+          {{ r.created_at.strftime('%Y-%m-%d %H:%M')
+             if r.created_at else '-' }}
+        </div>
+      </div>
+
+      <div>
+        <small>{{ ui_phrase('الفرع') }}</small>
+        <div>{{ r.branch_name or ui_phrase('غير محدد') }}</div>
+      </div>
+
+      <div>
+        <small>رقم الهاتف</small>
+        <div dir="ltr">
+          {{ r.phone_text or 'غير واضح' }}
+        </div>
+      </div>
+
+      <div>
+        <small>سبب التحويل</small>
+        <div>{{ r.reason or '-' }}</div>
+      </div>
+
+    </div>
+
+    {% if r.transcript %}
+
+    <div style="margin-top:16px">
+      <small>النص الذي تم التعرف عليه</small>
+
+      <div style="
+        margin-top:6px;
+        padding:12px;
+        border-radius:8px;
+        background:rgba(127,127,127,.08);
+        direction:rtl;
+        text-align:right;
+        max-height:150px;
+        overflow:auto;
+      ">
+        {{ r.transcript }}
+      </div>
+    </div>
+
+    {% endif %}
+
+    {% if r.audio_path %}
+
+    <div style="margin-top:16px">
+
+      <small>تسجيل المريض</small>
+
+      <audio
+        controls
+        preload="none"
+        style="width:100%;margin-top:7px"
+        src="{{ url_for(
+          'voice_intake_audio',
+          intake_id=r.id
+        ) }}">
+      </audio>
+
+    </div>
+
+    {% endif %}
+
+    {% if r.notes %}
+
+    <div style="margin-top:12px">
+      <small>{{ ui_phrase('ملاحظات') }}</small>
+      <div>{{ r.notes }}</div>
+    </div>
+
+    {% endif %}
+
+
+    <div class="actions" style="margin-top:16px">
+
+      <a class="btn"
+         href="{{ url_for(
+           'voice_intake_caller_history',
+           intake_id=r.id
+         ) }}">
+        📞 سجل المتصل
+      </a>
+
+      <form method="post"
+            action="{{ url_for(
+              'voice_intake_caller_control',
+              intake_id=r.id
+            ) }}">
+
+        <input type="hidden"
+               name="action"
+               value="SPAM">
+
+        <button class="btn"
+                type="submit">
+          🚩 Spam
+        </button>
+
+      </form>
+
+      <form method="post"
+            action="{{ url_for(
+              'voice_intake_caller_control',
+              intake_id=r.id
+            ) }}">
+
+        <input type="hidden"
+               name="action"
+               value="BLOCK">
+
+        <button class="btn"
+                type="submit">
+          ⛔ Block
+        </button>
+
+      </form>
+
+      <form method="post"
+            action="{{ url_for(
+              'voice_intake_caller_control',
+              intake_id=r.id
+            ) }}">
+
+        <input type="hidden"
+               name="action"
+               value="WHITELIST">
+
+        <button class="btn"
+                type="submit">
+          ✓ Whitelist
+        </button>
+
+      </form>
+
+
+      {% if r.status == 'PENDING' %}
+
+      <form method="post"
+            action="{{ url_for(
+              'voice_intake_status',
+              intake_id=r.id
+            ) }}">
+
+        <input type="hidden"
+               name="action"
+               value="REVIEW">
+
+        <button class="btn primary"
+                type="submit">
+          ✓ تمت المراجعة
+        </button>
+
+      </form>
+
+      <form method="post"
+            action="{{ url_for(
+              'voice_intake_status',
+              intake_id=r.id
+            ) }}">
+
+        <input type="hidden"
+               name="action"
+               value="CANCEL">
+
+        <button class="btn"
+                type="submit">
+          {{ ui_phrase('إلغاء') }}
+        </button>
+
+      </form>
+
+      {% else %}
+
+      <form method="post"
+            action="{{ url_for(
+              'voice_intake_status',
+              intake_id=r.id
+            ) }}">
+
+        <input type="hidden"
+               name="action"
+               value="REOPEN">
+
+        <button class="btn"
+                type="submit">
+          إعادة للمراجعة
+        </button>
+
+      </form>
+
+      {% endif %}
+
+    </div>
+
+  </div>
+
+  {% else %}
+
+  <div class="panel"
+       style="margin-top:16px;text-align:center;padding:40px">
+
+    لا توجد طلبات في هذه القائمة.
+
+  </div>
+
+  {% endfor %}
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block page_title %}{{'تقارير الأطباء VERIFIED / FINAL' if ui_lang=='ar' else 'Physician Reports VERIFIED / FINAL'}}{% endblock %}
+{% block content %}
+<style>.workload-table{max-width:100%;overflow-x:auto}.workload-table table{min-width:760px}.workload-filter{display:flex;flex-wrap:wrap;gap:12px;align-items:end}.workload-filter label{flex:1 1 150px}.workload-filter select,.workload-filter input{width:100%;box-sizing:border-box}.workload-table:focus-visible{outline:2px solid #2563eb}.workload-note{overflow-wrap:anywhere}</style>
+<div class="panel">
+<form method="get" class="workload-filter">
+<label>{{'من' if ui_lang=='ar' else 'From'}}<input type="date" name="start" value="{{start}}" required></label>
+<label>{{'إلى' if ui_lang=='ar' else 'To'}}<input type="date" name="end" value="{{end}}" required></label>
+<label>{{'الفرع' if ui_lang=='ar' else 'Branch'}}<select name="branch_id"><option value="">{{'كل الفروع المسموحة' if ui_lang=='ar' else 'All permitted branches'}}</option>{% for b in branches %}<option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></label>
+<label>{{'الطبيب' if ui_lang=='ar' else 'Physician'}}<select name="doctor_id"><option value="">{{'كل الأطباء' if ui_lang=='ar' else 'All physicians'}}</option>{% for d in doctors %}<option value="{{d.id}}" {% if doctor_id==d.id %}selected{% endif %}>{{d.full_name or d.username}}</option>{% endfor %}</select></label>
+<label>{{'الحالة الحالية' if ui_lang=='ar' else 'Current status'}}<select name="status">{% for value in ['ALL','VERIFIED','FINAL'] %}<option value="{{value}}" {% if status==value %}selected{% endif %}>{{('الكل' if ui_lang=='ar' else 'Both statuses') if value=='ALL' else value}}</option>{% endfor %}</select></label>
+<button class="btn primary">{{'عرض' if ui_lang=='ar' else 'Apply'}}</button>
+</form>
+<p class="workload-note">{{'التقرير يعرض الحالة الحالية: VERIFIED بتاريخ المراجعة، وFINAL بتاريخ الاعتماد النهائي، وليس موعد الفحص. الحالة الأصلية النهائية تُعد مرة واحدة تحت FINAL ولا تُعد مجددًا تحت VERIFIED. الإسناد للطبيب صاحب التقرير، وليس المستخدم الذي اعتمد التقرير. السجلات دون تاريخ مراجعة أو اعتماد لا تدخل فترة محددة.' if ui_lang=='ar' else 'Current status is shown: VERIFIED uses the verification date; FINAL uses the finalization date, not the examination appointment. A FINAL original case counts once under FINAL and is not counted again under VERIFIED. Attribution uses the assigned reporting physician, not the approving user. Records without a verification/finalization timestamp do not enter a dated period.'}}</p>
+<p>{{'التصحيحات منفصلة؛ لا تزيد عدد الحالات الأصلية أو المستحقات. فتح الحالة متاح حسب صلاحياتك.' if ui_lang=='ar' else 'Corrections remain separate and do not increase original case counts or entitlements. Opening a case requires the existing case-view permission.'}}</p>
+</div>
+<div class="management-kpis">
+<div><b>{{totals.verified}}</b><span>{{'حالات أصلية VERIFIED' if ui_lang=='ar' else 'Original VERIFIED cases'}}</span></div>
+<div><b>{{totals.final}}</b><span>{{'حالات أصلية FINAL' if ui_lang=='ar' else 'Original FINAL cases'}}</span></div>
+<div><b>{{totals.correction_verified}}</b><span>{{'تصحيحات VERIFIED' if ui_lang=='ar' else 'VERIFIED corrections'}}</span></div>
+<div><b>{{totals.correction_final}}</b><span>{{'تصحيحات FINAL' if ui_lang=='ar' else 'FINAL corrections'}}</span></div>
+</div>
+<h2>{{'الأعداد لكل طبيب' if ui_lang=='ar' else 'Counts per physician'}}</h2>
+<div class="table-wrap workload-table" tabindex="0" role="region" aria-label="{{'أعداد الأطباء؛ مرر أفقيًا' if ui_lang=='ar' else 'Physician counts; scroll horizontally'}}"><table>
+<thead><tr><th>{{'الطبيب' if ui_lang=='ar' else 'Physician'}}</th><th>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</th><th>{{'أصلية VERIFIED' if ui_lang=='ar' else 'Original VERIFIED'}}</th><th>{{'أصلية FINAL' if ui_lang=='ar' else 'Original FINAL'}}</th><th>{{'تصحيحات VERIFIED' if ui_lang=='ar' else 'Corrections VERIFIED'}}</th><th>{{'تصحيحات FINAL' if ui_lang=='ar' else 'Corrections FINAL'}}</th><th>{{'حالات لها تصحيحات' if ui_lang=='ar' else 'Distinct corrected cases'}}</th></tr></thead>
+<tbody>{% for r in summary %}<tr><td>{{r.doctor_name or ('غير محدد' if ui_lang=='ar' else 'Unspecified')}}</td><td>{{r.branch_name or ('غير محدد' if ui_lang=='ar' else 'Unspecified')}}</td><td>{{r.verified}}</td><td>{{r.final}}</td><td>{{r.correction_verified}}</td><td>{{r.correction_final}}</td><td>{{r.correction_cases}}</td></tr>{% else %}<tr><td colspan="7">{{'لا توجد تقارير في الفترة والنطاق المختارين.' if ui_lang=='ar' else 'No reports in the selected period and scope.'}}</td></tr>{% endfor %}</tbody>
+</table></div>
+<h2>{{'قائمة تقارير الحالات' if ui_lang=='ar' else 'Case report list'}} · {{total_details}}</h2>
+<div class="table-wrap workload-table" tabindex="0" role="region" aria-label="{{'تقارير الحالات؛ مرر أفقيًا' if ui_lang=='ar' else 'Case reports; scroll horizontally'}}"><table>
+<thead><tr><th>{{'الحالة' if ui_lang=='ar' else 'Case'}}</th><th>{{'المريض' if ui_lang=='ar' else 'Patient'}}</th><th>{{'الطبيب' if ui_lang=='ar' else 'Physician'}}</th><th>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</th><th>{{'الفحص' if ui_lang=='ar' else 'Examination'}}</th><th>{{'نوع التقرير' if ui_lang=='ar' else 'Report type'}}</th><th>{{'الحالة الحالية' if ui_lang=='ar' else 'Current status'}}</th><th>{{'تاريخ المراجعة / الاعتماد' if ui_lang=='ar' else 'Verification / finalization date'}}</th></tr></thead>
+<tbody>{% for r in details %}<tr><td>{% if can_open_cases %}<a href="{{url_for('order_detail',order_id=r.order_id)}}">{{r.accession}}</a>{% else %}{{r.accession}}{% endif %}</td><td>{{r.patient_name or '—'}}</td><td>{{r.doctor_name or ('غير محدد' if ui_lang=='ar' else 'Unspecified')}}</td><td>{{r.branch_name or '—'}}</td><td>{{r.modality}} · {{r.procedure}}</td><td>{{('أصلي' if ui_lang=='ar' else 'Original') if r.kind=='ORIGINAL' else r.kind}}{% if r.revision_no %} #{{r.revision_no}}{% endif %}</td><td><strong>{{r.status}}</strong></td><td>{{r.status_at}}</td></tr>{% else %}<tr><td colspan="8">{{'لا توجد حالات مطابقة.' if ui_lang=='ar' else 'No matching cases.'}}</td></tr>{% endfor %}</tbody>
+</table></div>
+<div class="actions" style="flex-wrap:wrap;margin-top:16px">
+{% if page>1 %}<a class="btn" href="{{url_for('physician_report_workload',start=start,end=end,branch_id=branch_id or '',doctor_id=doctor_id or '',status=status,page=page-1)}}">{{'السابق' if ui_lang=='ar' else 'Previous'}}</a>{% endif %}
+<span>{{'صفحة' if ui_lang=='ar' else 'Page'}} {{page}} / {{pages}}</span>
+{% if page<pages %}<a class="btn" href="{{url_for('physician_report_workload',start=start,end=end,branch_id=branch_id or '',doctor_id=doctor_id or '',status=status,page=page+1)}}">{{'التالي' if ui_lang=='ar' else 'Next'}}</a>{% endif %}
+</div>
+{% endblock %}

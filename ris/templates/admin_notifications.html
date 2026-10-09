@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block page_title %}{{ ui_phrase('Notifications / الإشعارات') }}{% endblock %}
+{% block subtitle %}FINAL-only delivery queue. Failed jobs can be retried without changing the report status.{% endblock %}
+{% block content %}
+<div class="panel">
+<form method="post" action="{{url_for('admin_notifications_process')}}" style="margin-bottom:12px">
+<button class="btn primary">Process Pending / Retry</button>
+</form>
+<table>
+<tr><th>{{ ui_phrase('Date') }}</th><th>{{ ui_phrase('Accession') }}</th><th>{{ ui_phrase('Channel') }}</th><th>{{ ui_phrase('Recipient') }}</th><th>{{ ui_phrase('Status') }}</th><th>{{ ui_phrase('Attempts') }}</th><th>{{ ui_phrase('Error') }}</th><th></th></tr>
+{% for n in rows %}
+<tr>
+<td>{{n.created_at}}</td><td>{{n.order.accession if n.order else ''}}</td>
+<td>{{n.channel}}</td><td>{{n.recipient}}</td><td>{{n.status}}</td>
+<td>{{n.attempts}}</td><td>{{n.last_error}}</td>
+<td>{% if n.status=='FAILED' %}<form method="post" action="{{url_for('admin_notification_retry',notification_id=n.id)}}"><button class="btn">{{ ui_phrase('Retry') }}</button></form>{% endif %}</td>
+</tr>
+{% endfor %}
+</table>
+</div>
+{% endblock %}

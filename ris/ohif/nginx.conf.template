@@ -1,0 +1,55 @@
+server {
+    listen 80;
+    server_name _;
+
+    client_max_body_size 100m;
+
+    location /dicom-web/ {
+
+        proxy_pass http://ris-pacs:8042/dicom-web/;
+
+        proxy_set_header Authorization "Basic ${ORTHANC_BASIC_AUTH}";
+
+        proxy_set_header Host ris-pacs;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        proxy_buffering off;
+        proxy_request_buffering off;
+    }
+
+    # Private Orthanc REST proxy used by RadBridge backend
+
+    # RadBridge test RIS API proxy
+    # Keeps OHIF reporting API requests same-origin.
+    location /radbridge-api/ {
+
+        proxy_pass http://ris-web:8000/;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-RadBridge-OHIF-Token "${OHIF_REPORTING_TOKEN}";
+
+        proxy_http_version 1.1;
+        proxy_buffering off;
+    }
+
+    location /orthanc-api/ {
+
+        proxy_pass http://ris-pacs:8042/;
+
+        proxy_set_header Authorization "Basic ${ORTHANC_BASIC_AUTH}";
+        proxy_set_header Host ris-pacs;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        proxy_buffering off;
+    }
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+}

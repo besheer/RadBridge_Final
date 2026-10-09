@@ -1,0 +1,20 @@
+RadBridge RIS/PACS v5.32.0 — Storage & Disaster Recovery
+
+Built on v5.31.1 Developer-Ready.
+
+New capabilities:
+- Vendor-neutral Storage Targets: LOCAL/NFS/SMB/ISCSI/S3/GATEWAY.
+- Branch + Company + Storage Code mapping.
+- PRIMARY/ARCHIVE/BACKUP/DR storage roles and capacity/health visibility.
+- Replication Nodes with PRIMARY/DR/ARCHIVE/WITNESS roles.
+- Replication Policies for PACS/DATABASE/REPORTS/ATTACHMENTS/CONFIG/ALL.
+- DICOM_FORWARD / POSTGRES_STREAMING / RSYNC / STORAGE_NATIVE / S3_REPLICATION policy types.
+- RPO/RTO, lag, pending data, checkpoint and health tracking.
+- Audited PLAN/TEST/PROMOTE/FAILBACK DR events.
+- Non-destructive safety boundary: browser UI records failover intent; infrastructure promotion is executed by approved runbook/automation.
+- Documentation: docs/STORAGE_DR.md and docs/DR_RUNBOOK.md.
+
+Upgrade notes:
+- db.create_all() creates new DR tables.
+- migrate_existing_schema() adds v5.32 storage_location columns to existing databases.
+- Storage credentials remain outside the application database.

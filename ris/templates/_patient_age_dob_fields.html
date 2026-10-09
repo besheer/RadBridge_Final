@@ -1,0 +1,31 @@
+{% set age_fd = age_dob_form or {} %}
+{% set age_prefix = age_dob_prefix or 'new_' %}
+{% set age_dob_value = age_fd.get(age_prefix ~ 'dob', '') %}
+{% set age_value = age_fd.get(age_prefix ~ 'age_value', '') %}
+{% set age_unit = age_fd.get(age_prefix ~ 'age_unit', 'YEARS') %}
+{% set age_estimated = age_fd.get(age_prefix ~ 'dob_estimated', '') %}
+<div class="rb-age-dob" data-rb-age-dob data-estimated-text="{{'تاريخ ميلاد تقريبي محسوب من العمر' if ui_lang=='ar' else 'Approximate birth date calculated from age'}}" style="grid-column:span 2">
+  <div style="display:grid;grid-template-columns:minmax(150px,1fr) minmax(90px,.55fr) minmax(100px,.45fr);gap:8px;align-items:end">
+    <div>
+      <label>{{'تاريخ الميلاد' if ui_lang=='ar' else 'Date of Birth'}}</label>
+      <input type="date" name="{{age_prefix}}dob" value="{{age_dob_value}}" data-rb-dob>
+    </div>
+    <div>
+      <label>{{'العمر' if ui_lang=='ar' else 'Age'}}</label>
+      <input type="number" name="{{age_prefix}}age_value" value="{{age_value}}" min="0" step="1" inputmode="numeric" data-rb-age>
+    </div>
+    <div>
+      <label>{{'الوحدة' if ui_lang=='ar' else 'Unit'}}</label>
+      <select name="{{age_prefix}}age_unit" data-rb-age-unit>
+        <option value="YEARS" {% if age_unit=='YEARS' %}selected{% endif %}>{{'سنوات' if ui_lang=='ar' else 'Years'}}</option>
+        <option value="MONTHS" {% if age_unit=='MONTHS' %}selected{% endif %}>{{'شهور' if ui_lang=='ar' else 'Months'}}</option>
+        <option value="DAYS" {% if age_unit=='DAYS' %}selected{% endif %}>{{'أيام' if ui_lang=='ar' else 'Days'}}</option>
+      </select>
+    </div>
+  </div>
+  <label style="display:flex;gap:6px;align-items:center;margin-top:5px">
+    <input type="checkbox" name="{{age_prefix}}dob_estimated" value="1" {% if age_estimated %}checked{% endif %} data-rb-dob-estimated>
+    {{'التاريخ تقريبي' if ui_lang=='ar' else 'Approximate date'}}
+  </label>
+  <small data-rb-dob-status>{% if age_estimated %}{{'تاريخ ميلاد تقريبي محسوب من العمر' if ui_lang=='ar' else 'Approximate birth date calculated from age'}}{% endif %}</small>
+</div>

@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ ui_phrase('Operations Dashboard') }}{% endblock %}
+{% block subtitle %}{{ ui_phrase('Role-based access to the complete radiology workflow') }}{% endblock %}
+
+{% block content %}
+<style>
+.rb-home-hero {
+  display:flex;justify-content:space-between;align-items:center;
+  gap:18px;padding:20px;margin-bottom:18px;border-radius:16px;
+  border:1px solid var(--rb-border,var(--line));
+  background:linear-gradient(135deg,var(--rb-surface-raised,var(--panel)),var(--rb-surface-soft,var(--panel)));
+}
+.rb-home-hero h2 { margin:0 0 6px; }
+.rb-home-hero p { margin:0;color:var(--rb-text-muted,var(--muted)); }
+.rb-home-kpis,.rb-module-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:14px;
+}
+.rb-home-kpis { margin-bottom:22px; }
+.rb-kpi,.rb-module {
+  border:1px solid var(--rb-border,var(--line));
+  border-radius:14px;background:var(--rb-card,var(--panel));
+}
+.rb-kpi { padding:16px; }
+.rb-kpi small { color:var(--rb-text-muted,var(--muted)); }
+.rb-kpi strong { display:block;font-size:27px;margin-top:6px; }
+.rb-section { margin:24px 0; }
+.rb-section-head { margin-bottom:12px; }
+.rb-section-head h2 { margin:0 0 4px; }
+.rb-section-head p { margin:0;color:var(--rb-text-muted,var(--muted)); }
+.rb-module {
+  min-height:145px;padding:17px;text-decoration:none;color:inherit;
+  display:flex;flex-direction:column;justify-content:space-between;
+  transition:transform .15s ease,border-color .15s ease,background-color .15s ease,box-shadow .15s ease;
+}
+.rb-module:hover {
+  transform:translateY(-2px);
+  border-color:var(--primary);
+  background:var(--rb-hover,var(--panel));
+  box-shadow:0 10px 24px rgba(2,6,23,.12);
+}
+.rb-module:focus-visible { outline:3px solid var(--rb-focus);outline-offset:2px;border-color:var(--primary); }
+.rb-module-icon { font-size:28px; }
+.rb-module h3 { margin:9px 0 5px; }
+.rb-module p { margin:0;color:var(--rb-text-muted,var(--muted));font-size:13px;line-height:1.5; }
+.rb-module-count {
+  align-self:flex-start;margin-top:12px;padding:4px 9px;
+  border-radius:999px;background:var(--rb-info-bg,#dbeafe);color:var(--rb-info,#1d4ed8);font-weight:800;font-size:12px;
+}
+.rb-module-alert { border-color:#7f3d3d; }
+.rb-module-alert .rb-module-count { background:#5d2424;color:#ffd0d0; }
+.rb-recent { margin-top:26px; }
+</style>
+
+<div id="studio-launcher-dashboard">
+  {% set placement='DASHBOARD' %}
+  {% set shortcut_context={} %}
+  {% include "_studio_shortcuts.html" %}
+</div>
+
+<section class="rb-home-hero">
+  <div>
+    <h2>{{ ui_phrase('Radiology Operations') }}</h2>
+    <p>{{ ui_phrase('Select a workspace below. Modules are grouped by the clinical workflow.') }}</p>
+  </div>
+  {% if has_perm('orders.create') %}
+    <a class="btn primary" href="{{url_for('new_order')}}">{{ ui_phrase('＋ New Order') }}</a>
+  {% endif %}
+</section>
+
+<div class="rb-home-kpis">
+  <div class="rb-kpi"><small>{{ ui_phrase('Today') }}</small><strong>{{stats.today}}</strong></div>
+  <div class="rb-kpi"><small>{{ ui_phrase('Waiting for exam') }}</small><strong>{{stats.waiting}}</strong></div>
+  <div class="rb-kpi"><small>{{ ui_phrase('Exam in progress') }}</small><strong>{{stats.in_progress}}</strong></div>
+  <div class="rb-kpi"><small>{{ ui_phrase('Images received') }}</small><strong>{{stats.images_received}}</strong></div>
+  <div class="rb-kpi"><small>{{ ui_phrase('Reporting') }}</small><strong>{{stats.reporting}}</strong></div>
+  <div class="rb-kpi"><small>{{ ui_phrase('Final reports') }}</small><strong>{{stats.final}}</strong></div>
+</div>
+
+{% if has_perm('patients.view') or has_perm('appointments.manage') or has_perm('orders.view') %}
+<section class="rb-section">
+  <div class="rb-section-head">
+    <h2>{{ ui_phrase('Reception & Scheduling') }}</h2>
+    <p>{{ ui_phrase('Patient registration, appointments and radiology orders.') }}</p>
+  </div>
+  <div class="rb-module-grid">
+    {% if has_perm('patients.view') %}
+      <a class="rb-module" href="{{url_for('patients')}}">
+        <span class="rb-module-icon">👥</span>
+        <div><h3>{{ ui_phrase('Patients') }}</h3><p>{{ ui_phrase('Patient records and demographics.') }}</p></div>
+        <span class="rb-module-count">{{stats.patients}} {{ ui_phrase('patients') }}</span>
+      </a>
+    {% endif %}
+    {% if has_perm('appointments.manage') %}
+      <a class="rb-module" href="{{url_for('appointments')}}">
+        <span class="rb-module-icon">📅</span>
+        <div><h3>{{ ui_phrase('Appointments') }}</h3><p>{{ ui_phrase('Booking, availability and scheduling.') }}</p></div>
+        <span class="rb-module-count">{{stats.today}} {{ ui_phrase('today') }}</span>
+      </a>
+    {% endif %}
+    {% if has_perm('orders.view') %}
+      <a class="rb-module" href="{{url_for('orders')}}">
+        <span class="rb-module-icon">📋</span>
+        <div><h3>{{ ui_phrase('Radiology Orders') }}</h3><p>{{ ui_phrase('Search and follow all examinations.') }}</p></div>
+        <span class="rb-module-count">{{stats.orders}} {{ ui_phrase('orders') }}</span>
+      </a>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if has_perm('nursing.worklist') or has_perm('technician.worklist') %}
+<section class="rb-section">
+  <div class="rb-section-head">
+    <h2>{{ ui_phrase('Clinical & Exam Workflow') }}</h2>
+    <p>{{ ui_phrase('Patient preparation, consumables and examination execution.') }}</p>
+  </div>
+  <div class="rb-module-grid">
+    {% if has_perm('nursing.worklist') %}
+      <a class="rb-module" href="{{url_for('nursing_worklist')}}">
+        <span class="rb-module-icon">🩺</span>
+        <div><h3>{{ ui_phrase('Nursing & Preparation') }}</h3><p>{{ ui_phrase('History, attachments and actual consumables.') }}</p></div>
+        <span class="rb-module-count">{{stats.waiting}} {{ ui_phrase('waiting') }}</span>
+      </a>
+    {% endif %}
+    {% if has_perm('technician.worklist') %}
+      <a class="rb-module" href="{{url_for('technician_worklist')}}">
+        <span class="rb-module-icon">🩻</span>
+        <div><h3>{{ ui_phrase('Exam Operations') }}</h3><p>{{ ui_phrase('Start and complete exams, then review received images.') }}</p></div>
+        <span class="rb-module-count">{{stats.in_progress}} {{ ui_phrase('active') }}</span>
+      </a>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% include "_coordinator_dashboard.html" %}
+
+{% if has_perm('reports.view') or has_perm('orders.view') %}
+<section class="rb-section">
+  <div class="rb-section-head">
+    <h2>{{ ui_phrase('Imaging & Reporting') }}</h2>
+    <p>{{ ui_phrase('PACS integrity, case assignment and diagnostic reporting.') }}</p>
+  </div>
+  <div class="rb-module-grid">
+    {% if has_perm('reports.view') %}
+      <a class="rb-module" href="{{url_for('doctor_workspace')}}">
+        <span class="rb-module-icon">🧑‍⚕️</span>
+        <div><h3>{{ ui_phrase('Doctor Workspace') }}</h3><p>{{ ui_phrase('Assigned studies and diagnostic reports.') }}</p></div>
+        <span class="rb-module-count">{{stats.reporting}} {{ ui_phrase('reporting') }}</span>
+      </a>
+      <a class="rb-module" href="{{url_for('unassigned_cases')}}">
+        <span class="rb-module-icon">📨</span>
+        <div><h3>{{ ui_phrase('Open Reporting Pool') }}</h3><p>{{ ui_phrase('Ready studies awaiting a radiologist.') }}</p></div>
+        <span class="rb-module-count">{{stats.unassigned}} {{ ui_phrase('unassigned') }}</span>
+      </a>
+    {% endif %}
+    {% if has_perm('orders.view') %}
+      <a class="rb-module" href="{{url_for('case_operations_control_center')}}">
+        <span class="rb-module-icon">🎛️</span>
+        <div><h3>{{ ui_phrase('Case Control Center') }}</h3><p>{{ ui_phrase('Readiness, assignment and PACS evidence.') }}</p></div>
+        <span class="rb-module-count">{{stats.images_received}} {{ ui_phrase('with images') }}</span>
+      </a>
+      <a class="rb-module" href="{{url_for('pacs_reconciliation')}}">
+        <span class="rb-module-icon">🔗</span>
+        <div><h3>{{ ui_phrase('PACS Reconciliation') }}</h3><p>{{ ui_phrase('Review study-to-order matching safely.') }}</p></div>
+        <span class="rb-module-count">{{stats.mwl_errors}} {{ ui_phrase('alerts') }}</span>
+      </a>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if has_perm('orders.view') or has_perm('workflow.command.view') or has_perm('audit.view') %}
+<section class="rb-section">
+  <div class="rb-section-head">
+    <h2>{{ ui_phrase('Operations & Exceptions') }}</h2>
+    <p>{{ ui_phrase('Resolve blockers and monitor workflow health.') }}</p>
+  </div>
+  <div class="rb-module-grid">
+    {% if has_perm('orders.view') %}
+      <a class="rb-module {% if stats.mwl_errors %}rb-module-alert{% endif %}"
+         href="{{url_for('case_exception_resolver')}}">
+        <span class="rb-module-icon">⚠️</span>
+        <div><h3>{{ ui_phrase('Case Exceptions') }}</h3><p>{{ ui_phrase('Investigate blockers at their source.') }}</p></div>
+        <span class="rb-module-count">{{stats.mwl_errors}} {{ ui_phrase('routing alerts') }}</span>
+      </a>
+      <a class="rb-module" href="{{url_for('assignment_dashboard')}}">
+        <span class="rb-module-icon">👨‍⚕️</span>
+        <div><h3>{{ ui_phrase('Assignment Operations') }}</h3><p>{{ ui_phrase('Doctor workload and assignment status.') }}</p></div>
+        <span class="rb-module-count">{{stats.unassigned}} {{ ui_phrase('open') }}</span>
+      </a>
+    {% endif %}
+    {% if has_perm('workflow.command.view') %}
+      <a class="rb-module" href="{{url_for('workflow_command_center')}}">
+        <span class="rb-module-icon">📡</span>
+        <div><h3>{{ ui_phrase('Workflow Command Center') }}</h3><p>{{ ui_phrase('Operational monitoring and escalation.') }}</p></div>
+        <span class="rb-module-count">{{stats.completed}} {{ ui_phrase('completed') }}</span>
+      </a>
+    {% endif %}
+
+    {% if has_perm('correction.request') or has_perm('correction.review') %}
+      <a class="rb-module" href="{{url_for('correction_center')}}">
+        <span class="rb-module-icon">🛡️</span>
+        <div>
+          <h3>{{ ui_phrase('Correction & Cancellation') }}</h3>
+          <p>{{ ui_phrase('Report wrong images or data, request cancellation, and review controlled corrections.') }}</p>
+        </div>
+        <span class="rb-module-count">{{ ui_phrase('Audited workflow') }}</span>
+      </a>
+    {% endif %}
+
+    <!-- RB_DASHBOARD_SLA_OPERATIONS_LINKS_V1 -->
+
+    {% if has_perm('audit.view') %}
+      <a class="rb-module" href="{{url_for('live_command_center')}}">
+        <span class="rb-module-icon">🟢</span>
+        <div>
+          <h3>{{ ui_phrase('Live Command Center') }}</h3>
+          <p>{{ ui_phrase('Live workflow, system health, resources and monitoring controls.') }}</p>
+        </div>
+        <span class="rb-module-count">{{ ui_phrase('Live operations') }}</span>
+      </a>
+    {% endif %}
+
+    {% if has_perm('orders.view') %}
+      <a class="rb-module" href="{{url_for('tat_dashboard')}}">
+        <span class="rb-module-icon">⏱</span>
+        <div>
+          <h3>{{ ui_phrase('TAT Dashboard') }}</h3>
+          <p>{{ ui_phrase('Turnaround-time monitoring, SLA visibility and overdue workflow cases.') }}</p>
+        </div>
+        <span class="rb-module-count">{{ ui_phrase('SLA & TAT') }}</span>
+      </a>
+
+      <a class="rb-module" href="{{url_for('escalation_board')}}">
+        <span class="rb-module-icon">⚑</span>
+        <div>
+          <h3>{{ ui_phrase('Escalations') }}</h3>
+          <p>{{ ui_phrase('Operational escalations, overdue cases and SLA exceptions.') }}</p>
+        </div>
+        <span class="rb-module-count">{{ ui_phrase('Exceptions') }}</span>
+      </a>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if has_perm('inventory.view') or has_perm('financial.view') %}
+<section class="rb-section">
+  <div class="rb-section-head">
+    <h2>{{ ui_phrase('Inventory, Finance & Management') }}</h2>
+    <p>{{ ui_phrase('Stock, collections and management oversight.') }}</p>
+  </div>
+  <div class="rb-module-grid">
+    {% if has_perm('inventory.view') %}
+      <a class="rb-module" href="{{url_for('inventory_stock')}}">
+        <span class="rb-module-icon">📦</span>
+        <div><h3>{{ ui_phrase('Inventory Stock') }}</h3><p>{{ ui_phrase('Branch stock, availability and movements.') }}</p></div>
+      </a>
+    {% endif %}
+    {% if has_perm('financial.view') %}
+      <a class="rb-module" href="{{url_for('financial_center')}}">
+        <span class="rb-module-icon">💳</span>
+        <div><h3>{{ ui_phrase('Financial Center') }}</h3><p>{{ ui_phrase('Collections and financial operations.') }}</p></div>
+        <span class="rb-module-count">{{"%.2f"|format(stats.revenue)}} EGP</span>
+      </a>
+    {% endif %}
+    {% if has_perm('orders.view') %}
+      <a class="rb-module" href="{{url_for('management_dashboard')}}">
+        <span class="rb-module-icon">📊</span>
+        <div><h3>{{ ui_phrase('Management') }}</h3><p>{{ ui_phrase('Operational overview and performance.') }}</p></div>
+      </a>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<div class="panel rb-recent">
+  <div class="panel-head"><h3>{{ ui_phrase('Recent Orders') }}</h3></div>
+  <div class="rb-dashboard-table-wrap">
+    <table class="rb-dashboard-table">
+      <thead>
+        <tr><th>{{ ui_phrase('Accession') }}</th><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Procedure') }}</th><th>{{ ui_phrase('Branch') }}</th><th>{{ ui_phrase('Device') }}</th><th>{{ ui_phrase('Status') }}</th></tr>
+      </thead>
+      <tbody>
+      {% for o in recent %}
+        <tr>
+          <td><a href="{{url_for('order_detail',order_id=o.id)}}">{{o.accession}}</a></td>
+          <td>{{o.patient.name}}<small>{{o.patient.patient_id}}</small></td>
+          <td>{{o.procedure}}</td>
+          <td>{{o.branch.name if o.branch else '-'}}</td>
+          <td>{{o.device.name if o.device else '-'}}</td>
+          <td><span class="badge {{o.status|lower}}">{{o.status}}</span></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="empty">{{ ui_phrase('No orders yet.') }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

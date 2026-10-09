@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block page_title %}{{ ui_phrase('Booking Calendar / تقويم الحجز') }}{% endblock %}
+{% block subtitle %}Book by device availability and procedure duration. Worklist is created only at check-in.{% endblock %}
+{% block content %}
+<div class="panel form-card">
+<form method="post" id="bookingForm">
+<div class="grid3">
+<div><label>{{ ui_phrase('Patient') }}</label><select name="patient_id" required>{% for p in patients %}<option value="{{p.id}}">{{p.patient_id}} — {{p.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Branch') }}</label><select name="branch_id" id="branch" required>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Procedure') }}</label><select name="procedure_id" id="procedure" required>{% for p in procedures %}<option value="{{p.id}}" data-modality="{{p.modality}}">{{p.modality}} — {{p.name_ar if ui_lang=="ar" and p.name_ar else p.name}} ({{p.duration_min}} min)</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Device') }}</label><select name="device_id" id="device" required>{% for d in devices %}<option value="{{d.id}}" data-modality="{{d.modality}}">{{d.modality}} — {{d.name}} / {{d.room}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Date') }}</label><input type="date" id="date" required></div>
+<div><label>{{ ui_phrase('Source') }}</label><select name="source"><option>CALL_CENTER</option><option value="RECEPTION">{{ ui_phrase('RECEPTION') }}</option><option>ONLINE</option></select></div>
+</div>
+<div class="section-title">Available Time Slots</div><div id="slots" class="slot-grid"><span class="muted">Choose procedure, device and date.</span></div>
+<input type="hidden" name="scheduled" id="scheduled">
+<label>{{ ui_phrase('Notes') }}</label><input name="notes">
+<button class="btn primary" id="bookBtn" disabled>Book Selected Slot</button>
+</form></div>
+<div class="panel"><table><tr><th>{{ ui_phrase('Date') }}</th><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Procedure') }}</th><th>{{ ui_phrase('Device') }}</th><th>{{ ui_phrase('Status') }}</th><th>{{ ui_phrase('Actions') }}</th></tr>
+{% for a in rows %}<tr><td>{{a.scheduled}}</td><td>{{a.patient.patient_id}} — {{a.patient.name}}</td><td>{{a.procedure.name}}</td><td>{{a.device.name if a.device else ''}}</td><td><span class="badge">{{a.status}}</span></td><td class="actions">
+{% if not a.order_id and a.status in ['BOOKED','CONFIRMED'] %}<a class="btn" href="{{url_for('appointment_edit',appointment_id=a.id)}}">{{ ui_phrase('Edit booking / تعديل الحجز') }}</a><form method="post" action="{{url_for('appointment_action',appointment_id=a.id,action='checkin')}}"><button class="btn primary">Check-in</button></form>{% endif %}
+{% if a.status=='BOOKED' %}<form method="post" action="{{url_for('appointment_action',appointment_id=a.id,action='confirm')}}"><button class="btn">Confirm</button></form>{% endif %}
+{% if a.status in ['BOOKED','CONFIRMED'] %}<form method="post" action="{{url_for('appointment_action',appointment_id=a.id,action='cancel')}}"><button class="btn">{{ ui_phrase('Cancel') }}</button></form><form method="post" action="{{url_for('appointment_action',appointment_id=a.id,action='noshow')}}"><button class="btn">No-show</button></form>{% endif %}
+</td></tr>{% endfor %}</table></div>
+<script>
+async function loadSlots(){
+ const d=document.getElementById('device').value,p=document.getElementById('procedure').value,day=document.getElementById('date').value;
+ if(!d||!p||!day)return;
+ const r=await fetch(`/api/slots?device_id=${d}&procedure_id=${p}&date=${day}`); const j=await r.json();
+ const box=document.getElementById('slots'); box.innerHTML='';
+ j.slots.forEach(s=>{let b=document.createElement('button');b.type='button';b.className='slot '+(s.available?'available':'busy');b.textContent=s.label;b.disabled=!s.available;
+ if(s.available)b.onclick=()=>{document.querySelectorAll('.slot').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');document.getElementById('scheduled').value=s.start;document.getElementById('bookBtn').disabled=false;};
+ box.appendChild(b);});
+}
+['device','procedure','date'].forEach(id=>document.getElementById(id).addEventListener('change',loadSlots));
+</script>
+{% endblock %}

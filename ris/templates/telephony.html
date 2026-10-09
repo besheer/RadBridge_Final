@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+.rb-phone {
+    max-width: 1180px;
+    margin: 20px auto;
+}
+
+.rb-grid {
+    display:grid;
+    grid-template-columns:360px 1fr;
+    gap:20px;
+}
+
+.rb-card {
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:16px;
+    padding:20px;
+    box-shadow:0 8px 24px rgba(0,0,0,.06);
+}
+
+.rb-status {
+    padding:8px 12px;
+    border-radius:20px;
+    background:#eef2ff;
+    display:inline-block;
+    font-weight:600;
+}
+
+.rb-number {
+    width:100%;
+    font-size:24px;
+    padding:12px;
+    margin:15px 0;
+}
+
+.rb-actions {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+
+.rb-actions button {
+    padding:12px;
+    border:0;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+.rb-call {
+    background:#16a34a;
+    color:white;
+}
+
+.rb-hangup {
+    background:#dc2626;
+    color:white;
+}
+
+.rb-agent {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px;
+    border-bottom:1px solid #eee;
+}
+
+.rb-agent button {
+    padding:7px 12px;
+}
+
+.rb-rooms {
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+}
+
+.rb-room {
+    padding:14px;
+    border:1px solid #ddd;
+    border-radius:12px;
+    cursor:pointer;
+}
+
+@media(max-width:800px) {
+    .rb-grid {
+        grid-template-columns:1fr;
+    }
+}
+</style>
+
+<div class="rb-phone">
+
+<h2>RadBridge Communications</h2>
+
+<div class="rb-grid">
+
+<div class="rb-card">
+
+<h4>{{ telephony_user.full_name }}</h4>
+
+{% if telephony_extension %}
+
+<p>
+Extension:
+<strong>{{ telephony_extension.extension }}</strong>
+</p>
+
+<div id="phoneStatus" class="rb-status">
+Initializing…
+</div>
+
+<input
+ id="dialNumber"
+ class="rb-number"
+ placeholder="Extension or number"
+ autocomplete="off">
+
+<div class="rb-actions">
+
+<button
+ class="rb-call"
+ onclick="rbCall()">
+{{ ui_phrase('Call') }}
+</button>
+
+<button
+ class="rb-hangup"
+ onclick="rbHangup()">
+{{ ui_phrase('Hangup') }}
+</button>
+
+<button onclick="rbMute()">
+{{ ui_phrase('Mute') }}
+</button>
+
+<button onclick="rbAnswer()">
+{{ ui_phrase('Answer') }}
+</button>
+
+</div>
+
+{% else %}
+
+<div class="alert alert-warning">
+No telephony extension is assigned to this user.
+</div>
+
+{% endif %}
+
+</div>
+
+
+<div>
+
+<div class="rb-card">
+
+<h4>Staff Directory</h4>
+
+<div id="agentDirectory">
+Loading…
+</div>
+
+</div>
+
+<br>
+
+<div class="rb-card">
+
+<h4>{{ ui_phrase('Conference Rooms') }}</h4>
+
+<div class="rb-rooms">
+
+<div class="rb-room" onclick="dialRoom('7301')">
+{{ ui_phrase('Reception') }}<br><strong>7301</strong>
+</div>
+
+<div class="rb-room" onclick="dialRoom('7302')">
+{{ ui_phrase('Radiology') }}<br><strong>7302</strong>
+</div>
+
+<div class="rb-room" onclick="dialRoom('7303')">
+{{ ui_phrase('Operations') }}<br><strong>7303</strong>
+</div>
+
+<div class="rb-room" onclick="dialRoom('7304')">
+{{ ui_phrase('IT / PACS') }}<br><strong>7304</strong>
+</div>
+
+<div class="rb-room" onclick="dialRoom('7305')">
+{{ ui_phrase('Management') }}<br><strong>7305</strong>
+</div>
+
+<div class="rb-room" onclick="dialRoom('7390')">
+{{ ui_phrase('Case Discussion') }}<br><strong>7390</strong>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+</div>
+
+
+<script>
+
+let rbSession = null;
+
+async function loadDirectory() {
+
+    const r = await fetch('/api/telephony/directory');
+    const j = await r.json();
+
+    const el =
+        document.getElementById('agentDirectory');
+
+    if (!j.ok) {
+        el.innerHTML = 'Directory unavailable';
+        return;
+    }
+
+    el.innerHTML = '';
+
+    j.agents.forEach(a => {
+
+        const row =
+            document.createElement('div');
+
+        row.className='rb-agent';
+
+        row.innerHTML =
+          '<div><strong>' +
+          a.name +
+          '</strong><br>' +
+          a.role +
+          ' · ' +
+          a.extension +
+          '</div>' +
+          '<button onclick="dialRoom(\'' +
+          a.extension +
+          '\')">Call</button>';
+
+        el.appendChild(row);
+
+    });
+}
+
+
+function dialRoom(number) {
+
+    document.getElementById(
+        'dialNumber'
+    ).value = number;
+
+    rbCall();
+}
+
+
+function rbCall() {
+
+    const n =
+      document.getElementById(
+        'dialNumber'
+      ).value.trim();
+
+    if (!n)
+        return;
+
+    /*
+       SIP.js WebRTC call binding
+       will be connected here after
+       WSS registration test.
+    */
+
+    document.getElementById(
+        'phoneStatus'
+    ).innerText =
+        'Calling ' + n + '…';
+}
+
+
+function rbHangup() {
+
+    if (rbSession) {
+        try {
+            rbSession.bye();
+        } catch(e) {}
+    }
+
+    document.getElementById(
+        'phoneStatus'
+    ).innerText='Ready';
+}
+
+
+function rbAnswer() {
+
+    if (rbSession) {
+        try {
+            rbSession.accept();
+        } catch(e) {}
+    }
+}
+
+
+function rbMute() {
+
+    document.getElementById(
+        'phoneStatus'
+    ).innerText='Mute requested';
+}
+
+
+loadDirectory();
+
+</script>
+
+{% endblock %}

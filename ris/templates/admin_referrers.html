@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block page_title %}{{ ui_phrase('Referring Doctors / الأطباء المحولون') }}{% endblock %}
+{% block content %}
+<div class="panel form-card"><form method="post"><div class="grid3">
+<div><label>{{ ui_phrase('Code') }}</label><input name="code" required></div><div><label>{{ ui_phrase('Name') }}</label><input name="name" required></div>
+<div><label>{{ ui_phrase('Specialty') }}</label><input name="specialty"></div><div><label>Organization</label><input name="organization"></div>
+<div><label>{{ ui_phrase('Phone') }}</label><input name="phone"></div></div><button class="btn primary">Add Doctor</button></form></div>
+<div class="panel"><table><tr><th>{{ ui_phrase('Code') }}</th><th>{{ ui_phrase('Name') }}</th><th>{{ ui_phrase('Specialty') }}</th><th>Organization</th><th>{{ ui_phrase('Phone') }}</th></tr>
+{% for r in rows %}<tr><td>{{r.code}}</td><td>{{r.name}}</td><td>{{r.specialty}}</td><td>{{r.organization}}</td><td>{{r.phone}}</td></tr>{% endfor %}</table></div>{% endblock %}

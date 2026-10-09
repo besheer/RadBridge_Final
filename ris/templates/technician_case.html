@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ ui_phrase('Technician Case Workspace') }}{% endblock %}
+{% block subtitle %}
+{{ ui_phrase('Start and complete the examination, open images, record actual\nconsumables, technical notes, attachments and case history') }}
+{% endblock %}
+
+{% block content %}
+<style>
+.tc-grid{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(390px,1.4fr);gap:16px;align-items:start}
+.tc-grid .panel{margin:0 0 16px}
+.tc-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start}
+.tc-head h2{margin:5px 0}
+.tc-preview{width:100%;height:250px;object-fit:cover;border-radius:12px;background:#071018;border:1px solid var(--border,#294052)}
+.tc-empty-image{height:250px;display:grid;place-items:center;text-align:center;border-radius:12px;background:#071018;color:#91a4b7}
+.tc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tc-actions form{margin:0}
+.tc-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:14px}
+.tc-step{padding:9px 5px;text-align:center;border:1px solid var(--border,#294052);border-radius:9px;color:var(--muted,#8fa4b7);font-size:12px}
+.tc-step.current{color:#fff;background:#1d4ed8;border-color:#60a5fa}
+.tc-facts{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tc-fact{padding:11px;border:1px solid var(--border,#294052);border-radius:10px}
+.tc-fact small,.tc-entry small{display:block;color:var(--muted,#8fa4b7);margin-bottom:3px}
+.tc-form-grid{display:grid;grid-template-columns:minmax(180px,2fr) minmax(90px,.7fr);gap:8px}
+.tc-entry{padding:10px 0;border-bottom:1px solid var(--border,#294052)}
+.tc-entry:last-child{border-bottom:0}
+.tc-table{overflow:auto}
+@media(max-width:950px){.tc-grid{grid-template-columns:1fr}}
+@media(max-width:620px){.tc-facts,.tc-steps,.tc-form-grid{grid-template-columns:1fr}}
+</style>
+
+{% set st=(order.exam_status or 'ORDERED')|upper %}
+{% set exam_policy=staff_exam_policy(order) %}
+
+<section class="panel">
+  <div class="tc-head">
+    <div>
+      <a href="{{url_for('technician_worklist')}}">{{ ui_phrase('← Examination Worklist') }}</a>
+      <h2>{{order.patient.name}}</h2>
+      <div>{{order.patient.patient_id}} · <b>{{order.accession}}</b></div>
+    </div>
+    <span class="status-chip status-{{st|lower|replace('_','-')}}">{{st}}</span>
+  </div>
+
+  <div class="tc-steps">
+    <div class="tc-step {% if st in ['BOOKED','ORDERED'] %}current{% endif %}">{{ ui_phrase('1 · Waiting') }}</div>
+    <div class="tc-step {% if st == 'IN_PROGRESS' %}current{% endif %}">{{ ui_phrase('2 · In Progress') }}</div>
+    <div class="tc-step {% if st == 'EXAM_COMPLETED' %}current{% endif %}">{{ ui_phrase('3 · Completed') }}</div>
+    <div class="tc-step {% if st in ['REPORTING','VERIFIED','FINAL'] %}current{% endif %}">{{ ui_phrase('4 · Images Ready') }}</div>
+  </div>
+</section>
+
+{% if return_state.open and return_state.owner=='TECHNICIAN' %}
+<section id="returned-correction" class="panel" style="border-color:#d97706;scroll-margin-top:100px">
+  <h3>{{'مطلوب استكمال الحالة' if ui_lang=='ar' else 'Returned for correction'}}</h3>
+  <p><b>{{return_state.reason}}</b></p><p style="white-space:pre-wrap">{{return_state.return_event.note}}</p>
+  <form method="post" action="{{url_for('technician_returned_note',order_id=order.id)}}">
+    <label>{{'نوع الملاحظة' if ui_lang=='ar' else 'Note type'}}</label>
+    <select name="note_type"><option value="HISTORY">{{'التاريخ المرضي' if ui_lang=='ar' else 'Clinical history'}}</option><option value="TECHNICAL">{{'ملاحظات فنية' if ui_lang=='ar' else 'Technical notes'}}</option></select>
+    <textarea name="text" required minlength="5" maxlength="10000" aria-label="{{'بيانات الاستكمال' if ui_lang=='ar' else 'Correction notes'}}"></textarea>
+    <button class="btn primary">{{'حفظ الاستكمال' if ui_lang=='ar' else 'Save correction notes'}}</button>
+  </form>
+  <details id="image-correction-request" style="margin-top:16px;scroll-margin-top:100px" ontoggle="this.open &amp;&amp; this.querySelector('textarea').focus()"><summary>{{'طلب مراجعة الصور وحذفها لإعادة الإرسال' if ui_lang=='ar' else 'Request image review and replacement'}}</summary>
+    <p>{{'هذا طلب مراجعة فقط؛ حذف الصور يتطلب الموافقة ومسار التصحيح الموثق.' if ui_lang=='ar' else 'This submits a request. Image deletion requires approval through the audited correction workflow.'}}</p>
+    {% for r in image_requests %}<p>#{{r.id}} · {{ui_phrase(r.status)}} · {{r.reason}}</p>{% endfor %}
+    <form method="post" action="{{url_for('technician_image_replacement_request',order_id=order.id)}}">
+      <textarea name="reason" required minlength="5" maxlength="10000" aria-label="{{'سبب طلب مراجعة الصور' if ui_lang=='ar' else 'Image correction reason'}}"></textarea>
+      <button class="btn">{{'إرسال طلب مراجعة الصور' if ui_lang=='ar' else 'Submit image correction request'}}</button>
+    </form>
+  </details>
+  <form method="post" style="margin-top:16px" action="{{url_for('resolve_returned_case',event_id=return_state.return_event.id)}}">
+    <p>{{'تُراجع الصور وشروط جاهزية الحالة من جديد قبل إعادتها للطبيب.' if ui_lang=='ar' else 'Images and case readiness are checked again before resubmission.'}}</p>
+    <textarea name="note" aria-label="{{'ملخص الاستكمال' if ui_lang=='ar' else 'Correction summary'}}"></textarea>
+    <button class="btn primary">{{'التحقق وإعادة الحالة للمراجعة' if ui_lang=='ar' else 'Check and resubmit for review'}}</button>
+  </form>
+</section>
+{% endif %}
+
+{% if exam_policy.require_images %}
+<section class="panel" aria-label="{{ ui_phrase('Acquisition image policy') }}">
+  <h3>{{ ui_phrase('سياسة صور الفحص · Acquisition Policy') }}</h3>
+  {% if quality_rule %}
+    <p><b>{{quality_rule.modality}} · {{quality_rule.procedure_pattern}}</b></p>
+    <p>{{ ui_phrase('Minimum DICOM images:') }} <b>{{acquisition_minimum}}</b> {{ ui_phrase('(at least one received image).\n       Required series:') }} <b>{{quality_rule.required_series or 'No named series configured'}}</b></p>
+  {% else %}
+    <p class="muted">{{ ui_phrase('السياسة ناقصة: يسمح بالإكمال عند وجود صور مؤكدة مع تنبيه. Procedure policy is incomplete; confirmed PACS images are required.') }}</p>
+  {% endif %}
+  {% if acquisition_notes %}<p style="white-space:pre-wrap">{{acquisition_notes}}</p>{% endif %}
+  {% if image_readiness %}
+    <p>{{ ui_phrase('Last check:') }} {{image_readiness.checked_at or '-'}} {{ ui_phrase('· Received DICOM images:') }} <b>{{image_readiness.image_count or 0}}</b>
+      · {% if image_readiness.incomplete_images %}{{ ui_phrase('Below minimum') }}{% endif %}
+      {% if image_readiness.missing_series %} {{ ui_phrase('· Required series missing') }}{% endif %}</p>
+  {% else %}<p>{{ ui_phrase('No image check recorded yet.') }}</p>{% endif %}
+  <form method="post" action="{{url_for('technician_check_images',order_id=order.id)}}">
+    <button class="btn">{{ ui_phrase('↻ Check received images · فحص الصور المستلمة') }}</button>
+  </form>
+  <p class="muted">{{ ui_phrase('Complete Exam verifies current PACS images and patient matching on the server before completion. Nursing preparation is checked separately.') }}</p>
+</section>
+
+{% else %}<section class="panel"><p>{{'الصور غير مطلوبة لهذا الفحص' if ui_lang=='ar' else 'Images not required for this exam'}}</p></section>{% endif %}
+<div class="tc-grid">
+  <aside>
+    <section class="panel">
+      {% if (order.pacs_image_count or 0)>0 and order.pacs_study_id %}
+        <img class="tc-preview"
+             src="{{url_for('order_study_thumbnail',order_id=order.id)}}"
+             alt="Study preview for {{order.accession}}">
+      {% else %}
+        <div class="tc-empty-image">{{ ui_phrase('No PACS image received') }}</div>
+      {% endif %}
+
+      <div class="tc-actions">
+        {% if image_url and (order.pacs_image_count or 0) > 0 and order.pacs_study_id %}
+          <a class="btn primary" href="{{image_url}}"
+             target="_blank" rel="noopener noreferrer">{{ ui_phrase('🖼 Open Images') }}</a>
+        {% endif %}
+
+        {% if exam_policy.mode=='EXAM' and st in ['BOOKED','ORDERED'] %}
+          <form method="post" action="{{url_for('order_exam_status',order_id=order.id)}}">
+            <input type="hidden" name="status" value="IN_PROGRESS">
+            <button class="btn primary">{{ ui_phrase('▶ Start Exam') }}</button>
+          </form>
+        {% elif exam_policy.mode=='EXAM' and st == 'IN_PROGRESS' %}
+          <form method="post" action="{{url_for('order_exam_status',order_id=order.id)}}">
+            <input type="hidden" name="status" value="EXAM_COMPLETED">
+            <button class="btn primary">{{ ui_phrase('✓ Complete Exam') }}</button>
+          </form>
+        {% else %}
+          <span class="muted">{{ ui_phrase('No pending examination action') }}</span>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>{{ ui_phrase('Patient & Examination') }}</h3>
+      <div class="tc-facts">
+        <div class="tc-fact"><small>{{ ui_phrase('Examination') }}</small>{{order.proc.name if order.proc else order.procedure}}</div>
+        <div class="tc-fact"><small>{{ ui_phrase('Priority') }}</small>{{order.priority or ui_phrase('ROUTINE')}}</div>
+        <div class="tc-fact"><small>{{ ui_phrase('Room / Device') }}</small>{{order.device.name if order.device else ui_phrase('Routing required')}}</div>
+        <div class="tc-fact"><small>{{ ui_phrase('Scheduled') }}</small>{{order.scheduled.strftime('%Y-%m-%d %H:%M') if order.scheduled else '-'}}</div>
+        <div class="tc-fact"><small>PACS</small>{{order.pacs_status or ui_phrase('WAITING')}}</div>
+        <div class="tc-fact"><small>{{ ui_phrase('Images') }}</small>{{order.pacs_image_count or 0}}</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>{{ ui_phrase('Attachments') }}</h3>
+      {% for attachment in attachments %}
+        <div class="tc-entry">
+          <a href="{{url_for('attachment_preview',attachment_id=attachment.id)}}"
+             target="_blank" rel="noopener noreferrer">
+            📎 {{attachment.original_name}}
+          </a>
+          <small>{{attachment.category}} · {{attachment.created_at.strftime('%Y-%m-%d %H:%M') if attachment.created_at else ''}}</small>
+        </div>
+      {% else %}
+        <p class="muted">{{ ui_phrase('No attachments for this examination.') }}</p>
+      {% endfor %}
+
+      {% if has_perm('attachments.upload') %}
+        <div class="tc-actions">
+          <a class="btn" href="{{url_for('order_attachments',order_id=order.id)}}">
+            {{ ui_phrase('＋ Upload Attachment') }}
+          </a>
+        </div>
+      {% endif %}
+    </section>
+  </aside>
+
+  <main>
+    <section class="panel">
+      <h3>{{ ui_phrase('Actual Consumables Used') }}</h3>
+      <p class="muted">
+        {{ ui_phrase('Record only materials actually consumed during this examination.') }}
+      </p>
+
+      {% if st != 'IN_PROGRESS' and exam_policy.mode!='TASKS' %}
+        <p class="muted">
+          {{ ui_phrase('Start the examination to enable consumable recording.') }}
+        </p>
+      {% endif %}
+
+      {% if has_perm('consumables.use') and warehouse and (st == 'IN_PROGRESS' or exam_policy.mode=='TASKS') %}
+        <form method="post"
+              action="{{url_for('technician_case_consume',order_id=order.id)}}">
+          <div class="tc-form-grid">
+            <select name="item_id" required>
+              <option value="">{{ ui_phrase('Select consumable') }}</option>
+              {% for row in inventory_rows %}
+                <option value="{{row.item.id}}">
+                  {{row.item.name}} — {{row.available}} {{row.item.unit}} {{ ui_phrase('available') }}
+                </option>
+              {% endfor %}
+            </select>
+            <input type="number" name="qty" min="0.01" step="0.01"
+                   placeholder="{{ ui_phrase('Quantity') }}" required>
+          </div>
+          <input name="reason" maxlength="500"
+                 placeholder="{{ ui_phrase('Usage note or acquisition reason (optional)') }}">
+          <button class="btn primary">{{ ui_phrase('＋ Record Usage') }}</button>
+        </form>
+      {% elif not warehouse %}
+        <p class="notice warning">{{ ui_phrase('No active branch warehouse is configured.') }}</p>
+      {% endif %}
+
+      <div class="tc-table">
+        <table>
+          <thead>
+            <tr><th>{{ ui_phrase('Item') }}</th><th>{{ ui_phrase('Quantity') }}</th><th>{{ ui_phrase('Type') }}</th><th>{{ ui_phrase('Time') }}</th></tr>
+          </thead>
+          <tbody>
+          {% for usage in usages %}
+            <tr>
+              <td>{{usage.item.name}}</td>
+              <td>{{usage.qty}} {{usage.item.unit}}</td>
+              <td>{{usage.usage_type}}</td>
+              <td>{{usage.created_at.strftime('%Y-%m-%d %H:%M') if usage.created_at else '-'}}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="empty">{{ ui_phrase('No actual consumables recorded.') }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p><b>{{ ui_phrase('Recorded cost:') }}</b> {{'%.2f'|format(consumable_cost)}} EGP</p>
+    </section>
+
+    <section class="panel">
+      <h3>{{ ui_phrase('Technical Note') }}</h3>
+      <form method="post"
+            action="{{url_for('technician_case_note',order_id=order.id)}}">
+        <textarea name="text" rows="4" maxlength="4000" required
+          placeholder="{{ ui_phrase('Patient cooperation, positioning, acquisition issue, repeat reason or technical observation') }}"></textarea>
+        <button class="btn primary">{{ ui_phrase('📝 Save Technical Note') }}</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h3>{{ ui_phrase('Clinical History & Notes') }}</h3>
+      {% for note in notes %}
+        <div class="tc-entry">
+          <b>{{note.note_type}}</b>
+          <small>
+            {{note.author.full_name if note.author else 'System'}} ·
+            {{note.created_at.strftime('%Y-%m-%d %H:%M') if note.created_at else ''}}
+          </small>
+          <div>{{note.text}}</div>
+        </div>
+      {% else %}
+        <p class="muted">{{ ui_phrase('No clinical history or notes recorded.') }}</p>
+      {% endfor %}
+    </section>
+
+    <section class="panel">
+      <h3>{{ ui_phrase('Case Timeline') }}</h3>
+      {% for event in timeline %}
+        <div class="tc-entry">
+          <b>{{event.action|replace('_',' ')}}</b>
+          <small>{{event.created_at.strftime('%Y-%m-%d %H:%M') if event.created_at else ''}}</small>
+          {% if event.details %}<div>{{event.details}}</div>{% endif %}
+        </div>
+      {% else %}
+        <p class="muted">{{ ui_phrase('No workflow history available.') }}</p>
+      {% endfor %}
+    </section>
+  </main>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  if(window.location.hash==='#image-correction-request'){
+    const section=document.getElementById('image-correction-request');
+    if(section){section.open=true;section.scrollIntoView({block:'start'});}
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,10 @@
+<fieldset style="grid-column:1/-1;border:1px solid #dbe3ed;border-radius:8px;padding:12px">
+<legend>نطاق الحالات للأطباء والفنيين والتمريض / Clinical case scope</legend>
+<input type="hidden" name="scope_present" value="1">
+<label><input type="checkbox" name="scope_enabled" value="true" {% if scope %}checked{% endif %}> تقييد الرؤية والعمل / Restrict visibility and work</label>
+<p>اختيار نوع أشعة أو جهاز أو غرفة. الاختيارات داخل المجموعة بدائل؛ وبين المجموعات يجب تحققها جميعًا. عدم التفعيل يُبقي الصلاحيات الحالية. / Choose modalities, devices or rooms. Choices within a group are alternatives; selected groups must all match. Disabled preserves existing access rules.</p>
+<div class="detail-grid">
+<div><strong>أنواع الأشعة / Modalities</strong>{% for value in scope_modalities %}<label style="display:block"><input type="checkbox" name="modalities" value="{{ value }}" {% if scope and value in scope.get('modalities',[]) %}checked{% endif %}> {{ value }}</label>{% endfor %}</div>
+<div><strong>الأجهزة / Devices</strong>{% for key, devices in scope_devices.items() %}{% if devices|length==1 %}<label style="display:block"><input type="checkbox" name="device_keys" value="{{ key }}" {% if scope and key in scope.get('device_keys',[]) %}checked{% endif %}> {{ devices[0].name }} — {{ key }}</label>{% endif %}{% endfor %}</div>
+<div><strong>الغرف / Rooms</strong>{% for key in scope_rooms %}<label style="display:block"><input type="checkbox" name="room_keys" value="{{ key }}" {% if scope and key in scope.get('room_keys',[]) %}checked{% endif %}> {{ key }}</label>{% endfor %}</div>
+</div></fieldset>

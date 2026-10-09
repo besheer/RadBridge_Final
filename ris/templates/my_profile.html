@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+{{ t('profile.title','My Profile') }}
+{% endblock %}
+
+{% block content %}
+
+<form method="post" class="panel">
+
+  <h2 style="margin-top:0">
+    {{ t('profile.title','My Profile & Workspace') }}
+  </h2>
+
+  <div class="grid2">
+
+    <label>
+      Department
+      <input
+        name="department"
+        value="{{ profile.department or '' }}"
+      >
+    </label>
+
+    <label>
+      {{ ui_phrase('Specialty') }}
+      <input
+        name="specialty"
+        value="{{ profile.specialty or '' }}"
+      >
+    </label>
+
+    <label>
+      Default Workspace
+      <input
+        name="default_workspace"
+        value="{{ profile.default_workspace or '' }}"
+      >
+    </label>
+
+    <label>
+      {{ ui_phrase('Language') }}
+      <select name="ui_language">
+        <option
+          value="en"
+          {% if profile.ui_language == 'en' %}selected{% endif %}
+        >
+          English
+        </option>
+
+        <option
+          value="ar"
+          {% if profile.ui_language == 'ar' %}selected{% endif %}
+        >
+          العربية
+        </option>
+      </select>
+    </label>
+
+    <label>
+      {{ ui_phrase('Theme') }}
+      <select name="theme">
+        {% for x in ['light-soft','light','dim','dark','midnight','auto'] %}
+        <option
+          value="{{ x }}"
+          {% if profile.theme == x %}selected{% endif %}
+        >
+          {% if x == 'light-soft' %}
+            Soft Light
+          {% elif x == 'light' %}
+            Light
+          {% elif x == 'dim' %}
+            Dim
+          {% elif x == 'dark' %}
+            Dark
+          {% elif x == 'midnight' %}
+            Midnight
+          {% else %}
+            System / Auto
+          {% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Color Palette
+      <select name="accent">
+        {% for value, label in [
+          ('default','RadBridge Blue'),
+          ('teal','Clinical Teal'),
+          ('violet','Violet'),
+          ('green','Emerald'),
+          ('amber','Amber'),
+          ('rose','Rose')
+        ] %}
+        <option
+          value="{{ value }}"
+          {% if (profile.accent or 'default') == value %}selected{% endif %}
+        >
+          {{ label }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      {{ ui_phrase('Density') }}
+      <select name="density">
+        {% for x in ['comfortable','compact'] %}
+        <option
+          value="{{ x }}"
+          {% if profile.density == x %}selected{% endif %}
+        >
+          {{ x }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      {{ ui_phrase('Font Size') }}
+      <select name="font_scale">
+        {% for x in ['small','normal','large'] %}
+        <option
+          value="{{ x }}"
+          {% if profile.font_scale == x %}selected{% endif %}
+        >
+          {{ x }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      {{ ui_phrase('Sidebar') }}
+      <select name="sidebar_mode">
+        {% for x in ['expanded','collapsed'] %}
+        <option
+          value="{{ x }}"
+          {% if profile.sidebar_mode == x %}selected{% endif %}
+        >
+          {{ x }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+  </div>
+
+  <hr style="margin:24px 0">
+
+  <h3>
+    Reporting Preferences
+  </h3>
+  {% if me and me.role and me.role.code.upper() in ('RADIOLOGIST','DOCTOR','CONSULTANT','RADIOLOGY_CONSULTANT','SUPER_ADMIN','ADMIN') %}
+  <label>{{'عارض الصور الافتراضي' if ui_lang=='ar' else 'Default image viewer'}}
+    <select name="preferred_image_viewer">
+      <option value="OHIF" {% if preferred_image_viewer=='OHIF' %}selected{% endif %}>OHIF</option>
+      <option value="WEASIS" {% if preferred_image_viewer=='WEASIS' %}selected{% endif %}>Weasis</option>
+      <option value="RADIANT" {% if preferred_image_viewer=='RADIANT' %}selected{% endif %}>RadiAnt</option>
+    </select>
+  </label>
+  <p class="muted">{{'يتطلب Weasis تثبيته على جهازك مرة واحدة.' if ui_lang=='ar' else 'Weasis needs to be installed on your computer once.'}}</p>
+  {% endif %}
+
+
+  <p class="muted">
+    These settings control how RadBridge opens the reporting editor.
+    Clinical workflow remains controlled by RadBridge.
+  </p>
+
+  <div class="grid2">
+
+    <label>
+      Preferred Report Editor
+
+      <select name="preferred_editor">
+
+        {% set editor =
+          reporting_preferences.preferred_editor
+        %}
+
+        <option
+          value="ONLYOFFICE"
+          {% if editor == 'ONLYOFFICE' %}selected{% endif %}
+        >
+          ONLYOFFICE
+        </option>
+
+        <option
+          value="BROWSER"
+          {% if editor == 'BROWSER' %}selected{% endif %}
+        >
+          ONLYOFFICE in Browser (same DOCX)
+        </option>
+
+        <option
+          value="WORD"
+          {% if editor == 'WORD' %}selected{% endif %}
+        >
+          Microsoft Word
+        </option>
+
+        <option
+          value="LIBREOFFICE"
+          {% if editor == 'LIBREOFFICE' %}selected{% endif %}
+        >
+          LibreOffice
+        </option>
+
+        <option
+          value="ASK"
+          {% if editor == 'ASK' %}selected{% endif %}
+        >
+          Ask Every Time
+        </option>
+
+      </select>
+    </label>
+
+    <label>
+      Preferred Reporting Layout
+
+      <select name="preferred_layout" id="reporting-layout">
+
+        {% set layout =
+          reporting_preferences.preferred_layout
+        %}
+
+        <option
+          value="50_50"
+          {% if layout == '50_50' %}selected{% endif %}
+        >
+          Side by side: 50% Viewer / 50% Editor
+        </option>
+
+        <option
+          value="70_30"
+          {% if layout == '70_30' %}selected{% endif %}
+        >
+          70% Viewer / 30% Editor
+        </option>
+
+        <option
+          value="30_70"
+          {% if layout == '30_70' %}selected{% endif %}
+        >
+          {{ ui_phrase('30% Viewer / 70% Editor') }}
+        </option>
+
+        <option
+          value="FULL_EDITOR"
+          {% if layout == 'FULL_EDITOR' %}selected{% endif %}
+        >
+          Full Editor
+        </option>
+
+        <option
+          value="FULL_VIEWER"
+          {% if layout == 'FULL_VIEWER' %}selected{% endif %}
+        >
+          Full Viewer + separate report window
+        </option>
+
+        <option
+          value="DUAL_MONITOR"
+          {% if layout == 'DUAL_MONITOR' %}selected{% endif %}
+        >
+          Other display / Pop-out
+        </option>
+
+        <option value="NEW_WINDOW" {% if layout == 'NEW_WINDOW' %}selected{% endif %}>Separate window</option>
+        <option value="CASCADE" {% if layout == 'CASCADE' %}selected{% endif %}>Cascade windows</option>
+      </select>
+    </label>
+    <label>
+      Report window display
+      <select name="preferred_display">
+        <option value="CURRENT" {% if reporting_preferences.preferred_display == 'CURRENT' %}selected{% endif %}>Current display</option>
+        <option value="OTHER" {% if reporting_preferences.preferred_display == 'OTHER' %}selected{% endif %}>Other display (when available)</option>
+      </select>
+    </label>
+  </div>
+  <p>Saved for your account only. Applied when you choose <strong>Open Report</strong> in the viewer.
+    Split layouts use ONLYOFFICE and expand to full screen on narrow displays.
+    Separate windows require pop-ups; automatic screen placement depends on browser permission.
+    Word and LibreOffice require the installed RadBridge desktop reporting agent.</p>
+  <div id="report-layout-preview" aria-label="Window layout preview"
+    style="display:flex;gap:8px;height:100px;max-width:560px;margin:14px 0"></div>
+  <script>
+    (() => {
+      const select = document.getElementById('reporting-layout');
+      const preview = document.getElementById('report-layout-preview');
+      const render = () => {
+        const ratio = {'50_50':[50,50], '70_30':[70,30], '30_70':[30,70], 'FULL_EDITOR':[0,100]}[select.value] || [50,50];
+        preview.replaceChildren();
+        ['Viewer / الصور', 'Report / التقرير'].forEach((label, i) => {
+          if (!ratio[i]) return;
+          const box = document.createElement('div'); box.textContent = label;
+          box.style.cssText = `flex:${ratio[i]};display:flex;align-items:center;justify-content:center;border-radius:8px;background:${i ? '#e7f1ff' : '#12233c'};color:${i ? '#142c4c' : '#fff'};border:1px solid #b7cce7`;
+          preview.appendChild(box);
+        });
+      };
+      select.addEventListener('change',render); render();
+    })();
+  </script>
+
+  <div style="margin-top:24px">
+
+    <button
+      type="submit"
+      class="btn primary"
+    >
+      {{ t('common.save','Save') }}
+    </button>
+
+  </div>
+
+</form>
+
+{% endblock %}

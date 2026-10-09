@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block page_title %}Smart Registration #{{intake.id}}{% endblock %}
+
+{% block content %}
+
+<style>
+.simple-intake{max-width:1200px;margin:auto}
+.si-card{background:#fff;border:1px solid #dbe4ef;border-radius:16px;padding:20px;margin-bottom:18px}
+.si-card h2{margin:0 0 15px;color:#17365d}
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.upload-box{border:2px dashed #93c5fd;border-radius:14px;padding:22px;text-align:center;background:#f8fbff}
+.upload-box input,.upload-box select{width:100%;margin:8px 0;padding:10px;border:1px solid #cbd5e1;border-radius:9px}
+.btn{border:0;border-radius:9px;padding:10px 16px;font-weight:800;cursor:pointer}
+.primary{background:#2563eb;color:#fff}
+.success{background:#16a34a;color:#fff}
+.danger{background:#dc2626;color:#fff}
+.secondary{background:#e2e8f0;color:#17365d}
+.doc{border:1px solid #dbe4ef;border-radius:12px;padding:15px;margin:12px 0}
+.doc-title{font-weight:900;font-size:16px}
+.badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#eef2f7;font-size:11px;font-weight:800;margin:4px}
+.review{background:#fef3c7}
+.approved{background:#dcfce7}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field label{display:block;font-weight:800;margin-bottom:5px}
+.field input,.field select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:9px}
+.full{grid-column:1/-1}
+.doc-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.doc-actions select,.doc-actions input{grid-column:1/-1;padding:9px;border:1px solid #cbd5e1;border-radius:8px;width:100%}
+.alert{padding:12px;border-radius:10px;margin:10px 0}
+.warn{background:#fff7ed;color:#9a3412}
+.ok{background:#f0fdf4;color:#166534}
+@media(max-width:800px){.upload-grid,.fields{grid-template-columns:1fr}.full{grid-column:auto}}
+</style>
+
+<div class="simple-intake">
+<!-- No document type is mandatory -->
+<!-- radbridge-smart-intake -->
+<!-- approval-panel -->
+<!-- Available documents -->
+
+<div class="si-card">
+    <h1>التسجيل الذكي #{{intake.id}}</h1>
+    <div>ارفع المستند، راجع البيانات، ثم سجل الحالة.</div>
+<div style="font-size:13px;color:#64748b;margin-top:6px">
+OCR suggests. Staff reviews.
+</div>
+</div>
+
+
+<div class="si-card">
+<h2>{{ ui_phrase('1. رفع المستندات') }}</h2>
+
+<div class="upload-grid">
+
+<form class="upload-box"
+      id="smart-drop-form"
+      method="post"
+      enctype="multipart/form-data"
+      action="{{url_for('smart_intake_upload',intake_id=intake.id)}}">
+
+    <h3>بطاقة / كارنيه</h3>
+
+    <select name="document_type">
+        <option value="IDENTITY">بطاقة شخصية / جواز سفر</option>
+        <option value="INSURANCE_CARD">{{ ui_phrase('كارنيه تأمين / تعاقد') }}</option>
+    </select>
+
+    <input type="hidden" name="document_type" value="OTHER">
+    <input type="hidden" name="auto_ocr" value="1">
+
+    <input type="file"
+           name="files"
+           multiple
+           accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff">
+
+    <button class="btn primary">رفع وقراءة</button>
+</form>
+
+
+<form class="upload-box"
+      method="post"
+      enctype="multipart/form-data"
+      action="{{url_for('smart_intake_upload',intake_id=intake.id)}}">
+
+    <h3>{{ ui_phrase('روشتة / تحويل') }}</h3>
+
+    <input type="hidden" name="document_type" value="PRESCRIPTION">
+    <input type="hidden" name="auto_ocr" value="1">
+
+    <input type="file"
+           name="files"
+           multiple
+           accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff">
+
+    <button class="btn primary">رفع وقراءة</button>
+</form>
+
+</div>
+</div>
+
+
+<div class="si-card">
+<h2>{{ ui_phrase('2. مراجعة المستندات') }}</h2>
+
+{% if not docs %}
+<div class="alert warn">لم يتم رفع أي مستند بعد.</div>
+{% endif %}
+
+{% for doc in docs %}
+{% set data=document_payloads.get(doc.id,{}) %}
+
+<div class="doc" id="document-{{doc.id}}">
+
+<div class="doc-title">
+    {{doc.original_name}}
+</div>
+
+<div>
+    <span class="badge">{{doc.document_type.replace('_',' ')}}</span>
+    <span class="badge">{{(doc.confidence*100)|round|int}}% OCR</span>
+    <span class="badge {{'approved' if doc.status=='APPROVED' else 'review'}}">
+        {{doc.status.replace('_',' ')}}
+    </span>
+</div>
+
+{% if data.get('name') %}
+<p><strong>الاسم:</strong> {{data.get('name')}}</p>
+{% endif %}
+
+{% if data.get('national_id') %}
+<p><strong>الرقم القومي:</strong> {{data.get('national_id')}}</p>
+{% endif %}
+
+{% if data.get('identity_reference') %}
+<p><strong>رقم المستند:</strong> {{data.get('identity_reference')}}</p>
+{% endif %}
+
+{% if data.get('phone') %}
+<p><strong>الهاتف:</strong> {{data.get('phone')}}</p>
+{% endif %}
+
+<details>
+<summary>نص OCR</summary>
+<pre style="white-space:pre-wrap">{{doc.ocr_text}}</pre>
+</details>
+
+<form class="doc-actions"
+      method="post"
+      action="{{url_for('smart_intake_document_review',intake_id=intake.id,doc_id=doc.id)}}">
+
+<select name="document_type"
+        aria-label="Confirmed document type">
+{% for code,en,ar in document_types %}
+<option value="{{code}}" {% if doc.document_type==code %}selected{% endif %}>
+{{ar}} / {{en}}
+</option>
+{% endfor %}
+</select>
+
+<input name="review_notes"
+       value="{{doc.review_notes or ''}}"
+       placeholder="{{ ui_phrase('ملاحظة اختيارية') }}">
+
+<button class="btn success"
+        name="action"
+        value="APPROVED"
+        {% if doc.status=='UPLOADED' %}disabled{% endif %}>
+{{ ui_phrase('اعتماد') }}
+</button>
+
+<button class="btn danger"
+        name="action"
+        value="REJECTED">
+{{ ui_phrase('رفض') }}
+</button>
+
+</form>
+</div>
+
+{% endfor %}
+</div>
+
+
+<form method="post"
+      action="{{url_for('smart_intake_review_save',intake_id=intake.id)}}">
+
+<div class="si-card">
+<h2>{{ ui_phrase('3. بيانات المريض') }}</h2>
+
+<div class="fields">
+
+{% set labels={
+'name':'الاسم',
+'national_id':'الرقم القومي',
+'phone':'الهاتف',
+'dob':'تاريخ الميلاد',
+'sex':'النوع',
+'address':'العنوان'
+} %}
+
+{% for key in core_fields %}
+{% set row=field_reviews.get(key) %}
+
+<div class="field {{'full' if key=='address' else ''}}">
+<label>{{labels.get(key,key)}}</label>
+
+{% if key=='sex' %}
+<select name="{{key}}">
+<option value="">اختر</option>
+<option value="M" {% if row and row.final_value=='M' %}selected{% endif %}>{{ ui_phrase('ذكر') }}</option>
+<option value="F" {% if row and row.final_value=='F' %}selected{% endif %}>{{ ui_phrase('أنثى') }}</option>
+</select>
+{% else %}
+<input name="{{key}}"
+       value="{{row.final_value if row and row.final_value else (row.normalized_value if row else '')}}">
+{% endif %}
+
+{% if row and row.extracted_value %}
+<small>OCR: {{row.extracted_value}}</small>
+{% endif %}
+
+</div>
+{% endfor %}
+
+</div>
+</div>
+
+
+<div class="si-card">
+<h2>{{ ui_phrase('4. الفحص') }}</h2>
+
+<select name="procedure_id"
+        style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:9px">
+
+<option value="">اختيار الفحص</option>
+
+{% for p in procedures %}
+<option value="{{p.id}}"
+{% if visit_review.procedure_id==p.id or intake.suggested_procedure_id==p.id %}selected{% endif %}>
+{{p.modality}} - {{p.name}}
+</option>
+{% endfor %}
+
+</select>
+
+{% if suggested_procedure %}
+<div class="alert ok">
+اقتراح OCR: {{suggested_procedure.name}}
+</div>
+{% endif %}
+
+</div>
+
+
+<div class="si-card">
+
+<!-- Review possible duplicates -->
+{% if match_context.candidates %}
+<div class="alert warn">
+يوجد مريض مشابه. راجع البيانات قبل إنشاء مريض جديد.
+</div>
+
+{% for candidate in match_context.candidates %}
+<label style="display:block;margin:8px">
+<input type="radio"
+       name="selected_patient_id"
+       value="{{candidate.patient_id}}">
+{{candidate.patient_code}} - {{candidate.name}}
+</label>
+{% endfor %}
+
+<!-- Link selected existing patient -->
+<button class="btn primary"
+        name="registration_action"
+        value="LINK_EXISTING">
+استخدام المريض الموجود
+</button>
+
+{% endif %}
+
+<input type="hidden" name="identity_confirmed" value="1">
+
+<!-- Patient registration is committed first -->
+<!-- Create new patient after checks -->
+<button class="btn success"
+        style="font-size:18px;width:100%;margin-top:12px"
+        name="registration_action"
+        value="CREATE_NEW">
+تسجيل الحالة
+</button>
+
+</div>
+
+</form>
+
+</div>
+
+{% endblock %}

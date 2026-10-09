@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block page_title %}{{ ui_phrase('Booking Control Center') }}{% endblock %}
+
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ ui_phrase('Booking Control Center') }}</h1>
+    <p class="muted">
+      Unified read-only overview of booking availability, devices, schedules and restrictions.
+    </p>
+  </div>
+</div>
+
+<div class="grid3">
+
+  <div class="panel">
+    <div class="muted">{{ ui_phrase('Devices') }}</div>
+    <h2>{{total_devices}}</h2>
+    <div>{{active_devices}} {{ ui_phrase('active') }}</div>
+  </div>
+
+  <div class="panel">
+    <div class="muted">{{ ui_phrase('Booking Enabled') }}</div>
+    <h2>{{booking_enabled_devices}}</h2>
+    <div>Active devices accepting booking</div>
+  </div>
+
+  <div class="panel">
+    <div class="muted">Appointments Today</div>
+    <h2>{{appointments_today}}</h2>
+    <div>Excluding cancelled / no-show</div>
+  </div>
+
+  <div class="panel">
+    <div class="muted">Device Blocks Now</div>
+    <h2>{{active_device_blocks}}</h2>
+    <div>Maintenance / unavailable devices</div>
+  </div>
+
+  <div class="panel">
+    <div class="muted">Booking Blocks Now</div>
+    <h2>{{active_booking_blocks}}</h2>
+    <div>Branch / device / procedure restrictions</div>
+  </div>
+
+  <div class="panel">
+    <div class="muted">Snapshot Time</div>
+    <h3>{{now.strftime('%Y-%m-%d %H:%M')}}</h3>
+    <div>Current server time</div>
+  </div>
+
+</div>
+
+<div class="panel">
+  <h2>Control Areas</h2>
+
+  <div class="actions">
+    <a class="btn" href="{{url_for('admin_device_schedules')}}">
+      {{ ui_phrase('Device Schedules') }}
+    </a>
+
+    <a class="btn" href="{{url_for('admin_booking_control')}}">
+      Booking Blocks
+    </a>
+
+    <a class="btn" href="{{url_for('admin_booking_availability')}}">
+      Availability Tester
+    </a>
+
+    <a class="btn" href="{{url_for('admin_devices')}}">
+      {{ ui_phrase('Devices / AE Titles') }}
+    </a>
+
+    <a class="btn" href="{{url_for('admin_procedures')}}">
+      {{ ui_phrase('Procedure Catalog') }}
+    </a>
+
+    <a class="btn" href="{{url_for('schedule_calendar')}}">
+      Open Scheduler
+    </a>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Device Overview</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ ui_phrase('Device') }}</th>
+          <th>{{ ui_phrase('Branch') }}</th>
+          <th>{{ ui_phrase('Modality') }}</th>
+          <th>AE Title</th>
+          <th>{{ ui_phrase('Status') }}</th>
+          <th>{{ ui_phrase('Booking') }}</th>
+          <th>Working Hours</th>
+          <th>Block Now</th>
+        </tr>
+      </thead>
+
+      <tbody>
+      {% for d in device_rows %}
+        <tr>
+          <td>
+            <b>{{d.name}}</b>
+            {% if d.room %}
+              <div class="muted">{{d.room}}</div>
+            {% endif %}
+          </td>
+
+          <td>{{d.branch or '—'}}</td>
+
+          <td>{{d.modality or '—'}}</td>
+
+          <td>{{d.ae_title or '—'}}</td>
+
+          <td>
+            {% if not d.active %}
+              {{ ui_phrase('Inactive') }}
+            {% else %}
+              {{d.operational_status}}
+            {% endif %}
+          </td>
+
+          <td>
+            {{ui_phrase('Enabled') if d.booking_enabled else ui_phrase('Disabled')}}
+          </td>
+
+          <td>
+            {{d.workday_start}} - {{d.workday_end}}
+          </td>
+
+          <td>
+            {% if d.blocked_now %}
+              <b>{{ ui_phrase('Blocked') }}</b>
+              {% if d.block_reason %}
+                <div class="muted">{{d.block_reason}}</div>
+              {% endif %}
+            {% else %}
+              {{ ui_phrase('Available') }}
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="8">No devices configured.</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <b>Read-only shell</b>
+  <div class="muted">
+    This screen does not create, update or deactivate booking rules.
+    Existing admin screens remain the control source.
+  </div>
+</div>
+
+{% endblock %}

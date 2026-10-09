@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block page_title %}System Diagnostics{% endblock %}
+{% block subtitle %}Quick recovery checks for database, PACS, reporting, attachments and critical routes.{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="section-title">RIS {{version}}</div>
+  <table>
+    <thead><tr><th>{{ ui_phrase('Check') }}</th><th>{{ ui_phrase('Status') }}</th><th>{{ ui_phrase('Details') }}</th></tr></thead>
+    <tbody>
+    {% for name,status,detail in checks %}
+      <tr>
+        <td>{{name}}</td>
+        <td><span class="badge {{'ok' if status=='OK' else 'bad'}}">{{status}}</span></td>
+        <td><code>{{detail}}</code></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

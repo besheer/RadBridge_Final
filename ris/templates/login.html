@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ ui_phrase('RadBridge — Login') }}{% endblock %}
+{% block public_content %}
+<div class="rb-login-page">
+  <section class="rb-login-showcase">
+    <div class="rb-showcase-top">
+      <img class="rb-brand-logo" src="{{url_for('static',filename='brand/radbridge-logo.png')}}" alt="RadBridge">
+      <div class="rb-hero-copy">
+        <h1>{{'نربط التشخيص بالثقة' if ui_lang=='ar' else 'Connecting Diagnosis with Confidence'}}</h1>
+        <p>{{'نظام متكامل لإدارة مراكز الأشعة والتشخيص الطبي' if ui_lang=='ar' else 'Integrated radiology and diagnostic center management'}}</p>
+      </div>
+    </div>
+
+    <div class="rb-visual-zone">
+      <div class="rb-scanner" aria-hidden="true">
+        <div class="rb-gantry"><div class="rb-hole"></div></div>
+        <div class="rb-table"></div><div class="rb-console"></div>
+      </div>
+      <div class="rb-demo-dashboard">
+        <div class="rb-demo-title">{{'لوحة التحكم التنفيذية' if ui_lang=='ar' else 'Executive Dashboard'}}</div>
+        <div class="rb-demo-kpis">
+          <div><small>{{'فحوصات اليوم' if ui_lang=='ar' else "Today's Exams"}}</small><b>125</b><em>↑ 12%</em></div>
+          <div><small>{{'الإيرادات' if ui_lang=='ar' else 'Revenue'}}</small><b>48,750</b><em>EGP</em></div>
+          <div><small>{{'إجمالي المرضى' if ui_lang=='ar' else 'Patients'}}</small><b>2,354</b><em>↑ 15%</em></div>
+          <div><small>{{'تقارير معلقة' if ui_lang=='ar' else 'Pending Reports'}}</small><b>32</b><em>↓ 5%</em></div>
+        </div>
+        <div class="rb-demo-charts">
+          <div class="rb-line-chart"><span></span><svg viewBox="0 0 300 100"><polyline points="5,78 45,57 85,66 125,34 165,54 205,45 245,31 295,12"/></svg></div>
+          <div class="rb-donut"></div>
+        </div>
+        <div class="rb-bars">{% for x in [45,68,56,82,72,94] %}<i style="height:{{x}}%"></i>{% endfor %}</div>
+      </div>
+    </div>
+
+    <div class="rb-feature-row">
+      <div><b>▤</b><strong>{{'تقارير احترافية' if ui_lang=='ar' else 'Professional Reports'}}</strong><small>PDF · Excel</small></div>
+      <div><b>▥</b><strong>{{'تحليلات ذكية' if ui_lang=='ar' else 'Smart Analytics'}}</strong><small>{{ ui_phrase('KPIs & Charts') }}</small></div>
+      <div><b>☁</b><strong>{{'آمن وموثوق' if ui_lang=='ar' else 'Secure & Reliable'}}</strong><small>{{'عزل بيانات الشركات' if ui_lang=='ar' else 'Tenant Isolation'}}</small></div>
+      <div><b>▦</b><strong>{{'تكامل شامل' if ui_lang=='ar' else 'Full Integration'}}</strong><small>{{ ui_phrase('RIS · PACS · Billing · Inventory') }}</small></div>
+    </div>
+
+    <div class="rb-contact-strip">
+      <span>☎ +20 10 1234 5678</span><span>◉ +20 10 9876 5432</span>
+      <span>✉ info@radbridges.com</span><span>◎ radbridges.com</span><span>⌖ Cairo · Egypt</span>
+    </div>
+  </section>
+
+  <section class="rb-login-side">
+    <form method="post" class="rb-login-card" autocomplete="on">
+      <div class="rb-login-lang">
+        <span>{{'العربية' if ui_lang=='ar' else 'English'}}</span>
+      </div>
+      <img class="rb-login-logo" src="{{url_for('static',filename='brand/radbridge-logo.png')}}" alt="RadBridge">
+      <h2>{{'مرحباً بك مجدداً' if ui_lang=='ar' else 'Welcome Back'}}</h2>
+      <p>{{'سجّل الدخول للوصول إلى لوحة التحكم الخاصة بك' if ui_lang=='ar' else 'Sign in to access your dashboard'}}</p>
+
+      <label>{{'اسم المستخدم' if ui_lang=='ar' else 'Username'}}</label>
+      <div class="rb-input"><span>♟</span><input name="username" autocomplete="username" required autofocus placeholder="{{'أدخل اسم المستخدم' if ui_lang=='ar' else 'Enter your username'}}"></div>
+      <label>{{'كلمة المرور' if ui_lang=='ar' else 'Password'}}</label>
+      <div class="rb-input"><span>🔒</span><input id="rbPassword" name="password" type="password" autocomplete="current-password" required placeholder="{{'أدخل كلمة المرور' if ui_lang=='ar' else 'Enter your password'}}"><button type="button" id="rbShowPassword">◉</button></div>
+
+      <button class="btn primary wide rb-signin">{{'تسجيل الدخول' if ui_lang=='ar' else 'Sign In'}} <span>→</span></button>
+
+      {% with msgs=get_flashed_messages(with_categories=true) %}{% for cat,msg in msgs %}<div class="flash {{cat}}">{{msg}}</div>{% endfor %}{% endwith %}
+
+      <div class="rb-secure-note">🔐 {{'اتصال آمن — بيانات كل شركة معزولة' if ui_lang=='ar' else 'Secure access — each organization is isolated'}}</div>
+      <div class="rb-login-footer"><span>© 2026 RadBridge</span><span>v5.28.1</span></div>
+    </form>
+  </section>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+ const b=document.getElementById('rbShowPassword'),p=document.getElementById('rbPassword');
+ if(b&&p)b.onclick=()=>{p.type=p.type==='password'?'text':'password';};
+});
+</script>
+{% endblock %}

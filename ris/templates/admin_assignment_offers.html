@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_action_guidance.html" import action_info %}
+{% block page_title %}Smart Assignment Offers{% endblock %}
+{% block content %}
+<form method="post" class="panel grid2">
+<div><label>{{ ui_phrase('Enabled') }}</label><select name="enabled"><option value="1" {% if row and row.enabled %}selected{% endif %}>{{ ui_phrase('Yes') }}</option><option value="0" {% if row and not row.enabled %}selected{% endif %}>{{ ui_phrase('No') }}</option></select></div>
+<div><label>{{ ui_phrase('Mode') }}</label><select name="mode"><option {% if row and row.mode=='ONLINE_ONLY' %}selected{% endif %}>ONLINE_ONLY</option><option {% if not row or row.mode=='ONLINE_PREFERRED' %}selected{% endif %}>ONLINE_PREFERRED</option><option {% if row and row.mode=='ALL' %}selected{% endif %} value="ALL">{{ ui_phrase('ALL') }}</option></select></div>
+<div><label>Routine timeout (sec)</label><input type="number" name="routine_timeout_seconds" value="{{row.routine_timeout_seconds if row else 300}}"></div>
+<div><label>Urgent timeout (sec)</label><input type="number" name="urgent_timeout_seconds" value="{{row.urgent_timeout_seconds if row else 120}}"></div>
+<div><label>STAT timeout (sec)</label><input type="number" name="stat_timeout_seconds" value="{{row.stat_timeout_seconds if row else 60}}"></div>
+<div><label>Busy snooze (min)</label><input type="number" name="busy_snooze_minutes" value="{{row.busy_snooze_minutes if row else 30}}"></div>
+<div><label>Max attempts</label><input type="number" name="max_offer_attempts" value="{{row.max_offer_attempts if row else 5}}"></div>
+<div><label>Channels</label><input name="notification_channels" value="{{row.notification_channels if row else 'INAPP,WHATSAPP,TELEGRAM,EMAIL'}}"></div>
+<div class="span2"><small>Priority order: online + available + matching modality/branch + lowest active load + highest priority weight.</small></div>
+<button class="btn primary">{{ ui_phrase('Save Policy') }}</button>
+{{ action_info('Offer Policy','Saves timeout and escalation settings for assignment offers.','Use when changing operational response windows.','Review routine, urgent, and STAT behavior before saving.','Changes future offer processing; existing clinical reports are unchanged.','Incorrect timeouts can delay or over-escalate cases.',ui_lang) }}
+</form>
+<form method="post" action="{{url_for('assignment_offers_expire_now')}}" class="panel"><button class="btn">Process Timeouts Now</button>{{ action_info('Process Timeouts','Immediately processes offers whose expiry time has passed.','Use after a scheduler interruption or when validating the offer queue.','Requires assignment management permission.','Expired offers follow the configured fallback or escalation path.','It does not expire offers that are still within their valid time.',ui_lang) }}</form>
+{% endblock %}

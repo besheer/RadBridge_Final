@@ -1,0 +1,85 @@
+KEEP|radbridge-mcp|Up 27 hours|MCP_SERVICE
+KEEP|radbridge-ohif-r8-canary|Up 5 minutes|CURRENT_R8_OHIF
+KEEP|radbridge-ohif-r8-pre-consolidated-20260905-164701|Exited (0) 5 minutes ago|LATEST_OHIF_ROLLBACK
+KEEP|radbridge-ohif-stage|Up 27 hours|STAGE_UNTOUCHED
+KEEP|radbridge-onlyoffice|Up 27 hours|ONLYOFFICE
+KEEP|radbridge-orthanc-db|Up 27 hours (healthy)|ORTHANC_DATABASE
+KEEP|radbridge-r7-prelive-probe|Exited (0) 3 days ago|LIVE_OR_STAGE_NAME_PROTECTED
+KEEP|radbridge-ris-db|Up 27 hours (healthy)|RIS_DATABASE
+KEEP|radbridge-ris-ivr-canary|Up 27 hours|IVR_CANARY
+KEEP|radbridge-ris-oo-canary|Up 7 minutes|CURRENT_R8_RIS
+KEEP|radbridge-ris-oo-rollback-live-ui-fix1-20260901-214538|Exited (0) 3 days ago|LIVE_OR_STAGE_NAME_PROTECTED
+KEEP|radbridge-ris-r8-pre-consolidated-20260905-164525|Exited (0) 7 minutes ago|LATEST_RIS_ROLLBACK
+KEEP|ris-pacs|Up 27 hours|ORTHANC
+KEEP|ris-web|Up 27 hours|EXISTING_LIVE_UNTOUCHED
+REMOVE|r6-probe-pre-2a40|Exited (0) 4 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|r6-probe-pre-f1606|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ohif-lease-probe|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ohif-r8-pre-cookie-isolation-20260902-205400|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ohif-r8-pre-dom-wrapper2-20260905-154246|Exited (0) About an hour ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ohif-r8-pre-draft-series-20260903-065553|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ohif-r8-pre-identity-fallback-20260902-203145|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ohif-r8-pre-verified-panel-lock-20260903-074527|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ohif-r8-pre-wan-20260902-191354|Exited (137) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ohif-r8-rollback-20260902-185347|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-r6-c2-migrator|Exited (255) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-r6-c2-runtime-probe|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-r6-http-e2e|Up 27 hours|RUNNING_TEST_CANDIDATE
+REMOVE|radbridge-r6-migration-test|Exited (255) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-r7-ui-canary1|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-r7-ui-canary2|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-r7-ui-canary3|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-r7-ui-canary4|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-r7-ui-canary5|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-r7-ui-canary6|Exited (255) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-r7-ui-canary7|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-r7-ui-canary8|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-report-c2-db|Up 27 hours|RUNNING_TEST_CANDIDATE
+REMOVE|radbridge-report-safety-db|Exited (255) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-onlyoffice-finalize-r5-probe|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-bad-patient-20260901-215939|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-broken-r7-20260901-213636|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-broken-ui-20260901-214255|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-failed-exam-link-20260904-071310|Exited (0) 34 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-assignment-safety-20260903-133354|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-autosave-20260903-070807|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-case-exception-20260904-171512|Exited (0) 24 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-control-center-20260904-090520|Exited (0) 32 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-draft-series-20260903-065553|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-exam-link2-20260904-071843|Exited (0) 34 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-guidance2-20260904-075824|Exited (0) 33 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-guidance-batch1-20260904-155331|Exited (0) 25 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-http-cookie-20260902-192326|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-locked-document2-20260905-124844|Exited (0) 4 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-pacs-resolution-20260903-224234|Exited (0) 42 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-persistent-storage-20260904-214203|Exited (0) 19 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-phase9-ux2-20260904-203357|Exited (0) 20 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-phase9-ux3-20260904-204841|Exited (0) 20 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-r8-url-20260902-193637|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-readiness-20260903-214135|Exited (0) 43 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-readiness-20260903-215255|Exited (0) 43 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-readiness-service2-20260903-220124|Exited (0) 43 hours ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-verified-readonly-20260903-073443|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-pre-wan-20260902-191623|Exited (0) 2 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-rollback-r7-20260901-211546|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-rollback-studio-20260901-213339|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-oo-rollback-ui-repair-20260901-214052|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-r8-locked-document2-runtime-test|Up 5 hours|RUNNING_TEST_CANDIDATE
+REMOVE|radbridge-ris-report-c2|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-pre-r6-v2|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-probe|Exited (0) 4 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-20260831-150851|Exited (0) 5 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-20260831-153803|Exited (0) 5 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-20260831-155259|Exited (0) 5 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-20260831-155802|Exited (0) 5 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-20260831-160431|Exited (0) 5 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-20260831-161551|Exited (0) 5 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-20260831-162920|Exited (0) 5 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-20260831-162951|Exited (0) 5 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-20260831-163243|Exited (0) 5 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-20260831-172835|Exited (0) 4 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-20260831-173943|Exited (0) 4 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-r4-20260901-083008|Exited (0) 4 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-c2-rollback-r5-20260901-124251|Exited (0) 4 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-edit-control-r6-probe|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE
+REMOVE|radbridge-ris-report-editor-safety-r4-probe|Exited (0) 3 days ago|STOPPED_LEGACY_CANDIDATE

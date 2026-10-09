@@ -1,0 +1,978 @@
+<div id="rbPhoneRoot" hidden>
+
+<style>
+#rbPhoneButton{
+ position:fixed;
+ right:22px;
+ bottom:22px;
+ width:58px;
+ height:58px;
+ border-radius:50%;
+ border:0;
+ z-index:99980;
+ font-size:24px;
+ cursor:pointer;
+ box-shadow:0 8px 28px rgba(0,0,0,.22);
+ background:#1769aa;
+ color:white;
+}
+
+#rbPhoneDrawer{
+ position:fixed;
+ right:20px;
+ bottom:90px;
+ width:370px;
+ max-height:78vh;
+ overflow:auto;
+ z-index:99990;
+ background:#fff;
+ border:1px solid #ddd;
+ border-radius:18px;
+ box-shadow:0 16px 44px rgba(0,0,0,.25);
+ padding:18px;
+ display:none;
+}
+
+#rbPhoneDrawer.rb-open{
+ display:block;
+}
+
+.rb-phone-head{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ margin-bottom:12px;
+}
+
+.rb-presence{
+ display:inline-block;
+ padding:5px 10px;
+ border-radius:16px;
+ background:#e5e7eb;
+ font-size:12px;
+}
+
+.rb-presence.online{
+ background:#dcfce7;
+ color:#166534;
+}
+
+.rb-presence.busy{
+ background:#fef3c7;
+ color:#92400e;
+}
+
+.rb-phone-input{
+ width:100%;
+ box-sizing:border-box;
+ padding:11px;
+ border:1px solid #ccc;
+ border-radius:10px;
+ margin:10px 0;
+}
+
+.rb-phone-grid{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:8px;
+}
+
+.rb-phone-grid button,
+.rb-quick button{
+ padding:10px;
+ border:0;
+ border-radius:9px;
+ cursor:pointer;
+}
+
+.rb-green{
+ background:#16a34a;
+ color:white;
+}
+
+.rb-red{
+ background:#dc2626;
+ color:white;
+}
+
+.rb-blue{
+ background:#1769aa;
+ color:white;
+}
+
+.rb-gray{
+ background:#e5e7eb;
+}
+
+.rb-quick{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:7px;
+ margin-top:10px;
+}
+
+#rbIncoming{
+ display:none;
+ padding:12px;
+ background:#eff6ff;
+ border:1px solid #93c5fd;
+ border-radius:12px;
+ margin:10px 0;
+}
+
+#rbIncoming.show{
+ display:block;
+}
+
+#rbRemoteAudio{
+ display:none;
+}
+
+@media(max-width:600px){
+ #rbPhoneDrawer{
+   left:10px;
+   right:10px;
+   width:auto;
+   bottom:80px;
+ }
+}
+</style>
+
+
+<button
+ id="rbPhoneButton"
+ title="RadBridge Phone">
+☎
+</button>
+
+
+<div id="rbPhoneDrawer">
+
+<div class="rb-phone-head">
+
+<div>
+<strong id="rbPhoneName">
+RadBridge Phone
+</strong>
+<br>
+<small id="rbPhoneExtension"></small>
+</div>
+
+<span
+ id="rbPhonePresence"
+ class="rb-presence">
+Connecting
+</span>
+
+</div>
+
+
+<div id="rbIncoming">
+
+<strong>Incoming Call</strong>
+
+<div id="rbCaller">
+Unknown
+</div>
+
+<div class="rb-phone-grid">
+
+<button
+ id="rbAnswer"
+ class="rb-green">
+{{ ui_phrase('Answer') }}
+</button>
+
+<button
+ id="rbReject"
+ class="rb-red">
+{{ ui_phrase('Reject') }}
+</button>
+
+</div>
+
+</div>
+
+
+<input
+ id="rbDialNumber"
+ class="rb-phone-input"
+ placeholder="Extension / number"
+ autocomplete="off">
+
+
+<div class="rb-phone-grid">
+
+<button
+ id="rbCall"
+ class="rb-green">
+{{ ui_phrase('Call') }}
+</button>
+
+<button
+ id="rbHangup"
+ class="rb-red">
+{{ ui_phrase('Hangup') }}
+</button>
+
+<button
+ id="rbMute"
+ class="rb-gray">
+{{ ui_phrase('Mute') }}
+</button>
+
+<button
+ id="rbReception"
+ class="rb-blue">
+Reception 720
+</button>
+
+</div>
+
+
+<hr>
+
+<strong>{{ ui_phrase('Conference Rooms') }}</strong>
+
+<div class="rb-quick">
+
+<button data-rb-call="7301">
+{{ ui_phrase('Reception') }}
+</button>
+
+<button data-rb-call="7302">
+{{ ui_phrase('Radiology') }}
+</button>
+
+<button data-rb-call="7303">
+{{ ui_phrase('Operations') }}
+</button>
+
+<button data-rb-call="7304">
+{{ ui_phrase('IT / PACS') }}
+</button>
+
+<button data-rb-call="7305">
+{{ ui_phrase('Management') }}
+</button>
+
+<button data-rb-call="7390">
+{{ ui_phrase('Case Discussion') }}
+</button>
+
+</div>
+
+<div
+ id="rbPhoneMessage"
+ style="margin-top:10px;font-size:12px">
+</div>
+
+<audio
+ id="rbRemoteAudio"
+ autoplay>
+</audio>
+
+</div>
+
+
+<script type="module">
+import * as SIPModule
+  from "https://cdn.jsdelivr.net/npm/sip.js@0.21.2/+esm";
+
+window.SIP = SIPModule;
+
+window.dispatchEvent(
+  new Event("radbridge-sipjs-ready")
+);
+</script>
+
+
+<script>
+(function(){
+
+const root=
+ document.getElementById('rbPhoneRoot');
+
+const drawer=
+ document.getElementById('rbPhoneDrawer');
+
+const button=
+ document.getElementById('rbPhoneButton');
+
+const statusEl=
+ document.getElementById('rbPhonePresence');
+
+const messageEl=
+ document.getElementById('rbPhoneMessage');
+
+const remoteAudio=
+ document.getElementById('rbRemoteAudio');
+
+const incoming=
+ document.getElementById('rbIncoming');
+
+let cfg=null;
+let ua=null;
+let registerer=null;
+let currentSession=null;
+let muted=false;
+
+
+function msg(t){
+ messageEl.textContent=t || '';
+}
+
+
+function presence(t,cls){
+
+ statusEl.textContent=t;
+
+ statusEl.className=
+   'rb-presence ' +
+   (cls || '');
+}
+
+
+function attachAudio(session){
+
+ try{
+
+   const pc=
+     session
+     .sessionDescriptionHandler
+     .peerConnection;
+
+   const stream=
+     new MediaStream();
+
+   pc.getReceivers().forEach(r=>{
+     if(r.track){
+       stream.addTrack(r.track);
+     }
+   });
+
+   remoteAudio.srcObject=stream;
+
+   remoteAudio.play().catch(()=>{});
+
+ }catch(e){
+   console.error(e);
+ }
+
+}
+
+
+function watchSession(session){
+
+ session.stateChange.addListener(state=>{
+
+   if(
+      state ===
+      SIP.SessionState.Established
+   ){
+      currentSession=session;
+
+      attachAudio(session);
+
+      incoming.classList.remove('show');
+
+      presence('Busy','busy');
+
+      msg('Call connected');
+   }
+
+   if(
+      state ===
+      SIP.SessionState.Terminated
+   ){
+      if(currentSession === session){
+          currentSession=null;
+      }
+
+      incoming.classList.remove('show');
+
+      presence('Online','online');
+
+      msg('Call ended');
+   }
+
+ });
+
+}
+
+
+async function initialize(){
+
+ try{
+
+   if(typeof SIP === 'undefined'){
+      throw new Error(
+        'SIP.js failed to load'
+      );
+   }
+
+   const r=
+     await fetch(
+       '/api/telephony/credentials',
+       {
+         credentials:'same-origin',
+         cache:'no-store'
+       }
+     );
+
+   if(r.status === 403){
+
+      root.remove();
+      return;
+   }
+
+   if(!r.ok){
+      throw new Error(
+        'Telephony HTTP '+r.status
+      );
+   }
+
+   cfg=await r.json();
+
+   if(!cfg.ok){
+      throw new Error(
+        cfg.error || 'Telephony unavailable'
+      );
+   }
+
+
+   document.getElementById(
+     'rbPhoneName'
+   ).textContent=
+     cfg.display_name;
+
+
+   document.getElementById(
+     'rbPhoneExtension'
+   ).textContent=
+     'Extension ' +
+     cfg.extension;
+
+
+   const uri=
+     SIP.UserAgent.makeURI(
+       cfg.sip_uri
+     );
+
+
+   ua=new SIP.UserAgent({
+
+     uri:uri,
+
+     authorizationUsername:
+       cfg.authorization_username,
+
+     authorizationPassword:
+       cfg.authorization_password,
+
+     transportOptions:{
+       server:cfg.websocket
+     },
+
+     displayName:
+       cfg.display_name,
+
+     sessionDescriptionHandlerFactoryOptions:{
+       peerConnectionConfiguration:{
+         iceServers:[
+           {
+             urls:[
+               'stun:stun.l.google.com:19302'
+             ]
+           }
+         ]
+       }
+     }
+
+   });
+
+
+   ua.delegate={
+
+     onInvite:function(invitation){
+
+       currentSession=invitation;
+
+       watchSession(invitation);
+
+       let caller='Unknown';
+
+       try{
+         caller=
+          invitation
+          .remoteIdentity
+          .displayName
+          ||
+          invitation
+          .remoteIdentity
+          .uri.user
+          ||
+          'Unknown';
+       }catch(e){}
+
+       document.getElementById(
+         'rbCaller'
+       ).textContent=caller;
+
+       incoming.classList.add('show');
+
+       msg('Incoming call');
+
+       drawer.classList.add('rb-open');
+     }
+
+   };
+
+
+   await ua.start();
+
+   registerer=
+     new SIP.Registerer(ua);
+
+   registerer.stateChange.addListener(
+     function(state){
+
+       console.log(
+         "RadBridge REGISTER STATE:",
+         state
+       );
+
+       if(
+         state ===
+         SIP.RegistererState.Registered
+       ){
+         root.hidden=false;
+
+         presence(
+           'Online',
+           'online'
+         );
+
+         msg(
+           'Registered as '+
+           cfg.extension
+         );
+       }
+
+       else if(
+         state ===
+         SIP.RegistererState.Unregistered
+       ){
+         root.hidden=false;
+
+         presence(
+           'Offline',
+           ''
+         );
+
+         msg(
+           'Phone not registered'
+         );
+       }
+
+       else if(
+         state ===
+         SIP.RegistererState.Terminated
+       ){
+         root.hidden=false;
+
+         presence(
+           'Offline',
+           ''
+         );
+
+         msg(
+           'Registration terminated'
+         );
+       }
+
+       else {
+         root.hidden=false;
+
+         presence(
+           'Connecting',
+           ''
+         );
+
+         msg(
+           'Registering extension '+
+           cfg.extension
+         );
+       }
+     }
+   );
+
+   presence(
+     'Connecting',
+     ''
+   );
+
+   msg(
+     'Registering extension '+
+     cfg.extension
+   );
+
+   root.hidden=false;
+
+   await registerer.register();
+
+
+ }catch(e){
+
+   console.error(e);
+
+   root.hidden=false;
+
+   presence(
+     'Offline',
+     ''
+   );
+
+   msg(
+     e.message || String(e)
+   );
+
+ }
+
+}
+
+
+async function callNumber(number){
+
+ if(!ua || !cfg){
+    msg('Phone not registered');
+    return;
+ }
+
+ number=
+   String(number || '').trim();
+
+ if(!number)
+    return;
+
+ if(currentSession){
+    msg('Already in a call');
+    return;
+ }
+
+ try{
+
+   const target=
+     SIP.UserAgent.makeURI(
+       'sip:'+
+       number+
+       '@ris.dynuddns.net'
+     );
+
+   const inviter=
+     new SIP.Inviter(
+       ua,
+       target,
+       {
+        sessionDescriptionHandlerOptions:{
+          constraints:{
+            audio:true,
+            video:false
+          }
+        }
+       }
+     );
+
+   currentSession=inviter;
+
+   watchSession(inviter);
+
+   presence(
+     'Calling',
+     'busy'
+   );
+
+   msg(
+     'Calling '+number
+   );
+
+   await inviter.invite();
+
+ }catch(e){
+
+   console.error(e);
+
+   currentSession=null;
+
+   presence(
+     'Online',
+     'online'
+   );
+
+   msg(
+     e.message || String(e)
+   );
+
+ }
+
+}
+
+
+async function answer(){
+
+ if(
+   !currentSession ||
+   typeof currentSession.accept !== 'function'
+ ){
+   msg('No incoming call');
+   return;
+ }
+
+ try{
+
+   msg('Requesting microphone...');
+
+   await navigator.mediaDevices.getUserMedia({
+     audio: {
+       echoCancellation: true,
+       noiseSuppression: true,
+       autoGainControl: true
+     },
+     video: false
+   });
+
+   msg('Answering call...');
+
+   await currentSession.accept({
+     sessionDescriptionHandlerOptions:{
+       constraints:{
+         audio:true,
+         video:false
+       }
+     }
+   });
+
+   msg('Call answered');
+
+ }catch(e){
+
+   console.error(
+     'RadBridge ANSWER ERROR:',
+     e
+   );
+
+   msg(
+     'Answer failed: ' +
+     (e.message || String(e))
+   );
+
+   try{
+
+     if(
+       currentSession &&
+       typeof currentSession.reject === 'function'
+     ){
+       await currentSession.reject();
+     }
+
+   }catch(ignore){}
+
+   currentSession=null;
+
+   incoming.classList.remove('show');
+
+   presence(
+     'Online',
+     'online'
+   );
+ }
+
+}
+
+
+async function reject(){
+
+ if(
+   !currentSession ||
+   typeof currentSession.reject !== 'function'
+ ){
+   return;
+ }
+
+ try{
+   await currentSession.reject();
+ }catch(e){}
+
+ currentSession=null;
+
+ incoming.classList.remove('show');
+
+ presence(
+   'Online',
+   'online'
+ );
+
+}
+
+
+async function hangup(){
+
+ if(!currentSession)
+    return;
+
+ try{
+
+   const state=
+     currentSession.state;
+
+   if(
+     state ===
+     SIP.SessionState.Established
+   ){
+
+      await currentSession.bye();
+
+   }else if(
+     typeof currentSession.cancel ===
+     'function'
+   ){
+
+      await currentSession.cancel();
+
+   }else if(
+     typeof currentSession.reject ===
+     'function'
+   ){
+
+      await currentSession.reject();
+
+   }
+
+ }catch(e){
+   console.error(e);
+ }
+
+}
+
+
+function mute(){
+
+ if(!currentSession)
+    return;
+
+ try{
+
+   const pc=
+     currentSession
+     .sessionDescriptionHandler
+     .peerConnection;
+
+   muted=!muted;
+
+   pc.getSenders()
+     .filter(
+       s=>
+       s.track &&
+       s.track.kind === 'audio'
+     )
+     .forEach(
+       s=>{
+         s.track.enabled=!muted;
+       }
+     );
+
+   document.getElementById(
+     'rbMute'
+   ).textContent=
+     muted ?
+     'Unmute' :
+     'Mute';
+
+   msg(
+     muted ?
+     'Microphone muted' :
+     'Microphone active'
+   );
+
+ }catch(e){
+   console.error(e);
+ }
+
+}
+
+
+button.onclick=()=>{
+ drawer.classList.toggle('rb-open');
+};
+
+
+document.getElementById(
+ 'rbCall'
+).onclick=()=>{
+
+ callNumber(
+   document.getElementById(
+     'rbDialNumber'
+   ).value
+ );
+
+};
+
+
+document.getElementById(
+ 'rbReception'
+).onclick=()=>{
+ callNumber('720');
+};
+
+
+document.getElementById(
+ 'rbAnswer'
+).onclick=answer;
+
+
+document.getElementById(
+ 'rbReject'
+).onclick=reject;
+
+
+document.getElementById(
+ 'rbHangup'
+).onclick=hangup;
+
+
+document.getElementById(
+ 'rbMute'
+).onclick=mute;
+
+
+document.querySelectorAll(
+ '[data-rb-call]'
+).forEach(el=>{
+
+ el.addEventListener(
+   'click',
+   ()=>{
+     callNumber(
+       el.dataset.rbCall
+     );
+   }
+ );
+
+});
+
+
+if (window.SIP) {
+    initialize();
+} else {
+    window.addEventListener(
+        "radbridge-sipjs-ready",
+        initialize,
+        { once:true }
+    );
+}
+
+})();
+</script>
+
+</div>

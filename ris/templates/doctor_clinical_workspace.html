@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block page_title %}Clinical Workspace · {{order.accession}}{% endblock %}
+{% block content %}
+<div id="studio-launcher-doctor">{% set placement='DOCTOR' %}{% set shortcut_context={'order_id':order.id,'patient_id':order.patient.id,'accession':order.accession} %}{% include "_studio_shortcuts.html" %}</div>
+
+<div class="clinical-header panel">
+  <div>
+    <h2>{{order.patient.name}} <small>{{order.patient.patient_id}}</small></h2>
+    <div class="clinical-meta">
+      <span>{{order.modality}} · {{order.procedure}}</span>
+      <span>ACC {{order.accession}}</span>
+      <span>{{order.priority}}</span>
+      {% if readiness %}<span class="case-flag flag-{{readiness.status|lower}}">{{readiness.status}}</span>{% endif %}
+    </div>
+  </div>
+  <div class="clinical-header-actions">
+    <a class="btn" href="{{url_for('imaging_ai_workspace',order_id=order.id)}}">🧠 PACS AI</a>
+    <a class="btn" href="{{url_for('ai_report_assistant',order_id=order.id)}}">{{ ui_phrase('🤖 AI Draft') }}</a>
+    <a class="btn" href="{{url_for('order_attachments',order_id=order.id)}}">{{ ui_phrase('📎 Attachments (') }}{{attachments|length}})</a>
+    <a class="btn primary" href="{{url_for('report_editor',order_id=order.id)}}">{{ ui_phrase('📄 Report') }}</a>
+  </div>
+</div>
+
+<div class="clinical-tabs">
+{% for key,label in [
+ ('overview','Overview'),('clinical','Clinical'),('diagnosis','Diagnosis'),
+ ('imaging','Imaging'),('report','Report'),('attachments','Attachments'),
+ ('history','History'),('billing','Billing')] %}
+<a class="{% if tab==key %}active{% endif %}" href="{{url_for('doctor_clinical_workspace',order_id=order.id,tab=key)}}">{{label}}</a>
+{% endfor %}
+</div>
+
+{% if tab=='overview' %}
+<div class="grid3">
+  <div class="panel"><h3>Clinical Summary</h3><p><b>Complaint:</b> {{assessment.complaint or '—'}}</p><p><b>History:</b> {{assessment.history or '—'}}</p><p><b>Indication:</b> {{assessment.clinical_indication or '—'}}</p></div>
+  <div class="panel"><h3>Imaging</h3><p>PACS: {{ui_phrase('Available') if order.pacs_synced else 'Pending / Unknown'}}</p><p>Priors: {{priors|length + external_priors|length}}</p><a class="btn" href="{{url_for('imaging_ai_workspace',order_id=order.id)}}">Open Imaging AI</a></div>
+  <div class="panel"><h3>{{ ui_phrase('Workflow') }}</h3><p>Assigned: {{assignment.doctor_user_id if assignment else ui_phrase('Unassigned')}}</p><p>Readiness: {{readiness.status if readiness else 'Not checked'}}</p><p>Attachments: {{attachments|length}}</p></div>
+</div>
+{% elif tab=='clinical' %}
+<div class="grid2">
+<form method="post" class="panel">
+<input type="hidden" name="section" value="CLINICAL"><input type="hidden" name="return_tab" value="clinical">
+<h3>Clinical Evaluation</h3>
+<label>Chief Complaint</label><textarea name="complaint">{{assessment.complaint}}</textarea>
+<label>{{ ui_phrase('Clinical History') }}</label><textarea name="history">{{assessment.history}}</textarea>
+<label>{{ ui_phrase('Examination') }}</label><textarea name="examination">{{assessment.examination}}</textarea>
+<label>Clinical Indication</label><textarea name="clinical_indication">{{assessment.clinical_indication}}</textarea>
+<label>Allergies / Important Notes</label><textarea name="allergy_notes">{{assessment.allergy_notes}}</textarea>
+<button class="btn primary">Save Clinical</button>
+</form>
+<form method="post" class="panel">
+<input type="hidden" name="section" value="VITALS"><input type="hidden" name="return_tab" value="clinical">
+<h3>Vital Signs</h3>
+<div class="grid2"><input name="temperature" type="number" step="0.1" placeholder="Temp °C"><input name="pulse" type="number" placeholder="Pulse"><input name="systolic" type="number" placeholder="SBP"><input name="diastolic" type="number" placeholder="DBP"><input name="spo2" type="number" placeholder="SpO₂"><input name="respiratory_rate" type="number" placeholder="RR"><input name="weight_kg" type="number" step="0.1" placeholder="Weight kg"><input name="height_cm" type="number" step="0.1" placeholder="Height cm"></div>
+<button class="btn">Add Vitals</button>
+<hr>{% for v in vitals[:5] %}<small>{{v.recorded_at}} · T {{v.temperature or '-'}} · P {{v.pulse or '-'}} · BP {{v.systolic or '-'}}/{{v.diastolic or '-'}} · SpO₂ {{v.spo2 or '-'}}</small><br>{% endfor %}
+</form></div>
+{% elif tab=='diagnosis' %}
+<div class="grid2">
+<form method="post" class="panel"><input type="hidden" name="section" value="DIAGNOSIS"><input type="hidden" name="return_tab" value="diagnosis"><h3>Add Diagnosis</h3><input name="diagnosis_text" placeholder="Diagnosis"><select name="diagnosis_type"><option>WORKING</option><option>DIFFERENTIAL</option><option value="FINAL">{{ ui_phrase('FINAL') }}</option></select><input name="code" placeholder="ICD/code optional"><button class="btn primary">{{ ui_phrase('Add') }}</button></form>
+<div class="panel"><h3>Diagnoses</h3>{% for d in diagnoses %}<div class="clinical-list-item"><b>{{d.diagnosis_text}}</b><span>{{d.diagnosis_type}} {{d.code}}</span></div>{% else %}<p>—</p>{% endfor %}</div>
+<form method="post" class="panel"><input type="hidden" name="section" value="TREATMENT"><input type="hidden" name="return_tab" value="diagnosis"><h3>Treatment Plan</h3><textarea name="treatment_plan">{{assessment.treatment_plan}}</textarea><button class="btn">{{ ui_phrase('Save') }}</button></form>
+<form method="post" class="panel"><input type="hidden" name="section" value="MEDICATION"><input type="hidden" name="return_tab" value="diagnosis"><h3>Medication</h3><input name="medication_name" placeholder="Medication"><div class="grid2"><input name="dose" placeholder="Dose"><input name="route" placeholder="{{ ui_phrase('Route') }}"><input name="frequency" placeholder="Frequency"><input name="duration" placeholder="{{ ui_phrase('Duration') }}"></div><input name="notes" placeholder="{{ ui_phrase('Notes') }}"><button class="btn">{{ ui_phrase('Add') }}</button>{% for m in medications %}<small>{{m.medication_name}} · {{m.dose}} · {{m.frequency}}</small><br>{% endfor %}</form>
+</div>
+{% elif tab=='imaging' %}
+<div class="grid2"><div class="panel"><h3>PACS / Imaging</h3><a class="btn primary" href="{{url_for('imaging_ai_workspace',order_id=order.id)}}">🧠 Open PACS AI Imaging</a><a class="btn" href="{{url_for('pacs_tracking')}}">🩻 PACS Tracking</a></div>
+<div class="panel"><h3>{{ ui_phrase('Prior Studies') }}</h3>{% for p in priors %}<div class="clinical-list-item">{{p.accession}} · {{p.modality}} · {{p.procedure}}</div>{% endfor %}{% for p in external_priors %}<div class="clinical-list-item">External · {{p.study_date}} · {{p.modality}}</div>{% endfor %}</div></div>
+{% elif tab=='report' %}
+<div class="panel"><div class="actions"><a class="btn primary" href="{{url_for('report_editor',order_id=order.id)}}">Open Report Editor</a><a class="btn" href="{{url_for('ai_report_assistant',order_id=order.id)}}">AI Draft Assistant</a></div>{% for r in reports %}<div class="clinical-list-item"><b>{{r.status}}</b><span>{{r.updated_at or r.created_at}}</span></div>{% else %}<p>No report yet.</p>{% endfor %}</div>
+{% elif tab=='attachments' %}
+<div class="panel"><a class="btn primary" href="{{url_for('order_attachments',order_id=order.id)}}">📎 Open Attachment Manager</a><p>{{attachments|length}} attachment(s)</p>{% for a in attachments %}<div class="clinical-list-item"><a target="_blank" href="{{url_for('attachment_preview',attachment_id=a.id)}}">{{a.original_name}}</a><span>{{a.category}}</span></div>{% endfor %}</div>
+{% elif tab=='history' %}
+<div class="panel"><h3>{{ ui_phrase('Patient History') }}</h3>{% for p in priors %}<div class="clinical-list-item"><b>{{p.scheduled}} · {{p.procedure}}</b><span>{{p.status}} · {{p.accession}}</span><a href="{{url_for('doctor_clinical_workspace',order_id=p.id)}}">{{ ui_phrase('Open') }}</a></div>{% else %}<p>No previous RIS studies found.</p>{% endfor %}</div>
+{% elif tab=='billing' %}
+<div class="panel"><h3>Billing / Contract</h3><p>Contract: {{order.contract.name if order.contract else ui_phrase('Cash / None')}}</p><p>Gross: {{order.gross_price}}</p><p>Patient Share: {{order.patient_share}}</p><p>Company Share: {{order.company_share}}</p><a class="btn" href="{{url_for('cashier')}}">Open Cashier</a></div>
+{% endif %}
+{% endblock %}

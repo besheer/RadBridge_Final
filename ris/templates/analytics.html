@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block page_title %}{{'الإحصائيات والتقارير' if ui_lang=='ar' else 'Analytics & Statistics'}}{% endblock %}
+{% block subtitle %}{{'إحصائيات تشغيلية ومالية حسب الفلاتر والصلاحيات' if ui_lang=='ar' else 'Operational and financial analytics according to filters and permissions'}}{% endblock %}
+
+{% block content %}
+<form class="panel filterbar" method="get">
+  <input type="date" name="start" value="{{request.args.get('start','')}}">
+  <input type="date" name="end" value="{{request.args.get('end','')}}">
+
+  <select name="branch_id">
+    <option value="">{{'كل الفروع' if ui_lang=='ar' else 'All branches'}}</option>
+    {% for b in branches %}
+    <option value="{{b.id}}" {% if request.args.get('branch_id')==b.id|string %}selected{% endif %}>{{b.name}}</option>
+    {% endfor %}
+  </select>
+
+  <select name="modality">
+    <option value="">{{'كل الأجهزة' if ui_lang=='ar' else 'All modalities'}}</option>
+    {% for m in ['CT','MR','DX','US','MG','RF','NM','PT'] %}
+    <option value="{{m}}" {% if request.args.get('modality')==m %}selected{% endif %}>{{m}}</option>
+    {% endfor %}
+  </select>
+
+  <select name="contract_id">
+    <option value="">{{'كل جهات الدفع' if ui_lang=='ar' else 'All payers'}}</option>
+    {% for c in contracts %}
+    <option value="{{c.id}}" {% if request.args.get('contract_id')==c.id|string %}selected{% endif %}>{{c.name}}</option>
+    {% endfor %}
+  </select>
+
+  <button class="btn primary">{{'تطبيق' if ui_lang=='ar' else 'Apply'}}</button>
+
+</form>
+
+<div class="cards">
+  <div class="metric"><small>{{'عدد الفحوصات' if ui_lang=='ar' else 'Studies'}}</small><b>{{total}}</b></div>
+  <div class="metric"><small>{{'الإيراد' if ui_lang=='ar' else 'Revenue'}}</small><b>{{'%.2f'|format(gross)}} EGP</b></div>
+  <div class="metric"><small>{{'المحصل' if ui_lang=='ar' else 'Collected'}}</small><b>{{'%.2f'|format(paid)}} EGP</b></div>
+  <div class="metric"><small>{{'البواقي' if ui_lang=='ar' else 'Outstanding'}}</small><b>{{'%.2f'|format(outstanding|default(0))}} EGP</b></div>
+  <div class="metric"><small>{{'حصة المريض' if ui_lang=='ar' else 'Patient Share'}}</small><b>{{'%.2f'|format(patient_share)}} EGP</b></div>
+  <div class="metric"><small>{{'حصة الجهة' if ui_lang=='ar' else 'Company Share'}}</small><b>{{'%.2f'|format(company_share)}} EGP</b></div>
+  <div class="metric"><small>{{'متوسط زمن التقرير' if ui_lang=='ar' else 'Average Report TAT'}}</small><b>{{'%.1f'|format(avg_tat|default(0))}} {{ ui_phrase('h') }}</b></div>
+  <div class="metric"><small>{{'تكلفة المستهلكات' if ui_lang=='ar' else 'Consumables Cost'}}</small><b>{{'%.2f'|format(consumable_cost|default(0))}} EGP</b></div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h3>{{'حسب نوع الجهاز' if ui_lang=='ar' else 'By Modality'}}</h3>
+    <table><tr><th>{{ ui_phrase('Modality') }}</th><th>Count</th></tr>
+      {% for k,v in by_mod %}<tr><td>{{k}}</td><td><b>{{v}}</b></td></tr>
+      {% else %}<tr><td colspan="2" class="empty">No data</td></tr>{% endfor %}
+    </table>
+  </div>
+
+  <div class="panel">
+    <h3>{{'حسب حالة الفحص' if ui_lang=='ar' else 'By Study Status'}}</h3>
+    <table><tr><th>{{ ui_phrase('Status') }}</th><th>Count</th></tr>
+      {% for k,v in by_status %}<tr><td>{{k}}</td><td><b>{{v}}</b></td></tr>
+      {% else %}<tr><td colspan="2" class="empty">No data</td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h3>{{'حالات المواعيد' if ui_lang=='ar' else 'Appointment Status'}}</h3>
+    <table><tr><th>{{ ui_phrase('Status') }}</th><th>Count</th></tr>
+      {% for k,v in (appointment_stats|default({})).items() %}
+      <tr><td>{{k}}</td><td><b>{{v}}</b></td></tr>
+      {% else %}<tr><td colspan="2" class="empty">No appointments</td></tr>{% endfor %}
+    </table>
+  </div>
+
+  <div class="panel">
+    <h3>{{'حسب الفرع' if ui_lang=='ar' else 'By Branch'}}</h3>
+    <table><tr><th>{{ ui_phrase('Branch') }}</th><th>Count</th></tr>
+      {% for k,v in by_branch|default([]) %}<tr><td>{{k}}</td><td><b>{{v}}</b></td></tr>
+      {% else %}<tr><td colspan="2" class="empty">No data</td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <h3>{{'أكثر الفحوصات' if ui_lang=='ar' else 'Top Procedures'}}</h3>
+  <table><tr><th>{{'الفحص' if ui_lang=='ar' else 'Procedure'}}</th><th>Count</th></tr>
+    {% for k,v in top_procs %}<tr><td>{{k}}</td><td>{{v}}</td></tr>
+    {% else %}<tr><td colspan="2" class="empty">No data</td></tr>{% endfor %}
+  </table>
+</div>
+{% endblock %}

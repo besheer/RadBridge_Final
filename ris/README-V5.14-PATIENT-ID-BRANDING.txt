@@ -1,0 +1,11 @@
+v5.14 Patient Identification & Branding
+- Bilingual Arabic/English sticker with editable fields/labels and size.
+- Secure QR Patient Portal token; Code128 Accession barcode.
+- Patient Portal shows exam state, image count, FINAL report only, and image viewer when available.
+- Optional last-4 mobile verification.
+- Barcode scanner for Accession / Patient ID.
+- Duplicate warning: exact National ID or exact Mobile + DOB.
+- PACS demographic matching/reconciliation for manual studies.
+- Auto-safe matching only for exact Accession or unique exact Patient ID.
+- No automatic DICOM demographic rewrite.
+- Company branding: Arabic/English name/address/phones/email/website/logo.

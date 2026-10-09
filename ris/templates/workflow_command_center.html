@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block page_title %}{{ ui_phrase('Workflow Command Center') }}{% endblock %}{% block subtitle %}Queue health · PACS · assignment · SLA problems{% endblock %}{% block content %}
+<div class="ops-kpis">
+<div><small>PACS</small><b>{{'ONLINE' if snap.pacs_online else ui_phrase('OFFLINE')}}</b></div>
+<div><small>Exam Completed / No Images</small><b>{{snap.no_images|length}}</b></div>
+<div><small>Images Received / Unassigned</small><b>{{snap.unassigned|length}}</b></div>
+<div><small>Assignment Delay</small><b>{{snap.assignment_delay|length}}</b></div>
+<div><small>Problem Queue</small><b>{{snap.problems|length}}</b></div>
+</div>
+<div class="panel"><div class="actions"><a class="btn" href="{{url_for('pacs_unregistered_cases')}}">PACS Auto Intake</a><a class="btn" href="{{url_for('pacs_archive_dashboard')}}">Archive / Transfer Queue</a><form method="post" action="{{url_for('pacs_transfer_process')}}" style="display:inline"><button class="btn primary">Process Transfers</button></form></div></div>
+<div class="panel"><h3>Problem Queue</h3><table><tr><th>{{ ui_phrase('Severity') }}</th><th>{{ ui_phrase('Accession') }}</th><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Modality') }}</th><th>{{ ui_phrase('Problem') }}</th><th>{{ ui_phrase('Actions') }}</th></tr>
+{% for o,reason,severity in snap.problems %}<tr><td><span class="badge">{{severity}}</span></td><td>{{o.accession}}</td><td>{{o.patient.name}}</td><td>{{o.modality}}</td><td>{{reason}}</td><td><a class="btn" href="{{url_for('order_detail',order_id=o.id)}}">{{ ui_phrase('Open') }}</a>{% if o.pacs_study_id %}<a class="btn" href="{{url_for('pacs_case_actions',order_id=o.id)}}">PACS Actions</a>{% endif %}</td></tr>{% endfor %}
+</table></div>{% endblock %}

@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+{{ ui_phrase('SLA / TAT Policies') }}
+{% endblock %}
+
+{% block content %}
+
+<!-- RB_SLA_TAT_ADMIN_UI_V1 -->
+
+<style>
+.rb-sla-shell{
+  display:grid;
+  gap:16px;
+}
+
+.rb-sla-intro{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
+}
+
+.rb-sla-intro p{
+  margin:.35rem 0 0;
+  color:var(--muted,#64748b);
+  max-width:850px;
+}
+
+.rb-sla-grid{
+  display:grid;
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(150px,1fr)
+    );
+  gap:10px;
+}
+
+.rb-sla-grid label{
+  display:grid;
+  gap:5px;
+  font-size:12px;
+  font-weight:600;
+}
+
+.rb-sla-grid input,
+.rb-sla-grid select{
+  width:100%;
+}
+
+.rb-sla-table{
+  width:100%;
+}
+
+.rb-sla-table th{
+  white-space:nowrap;
+}
+
+.rb-sla-active{
+  color:#15803d;
+  font-weight:700;
+}
+
+.rb-sla-disabled{
+  color:#94a3b8;
+  font-weight:700;
+}
+
+.rb-sla-actions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.rb-sla-help{
+  font-size:12px;
+  color:var(--muted,#64748b);
+  line-height:1.6;
+}
+
+.rb-sla-fallback{
+  padding:10px 12px;
+  border-radius:10px;
+  background:rgba(59,130,246,.08);
+  border:1px solid rgba(59,130,246,.22);
+}
+
+@media(max-width:800px){
+  .rb-sla-intro{
+    display:block;
+  }
+}
+</style>
+
+<div class="rb-sla-shell">
+
+  <div class="panel rb-sla-intro">
+
+    <div>
+      <h2 style="margin:0">
+        SLA / TAT Policy Administration
+      </h2>
+
+      <p>
+        Configure operational turnaround targets by
+        priority and modality. Exact modality policies
+        override the wildcard (*) policy.
+      </p>
+    </div>
+
+    <div>
+      <a
+        class="btn"
+        href="{{ url_for('tat_dashboard') }}"
+      >
+        Open TAT Dashboard
+      </a>
+    </div>
+
+  </div>
+
+  <div class="panel">
+
+    <h3>
+      Create / Update Policy
+    </h3>
+
+    <form
+      method="post"
+      id="tatPolicyForm"
+    >
+
+      <input
+        type="hidden"
+        name="policy_id"
+        id="policy_id"
+      >
+
+      <input
+        type="hidden"
+        name="action"
+        value="SAVE"
+      >
+
+      <div class="rb-sla-grid">
+
+        <label>
+          {{ ui_phrase('Priority') }}
+
+          <select
+            name="priority"
+            id="priority"
+            required
+          >
+            {% for p in priorities %}
+            <option value="{{ p }}">
+              {{ p }}
+            </option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>
+          {{ ui_phrase('Modality') }}
+
+          <input
+            name="modality"
+            id="modality"
+            value="*"
+            list="tatModalities"
+            required
+          >
+
+          <datalist id="tatModalities">
+            <option value="*">
+            {% for m in modalities %}
+            <option value="{{ m }}">
+            {% endfor %}
+          </datalist>
+        </label>
+
+        <label>
+          Ready → Assign (min)
+
+          <input
+            type="number"
+            min="0"
+            name="ready_to_assign_min"
+            id="ready_to_assign_min"
+            value="10"
+            required
+          >
+        </label>
+
+        <label>
+          Assign → Accept (min)
+
+          <input
+            type="number"
+            min="0"
+            name="assign_to_accept_min"
+            id="assign_to_accept_min"
+            value="5"
+            required
+          >
+        </label>
+
+        <label>
+          Accept → Final (min)
+
+          <input
+            type="number"
+            min="0"
+            name="accept_to_final_min"
+            id="accept_to_final_min"
+            value="60"
+            required
+          >
+        </label>
+
+        <label>
+          Total TAT (min)
+
+          <input
+            type="number"
+            min="0"
+            name="total_tat_min"
+            id="total_tat_min"
+            value="120"
+            required
+          >
+        </label>
+
+        <label>
+          {{ ui_phrase('Status') }}
+
+          <select
+            name="active"
+            id="active"
+          >
+            <option value="1">
+              {{ ui_phrase('Active') }}
+            </option>
+
+            <option value="0">
+              {{ ui_phrase('Disabled') }}
+            </option>
+          </select>
+        </label>
+
+      </div>
+
+      <div
+        class="rb-sla-actions"
+        style="margin-top:14px"
+      >
+        <button
+          class="btn primary"
+          type="submit"
+        >
+          {{ ui_phrase('Save Policy') }}
+        </button>
+
+        <button
+          class="btn"
+          type="button"
+          id="tatPolicyReset"
+        >
+          New Policy
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+
+  <div class="rb-sla-fallback">
+
+    <b>Resolver behavior</b>
+
+    <div class="rb-sla-help">
+      The runtime first searches for
+      <b>Priority + exact Modality</b>{{ ui_phrase('.\n      If no active policy exists, it falls back to') }}
+      <b>Priority + *</b>.
+    </div>
+
+  </div>
+
+  <div class="panel table-wrap">
+
+    <h3>
+      Current Policies
+    </h3>
+
+    <table class="rb-sla-table">
+
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>{{ ui_phrase('Priority') }}</th>
+          <th>{{ ui_phrase('Modality') }}</th>
+          <th>Ready → Assign</th>
+          <th>Assign → Accept</th>
+          <th>Accept → Final</th>
+          <th>{{ ui_phrase('Total') }}</th>
+          <th>{{ ui_phrase('Status') }}</th>
+          <th>{{ ui_phrase('Action') }}</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        {% for r in rows %}
+
+        <tr>
+
+          <td>
+            {{ r.id }}
+          </td>
+
+          <td>
+            <b>{{ r.priority }}</b>
+          </td>
+
+          <td>
+            {{ r.modality }}
+          </td>
+
+          <td>
+            {{ r.ready_to_assign_min }} {{ ui_phrase('min') }}
+          </td>
+
+          <td>
+            {{ r.assign_to_accept_min }} {{ ui_phrase('min') }}
+          </td>
+
+          <td>
+            {{ r.accept_to_final_min }} {{ ui_phrase('min') }}
+          </td>
+
+          <td>
+            <b>{{ r.total_tat_min }} {{ ui_phrase('min') }}</b>
+          </td>
+
+          <td>
+            {% if r.active %}
+            <span class="rb-sla-active">
+              ACTIVE
+            </span>
+            {% else %}
+            <span class="rb-sla-disabled">
+              DISABLED
+            </span>
+            {% endif %}
+          </td>
+
+          <td>
+
+            <div class="rb-sla-actions">
+
+              <button
+                type="button"
+                class="btn small tat-edit"
+                data-id="{{ r.id }}"
+                data-priority="{{ r.priority }}"
+                data-modality="{{ r.modality }}"
+                data-ready="{{ r.ready_to_assign_min }}"
+                data-accept="{{ r.assign_to_accept_min }}"
+                data-final="{{ r.accept_to_final_min }}"
+                data-total="{{ r.total_tat_min }}"
+                data-active="{{ 1 if r.active else 0 }}"
+              >
+                {{ ui_phrase('Edit') }}
+              </button>
+
+              {% if r.active %}
+
+              <form method="post">
+
+                <input
+                  type="hidden"
+                  name="policy_id"
+                  value="{{ r.id }}"
+                >
+
+                <input
+                  type="hidden"
+                  name="action"
+                  value="DISABLE"
+                >
+
+                <button
+                  class="btn small"
+                  type="submit"
+                >
+                  {{ ui_phrase('Disable') }}
+                </button>
+
+              </form>
+
+              {% endif %}
+
+            </div>
+
+          </td>
+
+        </tr>
+
+        {% else %}
+
+        <tr>
+          <td colspan="9">
+            No SLA / TAT policies configured.
+          </td>
+        </tr>
+
+        {% endfor %}
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+</div>
+
+<script>
+(() => {
+
+  const $ = id =>
+    document.getElementById(id);
+
+  function resetForm(){
+
+    $('policy_id').value = '';
+    $('priority').value = 'ROUTINE';
+    $('modality').value = '*';
+    $('ready_to_assign_min').value = '10';
+    $('assign_to_accept_min').value = '5';
+    $('accept_to_final_min').value = '60';
+    $('total_tat_min').value = '120';
+    $('active').value = '1';
+
+  }
+
+  document
+    .querySelectorAll('.tat-edit')
+    .forEach(btn => {
+
+      btn.addEventListener(
+        'click',
+        () => {
+
+          $('policy_id').value =
+            btn.dataset.id || '';
+
+          $('priority').value =
+            btn.dataset.priority || 'ROUTINE';
+
+          $('modality').value =
+            btn.dataset.modality || '*';
+
+          $('ready_to_assign_min').value =
+            btn.dataset.ready || '10';
+
+          $('assign_to_accept_min').value =
+            btn.dataset.accept || '5';
+
+          $('accept_to_final_min').value =
+            btn.dataset.final || '60';
+
+          $('total_tat_min').value =
+            btn.dataset.total || '120';
+
+          $('active').value =
+            btn.dataset.active || '1';
+
+          $('tatPolicyForm')
+            .scrollIntoView({
+              behavior:'smooth',
+              block:'start'
+            });
+
+        }
+      );
+
+    });
+
+  $('tatPolicyReset')
+    .addEventListener(
+      'click',
+      resetForm
+    );
+
+})();
+</script>
+
+{% endblock %}

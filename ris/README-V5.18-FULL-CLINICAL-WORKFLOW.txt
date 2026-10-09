@@ -1,0 +1,1 @@
+v5.18 Full Clinical Workflow: Clinical Notes, User Profiles, Dictionary AR/EN, Ribbon models, Booking Control Center, booking restrictions integration.

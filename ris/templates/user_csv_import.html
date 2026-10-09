@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ 'استيراد المستخدمين' if ui_lang=='ar' else 'Import users' }}{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:1000px;margin:auto;padding:20px">
+<h2>{{ 'استيراد المستخدمين من CSV' if ui_lang=='ar' else 'Import users from CSV' }}</h2>
+<p>إنشاء حسابات جديدة بعد المعاينة فقط. الحسابات الموجودة يتم تخطيها دون تعديل. لا تُنقل كلمات المرور. / Preview before creating new accounts. Existing accounts are skipped. Passwords are never transferred.</p>
+<p><a class="btn" href="{{ url_for('user_csv.template') }}">تحميل قالب CSV / Download CSV template</a> <a class="btn" href="{{ url_for('admin_users') }}">المستخدمون / Users</a></p>
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+<form method="post" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label for="users-csv">ملف CSV بترميز UTF-8، حتى 500 مستخدم و2 MB / CSV file, UTF-8, up to 500 users and 2 MB</label>
+<input id="users-csv" name="file" type="file" accept=".csv,text/csv" required style="display:block;max-width:100%;margin:12px 0">
+<button class="btn primary" type="submit">معاينة الاستيراد / Preview import</button>
+</form>
+<h3>طريقة تعبئة القالب / Template instructions</h3>
+<p><code>username</code> اسم الدخول بدون مسافات؛ <code>full_name</code> الاسم؛ <code>role_code</code> كود الدور أدناه؛ <code>branch_code</code> كود الفرع أو فارغ؛ <code>active</code> استخدم <code>true</code> أو <code>false</code>. باقي الحقول اختيارية. / Username without spaces; full name; role code below; branch code or blank; active true or false. Remaining fields are optional.</p>
+<p>الهاتف وWhatsApp: 7–15 رقمًا مع + اختيارية. Telegram: اسم المستخدم دون رابط. / Phone and WhatsApp: 7–15 digits with optional +. Telegram: username, not a URL.</p>
+<p><code>scope_enabled</code>: <code>true</code> لتقييد رؤية وعمل الطبيب أو الفني أو التمريض؛ <code>modalities</code> مثل <code>CT|MR</code>؛ <code>device_keys</code> كود الفرع/AE؛ <code>room_keys</code> كود الفرع/الغرفة. استخدم <code>|</code> بين الاختيارات. / Set scope_enabled true to restrict clinical access; separate modality/device/room choices with |. Disabled scopes must have empty choices.</p>
+{% set catalog = clinical_scope_context() %}
+<details><summary>أكواد التخصيص / Clinical scope codes</summary>
+<p>Modalities: {{ catalog.scope_modalities|join(' | ') }}</p>
+<ul>{% for key, devices in catalog.scope_devices.items() %}{% if devices|length==1 %}<li>Device: <code>{{ key }}</code> — {{ devices[0].name }}</li>{% endif %}{% endfor %}</ul>
+<ul>{% for key in catalog.scope_rooms %}<li>Room: <code>{{ key }}</code></li>{% endfor %}</ul>
+</details>
+<div class="detail-grid">
+<div><h3>أكواد الأدوار / Role codes</h3><ul>{% for role in roles %}<li><code>{{ role.code }}</code> — {{ role.name }}</li>{% endfor %}</ul></div>
+<div><h3>أكواد الفروع / Branch codes</h3><ul>{% for branch in branches %}<li><code>{{ branch.code }}</code> — {{ branch.name }}{% if not branch.active %} (غير نشط / inactive){% endif %}</li>{% endfor %}</ul></div>
+</div>
+<p class="muted">معاينة الاستيراد صالحة 15 دقيقة. كلمة المرور المؤقتة تُحدد عند الحفظ، ويجب تغييرها عند أول دخول. / Preview expires after 15 minutes. Set a temporary password when confirming; users must change it on first login.</p>
+</div>
+{% endblock %}
+
