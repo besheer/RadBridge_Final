@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block page_title %}{{'العلاج الإشعاعي' if ui_lang=='ar' else 'Radiotherapy'}}{% endblock %}
+{% block content %}
+<section class="panel"><h2>{{'خطط العلاج والجلسات' if ui_lang=='ar' else 'Treatment plans and sessions'}}</h2>
+<p>{{'تسجيل يدوي لخطة معتمدة خارجيًا؛ بيانات الجلسات المسجلة ليست تأكيدًا صادرًا من جهاز العلاج.' if ui_lang=='ar' else 'Manual records of externally approved plans. Recorded sessions are not machine-confirmed delivery.'}}</p>
+<form method="get"><label>{{'مرجع الدورة أو رقم المريض' if ui_lang=='ar' else 'Course reference or exact patient ID'}}</label><input name="q" value="{{request.args.get('q','')}}"><button class="btn">{{'بحث' if ui_lang=='ar' else 'Search'}}</button></form>
+{% if has_perm('rt.course.create') %}<details><summary>{{'إنشاء ملف علاج' if ui_lang=='ar' else 'Create treatment course'}}</summary>
+<form method="post" action="{{url_for('rt_create_course')}}"><input type="hidden" name="csrf_token" value="{{rt_csrf}}">
+<label>{{'رقم طلب RIS للمريض والفرع — Accession' if ui_lang=='ar' else 'RIS accession for the patient and branch'}}</label><input name="accession" required maxlength="100">
+<label>{{'مرجع ملف العلاج' if ui_lang=='ar' else 'Treatment course reference'}}</label><input name="reference" required maxlength="100"><button class="btn primary">{{'إنشاء' if ui_lang=='ar' else 'Create'}}</button></form></details>{% endif %}</section>
+<section class="panel"><div class="table-wrap"><table><thead><tr><th>{{'المرجع' if ui_lang=='ar' else 'Reference'}}</th><th>{{'المريض' if ui_lang=='ar' else 'Patient'}}</th><th>{{'الفرع' if ui_lang=='ar' else 'Branch'}}</th><th>{{'الحالة' if ui_lang=='ar' else 'State'}}</th></tr></thead><tbody>
+{% for c in courses %}<tr><td><a href="{{url_for('rt_course_detail',course_id=c.id)}}">{{c.reference}}</a></td><td>{{c.patient.name}} · {{c.patient.patient_id}}</td><td>{{c.branch.name}}</td><td>{{c.status}}</td></tr>{% else %}<tr><td colspan="4">{{'لا توجد ملفات مطابقة ضمن صلاحياتك.' if ui_lang=='ar' else 'No matching courses within your access scope.'}}</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}

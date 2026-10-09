@@ -20,7 +20,7 @@ def f(queue_cases):
     yield f
     m.db.session.rollback();f.role.permissions_json=old_permissions
     # Remove this fixture's user so repeated synthetic runs do not exceed the user CSV roundtrip limit.
-    m.User.query.filter_by(id=f.user.id).delete(synchronize_session=False);m.db.session.commit()
+    m.User.query.filter_by(id=f.user.id).delete(synchronize_session='fetch');m.db.session.commit()
 
 def configure(f,**changes):
     policy={**f.policy,**changes};previous=staff.policies(f.m).get(f.proc.id)

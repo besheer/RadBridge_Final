@@ -5,7 +5,7 @@ from flask import abort, g, has_request_context, request, session
 from sqlalchemy import and_, event, false, func, or_, select
 from sqlalchemy.orm import Session, with_loader_criteria
 
-CLINICAL_ROLES = {'RADIOLOGIST', 'DOCTOR', 'CONSULTANT', 'RADIOLOGY_CONSULTANT', 'TECHNICIAN', 'NURSING'}
+CLINICAL_ROLES = {'RADIOTHERAPY_PHYSICIAN', 'RADIOLOGIST', 'DOCTOR', 'CONSULTANT', 'RADIOLOGY_CONSULTANT', 'TECHNICIAN', 'NURSING'}
 SCOPE_COLUMNS = ('scope_enabled', 'modalities', 'device_keys', 'room_keys')
 
 

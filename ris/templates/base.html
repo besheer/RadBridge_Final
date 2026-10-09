@@ -91,6 +91,7 @@
 <summary class="nav-caption">{{"العمل السريري" if ui_lang=="ar" else "Clinical"}}</summary>
 <div class="rb-nav-group-links">
 {% if has_perm("technician.worklist") %}<a class="nav-link" href="{{url_for('technician_worklist')}}">⌁ <span>{{"الفني" if ui_lang=="ar" else "Technician"}}</span></a>{% endif %}
+{% if has_perm("rt.view") %}<a class="nav-link" href="{{url_for('rt_worklist')}}">☢ <span>{{"العلاج الإشعاعي" if ui_lang=="ar" else "Radiotherapy"}}</span></a>{% endif %}
 {% if has_perm("nursing.worklist") %}<a class="nav-link" href="{{url_for('nursing_worklist')}}">✚ <span>{{"التمريض" if ui_lang=="ar" else "Nursing"}}</span></a>{% endif %}
 {% if has_perm("reports.view") %}<a class="nav-link" href="{{url_for('doctor_workspace')}}">🩺 <span>{{"مساحة الطبيب" if ui_lang=="ar" else "Doctor Workspace"}}</span></a>{% endif %}
 {% if has_perm("reports.coordinate") %}<a class="nav-link" href="{{url_for('coordinator_queue')}}">🗂 <span>{{"قائمة المنسق" if ui_lang=="ar" else "Coordinator Queue"}}</span></a>{% endif %}

@@ -38664,3 +38664,6 @@ register_security_dashboard(_reporting_support_sys.modules[__name__])
 
 from procedure_staff_workflow import register as register_procedure_staff_workflow
 register_procedure_staff_workflow(_reporting_support_sys.modules[__name__])
+
+from radiotherapy import register as register_radiotherapy
+register_radiotherapy(_reporting_support_sys.modules[__name__])
