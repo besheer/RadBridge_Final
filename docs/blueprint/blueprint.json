@@ -1,0 +1,160 @@
+{
+  "blueprint_version": "1.0",
+  "prepared_date": "2026-10-10",
+  "scope": "Current RadBridge; separate branch DICOM gateway excluded",
+  "source_commit": "cf59dc1b4fb07d23434251ef6d1a4ba20ed64bb0",
+  "github_source_commit": "28473d9cb111a904da8107b0a6d49cbb0c53bb96",
+  "handover_commit": "7d86cc8285a4c3e3a8066cb87555988f287ecbb5",
+  "architecture": "Flask modularizing monolith; not deployed microservices",
+  "production_changes": false,
+  "components": [
+    {
+      "id": "ris-runtime",
+      "status": "current_source",
+      "source_files": [
+        "ris/app.py",
+        "ris/Dockerfile",
+        "ris/requirements.txt"
+      ]
+    },
+    {
+      "id": "registration",
+      "status": "current_source",
+      "source_files": [
+        "ris/registration_policy.py",
+        "ris/procedure_catalog.py"
+      ]
+    },
+    {
+      "id": "staff-workflow",
+      "status": "current_source",
+      "source_files": [
+        "ris/procedure_staff_workflow.py",
+        "ris/workflow_engine.py"
+      ]
+    },
+    {
+      "id": "reconciliation",
+      "status": "current_source",
+      "source_files": [
+        "ris/dicom_reconciliation.py",
+        "ris/pacs_resolution_service.py"
+      ]
+    },
+    {
+      "id": "readiness-assignment",
+      "status": "current_source",
+      "source_files": [
+        "ris/case_readiness_service.py",
+        "ris/case_assignment_service.py"
+      ]
+    },
+    {
+      "id": "report-versioning",
+      "status": "current_source",
+      "source_files": [
+        "ris/report_transaction_writer.py",
+        "ris/report_state_transition.py",
+        "ris/onlyoffice_report_bridge.py"
+      ]
+    },
+    {
+      "id": "access",
+      "status": "current_source",
+      "source_files": [
+        "ris/clinical_scope.py",
+        "ris/user_access_policy.py"
+      ]
+    },
+    {
+      "id": "viewer-pacs",
+      "status": "current_source_external_revalidation",
+      "source_files": [
+        "ris/viewer_choice.py",
+        "ris/ohif_identity.py",
+        "ris/pacs_worker.py",
+        "ohif/Dockerfile"
+      ]
+    },
+    {
+      "id": "manual-rt",
+      "status": "recorded_release_tested",
+      "source_files": [
+        "ris/radiotherapy.py",
+        "ris/radiotherapy_migration.py",
+        "ris/tests/test_radiotherapy.py"
+      ]
+    },
+    {
+      "id": "security-backup",
+      "status": "current_source_external_revalidation",
+      "source_files": [
+        "ris/security_dashboard.py",
+        "ris/backup_worker.py"
+      ]
+    }
+  ],
+  "datastores": [
+    "PostgreSQL",
+    "Persistent report version files",
+    "Persistent attachments",
+    "External Orthanc image storage/index"
+  ],
+  "logical_status_dimensions": [
+    "order",
+    "exam_execution",
+    "pacs_reception",
+    "readiness",
+    "assignment",
+    "report_version",
+    "transfer",
+    "rt_course_session"
+  ],
+  "external_dependencies": [
+    "Orthanc",
+    "OHIF browser capabilities",
+    "Weasis client installation",
+    "ONLYOFFICE callback connectivity",
+    "Host collector/Fail2ban/WireGuard configuration"
+  ],
+  "known_boundaries": [
+    "Binary assets/configuration omitted from GitHub source snapshot",
+    "No full disaster recovery demonstrated",
+    "RT TPS/machine feed not built in this phase",
+    "RT consumables not automatically posted to stock/billing",
+    "ECG deferred",
+    "RadiAnt installation/licensing deferred",
+    "External transport guarantees require separate acceptance"
+  ],
+  "proposed_evolution": [
+    "Extract one policy seam at a time preserving contracts",
+    "Do not introduce new services/broker without ownership and recovery contracts"
+  ],
+  "validation_gates": [
+    "source",
+    "functional",
+    "safety",
+    "integration",
+    "UAT",
+    "recovery",
+    "deployment",
+    "handover"
+  ],
+  "recorded_evidence": {
+    "ris_tests": {
+      "passed": 1778,
+      "skipped": 3
+    },
+    "isolated_postgresql_rt_tests": {
+      "passed": 22
+    },
+    "new_architecture_tests_executed": false
+  },
+  "supporting_documents": [
+    "docs/blueprint/README.md",
+    "docs/blueprint/ARCHITECTURE.md",
+    "docs/blueprint/DATA_AND_WORKFLOWS.md",
+    "docs/blueprint/VALIDATION_PLAN.md",
+    "docs/handover/README.md"
+  ]
+}
