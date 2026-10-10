@@ -4,6 +4,8 @@
 
 **Start here:** [Technical handover](docs/handover/README.md).
 
+**Project blueprint / المخطط المعماري:** [Blueprint v1.0](docs/blueprint/README.md), including the [architecture-change validation plan](docs/blueprint/VALIDATION_PLAN.md). These are documentation/design files; no architectural refactor or production deployment was performed.
+
 Source baseline: `cf59dc1b4fb07d23434251ef6d1a4ba20ed64bb0`, dated **2026-10-09**. Reviewed GitHub source snapshot: `28473d9cb111a904da8107b0a6d49cbb0c53bb96`.
 
 | Guide | Contents |
