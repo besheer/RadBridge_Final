@@ -12,7 +12,7 @@ with m.app.app_context():
     assert m.db.engine.url.database=='radbridge_assignment_uat_20261003'
     m.db.create_all()
     # Explicit migration must also be safe when applied twice to a complete schema.
-    sql=Path('/app/migrations/sql/20261003_assignment_distribution.sql').read_text()
+    sql=(Path(__file__).resolve().parents[1] / 'migrations/sql/20261003_assignment_distribution.sql').read_text(encoding='utf-8')
     with m.db.engine.begin() as c:
         c.exec_driver_sql(sql);c.exec_driver_sql(sql)
     role=m.Role(code='RADIOLOGIST',name='Synthetic Doctor',permissions_json='["reports.view","reports.edit"]')
