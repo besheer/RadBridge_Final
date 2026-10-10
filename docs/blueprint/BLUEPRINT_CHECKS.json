@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "prepared_date": "2026-10-10",
+  "source_commit": "cf59dc1b4fb07d23434251ef6d1a4ba20ed64bb0",
+  "documents": 5,
+  "mermaid_diagrams": 6,
+  "local_links_checked": 33,
+  "broken_links": [],
+  "component_paths_verified": true,
+  "diagram_review": "Mermaid source structure reviewed; rendered GitHub behavior not independently browser-tested",
+  "new_architecture_implemented": false,
+  "production_changed": false,
+  "sha256": {
+    "docs/blueprint/README.md": "33d482e5b97e876bf80cb9e9348ccc700f45440cf85c952d938ef02df4aef43c",
+    "docs/blueprint/ARCHITECTURE.md": "a5b06b9a02434bda973d800a0b54707d0990ae669a8e4ceadbcf41c74c2f5e67",
+    "docs/blueprint/DATA_AND_WORKFLOWS.md": "531329f831cff009e39c06f359bf1626c2e76d540e2549b94688abce504ee903",
+    "docs/blueprint/VALIDATION_PLAN.md": "695ba15eb25ca9bfc829d82744b27d9687e7975248f14bc4662c08777378d56d",
+    "docs/blueprint/blueprint.json": "2301c9f8396bf31ee517d3ebdc7542d4670ba3f1a0b9373dc6064f22ab352d3f"
+  }
+}
