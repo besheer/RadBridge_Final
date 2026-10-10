@@ -19,7 +19,7 @@ def f(queue_cases):
     ids=[c.id for c in f.courses]
     fracids=[x.id for x in m.rt_models['Fraction'].query.filter(m.rt_models['Fraction'].course_id.in_(ids)).all()]
     for model,key,values in [('Consumable','fraction_id',fracids),('Note','course_id',ids),('PetLink','course_id',ids),('Fraction','course_id',ids),('Plan','course_id',ids),('Course','id',ids)]:
-        cls=m.rt_models[model];cls.query.filter(getattr(cls,key).in_(values)).delete(synchronize_session=False)
+        cls=m.rt_models[model];cls.query.filter(getattr(cls,key).in_(values)).delete(synchronize_session='fetch')
     if m.db.engine.dialect.name=='sqlite':
         m.UserProfile.query.filter_by(user_id=f.user.id).delete(synchronize_session='fetch')
         m.User.query.filter_by(id=f.user.id).delete(synchronize_session='fetch')
