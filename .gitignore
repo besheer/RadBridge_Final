@@ -1,5 +1,6 @@
 .env
 .env.*
+!development/.env.example
 node_modules/
 __pycache__/
 .pytest_cache/
@@ -10,3 +11,10 @@ build/
 report-files/
 *.pyc
 *.log
+
+# Independent development environment
+.venv/
+.env.local
+development/.env.local
+.pytest_cache/
+__pycache__/
