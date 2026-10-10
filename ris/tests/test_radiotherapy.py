@@ -25,6 +25,9 @@ def f(queue_cases):
         m.User.query.filter_by(id=f.user.id).delete(synchronize_session='fetch')
     m.db.session.commit()
 
+    # Dispose the fixture's identity map before another test reuses SQLite IDs.
+    m.db.session.remove()
+
 def post(f,url,**data):
     return f.client.post(url,data={'csrf_token':'synthetic-csrf',**data},base_url='https://localhost')
 

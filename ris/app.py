@@ -59,7 +59,7 @@ from workflow_engine import (
 from patient_demographics import resolve_patient_dob
 import uuid
 from flask import Flask, request, redirect, url_for, render_template, flash, send_file, jsonify, session, abort, Response
-from flask_sqlalchemy import SQLAlchemy
+from infrastructure.extensions import db
 from procedure_catalog import PROCEDURE_CATALOG
 from sqlalchemy import or_, text, inspect, and_, func
 from sqlalchemy.exc import IntegrityError
@@ -118,7 +118,7 @@ REPORT_DIR = os.getenv('REPORT_DIR', '/app/report-files')
 ATTACHMENT_DIR = os.getenv('ATTACHMENT_DIR', '/app/attachments')
 os.makedirs(REPORT_DIR, exist_ok=True)
 os.makedirs(ATTACHMENT_DIR, exist_ok=True)
-db = SQLAlchemy(app)
+db.init_app(app)
 
 
 @app.before_request
@@ -273,844 +273,146 @@ ALL_PERMISSIONS = [
     'reports.coordinate','reports.version.view','pacs.open_pool.take','assignment.manage',
     'correction.request','correction.review','correction.execute',]
 
-class Branch(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(20), unique=True, nullable=False)
-    name = db.Column(db.String(120), nullable=False)
-    active = db.Column(db.Boolean, default=True)
-    reception_collection_enabled = db.Column(db.Boolean, default=False, nullable=False)
-
-class Role(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(40), unique=True, nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    permissions_json = db.Column(db.Text, default='[]')
-    def permissions(self):
-        try: return json.loads(self.permissions_json or '[]')
-        except Exception: return []
-
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    full_name = db.Column(db.String(120), nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False)
-    branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'))
-    active = db.Column(db.Boolean, default=True)
-    must_change_password = db.Column(db.Boolean, default=False)
-    password_changed_at = db.Column(db.DateTime)
-    role = db.relationship('Role')
-    branch = db.relationship('Branch')
-
-class AuditLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    user_id = db.Column(db.Integer)
-    username = db.Column(db.String(80))
-    action = db.Column(db.String(100), nullable=False)
-    entity = db.Column(db.String(80))
-    entity_id = db.Column(db.String(80))
-    details = db.Column(db.Text, default='')
-    ip = db.Column(db.String(80), default='')
-
-class Patient(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    patient_id = db.Column(db.String(40), unique=True, nullable=False)
-    name = db.Column(db.String(120), nullable=False)
-    dob = db.Column(db.String(8))
-    dob_estimated = db.Column(db.Boolean, default=False, nullable=False)
-    sex = db.Column(db.String(1))
-    phone = db.Column(db.String(30))
-    national_id = db.Column(db.String(30))
-    address = db.Column(db.String(255))
-    email = db.Column(db.String(180), default='')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    worklist_name = db.Column(db.String(180), default='')
-
-class DicomEndpoint(db.Model):
-    __tablename__='dicom_endpoint'
-    id=db.Column(db.Integer,primary_key=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),nullable=False,index=True)
-    kind=db.Column(db.String(20),nullable=False)
-    ae_title=db.Column(db.String(16),nullable=False)
-    calling_ae=db.Column(db.String(16),nullable=False,default='RADBRIDGERIS')
-    host=db.Column(db.String(253),nullable=False,default='')
-    port=db.Column(db.Integer,nullable=False,default=104)
-    active=db.Column(db.Boolean,nullable=False,default=False)
-    echo_result=db.Column(db.String(20),nullable=False,default='NOT_TESTED')
-    echo_message=db.Column(db.String(240),nullable=False,default='')
-    echo_checked_at=db.Column(db.DateTime)
-    echo_elapsed_ms=db.Column(db.Integer)
-    branch=db.relationship('Branch')
-    __table_args__=(db.UniqueConstraint('branch_id','kind',name='uq_dicom_endpoint_branch_kind'),)
-
-
-class Device(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'), nullable=False)
-    name = db.Column(db.String(120), nullable=False)
-    modality = db.Column(db.String(10), nullable=False)
-    ae_title = db.Column(db.String(40), nullable=False)
-    ip = db.Column(db.String(80), default='')
-    port = db.Column(db.Integer, default=104)
-    room = db.Column(db.String(80), default='')
-    priority = db.Column(db.Integer, default=100)
-    active = db.Column(db.Boolean, default=True)
-    operational_status = db.Column(db.String(30), default='ACTIVE')
-    booking_enabled = db.Column(db.Boolean, default=True)
-    workday_start = db.Column(db.String(5), default='08:00')
-    workday_end = db.Column(db.String(5), default='22:00')
-    branch = db.relationship('Branch')
-
-class Procedure(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(40), unique=True, nullable=False)
-    name = db.Column(db.String(180), nullable=False)
-    name_ar = db.Column(db.String(180), default='')
-    category = db.Column(db.String(80), default='')
-    modality = db.Column(db.String(10), nullable=False)
-    body_part = db.Column(db.String(80), default='')
-    base_price = db.Column(db.Float, default=0)
-    duration_min = db.Column(db.Integer, default=20)
-    contrast = db.Column(db.Boolean, default=False)
-    active = db.Column(db.Boolean, default=True)
-
-
-class ProcedureBranch(db.Model):
-    __tablename__='procedure_branch'
-    id=db.Column(db.Integer,primary_key=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),nullable=False,index=True)
-    procedure_id=db.Column(db.Integer,db.ForeignKey('procedure.id'),nullable=False,index=True)
-    active=db.Column(db.Boolean,default=True,nullable=False)
-    branch=db.relationship('Branch')
-    procedure=db.relationship('Procedure')
-    __table_args__=(db.UniqueConstraint('branch_id','procedure_id',name='uq_procedure_branch'),)
-
-
-class ClinicalNote(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    author_user_id=db.Column(db.Integer,db.ForeignKey('user.id'))
-    note_type=db.Column(db.String(40),default='GENERAL')
-    visibility=db.Column(db.String(30),default='CLINICAL_TEAM')
-    text=db.Column(db.Text,nullable=False)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    order=db.relationship('Order',foreign_keys=[order_id])
-    author=db.relationship('User',foreign_keys=[author_user_id])
-
-class UserProfile(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,unique=True,index=True)
-    department=db.Column(db.String(80),default='')
-    specialty=db.Column(db.String(120),default='')
-    default_workspace=db.Column(db.String(120),default='')
-    ui_language=db.Column(db.String(10),default='en')
-    theme=db.Column(db.String(20),default='light')
-    accent=db.Column(db.String(30),default='default')
-    density=db.Column(db.String(20),default='comfortable')
-    font_scale=db.Column(db.String(20),default='normal')
-    sidebar_mode=db.Column(db.String(20),default='expanded')
-    settings_json=db.Column(db.Text,default='{}')
-    user=db.relationship('User',foreign_keys=[user_id])
-
-class DictionaryEntry(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    key=db.Column(db.String(160),unique=True,nullable=False,index=True)
-    module=db.Column(db.String(80),default='GLOBAL')
-    label_en=db.Column(db.String(255),nullable=False,default='')
-    label_ar=db.Column(db.String(255),nullable=False,default='')
-    active=db.Column(db.Boolean,default=True)
-
-class RibbonAction(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    action_key=db.Column(db.String(100),unique=True,nullable=False,index=True)
-    label_en=db.Column(db.String(120),nullable=False)
-    label_ar=db.Column(db.String(120),default='')
-    icon=db.Column(db.String(40),default='•')
-    route_name=db.Column(db.String(120),nullable=False)
-    required_permission=db.Column(db.String(120),default='')
-    context=db.Column(db.String(40),default='GLOBAL')
-    order_no=db.Column(db.Integer,default=100)
-    active=db.Column(db.Boolean,default=True)
-
-class UserRibbonAction(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
-    ribbon_action_id=db.Column(db.Integer,db.ForeignKey('ribbon_action.id'),nullable=False,index=True)
-    order_no=db.Column(db.Integer,default=100)
-    visible=db.Column(db.Boolean,default=True)
-    user=db.relationship('User',foreign_keys=[user_id])
-    action=db.relationship('RibbonAction',foreign_keys=[ribbon_action_id])
-    __table_args__=(db.UniqueConstraint('user_id','ribbon_action_id',name='uq_user_ribbon_action'),)
-
-class BookingBlock(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    block_type=db.Column(db.String(40),nullable=False,index=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    device_id=db.Column(db.Integer,db.ForeignKey('device.id'),index=True)
-    procedure_id=db.Column(db.Integer,db.ForeignKey('procedure.id'),index=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    start_at=db.Column(db.DateTime,nullable=False,index=True)
-    end_at=db.Column(db.DateTime,nullable=False,index=True)
-    reason_code=db.Column(db.String(60),default='OTHER')
-    reason_text=db.Column(db.String(500),default='')
-    active=db.Column(db.Boolean,default=True,index=True)
-    created_by=db.Column(db.Integer)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    branch=db.relationship('Branch',foreign_keys=[branch_id])
-    device=db.relationship('Device',foreign_keys=[device_id])
-    procedure=db.relationship('Procedure',foreign_keys=[procedure_id])
-
-class JourneyEvent(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    stage=db.Column(db.String(50),nullable=False,index=True)
-    entered_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    completed_at=db.Column(db.DateTime,index=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'))
-    notes=db.Column(db.String(500),default='')
-    order=db.relationship('Order',foreign_keys=[order_id])
-    user=db.relationship('User',foreign_keys=[user_id])
-
-class ChatThread(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    thread_type=db.Column(db.String(30),nullable=False,index=True)
-    title=db.Column(db.String(200),default='')
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    active=db.Column(db.Boolean,default=True,index=True)
-    order=db.relationship('Order',foreign_keys=[order_id])
-
-class ChatThreadMember(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    thread_id=db.Column(db.Integer,db.ForeignKey('chat_thread.id'),nullable=False,index=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
-    joined_at=db.Column(db.DateTime,default=datetime.utcnow)
-    last_read_at=db.Column(db.DateTime)
-    muted=db.Column(db.Boolean,default=False)
-    thread=db.relationship('ChatThread',foreign_keys=[thread_id])
-    user=db.relationship('User',foreign_keys=[user_id])
-    __table_args__=(db.UniqueConstraint('thread_id','user_id',name='uq_chat_thread_user'),)
-
-class ChatMessage(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    thread_id=db.Column(db.Integer,db.ForeignKey('chat_thread.id'),nullable=False,index=True)
-    sender_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
-    body=db.Column(db.Text,nullable=False)
-    attachment_path=db.Column(db.String(600),default='')
-    attachment_name=db.Column(db.String(255),default='')
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    deleted_at=db.Column(db.DateTime)
-    thread=db.relationship('ChatThread',foreign_keys=[thread_id])
-    sender=db.relationship('User',foreign_keys=[sender_id])
-
-
-class PatientDocument(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),nullable=False,index=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
-    document_type=db.Column(db.String(50),nullable=False,index=True)
-    category=db.Column(db.String(50),default='OTHER',index=True)
-    document_date=db.Column(db.Date)
-    expiry_date=db.Column(db.Date)
-    reference_no=db.Column(db.String(120),default='',index=True)
-    file_path=db.Column(db.String(600),nullable=False)
-    original_name=db.Column(db.String(255),default='')
-    extracted_text=db.Column(db.Text,default='')
-    extraction_status=db.Column(db.String(30),default='PENDING',index=True)
-    review_status=db.Column(db.String(30),default='NEW',index=True)
-    reviewer_id=db.Column(db.Integer,db.ForeignKey('user.id'))
-    review_notes=db.Column(db.Text,default='')
-    uploaded_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    reviewed_at=db.Column(db.DateTime)
-    patient=db.relationship('Patient',foreign_keys=[patient_id])
-    order=db.relationship('Order',foreign_keys=[order_id])
-    reviewer=db.relationship('User',foreign_keys=[reviewer_id])
-    uploader=db.relationship('User',foreign_keys=[uploaded_by])
-
-class DocumentMatch(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    document_id=db.Column(db.Integer,db.ForeignKey('patient_document.id'),nullable=False,index=True)
-    field_name=db.Column(db.String(80),nullable=False)
-    extracted_value=db.Column(db.Text,default='')
-    ris_value=db.Column(db.Text,default='')
-    confidence=db.Column(db.Float,default=0)
-    match_status=db.Column(db.String(30),default='REVIEW',index=True)
-    document=db.relationship('PatientDocument',foreign_keys=[document_id])
-
-class TelephonyExtension(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    extension=db.Column(db.String(30),unique=True,nullable=False,index=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    active=db.Column(db.Boolean,default=True,index=True)
-    user=db.relationship('User',foreign_keys=[user_id])
-
-class CallLog(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    direction=db.Column(db.String(20),default='INBOUND',index=True)
-    caller_number=db.Column(db.String(60),default='',index=True)
-    called_number=db.Column(db.String(60),default='',index=True)
-    extension=db.Column(db.String(30),default='',index=True)
-    patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),index=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    started_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    ended_at=db.Column(db.DateTime)
-    status=db.Column(db.String(30),default='RINGING',index=True)
-    notes=db.Column(db.Text,default='')
-    external_call_id=db.Column(db.String(160),default='',index=True)
-    patient=db.relationship('Patient',foreign_keys=[patient_id])
-    user=db.relationship('User',foreign_keys=[user_id])
-
-
-class FieldRule(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    field_key=db.Column(db.String(100),unique=True,nullable=False,index=True)
-    label_en=db.Column(db.String(160),default='')
-    label_ar=db.Column(db.String(160),default='')
-    data_type=db.Column(db.String(30),default='ANY')
-    min_length=db.Column(db.Integer); max_length=db.Column(db.Integer); exact_length=db.Column(db.Integer)
-    required=db.Column(db.Boolean,default=False); visible=db.Column(db.Boolean,default=True)
-    read_only=db.Column(db.Boolean,default=False); allow_spaces=db.Column(db.Boolean,default=True)
-    regex_pattern=db.Column(db.String(500),default='')
-    updated_by=db.Column(db.Integer,db.ForeignKey('user.id')); updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-
-class UserRegistrationPreference(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),unique=True,nullable=False,index=True)
-    style_key=db.Column(db.String(30),default='MODERN')
-
-
-
-
-
-
-class Warehouse(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    code=db.Column(db.String(60),nullable=False,unique=True,index=True)
-    name=db.Column(db.String(180),nullable=False)
-    warehouse_type=db.Column(db.String(30),default='BRANCH',index=True) # MAIN/BRANCH/SUBSTORE
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    parent_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),index=True)
-    active=db.Column(db.Boolean,default=True,index=True)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    branch=db.relationship('Branch')
-    parent=db.relationship('Warehouse',remote_side=[id])
-
-class InventoryItem(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    code=db.Column(db.String(80),nullable=False,unique=True,index=True)
-    name=db.Column(db.String(220),nullable=False,index=True)
-    category=db.Column(db.String(100),default='GENERAL',index=True)
-    unit=db.Column(db.String(40),default='EA')
-    track_lot=db.Column(db.Boolean,default=False)
-    track_expiry=db.Column(db.Boolean,default=False)
-    default_cost=db.Column(db.Float,default=0)
-    active=db.Column(db.Boolean,default=True,index=True)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-
-class InventoryLot(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
-    warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
-    lot_no=db.Column(db.String(120),default='',index=True)
-    expiry_date=db.Column(db.Date,index=True)
-    unit_cost=db.Column(db.Float,default=0)
-    qty_on_hand=db.Column(db.Float,default=0)
-    qty_reserved=db.Column(db.Float,default=0)
-    item=db.relationship('InventoryItem')
-    warehouse=db.relationship('Warehouse')
-    __table_args__=(db.UniqueConstraint('item_id','warehouse_id','lot_no',name='uq_inventory_lot_item_wh_lot'),)
-
-class WarehouseStockPolicy(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
-    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
-    min_level=db.Column(db.Float,default=0)
-    reorder_level=db.Column(db.Float,default=0)
-    target_level=db.Column(db.Float,default=0)
-    active=db.Column(db.Boolean,default=True,index=True)
-    warehouse=db.relationship('Warehouse')
-    item=db.relationship('InventoryItem')
-    __table_args__=(db.UniqueConstraint('warehouse_id','item_id',name='uq_wh_stock_policy'),)
-
-class ProcedureConsumableDefault(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    procedure_id=db.Column(db.Integer,db.ForeignKey('procedure.id'),nullable=False,index=True)
-    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
-    qty=db.Column(db.Float,default=1)
-    required=db.Column(db.Boolean,default=True)
-    active=db.Column(db.Boolean,default=True,index=True)
-    procedure=db.relationship('Procedure')
-    item=db.relationship('InventoryItem')
-    __table_args__=(db.UniqueConstraint('procedure_id','item_id',name='uq_proc_consumable_default'),)
-
-class OrderConsumableUsage(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
-    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
-    lot_id=db.Column(db.Integer,db.ForeignKey('inventory_lot.id'),index=True)
-    qty=db.Column(db.Float,default=1)
-    usage_type=db.Column(db.String(30),default='USED',index=True) # USED/EXTRA/WASTE/RETURN
-    source=db.Column(db.String(30),default='DEFAULT') # DEFAULT/MANUAL
-    reason=db.Column(db.String(500),default='')
-    unit_cost=db.Column(db.Float,default=0)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    order=db.relationship('Order')
-    warehouse=db.relationship('Warehouse')
-    item=db.relationship('InventoryItem')
-    lot=db.relationship('InventoryLot')
-
-class WarehouseStockMovement(db.Model):
-    __tablename__='warehouse_stock_movement'
-    id=db.Column(db.Integer,primary_key=True)
-    warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
-    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
-    lot_id=db.Column(db.Integer,db.ForeignKey('inventory_lot.id'),index=True)
-    movement_type=db.Column(db.String(40),nullable=False,index=True) # RECEIPT/TRANSFER_OUT/TRANSFER_IN/CONSUMPTION/WASTE/RETURN/ADJUSTMENT
-    qty=db.Column(db.Float,nullable=False)
-    unit_cost=db.Column(db.Float,default=0)
-    reference_type=db.Column(db.String(40),default='')
-    reference_id=db.Column(db.Integer)
-    notes=db.Column(db.String(500),default='')
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    warehouse=db.relationship('Warehouse')
-    item=db.relationship('InventoryItem')
-    lot=db.relationship('InventoryLot')
-
-class StockTransfer(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    transfer_no=db.Column(db.String(80),nullable=False,unique=True,index=True)
-    source_warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
-    target_warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
-    status=db.Column(db.String(30),default='REQUESTED',index=True) # REQUESTED/APPROVED/DISPATCHED/RECEIVED/REJECTED
-    requested_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    approved_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    dispatched_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    received_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    requested_at=db.Column(db.DateTime,default=datetime.utcnow)
-    approved_at=db.Column(db.DateTime)
-    dispatched_at=db.Column(db.DateTime)
-    received_at=db.Column(db.DateTime)
-    notes=db.Column(db.Text,default='')
-    source_warehouse=db.relationship('Warehouse',foreign_keys=[source_warehouse_id])
-    target_warehouse=db.relationship('Warehouse',foreign_keys=[target_warehouse_id])
-
-class StockTransferLine(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    transfer_id=db.Column(db.Integer,db.ForeignKey('stock_transfer.id'),nullable=False,index=True)
-    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
-    lot_id=db.Column(db.Integer,db.ForeignKey('inventory_lot.id'),index=True)
-    qty_requested=db.Column(db.Float,default=0)
-    qty_dispatched=db.Column(db.Float,default=0)
-    qty_received=db.Column(db.Float,default=0)
-    transfer=db.relationship('StockTransfer')
-    item=db.relationship('InventoryItem')
-    lot=db.relationship('InventoryLot')
-
-class PerformingDoctorShareRule(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    doctor_user_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    modality=db.Column(db.String(30),default='',index=True)
-    procedure_id=db.Column(db.Integer,db.ForeignKey('procedure.id'),index=True)
-    contract_id=db.Column(db.Integer,db.ForeignKey('contract.id'),index=True)
-    rule_type=db.Column(db.String(20),default='PERCENT') # PERCENT/FIXED
-    basis=db.Column(db.String(30),default='NET_AFTER_DISCOUNT') # GROSS/CONTRACT/NET_AFTER_DISCOUNT
-    value=db.Column(db.Float,default=0)
-    active=db.Column(db.Boolean,default=True,index=True)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    doctor=db.relationship('User',foreign_keys=[doctor_user_id])
-    branch=db.relationship('Branch')
-    procedure=db.relationship('Procedure')
-    contract=db.relationship('Contract')
-
-class OrderPerformingDoctor(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,unique=True,index=True)
-    doctor_user_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
-    source=db.Column(db.String(30),default='MANUAL')
-    assigned_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    assigned_at=db.Column(db.DateTime,default=datetime.utcnow)
-    notes=db.Column(db.String(500),default='')
-    order=db.relationship('Order')
-    doctor=db.relationship('User',foreign_keys=[doctor_user_id])
-
-class DiscountPolicy(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    name=db.Column(db.String(160),nullable=False)
-    role_code=db.Column(db.String(80),default='',index=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    procedure_id=db.Column(db.Integer,db.ForeignKey('procedure.id'),index=True)
-    contract_id=db.Column(db.Integer,db.ForeignKey('contract.id'),index=True)
-    max_direct_percent=db.Column(db.Float,default=0)
-    max_request_percent=db.Column(db.Float,default=0)
-    active=db.Column(db.Boolean,default=True,index=True)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    user=db.relationship('User',foreign_keys=[user_id])
-    branch=db.relationship('Branch')
-    procedure=db.relationship('Procedure')
-    contract=db.relationship('Contract')
-
-class OrderDiscount(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    discount_type=db.Column(db.String(30),default='MANUAL')
-    percent=db.Column(db.Float,default=0)
-    amount=db.Column(db.Float,default=0)
-    base_amount=db.Column(db.Float,default=0)
-    reason=db.Column(db.String(500),nullable=False,default='')
-    status=db.Column(db.String(20),default='APPROVED',index=True)
-    requested_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    approved_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    approved_at=db.Column(db.DateTime)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    order=db.relationship('Order')
-
-class DiscountApprovalRequest(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    requested_percent=db.Column(db.Float,default=0)
-    requested_amount=db.Column(db.Float,default=0)
-    reason=db.Column(db.String(500),nullable=False,default='')
-    status=db.Column(db.String(20),default='PENDING',index=True)
-    requested_by=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
-    decided_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    decision_notes=db.Column(db.String(500),default='')
-    requested_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    decided_at=db.Column(db.DateTime)
-    order=db.relationship('Order')
-    requester=db.relationship('User',foreign_keys=[requested_by])
-
-class ReferralCommissionRule(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    referrer_id=db.Column(db.Integer,db.ForeignKey('referring_doctor.id'),nullable=False,index=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    modality=db.Column(db.String(30),default='',index=True)
-    procedure_id=db.Column(db.Integer,db.ForeignKey('procedure.id'),index=True)
-    rule_type=db.Column(db.String(20),default='PERCENT')
-    value=db.Column(db.Float,default=0)
-    active=db.Column(db.Boolean,default=True,index=True)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    referrer=db.relationship('ReferringDoctor')
-    branch=db.relationship('Branch')
-    procedure=db.relationship('Procedure')
-
-class DailyClosing(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),nullable=False,index=True)
-    closing_date=db.Column(db.Date,nullable=False,index=True)
-    cashier_user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    expected_cash=db.Column(db.Float,default=0)
-    expected_card=db.Column(db.Float,default=0)
-    expected_other=db.Column(db.Float,default=0)
-    counted_cash=db.Column(db.Float,default=0)
-    counted_card=db.Column(db.Float,default=0)
-    counted_other=db.Column(db.Float,default=0)
-    difference=db.Column(db.Float,default=0)
-    notes=db.Column(db.Text,default='')
-    status=db.Column(db.String(20),default='OPEN',index=True)
-    closed_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    closed_at=db.Column(db.DateTime)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    branch=db.relationship('Branch')
-    cashier=db.relationship('User',foreign_keys=[cashier_user_id])
-
-class StudioShortcut(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    title_en=db.Column(db.String(120),nullable=False)
-    title_ar=db.Column(db.String(120),default='')
-    icon=db.Column(db.String(80),default='link')
-    accent=db.Column(db.String(30),default='blue')
-    target_type=db.Column(db.String(30),default='INTERNAL') # INTERNAL/URL
-    target=db.Column(db.String(500),nullable=False)
-    placement=db.Column(db.String(40),default='DASHBOARD',index=True) # DASHBOARD/ORDER/PATIENT/DOCTOR/GLOBAL
-    open_mode=db.Column(db.String(20),default='SAME') # SAME/NEW
-    size=db.Column(db.String(20),default='MEDIUM')
-    sort_order=db.Column(db.Integer,default=100,index=True)
-    permission_code=db.Column(db.String(120),default='')
-    role_code=db.Column(db.String(80),default='')
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    active=db.Column(db.Boolean,default=True,index=True)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-    branch=db.relationship('Branch')
-    user=db.relationship('User',foreign_keys=[user_id])
-
-class RegistrationDefault(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    is_global=db.Column(db.Boolean,default=False,index=True)
-    default_branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    default_department=db.Column(db.String(100),default='')
-    default_procedure_id=db.Column(db.Integer,db.ForeignKey('procedure.id'),index=True)
-    default_contract_id=db.Column(db.Integer,db.ForeignKey('contract.id'),index=True)
-    default_referrer_id=db.Column(db.Integer,db.ForeignKey('referring_doctor.id'),index=True)
-    default_priority=db.Column(db.String(30),default='ROUTINE')
-    default_payment_method=db.Column(db.String(40),default='')
-    default_patient_mode=db.Column(db.String(20),default='new')
-    active=db.Column(db.Boolean,default=True,index=True)
-    updated_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-    user=db.relationship('User',foreign_keys=[user_id])
-    branch=db.relationship('Branch')
-    procedure=db.relationship('Procedure')
-    contract=db.relationship('Contract')
-    referrer=db.relationship('ReferringDoctor')
-
-class PatientAlert(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),nullable=False,index=True)
-    alert_type=db.Column(db.String(50),nullable=False,index=True)
-    title=db.Column(db.String(180),default=''); notes=db.Column(db.Text,default='')
-    amount=db.Column(db.Float); branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'))
-    status=db.Column(db.String(20),default='OPEN',index=True)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id')); resolved_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow); resolved_at=db.Column(db.DateTime)
-
-class CompanyLegalProfile(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),unique=True,index=True)
-    legal_name=db.Column(db.String(200),default=''); commercial_register=db.Column(db.String(120),default='')
-    tax_card=db.Column(db.String(120),default=''); tax_number=db.Column(db.String(120),default='')
-    phone1=db.Column(db.String(80),default=''); phone2=db.Column(db.String(80),default='')
-    email=db.Column(db.String(180),default=''); website=db.Column(db.String(180),default='')
-    address=db.Column(db.String(400),default=''); logo_path=db.Column(db.String(500),default='')
-    receipt_note_ar=db.Column(db.Text,default=''); receipt_note_en=db.Column(db.Text,default='')
-
-class StudioTemplate(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    template_type=db.Column(db.String(40),nullable=False,index=True)
-    name=db.Column(db.String(180),nullable=False); scope=db.Column(db.String(40),default='GLOBAL')
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id')); owner_user_id=db.Column(db.Integer,db.ForeignKey('user.id'))
-    version_no=db.Column(db.Integer,default=1); status=db.Column(db.String(20),default='DRAFT')
-    layout_json=db.Column(db.Text,default='{}'); notes=db.Column(db.Text,default='')
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id')); created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    published_at=db.Column(db.DateTime)
-
-class StudioTemplateVersion(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    template_id=db.Column(db.Integer,db.ForeignKey('studio_template.id'),nullable=False,index=True)
-    version_no=db.Column(db.Integer,nullable=False); snapshot_json=db.Column(db.Text,nullable=False)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id')); created_at=db.Column(db.DateTime,default=datetime.utcnow)
-
-class DoctorWordTemplate(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    owner_user_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
-    name=db.Column(db.String(180),nullable=False); modality=db.Column(db.String(30),default='')
-    procedure_id=db.Column(db.Integer,db.ForeignKey('procedure.id')); visibility=db.Column(db.String(30),default='PERSONAL')
-    file_path=db.Column(db.String(600),nullable=False); original_name=db.Column(db.String(255),default='')
-    active=db.Column(db.Boolean,default=True); created_at=db.Column(db.DateTime,default=datetime.utcnow)
-
-
-class PatientDemographicsExtra(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),unique=True,nullable=False,index=True)
-    nationality=db.Column(db.String(100),default='')
-    id_type=db.Column(db.String(30),default='NATIONAL_ID')
-    other_id=db.Column(db.String(80),default='')
-    patient=db.relationship('Patient',foreign_keys=[patient_id])
-
-
-class AIProviderSetting(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    provider_key=db.Column(db.String(40),unique=True,nullable=False,index=True)
-    enabled=db.Column(db.Boolean,default=False,index=True)
-    base_url=db.Column(db.String(500),default='')
-    model_name=db.Column(db.String(180),default='')
-    timeout_seconds=db.Column(db.Integer,default=60)
-    updated_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-
-class AIDraftReport(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    provider_key=db.Column(db.String(40),default='')
-    model_name=db.Column(db.String(180),default='')
-    input_context=db.Column(db.Text,default='')
-    findings_draft=db.Column(db.Text,default='')
-    impression_draft=db.Column(db.Text,default='')
-    comparison_draft=db.Column(db.Text,default='')
-    safety_notes=db.Column(db.Text,default='')
-    status=db.Column(db.String(30),default='GENERATED',index=True)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    reviewed_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    reviewed_at=db.Column(db.DateTime)
-    order=db.relationship('Order',foreign_keys=[order_id])
-
-class ExternalPriorStudy(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),nullable=False,index=True)
-    linked_order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
-    source_type=db.Column(db.String(30),default='UPLOAD',index=True)
-    study_date=db.Column(db.Date)
-    modality=db.Column(db.String(30),default='',index=True)
-    study_description=db.Column(db.String(300),default='')
-    external_patient_name=db.Column(db.String(200),default='')
-    external_patient_id=db.Column(db.String(120),default='')
-    external_dob=db.Column(db.String(40),default='')
-    file_path=db.Column(db.String(700),nullable=False)
-    original_name=db.Column(db.String(300),default='')
-    dicom_metadata_json=db.Column(db.Text,default='{}')
-    match_status=db.Column(db.String(30),default='REVIEW',index=True)
-    match_score=db.Column(db.Float,default=0)
-    imported_to_pacs=db.Column(db.Boolean,default=False)
-    uploaded_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-
-class PriorStudySelection(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    prior_order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
-    external_prior_id=db.Column(db.Integer,db.ForeignKey('external_prior_study.id'),index=True)
-    selected_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    selected_at=db.Column(db.DateTime,default=datetime.utcnow)
-    include_in_ai=db.Column(db.Boolean,default=True)
-
-
-class CommunicationChannelSetting(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    channel=db.Column(db.String(30),unique=True,nullable=False,index=True)  # WHATSAPP/TELEGRAM/EMAIL
-    enabled=db.Column(db.Boolean,default=False,index=True)
-    provider=db.Column(db.String(60),default='')
-    base_url=db.Column(db.String(500),default='')
-    sender=db.Column(db.String(180),default='')
-    smtp_host=db.Column(db.String(220),default='')
-    smtp_port=db.Column(db.Integer,default=587)
-    smtp_tls=db.Column(db.Boolean,default=True)
-    smtp_user=db.Column(db.String(220),default='')
-    secret_env_name=db.Column(db.String(120),default='')
-    updated_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-
-class CommunicationTemplate(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    code=db.Column(db.String(80),unique=True,nullable=False,index=True)
-    name_en=db.Column(db.String(180),nullable=False)
-    name_ar=db.Column(db.String(180),default='')
-    channel=db.Column(db.String(30),default='ANY',index=True)
-    event_key=db.Column(db.String(80),default='',index=True)
-    subject_template=db.Column(db.String(300),default='')
-    body_template=db.Column(db.Text,default='')
-    active=db.Column(db.Boolean,default=True,index=True)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-
-class PatientCommunication(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),nullable=False,index=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
-    receipt_id=db.Column(db.Integer,db.ForeignKey('receipt.id'),index=True)
-    channel=db.Column(db.String(30),nullable=False,index=True)
-    recipient=db.Column(db.String(240),nullable=False,index=True)
-    template_code=db.Column(db.String(80),default='')
-    subject=db.Column(db.String(300),default='')
-    body=db.Column(db.Text,default='')
-    status=db.Column(db.String(30),default='PENDING',index=True) # PENDING/SENT/FAILED
-    provider_message_id=db.Column(db.String(300),default='')
-    error_text=db.Column(db.Text,default='')
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    sent_at=db.Column(db.DateTime)
-    patient=db.relationship('Patient',foreign_keys=[patient_id])
-    order=db.relationship('Order',foreign_keys=[order_id])
-
-
-class ImagingAIProvider(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    provider_key=db.Column(db.String(60),unique=True,nullable=False,index=True)
-    enabled=db.Column(db.Boolean,default=False,index=True)
-    base_url=db.Column(db.String(500),default='')
-    model_name=db.Column(db.String(180),default='')
-    modalities=db.Column(db.String(120),default='XR,CT,MR')
-    timeout_seconds=db.Column(db.Integer,default=180)
-    secret_env_name=db.Column(db.String(120),default='RIS_IMAGING_AI_TOKEN')
-    updated_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
+from infrastructure.models import Branch
+
+from infrastructure.models import Role
+
+from infrastructure.models import User
+
+from infrastructure.models import AuditLog
+
+from infrastructure.models import Patient
+
+from infrastructure.models import DicomEndpoint
+
+
+from infrastructure.models import Device
+
+from infrastructure.models import Procedure
+
+
+from infrastructure.models import ProcedureBranch
+
+
+from infrastructure.models import ClinicalNote
+
+from infrastructure.models import UserProfile
+
+from infrastructure.models import DictionaryEntry
+
+from infrastructure.models import RibbonAction
+
+from infrastructure.models import UserRibbonAction
+
+from infrastructure.models import BookingBlock
+
+from infrastructure.models import JourneyEvent
+
+from infrastructure.models import ChatThread
+
+from infrastructure.models import ChatThreadMember
+
+from infrastructure.models import ChatMessage
+
+
+from infrastructure.models import PatientDocument
+
+from infrastructure.models import DocumentMatch
+
+from infrastructure.models import TelephonyExtension
+
+from infrastructure.models import CallLog
+
+
+from infrastructure.models import FieldRule
+
+from infrastructure.models import UserRegistrationPreference
+
+
+
+
+
+
+from infrastructure.models import Warehouse
+
+from infrastructure.models import InventoryItem
+
+from infrastructure.models import InventoryLot
+
+from infrastructure.models import WarehouseStockPolicy
+
+from infrastructure.models import ProcedureConsumableDefault
+
+from infrastructure.models import OrderConsumableUsage
+
+from infrastructure.models import WarehouseStockMovement
+
+from infrastructure.models import StockTransfer
+
+from infrastructure.models import StockTransferLine
+
+from infrastructure.models import PerformingDoctorShareRule
+
+from infrastructure.models import OrderPerformingDoctor
+
+from infrastructure.models import DiscountPolicy
+
+from infrastructure.models import OrderDiscount
+
+from infrastructure.models import DiscountApprovalRequest
+
+from infrastructure.models import ReferralCommissionRule
+
+from infrastructure.models import DailyClosing
+
+from infrastructure.models import StudioShortcut
+
+from infrastructure.models import RegistrationDefault
+
+from infrastructure.models import PatientAlert
+
+from infrastructure.models import CompanyLegalProfile
+
+from infrastructure.models import StudioTemplate
+
+from infrastructure.models import StudioTemplateVersion
+
+from infrastructure.models import DoctorWordTemplate
+
+
+from infrastructure.models import PatientDemographicsExtra
+
+
+from infrastructure.models import AIProviderSetting
+
+from infrastructure.models import AIDraftReport
+
+from infrastructure.models import ExternalPriorStudy
+
+from infrastructure.models import PriorStudySelection
+
+
+from infrastructure.models import CommunicationChannelSetting
+
+from infrastructure.models import CommunicationTemplate
+
+from infrastructure.models import PatientCommunication
+
+
+from infrastructure.models import ImagingAIProvider
 
 
 # ============================================================
 # RadBridge Automation & QA Control Center
 # ============================================================
 
-class QARun(db.Model):
-    __tablename__='qa_run'
-
-    id=db.Column(db.Integer,primary_key=True)
-    run_type=db.Column(db.String(40),default='FULL',index=True)
-    status=db.Column(db.String(30),default='PENDING',index=True)
-
-    release_name=db.Column(db.String(120),default='')
-    environment=db.Column(db.String(40),default='PRODUCTION')
-
-    total_tests=db.Column(db.Integer,default=0)
-    passed_tests=db.Column(db.Integer,default=0)
-    failed_tests=db.Column(db.Integer,default=0)
-    critical_tests=db.Column(db.Integer,default=0)
-    warning_tests=db.Column(db.Integer,default=0)
-
-    external_execution_id=db.Column(db.String(180),default='',index=True)
-
-    started_by=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    started_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    finished_at=db.Column(db.DateTime)
-
-    summary_json=db.Column(db.Text,default='{}')
-    error_text=db.Column(db.Text,default='')
+from infrastructure.models import QARun
 
 
-class QATestResult(db.Model):
-    __tablename__='qa_test_result'
-
-    id=db.Column(db.Integer,primary_key=True)
-    run_id=db.Column(db.Integer,db.ForeignKey('qa_run.id'),nullable=False,index=True)
-
-    test_key=db.Column(db.String(120),nullable=False,index=True)
-    category=db.Column(db.String(80),default='',index=True)
-    title=db.Column(db.String(220),default='')
-
-    status=db.Column(db.String(20),default='PENDING',index=True)
-    severity=db.Column(db.String(20),default='NORMAL',index=True)
-
-    expected=db.Column(db.Text,default='')
-    actual=db.Column(db.Text,default='')
-    details_json=db.Column(db.Text,default='{}')
-    error_text=db.Column(db.Text,default='')
-
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
-
-    started_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    finished_at=db.Column(db.DateTime)
+from infrastructure.models import QATestResult
 
 
-class QARemediationAction(db.Model):
-    __tablename__='qa_remediation_action'
-
-    id=db.Column(db.Integer,primary_key=True)
-
-    run_id=db.Column(db.Integer,db.ForeignKey('qa_run.id'),index=True)
-    test_result_id=db.Column(db.Integer,db.ForeignKey('qa_test_result.id'),index=True)
-
-    action_key=db.Column(db.String(120),nullable=False,index=True)
-    status=db.Column(db.String(30),default='PENDING',index=True)
-
-    requested_by=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    requested_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    completed_at=db.Column(db.DateTime)
-
-    details_json=db.Column(db.Text,default='{}')
-    error_text=db.Column(db.Text,default='')
+from infrastructure.models import QARemediationAction
 
 
 QA_N8N_BASE_URL=os.getenv('QA_N8N_BASE_URL','').rstrip('/')
@@ -1166,804 +468,115 @@ def qa_run_summary(row):
     }
 
 
-class ImagingAIAnalysis(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    provider_key=db.Column(db.String(60),default='')
-    model_name=db.Column(db.String(180),default='')
-    study_instance_uid=db.Column(db.String(180),default='',index=True)
-    accession=db.Column(db.String(120),default='',index=True)
-    status=db.Column(db.String(40),default='NOT_ANALYZED',index=True)
-    demographic_status=db.Column(db.String(40),default='NOT_CHECKED',index=True)
-    demographic_score=db.Column(db.Float,default=0)
-    demographic_details_json=db.Column(db.Text,default='{}')
-    structured_findings_json=db.Column(db.Text,default='{}')
-    summary_text=db.Column(db.Text,default='')
-    uncertainty_text=db.Column(db.Text,default='')
-    raw_response_json=db.Column(db.Text,default='{}')
-    requested_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    requested_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    completed_at=db.Column(db.DateTime)
-    reviewed_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    reviewed_at=db.Column(db.DateTime)
-    error_text=db.Column(db.Text,default='')
-    order=db.relationship('Order',foreign_keys=[order_id])
-
-class DemographicOverrideAudit(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    analysis_id=db.Column(db.Integer,db.ForeignKey('imaging_ai_analysis.id'),nullable=False,index=True)
-    original_status=db.Column(db.String(40),default='')
-    override_reason=db.Column(db.Text,nullable=False)
-    overridden_by=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False)
-    overridden_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-
-
-class DoctorAvailabilityState(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),unique=True,nullable=False,index=True)
-    state=db.Column(db.String(30),default='AVAILABLE',index=True) # AVAILABLE/BUSY/AWAY/OFFLINE
-    busy_until=db.Column(db.DateTime)
-    last_seen_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-    user=db.relationship('User',foreign_keys=[user_id])
-
-class AssignmentOfferPolicy(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    name=db.Column(db.String(120),default='Default')
-    enabled=db.Column(db.Boolean,default=True,index=True)
-    mode=db.Column(db.String(30),default='ONLINE_PREFERRED') # ONLINE_ONLY/ONLINE_PREFERRED/ALL
-    routine_timeout_seconds=db.Column(db.Integer,default=300)
-    urgent_timeout_seconds=db.Column(db.Integer,default=120)
-    stat_timeout_seconds=db.Column(db.Integer,default=60)
-    busy_snooze_minutes=db.Column(db.Integer,default=30)
-    max_offer_attempts=db.Column(db.Integer,default=5)
-    notification_channels=db.Column(db.String(120),default='INAPP,WHATSAPP,TELEGRAM,EMAIL')
-    updated_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-
-
-class AssignmentStrategy(db.Model):
-    """
-    Admin-configurable smart assignment strategy.
-
-    Priority:
-    Lower number = higher priority.
-
-    Matching hierarchy can be:
-    procedure -> modality/branch -> modality -> branch -> global.
-    """
-    __tablename__ = 'assignment_strategy'
-
-    id = db.Column(db.Integer, primary_key=True)
-
-    name = db.Column(db.String(160), nullable=False, unique=True)
-    enabled = db.Column(db.Boolean, default=True, index=True)
-    priority = db.Column(db.Integer, default=100, index=True)
-
-    # Scope
-    branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'))
-    modality = db.Column(db.String(30), default='', index=True)
-    procedure_pattern = db.Column(db.String(180), default='')
-
-    # Assignment behavior
-    assignment_mode = db.Column(
-        db.String(30),
-        default='OFFER_ACCEPT'
-    )
-    # OFFER_ACCEPT / DIRECT_ASSIGN / OPEN_POOL / HYBRID / MANUAL_ONLY
-
-    fallback_mode = db.Column(
-        db.String(30),
-        default='OPEN_POOL'
-    )
-    # OPEN_POOL / COORDINATOR / MANUAL_ONLY
-
-    # Readiness actions
-    pacs_missing_action = db.Column(db.String(20), default='BLOCK')
-    images_incomplete_action = db.Column(db.String(20), default='BLOCK')
-    documents_missing_action = db.Column(db.String(20), default='WARN')
-    notes_missing_action = db.Column(db.String(20), default='WARN')
-    attachments_missing_action = db.Column(db.String(20), default='WARN')
-    history_missing_action = db.Column(db.String(20), default='IGNORE')
-
-    # Doctor matching
-    require_modality_match = db.Column(db.Boolean, default=True)
-    require_branch_match = db.Column(db.Boolean, default=False)
-    require_online = db.Column(db.Boolean, default=False)
-    prefer_online = db.Column(db.Boolean, default=True)
-
-    # Imaging rules
-    min_images = db.Column(db.Integer, default=0)
-    min_completion_percent = db.Column(db.Integer, default=0)
-    stable_seconds = db.Column(db.Integer, default=120)
-
-    # Offer timing
-    routine_timeout_seconds = db.Column(db.Integer, default=300)
-    urgent_timeout_seconds = db.Column(db.Integer, default=120)
-    stat_timeout_seconds = db.Column(db.Integer, default=60)
-
-    busy_snooze_minutes = db.Column(db.Integer, default=30)
-    max_offer_attempts = db.Column(db.Integer, default=5)
-
-    # Optional schedule window
-    active_from = db.Column(db.String(5), default='')
-    active_to = db.Column(db.String(5), default='')
-
-    version_no = db.Column(db.Integer, default=1)
-
-    updated_by = db.Column(
-        db.Integer,
-        db.ForeignKey('user.id')
-    )
-
-    updated_at = db.Column(
-        db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
-    )
-
-
-class AssignmentStrategyVersion(db.Model):
-    """
-    Immutable history of every admin strategy change.
-    """
-    __tablename__ = 'assignment_strategy_version'
-
-    id = db.Column(db.Integer, primary_key=True)
-
-    strategy_id = db.Column(
-        db.Integer,
-        db.ForeignKey('assignment_strategy.id'),
-        nullable=False,
-        index=True
-    )
-
-    version_no = db.Column(db.Integer, nullable=False)
-
-    snapshot_json = db.Column(
-        db.Text,
-        nullable=False
-    )
-
-    changed_by = db.Column(
-        db.Integer,
-        db.ForeignKey('user.id')
-    )
-
-    change_note = db.Column(
-        db.String(500),
-        default=''
-    )
-
-    changed_at = db.Column(
-        db.DateTime,
-        default=datetime.utcnow,
-        index=True
-    )
-
-
-class AssignmentVisit(db.Model):
-    assignment_mode = db.Column(db.String(20), default='AUTO')
-    registration_open = db.Column(db.Boolean, default=False)
-    __tablename__ = 'assignment_visit'
-    sequence_id = db.Column(db.Integer, primary_key=True)
-    id = db.Column(db.String(36), nullable=False, unique=True)
-    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
-    branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'))
-    visit_date = db.Column(db.Date, nullable=False)
-    preferred_doctor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-
-
-class AssignmentDistributionPolicy(db.Model):
-    __tablename__ = 'assignment_distribution_policy'
-    id = db.Column(db.Integer, primary_key=True)
-    selection_mode = db.Column(db.String(30), nullable=False, default='LEAST_ACTIVE')
-    max_active_cases = db.Column(db.Integer, nullable=False, default=20)
-    reclaim_enabled = db.Column(db.Boolean, nullable=False, default=True)
-    urgent_percent = db.Column(db.Integer, nullable=False, default=50)
-    stat_percent = db.Column(db.Integer, nullable=False, default=25)
-    rules_json = db.Column(db.Text, nullable=False)
-    special_rules_json = db.Column(db.Text, nullable=False, default='[]')
-    version_no = db.Column(db.Integer, nullable=False, default=1)
-    updated_by = db.Column(db.Integer, db.ForeignKey('user.id'))
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-
-class AssignmentOffer(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    doctor_user_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
-    attempt_no=db.Column(db.Integer,default=1)
-    status=db.Column(db.String(30),default='PENDING',index=True) # PENDING/ACCEPTED/BUSY/REJECTED/TIMEOUT/CANCELLED
-    offered_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    expires_at=db.Column(db.DateTime,nullable=False,index=True)
-    responded_at=db.Column(db.DateTime)
-    response_note=db.Column(db.String(500),default='')
-    channel_summary=db.Column(db.String(300),default='')
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    order=db.relationship('Order',foreign_keys=[order_id])
-    doctor=db.relationship('User',foreign_keys=[doctor_user_id])
-
-class AssignmentEscalationEvent(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    offer_id=db.Column(db.Integer,db.ForeignKey('assignment_offer.id'),index=True)
-    event_type=db.Column(db.String(50),nullable=False,index=True)
-    details=db.Column(db.Text,default='')
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-
-
-class ProcedureQualityRule(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    modality=db.Column(db.String(30),nullable=False,index=True)
-    procedure_pattern=db.Column(db.String(180),nullable=False,index=True)
-    min_images=db.Column(db.Integer,default=0)
-    warning_images=db.Column(db.Integer,default=0)
-    required_series=db.Column(db.Text,default='')
-    require_history=db.Column(db.Boolean,default=True)
-    require_attachments=db.Column(db.Boolean,default=False)
-    require_pacs_study=db.Column(db.Boolean,default=True)
-    block_auto_assign=db.Column(db.Boolean,default=True)
-    tolerance_percent=db.Column(db.Integer,default=15)
-    active=db.Column(db.Boolean,default=True,index=True)
-
-class CaseReadiness(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),unique=True,nullable=False,index=True)
-    status=db.Column(db.String(40),default='NOT_CHECKED',index=True)
-    score=db.Column(db.Integer,default=0)
-    image_count=db.Column(db.Integer,default=0)
-    expected_min_images=db.Column(db.Integer,default=0)
-    missing_history=db.Column(db.Boolean,default=False)
-    missing_attachments=db.Column(db.Boolean,default=False)
-
-    # v5.33 workflow readiness
-    missing_documents=db.Column(db.Boolean,default=False)
-    missing_notes=db.Column(db.Boolean,default=False)
-
-    missing_pacs=db.Column(db.Boolean,default=False)
-    incomplete_images=db.Column(db.Boolean,default=False)
-    missing_series=db.Column(db.Boolean,default=False)
-    series_evidence_json=db.Column(db.Text,default='[]')
-    facts_sha256=db.Column(db.String(64),default='')
-    series_checked_at=db.Column(db.DateTime)
-    details_json=db.Column(db.Text,default='{}')
-    checked_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    override_reason=db.Column(db.Text,default='')
-    override_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-
-
-class ReadinessSeriesAlias(db.Model):
-    __tablename__='readiness_series_alias'
-    id=db.Column(db.Integer,primary_key=True)
-    rule_id=db.Column(db.Integer,db.ForeignKey('procedure_quality_rule.id'),nullable=False,index=True)
-    source_alias=db.Column(db.String(255),nullable=False)
-    alias_normalized=db.Column(db.String(255),nullable=False)
-    canonical_series=db.Column(db.String(120),nullable=False)
-    match_field=db.Column(db.String(20),nullable=False,default='EITHER')
-    active=db.Column(db.Boolean,nullable=False,default=True,index=True)
-    created_by=db.Column(db.Integer)
-    reason=db.Column(db.String(500),nullable=False,default='')
-    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
-    rule=db.relationship('ProcedureQualityRule',foreign_keys=[rule_id])
-    __table_args__=(db.UniqueConstraint('rule_id','alias_normalized','match_field',name='uq_readiness_series_alias_rule_value_field'),)
-
-
-class CaseReadinessOverride(db.Model):
-    __tablename__='case_readiness_override'
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    blocker=db.Column(db.String(80),nullable=False)
-    override_value=db.Column(db.String(255),nullable=False)
-    active=db.Column(db.Boolean,nullable=False,default=True,index=True)
-    reason=db.Column(db.String(500),nullable=False)
-    actor_user_id=db.Column(db.Integer)
-    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
-    deactivated_at=db.Column(db.DateTime)
-
-
-class CaseExceptionResolutionEvent(db.Model):
-    __tablename__='case_exception_resolution_event'
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    action=db.Column(db.String(60),nullable=False,index=True)
-    blocker=db.Column(db.String(80),nullable=False,default='')
-    old_value=db.Column(db.String(500),nullable=False,default='')
-    new_value=db.Column(db.String(500),nullable=False,default='')
-    reason=db.Column(db.String(500),nullable=False)
-    actor_user_id=db.Column(db.Integer)
-    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow,index=True)
-    order=db.relationship('Order',foreign_keys=[order_id])
-
-class CaseWorkflowEvent(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    event_type=db.Column(db.String(60),nullable=False,index=True)
-    owner_role=db.Column(db.String(60),default='')
-    reason_code=db.Column(db.String(100),default='')
-    note=db.Column(db.Text,default='')
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-
-class CaseReturnReason(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    code=db.Column(db.String(100),unique=True,nullable=False)
-    label=db.Column(db.String(180),nullable=False)
-    route_to=db.Column(db.String(60),default='TECHNICIAN')
-    active=db.Column(db.Boolean,default=True,index=True)
-
-class TATPolicy(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    priority=db.Column(db.String(30),default='ROUTINE',index=True)
-    modality=db.Column(db.String(30),default='*',index=True)
-    ready_to_assign_min=db.Column(db.Integer,default=10)
-    assign_to_accept_min=db.Column(db.Integer,default=5)
-    accept_to_final_min=db.Column(db.Integer,default=60)
-    total_tat_min=db.Column(db.Integer,default=120)
-    active=db.Column(db.Boolean,default=True)
-
-class RISNotification(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    role_code=db.Column(db.String(60),default='',index=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
-    severity=db.Column(db.String(20),default='INFO',index=True)
-    event_type=db.Column(db.String(80),default='',index=True)
-    title=db.Column(db.String(220),nullable=False)
-    body=db.Column(db.Text,default='')
-    status=db.Column(db.String(30),default='NEW',index=True)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    acknowledged_at=db.Column(db.DateTime)
-    acknowledged_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-
-class NotificationEscalationRule(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    event_type=db.Column(db.String(80),nullable=False,index=True)
-    severity=db.Column(db.String(20),default='WARNING')
-    first_role=db.Column(db.String(60),default='')
-    escalate_role=db.Column(db.String(60),default='BRANCH_MANAGER')
-    escalate_after_min=db.Column(db.Integer,default=15)
-    channels=db.Column(db.String(120),default='INAPP')
-    active=db.Column(db.Boolean,default=True,index=True)
-
-
-class SavedSearchFilter(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
-    name=db.Column(db.String(160),nullable=False)
-    page_key=db.Column(db.String(80),default='GLOBAL',index=True)
-    filter_json=db.Column(db.Text,default='{}')
-    is_default=db.Column(db.Boolean,default=False)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-
-class LabelTemplate(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    name=db.Column(db.String(160),nullable=False)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    width_mm=db.Column(db.Integer,default=50)
-    height_mm=db.Column(db.Integer,default=30)
-    layout_json=db.Column(db.Text,default='{}')
-    active=db.Column(db.Boolean,default=True,index=True)
-    is_default=db.Column(db.Boolean,default=False)
-
-
-class SmartIntakeSession(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    session_key=db.Column(db.String(80),unique=True,nullable=False,index=True)
-    patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),index=True)
-    status=db.Column(db.String(40),default='UPLOADING',index=True) # UPLOADING/EXTRACTED/REVIEW/READY/COMPLETED
-    extracted_json=db.Column(db.Text,default='{}')
-    matched_patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),index=True)
-    suggested_procedure_id=db.Column(db.Integer,db.ForeignKey('procedure.id'),index=True)
-    suggested_contract_id=db.Column(db.Integer,db.ForeignKey('contract.id'),index=True)
-    matched_patient_score=db.Column(db.Float,default=0)
-    match_resolution=db.Column(db.String(40),default='NOT_CHECKED',index=True)
-    review_notes=db.Column(db.Text,default='')
-    reviewed_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    reviewed_at=db.Column(db.DateTime)
-    commit_key=db.Column(db.String(64),unique=True,index=True)
-    commit_action=db.Column(db.String(30),default='')
-    committed_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    committed_at=db.Column(db.DateTime)
-    completed_at=db.Column(db.DateTime)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-
-class SmartIntakeDocument(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    intake_id=db.Column(db.Integer,db.ForeignKey('smart_intake_session.id'),nullable=False,index=True)
-    document_type=db.Column(db.String(50),nullable=False,index=True)
-    original_name=db.Column(db.String(300),default='')
-    file_path=db.Column(db.String(700),nullable=False)
-    mime_type=db.Column(db.String(120),default='')
-    status=db.Column(db.String(40),default='UPLOADED',index=True) # UPLOADED/OCR_DONE/REVIEW_REQUIRED/APPROVED/REJECTED
-    ocr_text=db.Column(db.Text,default='')
-    extracted_json=db.Column(db.Text,default='{}')
-    confidence=db.Column(db.Float,default=0)
-    content_sha256=db.Column(db.String(64),default='',index=True)
-    ocr_provider_key=db.Column(db.String(60),default='')
-    ocr_config_hash=db.Column(db.String(64),default='')
-    ocr_error=db.Column(db.String(500),default='')
-    review_notes=db.Column(db.Text,default='')
-    patient_document_id=db.Column(db.Integer,db.ForeignKey('patient_document.id'),index=True)
-    reviewed_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    reviewed_at=db.Column(db.DateTime)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-
-class SmartIntakeFieldReview(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    intake_id=db.Column(db.Integer,db.ForeignKey('smart_intake_session.id'),nullable=False,index=True)
-    source_document_id=db.Column(db.Integer,db.ForeignKey('smart_intake_document.id'),index=True)
-    field_key=db.Column(db.String(80),nullable=False,index=True)
-    source_type=db.Column(db.String(50),default='')
-    extracted_value=db.Column(db.Text,default='')
-    normalized_value=db.Column(db.Text,default='')
-    final_value=db.Column(db.Text,default='')
-    confidence=db.Column(db.Float,default=0)
-    validation_status=db.Column(db.String(30),default='REVIEW',index=True)
-    validation_message=db.Column(db.String(500),default='')
-    review_status=db.Column(db.String(30),default='PENDING',index=True)
-    reviewed_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    reviewed_at=db.Column(db.DateTime)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-    __table_args__=(db.UniqueConstraint('intake_id','field_key',name='uq_smart_intake_field_review'),)
-
-class OCRProviderSetting(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    provider_key=db.Column(db.String(60),unique=True,nullable=False,index=True)
-    enabled=db.Column(db.Boolean,default=False,index=True)
-    base_url=db.Column(db.String(500),default='')
-    model_name=db.Column(db.String(180),default='')
-    timeout_seconds=db.Column(db.Integer,default=60)
-    secret_env_name=db.Column(db.String(120),default='RIS_OCR_API_KEY')
-    validation_status=db.Column(db.String(40),default='NOT_CHECKED',index=True)
-    validation_details=db.Column(db.Text,default='{}')
-    validation_config_hash=db.Column(db.String(64),default='',index=True)
-    validation_latency_ms=db.Column(db.Integer)
-    validated_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    validated_at=db.Column(db.DateTime)
-    updated_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-
-
-
-class PrinterProfile(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    name=db.Column(db.String(160),nullable=False)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    workstation_code=db.Column(db.String(120),default='',index=True)
-    document_type=db.Column(db.String(30),nullable=False,index=True) # RECEIPT/LABEL/REPORT/A4
-    printer_name=db.Column(db.String(255),default='')
-    paper_size=db.Column(db.String(40),default='A4')
-    copies=db.Column(db.Integer,default=1)
-    auto_open_print_dialog=db.Column(db.Boolean,default=True)
-    active=db.Column(db.Boolean,default=True,index=True)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-    branch=db.relationship('Branch')
-    user=db.relationship('User')
-
-class ClinicalAssessment(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,unique=True,index=True)
-    complaint=db.Column(db.Text,default='')
-    history=db.Column(db.Text,default='')
-    examination=db.Column(db.Text,default='')
-    diagnosis=db.Column(db.Text,default='')
-    treatment_plan=db.Column(db.Text,default='')
-    allergy_notes=db.Column(db.Text,default='')
-    clinical_indication=db.Column(db.Text,default='')
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    updated_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
-
-class VitalSign(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    temperature=db.Column(db.Float)
-    pulse=db.Column(db.Integer)
-    systolic=db.Column(db.Integer)
-    diastolic=db.Column(db.Integer)
-    spo2=db.Column(db.Integer)
-    respiratory_rate=db.Column(db.Integer)
-    weight_kg=db.Column(db.Float)
-    height_cm=db.Column(db.Float)
-    recorded_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    recorded_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-
-class ClinicalDiagnosis(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    diagnosis_text=db.Column(db.String(500),nullable=False)
-    diagnosis_type=db.Column(db.String(30),default='WORKING') # WORKING/FINAL/DIFFERENTIAL
-    code=db.Column(db.String(80),default='')
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-
-class ClinicalMedication(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    medication_name=db.Column(db.String(250),nullable=False)
-    dose=db.Column(db.String(120),default='')
-    route=db.Column(db.String(80),default='')
-    frequency=db.Column(db.String(120),default='')
-    duration=db.Column(db.String(120),default='')
-    notes=db.Column(db.String(500),default='')
-    active=db.Column(db.Boolean,default=True,index=True)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-
-class ClinicalLabItem(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    test_name=db.Column(db.String(250),nullable=False)
-    status=db.Column(db.String(30),default='REQUESTED',index=True)
-    result_text=db.Column(db.Text,default='')
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-
-class Contract(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(40), unique=True, nullable=False)
-    name = db.Column(db.String(160), nullable=False)
-    patient_share_percent = db.Column(db.Float, default=0)
-    discount_percent = db.Column(db.Float, default=0)
-    approval_required = db.Column(db.Boolean, default=False)
-    active = db.Column(db.Boolean, default=True)
-
-class ContractPrice(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    contract_id = db.Column(db.Integer, db.ForeignKey('contract.id'), nullable=False)
-    procedure_id = db.Column(db.Integer, db.ForeignKey('procedure.id'), nullable=False)
-    price = db.Column(db.Float, nullable=False)
-    patient_share_percent = db.Column(db.Float)
-    contract = db.relationship('Contract')
-    procedure = db.relationship('Procedure')
-    __table_args__ = (db.UniqueConstraint('contract_id','procedure_id', name='uq_contract_proc'),)
-
-class Consumable(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(40), unique=True, nullable=False)
-    name = db.Column(db.String(160), nullable=False)
-    name_en = db.Column(db.String(160), default='')
-    name_ar = db.Column(db.String(160), default='')
-    barcode = db.Column(db.String(80), default='', index=True)
-    category = db.Column(db.String(100), default='')
-    unit = db.Column(db.String(40), default='unit')
-    stock_qty = db.Column(db.Float, default=0)
-    reorder_level = db.Column(db.Float, default=0)
-    unit_cost = db.Column(db.Float, default=0)
-    selling_price = db.Column(db.Float, default=0)
-    expiry_tracking = db.Column(db.Boolean, default=False)
-    active = db.Column(db.Boolean, default=True)
-
-class ProcedureConsumable(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    procedure_id = db.Column(db.Integer, db.ForeignKey('procedure.id'), nullable=False)
-    consumable_id = db.Column(db.Integer, db.ForeignKey('consumable.id'), nullable=False)
-    qty = db.Column(db.Float, default=1)
-    procedure = db.relationship('Procedure')
-    consumable = db.relationship('Consumable')
-    __table_args__ = (db.UniqueConstraint('procedure_id','consumable_id', name='uq_proc_cons'),)
-
-
-class ReferringDoctor(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(40), unique=True, nullable=False)
-    name = db.Column(db.String(160), nullable=False)
-    specialty = db.Column(db.String(120), default='')
-    phone = db.Column(db.String(40), default='')
-    organization = db.Column(db.String(160), default='')
-    active = db.Column(db.Boolean, default=True)
-
-
-class Receipt(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    receipt_no = db.Column(db.String(50), unique=True, nullable=False)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
-    amount = db.Column(db.Numeric(12,2), default=0)
-    payment_method = db.Column(db.String(30), default='CASH')
-    reference_no = db.Column(db.String(120), default='')
-    created_by = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    notes = db.Column(db.String(500), default='')
-    order = db.relationship('Order', foreign_keys=[order_id])
-
-class DeliveryEvent(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
-    item_type = db.Column(db.String(30), nullable=False)
-    delivery_method = db.Column(db.String(40), default='IN_PERSON')
-    recipient_name = db.Column(db.String(160), default='')
-    recipient_phone = db.Column(db.String(40), default='')
-    delivered_by = db.Column(db.Integer)
-    delivered_at = db.Column(db.DateTime, default=datetime.utcnow)
-    notes = db.Column(db.String(500), default='')
-    order = db.relationship('Order', foreign_keys=[order_id])
-
-class Attachment(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'))
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
-    appointment_id = db.Column(db.Integer, db.ForeignKey('appointment.id'))
-    external_intake_id = db.Column(db.Integer, db.ForeignKey('external_intake_case.id'), index=True)
-    category = db.Column(db.String(60), nullable=False, default='OTHER')
-    original_name = db.Column(db.String(255), nullable=False)
-    stored_path = db.Column(db.String(500), nullable=False)
-    mime_type = db.Column(db.String(120), default='')
-    notes = db.Column(db.String(500), default='')
-    uploaded_by = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    patient = db.relationship('Patient', foreign_keys=[patient_id])
-    order = db.relationship('Order', foreign_keys=[order_id])
-    appointment = db.relationship('Appointment', foreign_keys=[appointment_id])
-    external_intake = db.relationship('ExternalIntakeCase', foreign_keys=[external_intake_id])
-
-
-class DeviceSchedule(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    device_id = db.Column(db.Integer, db.ForeignKey('device.id'), nullable=False)
-    weekday = db.Column(db.Integer, nullable=False)
-    start_time = db.Column(db.String(5), default='09:00')
-    end_time = db.Column(db.String(5), default='21:00')
-    break_start = db.Column(db.String(5), default='')
-    break_end = db.Column(db.String(5), default='')
-    active = db.Column(db.Boolean, default=True)
-    device = db.relationship('Device', foreign_keys=[device_id])
-
-class DeviceBlock(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    device_id = db.Column(db.Integer, db.ForeignKey('device.id'), nullable=False)
-    start_at = db.Column(db.DateTime, nullable=False)
-    end_at = db.Column(db.DateTime, nullable=False)
-    reason = db.Column(db.String(160), default='Maintenance')
-    device = db.relationship('Device', foreign_keys=[device_id])
-
-
-class DoctorAssignmentProfile(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
-    modalities = db.Column(db.String(200), default='')
-    specialties = db.Column(db.String(300), default='')
-    branches = db.Column(db.String(200), default='')
-    max_active_cases = db.Column(db.Integer, default=20)
-    auto_assign = db.Column(db.Boolean, default=True)
-    available = db.Column(db.Boolean, default=True)
-    priority_weight = db.Column(db.Integer, default=100)
-    user = db.relationship('User', foreign_keys=[user_id])
-
-class CaseAssignment(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, index=True)
-    doctor_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    assigned_by = db.Column(db.Integer)
-    assignment_type = db.Column(db.String(20), default='MANUAL')
-    active = db.Column(db.Boolean, default=True)
-    assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
-    unassigned_at = db.Column(db.DateTime)
-    notes = db.Column(db.String(500), default='')
-    start_deadline_at = db.Column(db.DateTime, index=True)
-    start_timeout_seconds = db.Column(db.Integer)
-    reading_started_at = db.Column(db.DateTime)
-    distribution_snapshot_json = db.Column(db.Text)
-    order = db.relationship('Order', foreign_keys=[order_id])
-    doctor = db.relationship('User', foreign_keys=[doctor_user_id])
-    __table_args__ = (
-        db.Index(
-            'uq_case_assignment_one_active_per_order',
-            'order_id',
-            unique=True,
-            postgresql_where=db.text('active IS TRUE'),
-            sqlite_where=db.text('active = 1'),
-        ),
-    )
-
-class Appointment(db.Model):
-    assignment_visit_id = db.Column(db.String(36), db.ForeignKey('assignment_visit.id'), index=True)
-    assignment_special_code = db.Column(db.String(80), default='')
-    id = db.Column(db.Integer, primary_key=True)
-    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
-    branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'), nullable=False)
-    procedure_id = db.Column(db.Integer, db.ForeignKey('procedure.id'), nullable=False)
-    device_id = db.Column(db.Integer, db.ForeignKey('device.id'))
-    order_id = db.Column(
-        db.Integer,
-        db.ForeignKey('order.id'),
-        unique=True,
-        index=True,
-    )
-    scheduled = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(30), default='BOOKED')
-    source = db.Column(db.String(40), default='CALL_CENTER')
-    notes = db.Column(db.Text, default='')
-    created_by = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    checked_in_at = db.Column(db.DateTime)
-    cancelled_at = db.Column(db.DateTime)
-    confirmed_at = db.Column(db.DateTime)
-    duration_min = db.Column(db.Integer, default=20)
-    priority = db.Column(db.String(20), default='NORMAL')
-    waiting_list = db.Column(db.Boolean, default=False)
-    patient = db.relationship('Patient')
-    branch = db.relationship('Branch')
-    procedure = db.relationship('Procedure')
-    device = db.relationship('Device', foreign_keys=[device_id])
-    order = db.relationship(
-        'Order',
-        back_populates='appointment',
-        foreign_keys=[order_id],
-    )
-
-class Order(db.Model):
-    assignment_visit_id = db.Column(db.String(36), db.ForeignKey('assignment_visit.id'), index=True)
-    assignment_special_code = db.Column(db.String(80), default='')
-    id = db.Column(db.Integer, primary_key=True)
-    accession = db.Column(db.String(40), unique=True, nullable=False)
-    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
-    modality = db.Column(db.String(8), nullable=False)
-    procedure = db.Column(db.String(120), nullable=False)
-    station_ae = db.Column(db.String(40))
-    scheduled = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(30), default='REGISTERED')
-    patient = db.relationship('Patient')
-    report = db.relationship('Report', backref='order', uselist=False, cascade='all,delete-orphan')
-    appointment = db.relationship(
-        'Appointment',
-        back_populates='order',
-        uselist=False,
-        foreign_keys='Appointment.order_id',
-    )
-
-    procedure_id = db.Column(db.Integer, db.ForeignKey('procedure.id'))
-    branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'))
-    device_id = db.Column(db.Integer, db.ForeignKey('device.id'))
-    contract_id = db.Column(db.Integer, db.ForeignKey('contract.id'))
-    referring_doctor_id = db.Column(db.Integer, db.ForeignKey('referring_doctor.id'))
-    gross_price = db.Column(db.Float, default=0)
-    contract_price = db.Column(db.Float, default=0)
-    patient_share = db.Column(db.Float, default=0)
-    company_share = db.Column(db.Float, default=0)
-    paid_amount = db.Column(db.Float, default=0)
-    report_delivered = db.Column(db.Boolean, default=False)
-    images_delivered = db.Column(db.Boolean, default=False)
-    report_delivered_at = db.Column(db.DateTime)
-    images_delivered_at = db.Column(db.DateTime)
-    approval_no = db.Column(db.String(80), default='')
-    created_by = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    proc = db.relationship('Procedure', foreign_keys=[procedure_id])
-    branch = db.relationship('Branch', foreign_keys=[branch_id])
-    device = db.relationship('Device', foreign_keys=[device_id])
-    contract = db.relationship('Contract', foreign_keys=[contract_id])
-    referring_doctor = db.relationship('ReferringDoctor', foreign_keys=[referring_doctor_id])
-    priority = db.Column(db.String(20), default='ROUTINE')
-    assigned_doctor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    assigned_at = db.Column(db.DateTime)
-    assigned_doctor = db.relationship('User', foreign_keys=[assigned_doctor_id])
-    exam_status = db.Column(db.String(30), default='ORDERED')
-    exam_started_at = db.Column(db.DateTime)
-    exam_completed_at = db.Column(db.DateTime)
-    pacs_image_count = db.Column(db.Integer, default=0)
-    pacs_status = db.Column(db.String(30), default='WAITING')
-    pacs_last_seen_at = db.Column(db.DateTime)
-    pacs_last_change_at = db.Column(db.DateTime)
-    pacs_study_id = db.Column(db.String(120), default='')
-
-    # Canonical DICOM Study Instance UID.
-    # Orthanc pacs_study_id is an internal UUID and must not be used
-    # as the DICOM StudyInstanceUID for OHIF/DICOMweb.
-    study_instance_uid = db.Column(
-        db.String(180),
-        default='',
-        index=True
-    )
+from infrastructure.models import ImagingAIAnalysis
+
+from infrastructure.models import DemographicOverrideAudit
+
+
+from infrastructure.models import DoctorAvailabilityState
+
+from infrastructure.models import AssignmentOfferPolicy
+
+
+from infrastructure.models import AssignmentStrategy
+
+
+from infrastructure.models import AssignmentStrategyVersion
+
+
+from infrastructure.models import AssignmentVisit
+
+
+from infrastructure.models import AssignmentDistributionPolicy
+
+
+from infrastructure.models import AssignmentOffer
+
+from infrastructure.models import AssignmentEscalationEvent
+
+
+from infrastructure.models import ProcedureQualityRule
+
+from infrastructure.models import CaseReadiness
+
+
+from infrastructure.models import ReadinessSeriesAlias
+
+
+from infrastructure.models import CaseReadinessOverride
+
+
+from infrastructure.models import CaseExceptionResolutionEvent
+
+from infrastructure.models import CaseWorkflowEvent
+
+from infrastructure.models import CaseReturnReason
+
+from infrastructure.models import TATPolicy
+
+from infrastructure.models import RISNotification
+
+from infrastructure.models import NotificationEscalationRule
+
+
+from infrastructure.models import SavedSearchFilter
+
+from infrastructure.models import LabelTemplate
+
+
+from infrastructure.models import SmartIntakeSession
+
+from infrastructure.models import SmartIntakeDocument
+
+from infrastructure.models import SmartIntakeFieldReview
+
+from infrastructure.models import OCRProviderSetting
+
+
+
+from infrastructure.models import PrinterProfile
+
+from infrastructure.models import ClinicalAssessment
+
+from infrastructure.models import VitalSign
+
+from infrastructure.models import ClinicalDiagnosis
+
+from infrastructure.models import ClinicalMedication
+
+from infrastructure.models import ClinicalLabItem
+
+from infrastructure.models import Contract
+
+from infrastructure.models import ContractPrice
+
+from infrastructure.models import Consumable
+
+from infrastructure.models import ProcedureConsumable
+
+
+from infrastructure.models import ReferringDoctor
+
+
+from infrastructure.models import Receipt
+
+from infrastructure.models import DeliveryEvent
+
+from infrastructure.models import Attachment
+
+
+from infrastructure.models import DeviceSchedule
+
+from infrastructure.models import DeviceBlock
+
+
+from infrastructure.models import DoctorAssignmentProfile
+
+from infrastructure.models import CaseAssignment
+
+from infrastructure.models import Appointment
+
+from infrastructure.models import Order
 
 
 
@@ -1974,1096 +587,124 @@ class Order(db.Model):
 # Isolated from Order.status / PACS / MWL / Auto Assignment.
 # ============================================================
 
-class InsuranceApprovalRequest(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-
-    order_id = db.Column(
-        db.Integer,
-        db.ForeignKey('order.id'),
-        nullable=False,
-        index=True
-    )
-
-    # AUTO / MANUAL / TELEGRAM / EMAIL
-    method = db.Column(db.String(30), default='MANUAL', index=True)
-
-    # NOT_REQUIRED / REQUIRED / SUBMITTED / PENDING /
-    # APPROVED / REJECTED / NEED_INFO / ERROR
-    status = db.Column(db.String(30), default='REQUIRED', index=True)
-
-    approval_no = db.Column(db.String(120), default='', index=True)
-
-    payer_name = db.Column(db.String(180), default='')
-    member_no = db.Column(db.String(120), default='')
-
-    requested_at = db.Column(db.DateTime)
-    submitted_at = db.Column(db.DateTime)
-    decided_at = db.Column(db.DateTime)
-
-    last_checked_at = db.Column(db.DateTime)
-    next_check_at = db.Column(db.DateTime)
-
-    notes = db.Column(db.Text, default='')
-    last_error = db.Column(db.Text, default='')
-
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
-    created_at = db.Column(
-        db.DateTime,
-        default=datetime.utcnow,
-        index=True
-    )
-    updated_at = db.Column(
-        db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
-    )
-
-    order = db.relationship(
-        'Order',
-        foreign_keys=[order_id]
-    )
-
-    creator = db.relationship(
-        'User',
-        foreign_keys=[created_by]
-    )
+from infrastructure.models import InsuranceApprovalRequest
 
 
-class InsuranceApprovalEvent(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-
-    approval_request_id = db.Column(
-        db.Integer,
-        db.ForeignKey('insurance_approval_request.id'),
-        nullable=False,
-        index=True
-    )
-
-    event_type = db.Column(
-        db.String(60),
-        nullable=False,
-        index=True
-    )
-
-    old_status = db.Column(db.String(30), default='')
-    new_status = db.Column(db.String(30), default='')
-
-    message = db.Column(db.Text, default='')
-
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-
-    created_at = db.Column(
-        db.DateTime,
-        default=datetime.utcnow,
-        index=True
-    )
-
-    approval_request = db.relationship(
-        'InsuranceApprovalRequest',
-        foreign_keys=[approval_request_id]
-    )
-
-    user = db.relationship(
-        'User',
-        foreign_keys=[user_id]
-    )
+from infrastructure.models import InsuranceApprovalEvent
 
 
-class InsurancePortalAccount(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-
-    branch_id = db.Column(
-        db.Integer,
-        db.ForeignKey('branch.id'),
-        nullable=False,
-        index=True
-    )
-
-    payer_name = db.Column(
-        db.String(180),
-        nullable=False,
-        index=True
-    )
-
-    portal_url = db.Column(db.String(500), default='')
-    login_url = db.Column(db.String(500), default='')
-    portal_type = db.Column(db.String(40), default='WEB')
-
-    username = db.Column(db.String(180), default='')
-
-    # Passwords are NOT stored in plaintext.
-    # Example: INSURANCE_AXA_MAIN_PASSWORD
-    credential_ref = db.Column(db.String(255), default='')
-
-    requires_otp = db.Column(db.Boolean, default=False)
-    workflow_mode = db.Column(db.String(40), default='MANUAL')
-
-    login_notes = db.Column(db.Text, default='')
-    workflow_notes = db.Column(db.Text, default='')
-    training_notes = db.Column(db.Text, default='')
-
-    selectors_json = db.Column(db.Text, default='{}')
-    automation_config_json = db.Column(db.Text, default='{}')
-
-    last_success_at = db.Column(db.DateTime)
-    last_error_at = db.Column(db.DateTime)
-    last_error = db.Column(db.Text, default='')
-
-    enabled = db.Column(db.Boolean, default=False, index=True)
-
-    telegram_enabled = db.Column(db.Boolean, default=False)
-    email_enabled = db.Column(db.Boolean, default=False)
-    automation_enabled = db.Column(db.Boolean, default=False)
-
-    created_at = db.Column(
-        db.DateTime,
-        default=datetime.utcnow
-    )
-
-    updated_at = db.Column(
-        db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
-    )
-
-    branch = db.relationship(
-        'Branch',
-        foreign_keys=[branch_id]
-    )
-
-    __table_args__ = (
-        db.UniqueConstraint(
-            'branch_id',
-            'payer_name',
-            name='uq_insurance_portal_branch_payer'
-        ),
-    )
+from infrastructure.models import InsurancePortalAccount
 
 
-class EventOutbox(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    event_type=db.Column(db.String(80),nullable=False,index=True)
-    entity_type=db.Column(db.String(80),nullable=False,default='')
-    entity_id=db.Column(db.String(120),nullable=False,default='')
-    payload_json=db.Column(db.Text,default='{}')
-    status=db.Column(db.String(20),default='PENDING',index=True)
-    attempts=db.Column(db.Integer,default=0)
-    last_error=db.Column(db.Text,default='')
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    processed_at=db.Column(db.DateTime)
+from infrastructure.models import EventOutbox
 
-class CompanyProfile(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    name_en=db.Column(db.String(180),default='RIS Operations')
-    name_ar=db.Column(db.String(180),default='نظام الأشعة')
-    address_en=db.Column(db.String(255),default='')
-    address_ar=db.Column(db.String(255),default='')
-    phone=db.Column(db.String(80),default='')
-    mobile=db.Column(db.String(80),default='')
-    email=db.Column(db.String(180),default='')
-    website=db.Column(db.String(180),default='')
-    logo_path=db.Column(db.String(500),default='')
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
+from infrastructure.models import CompanyProfile
 
-class StickerTemplate(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    name=db.Column(db.String(120),nullable=False,default='Patient Sticker Bilingual')
-    active=db.Column(db.Boolean,default=True)
-    is_default=db.Column(db.Boolean,default=False)
-    width_mm=db.Column(db.Float,default=70)
-    height_mm=db.Column(db.Float,default=45)
-    bilingual=db.Column(db.Boolean,default=True)
-    show_logo=db.Column(db.Boolean,default=True)
-    show_qr=db.Column(db.Boolean,default=True)
-    show_barcode=db.Column(db.Boolean,default=True)
-    fields_json=db.Column(db.Text,default='[]')
-    labels_json=db.Column(db.Text,default='{}')
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
+from infrastructure.models import StickerTemplate
 
-class PacsStudyMatch(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    orthanc_study_id=db.Column(db.String(120),unique=True,nullable=False,index=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    match_method=db.Column(db.String(40),default='MANUAL')
-    confidence=db.Column(db.String(20),default='CONFIRMED')
-    pacs_patient_id=db.Column(db.String(80),default='')
-    pacs_patient_name=db.Column(db.String(180),default='')
-    pacs_accession=db.Column(db.String(120),default='')
-    confirmed_by=db.Column(db.Integer)
-    confirmed_at=db.Column(db.DateTime,default=datetime.utcnow)
-    notes=db.Column(db.String(500),default='')
-    is_current=db.Column(db.Boolean,nullable=False,default=False,index=True)
-    superseded_at=db.Column(db.DateTime)
-    superseded_by=db.Column(db.Integer)
-    superseded_reason=db.Column(db.String(500),nullable=False,default='')
-    order=db.relationship('Order',foreign_keys=[order_id])
+from infrastructure.models import PacsStudyMatch
 
 
-class PacsExamLink(db.Model):
-    __tablename__='pacs_exam_link'
-    id=db.Column(db.Integer,primary_key=True)
-    orthanc_study_id=db.Column(db.String(120),nullable=False,index=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    link_role=db.Column(db.String(20),nullable=False,default='SECONDARY')
-    active=db.Column(db.Boolean,nullable=False,default=True)
-    reason=db.Column(db.String(500),nullable=False)
-    created_by=db.Column(db.Integer)
-    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
-    removed_by=db.Column(db.Integer)
-    removed_at=db.Column(db.DateTime)
+from infrastructure.models import PacsExamLink
 
 
-class PacsResolutionEvent(db.Model):
-    __tablename__='pacs_resolution_event'
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    event_type=db.Column(db.String(50),nullable=False)
-    old_orthanc_study_id=db.Column(db.String(120),nullable=False,default='')
-    new_orthanc_study_id=db.Column(db.String(120),nullable=False,default='')
-    old_study_instance_uid=db.Column(db.String(180),nullable=False,default='')
-    new_study_instance_uid=db.Column(db.String(180),nullable=False,default='')
-    reason=db.Column(db.String(500),nullable=False)
-    actor_user_id=db.Column(db.Integer)
-    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
+from infrastructure.models import PacsResolutionEvent
 
 
-class DicomCorrection(db.Model):
-    __tablename__='dicom_correction'
-    id=db.Column(db.Integer,primary_key=True)
-    source_study_id=db.Column(db.String(120),nullable=False,unique=True)
-    new_study_id=db.Column(db.String(120),default='',index=True)
-    new_uid=db.Column(db.String(180),default='')
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    actor_user_id=db.Column(db.Integer,nullable=False)
-    status=db.Column(db.String(30),nullable=False,index=True)
-    reason=db.Column(db.String(500),nullable=False)
-    before_json=db.Column(db.Text,nullable=False)
-    after_json=db.Column(db.Text,nullable=False)
-    error_code=db.Column(db.String(80),default='')
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,nullable=False)
-    finished_at=db.Column(db.DateTime)
+from infrastructure.models import DicomCorrection
 
 
 
-class PacsStudyInbox(db.Model):
-    __tablename__='pacs_study_inbox'
-    id=db.Column(db.Integer,primary_key=True)
-    orthanc_study_id=db.Column(db.String(120),unique=True,nullable=False,index=True)
-    study_instance_uid=db.Column(db.String(180),unique=True,index=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
-    pacs_patient_id=db.Column(db.String(80),default='')
-    pacs_patient_name=db.Column(db.String(180),default='')
-    accession=db.Column(db.String(120),default='',index=True)
-    modality=db.Column(db.String(30),default='')
-    study_description=db.Column(db.String(255),default='')
-    source_ae=db.Column(db.String(80),default='')
-    image_count=db.Column(db.Integer,default=0)
-    state=db.Column(db.String(40),default='NEW',index=True) # NEW/LINKED/AUTO_CREATED/REVIEW/ERROR
-    match_method=db.Column(db.String(60),default='')
-    error_text=db.Column(db.Text,default='')
-    first_seen_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    last_seen_at=db.Column(db.DateTime,default=datetime.utcnow)
-    order=db.relationship('Order',foreign_keys=[order_id])
+from infrastructure.models import PacsStudyInbox
 
 
 # External reporting is deliberately separated from normal RIS registration.
 # A received study cannot enter assignment until an administrator queues it.
-class ExternalReportingSetting(db.Model):
-    __tablename__='external_reporting_setting'
-    id=db.Column(db.Integer,primary_key=True)
-    enabled=db.Column(db.Boolean,nullable=False,default=False)
-    updated_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    updated_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow,onupdate=datetime.utcnow)
+from infrastructure.models import ExternalReportingSetting
 
 
-class ExternalReportingCenter(db.Model):
-    __tablename__='external_reporting_center'
-    id=db.Column(db.Integer,primary_key=True)
-    code=db.Column(db.String(40),unique=True,nullable=False,index=True)
-    name=db.Column(db.String(160),nullable=False)
-    ae_title=db.Column(db.String(80),unique=True,nullable=False,index=True)
-    receiving_enabled=db.Column(db.Boolean,nullable=False,default=False)
-    assignment_enabled=db.Column(db.Boolean,nullable=False,default=False)
-    auto_queue=db.Column(db.Boolean,nullable=False,default=False)
-    default_priority=db.Column(db.String(20),nullable=False,default='ROUTINE')
-    required_documents=db.Column(db.Boolean,nullable=False,default=False)
-    billing_enabled=db.Column(db.Boolean,nullable=False,default=False)
-    billing_contract_id=db.Column(db.Integer,db.ForeignKey('contract.id'),index=True)
-    default_report_fee=db.Column(db.Float,nullable=False,default=0)
-    active=db.Column(db.Boolean,nullable=False,default=True,index=True)
-    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
-    updated_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow,onupdate=datetime.utcnow)
-    billing_contract=db.relationship('Contract',foreign_keys=[billing_contract_id])
+from infrastructure.models import ExternalReportingCenter
 
 
-class ExternalCenterDoctor(db.Model):
-    __tablename__='external_center_doctor'
-    id=db.Column(db.Integer,primary_key=True)
-    center_id=db.Column(db.Integer,db.ForeignKey('external_reporting_center.id'),nullable=False,index=True)
-    doctor_user_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
-    active=db.Column(db.Boolean,nullable=False,default=True,index=True)
-    center=db.relationship('ExternalReportingCenter',foreign_keys=[center_id])
-    doctor=db.relationship('User',foreign_keys=[doctor_user_id])
-    __table_args__=(db.UniqueConstraint('center_id','doctor_user_id',name='uq_external_center_doctor'),)
+from infrastructure.models import ExternalCenterDoctor
 
 
-class ExternalIntakeCase(db.Model):
-    __tablename__='external_intake_case'
-    id=db.Column(db.Integer,primary_key=True)
-    center_id=db.Column(db.Integer,db.ForeignKey('external_reporting_center.id'),nullable=False,index=True)
-    inbox_id=db.Column(db.Integer,db.ForeignKey('pacs_study_inbox.id'),unique=True,nullable=False,index=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),unique=True,index=True)
-    status=db.Column(db.String(30),nullable=False,default='RECEIVED',index=True)
-    # RECEIVED/HOLD/QUEUED/REJECTED
-    review_note=db.Column(db.String(500),nullable=False,default='')
-    expected_patient_id=db.Column(db.String(80),nullable=False,default='')
-    expected_patient_name=db.Column(db.String(180),nullable=False,default='')
-    expected_dob=db.Column(db.String(8),nullable=False,default='')
-    expected_sex=db.Column(db.String(1),nullable=False,default='')
-    expected_accession=db.Column(db.String(120),nullable=False,default='')
-    dicom_patient_id=db.Column(db.String(80),nullable=False,default='')
-    dicom_patient_name=db.Column(db.String(180),nullable=False,default='')
-    dicom_dob=db.Column(db.String(8),nullable=False,default='')
-    dicom_sex=db.Column(db.String(1),nullable=False,default='')
-    dicom_accession=db.Column(db.String(120),nullable=False,default='')
-    demographic_status=db.Column(db.String(30),nullable=False,default='NOT_CHECKED',index=True)
-    demographic_score=db.Column(db.Float,nullable=False,default=0)
-    demographic_checks_json=db.Column(db.Text,nullable=False,default='[]')
-    demographic_facts_sha256=db.Column(db.String(64),nullable=False,default='')
-    demographic_verified_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    demographic_verified_at=db.Column(db.DateTime)
-    demographic_override_approved=db.Column(db.Boolean,nullable=False,default=False)
-    demographic_override_reason=db.Column(db.String(500),nullable=False,default='')
-    demographic_override_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    demographic_override_at=db.Column(db.DateTime)
-    demographic_override_facts_sha256=db.Column(db.String(64),nullable=False,default='')
-    reviewed_by=db.Column(db.Integer,db.ForeignKey('user.id'))
-    reviewed_at=db.Column(db.DateTime)
-    queued_at=db.Column(db.DateTime)
-    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow,index=True)
-    center=db.relationship('ExternalReportingCenter',foreign_keys=[center_id])
-    inbox=db.relationship('PacsStudyInbox',foreign_keys=[inbox_id])
-    order=db.relationship('Order',foreign_keys=[order_id])
+from infrastructure.models import ExternalIntakeCase
 
 
-class DiscoveredDicomNode(db.Model):
-    __tablename__='discovered_dicom_node'
-    id=db.Column(db.Integer,primary_key=True)
-    ae_title=db.Column(db.String(80),nullable=False,index=True)
-    host=db.Column(db.String(120),default='',index=True)
-    port=db.Column(db.Integer,default=0)
-    node_type=db.Column(db.String(30),default='UNKNOWN')  # MODALITY/VIEWER/UNKNOWN
-    modality=db.Column(db.String(30),default='')
-    source_description=db.Column(db.String(255),default='')
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'))
-    status=db.Column(db.String(30),default='PENDING',index=True) # PENDING/APPROVED/BLOCKED
-    studies_seen=db.Column(db.Integer,default=0)
-    first_seen_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    last_seen_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    approved_at=db.Column(db.DateTime)
-    approved_by=db.Column(db.Integer)
-    notes=db.Column(db.Text,default='')
-    branch=db.relationship('Branch',foreign_keys=[branch_id])
-    __table_args__=(db.UniqueConstraint('ae_title','host',name='uq_discovered_dicom_ae_host'),)
+from infrastructure.models import DiscoveredDicomNode
 
-class DicomDestination(db.Model):
-    __tablename__='dicom_destination'
-    id=db.Column(db.Integer,primary_key=True)
-    key=db.Column(db.String(60),unique=True,nullable=False,index=True)
-    name=db.Column(db.String(160),nullable=False)
-    ae_title=db.Column(db.String(40),nullable=False)
-    host=db.Column(db.String(120),nullable=False)
-    port=db.Column(db.Integer,nullable=False,default=104)
-    destination_type=db.Column(db.String(30),default='PACS') # MODALITY/PACS/BACKUP/ARCHIVE/WORKSTATION
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'))
-    active=db.Column(db.Boolean,default=True)
-    allow_manual_send=db.Column(db.Boolean,default=True)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    branch=db.relationship('Branch',foreign_keys=[branch_id])
+from infrastructure.models import DicomDestination
 
-class PacsRoutingRule(db.Model):
-    __tablename__='pacs_routing_rule'
-    id=db.Column(db.Integer,primary_key=True)
-    name=db.Column(db.String(160),nullable=False)
-    destination_id=db.Column(db.Integer,db.ForeignKey('dicom_destination.id'),nullable=False)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'))
-    modality=db.Column(db.String(30),default='')
-    source_ae=db.Column(db.String(80),default='')
-    min_priority=db.Column(db.String(20),default='')
-    active=db.Column(db.Boolean,default=True)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    destination=db.relationship('DicomDestination',foreign_keys=[destination_id])
-    branch=db.relationship('Branch',foreign_keys=[branch_id])
+from infrastructure.models import PacsRoutingRule
 
-class PacsTransferJob(db.Model):
-    __tablename__='pacs_transfer_job'
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
-    orthanc_study_id=db.Column(db.String(120),nullable=False,index=True)
-    destination_id=db.Column(db.Integer,db.ForeignKey('dicom_destination.id'),nullable=False,index=True)
-    reason=db.Column(db.String(40),default='MANUAL')
-    status=db.Column(db.String(30),default='PENDING',index=True)
-    attempts=db.Column(db.Integer,default=0)
-    last_error=db.Column(db.Text,default='')
-    created_by=db.Column(db.Integer)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    started_at=db.Column(db.DateTime)
-    completed_at=db.Column(db.DateTime)
-    verified_at=db.Column(db.DateTime)
-    cancelled_at=db.Column(db.DateTime)
-    progress_total=db.Column(db.Integer,default=0)
-    progress_sent=db.Column(db.Integer,default=0)
-    destination=db.relationship('DicomDestination',foreign_keys=[destination_id])
-    order=db.relationship('Order',foreign_keys=[order_id])
+from infrastructure.models import PacsTransferJob
 
-class CoordinatorTask(db.Model):
-    __tablename__='coordinator_task'
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    report_id=db.Column(db.Integer,db.ForeignKey('report.id'),nullable=False,index=True)
-    assigned_to=db.Column(db.Integer,db.ForeignKey('user.id'))
-    status=db.Column(db.String(40),default='PENDING_FORMATTING',index=True)
-    doctor_note=db.Column(db.Text,default='')
-    coordinator_note=db.Column(db.Text,default='')
-    created_by=db.Column(db.Integer)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    started_at=db.Column(db.DateTime)
-    completed_at=db.Column(db.DateTime)
-    returned_at=db.Column(db.DateTime)
-    order=db.relationship('Order',foreign_keys=[order_id])
-    report=db.relationship('Report',foreign_keys=[report_id])
-    assignee=db.relationship('User',foreign_keys=[assigned_to])
+from infrastructure.models import CoordinatorTask
 
 
 
 # RB_CORRECTION_REQUEST_WORKFLOW_V1
-class CorrectionRequest(db.Model):
-    __tablename__='correction_request'
-    __table_args__=(
-        db.CheckConstraint(
-            "request_type IN ('WRONG_IMAGES','WRONG_DEMOGRAPHICS','WRONG_ORDER','WRONG_ACCESSION','DUPLICATE_CASE','CANCEL_ORDER','WRONG_REPORT','OTHER')",
-            name='ck_correction_request_type',
-        ),
-        db.CheckConstraint(
-            "status IN ('NEW','UNDER_REVIEW','NEED_INFO','APPROVED','REJECTED','COMPLETED')",
-            name='ck_correction_request_status',
-        ),
-        db.Index(
-            'uq_correction_request_open_order_type',
-            'order_id',
-            'request_type',
-            unique=True,
-            postgresql_where=db.text("status IN ('NEW','UNDER_REVIEW','NEED_INFO','APPROVED')"),
-            sqlite_where=db.text("status IN ('NEW','UNDER_REVIEW','NEED_INFO','APPROVED')"),
-        ),
-    )
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    request_type=db.Column(db.String(40),nullable=False,index=True)
-    status=db.Column(db.String(30),nullable=False,default='NEW',index=True)
-    reason=db.Column(db.Text,nullable=False)
-    requested_by=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
-    assigned_to=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
-    review_note=db.Column(db.Text,default='')
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,nullable=False,index=True)
-    updated_at=db.Column(db.DateTime,default=datetime.utcnow,nullable=False)
-    reviewed_at=db.Column(db.DateTime)
-    closed_at=db.Column(db.DateTime)
-    order=db.relationship('Order',foreign_keys=[order_id])
-    branch=db.relationship('Branch',foreign_keys=[branch_id])
-    requester=db.relationship('User',foreign_keys=[requested_by])
-    assignee=db.relationship('User',foreign_keys=[assigned_to])
+from infrastructure.models import CorrectionRequest
 
 
-class PatientDemographicsCorrection(db.Model):
-    __tablename__='patient_demographics_correction'
-    id=db.Column(db.Integer,primary_key=True)
-    correction_request_id=db.Column(db.Integer,db.ForeignKey('correction_request.id'),nullable=False,unique=True)
-    patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),nullable=False,index=True)
-    field_name=db.Column(db.String(40),nullable=False)
-    old_value=db.Column(db.Text,nullable=False)
-    proposed_value=db.Column(db.Text,nullable=False)
-    snapshot_hash=db.Column(db.String(64),nullable=False)
-    impact_json=db.Column(db.Text,nullable=False)
-    request=db.relationship('CorrectionRequest',backref=db.backref('demographic_detail',uselist=False))
+from infrastructure.models import PatientDemographicsCorrection
 
 # RB_CORRECTION_EXECUTION_LEDGER_PHASE2A_V1
-class CorrectionExecution(db.Model):
-    __tablename__='correction_execution'
-
-    id=db.Column(
-        db.Integer,
-        primary_key=True
-    )
-
-    correction_request_id=db.Column(
-        db.Integer,
-        db.ForeignKey('correction_request.id'),
-        nullable=False,
-        unique=True,
-        index=True
-    )
-
-    order_id=db.Column(
-        db.Integer,
-        db.ForeignKey('order.id'),
-        nullable=False,
-        index=True
-    )
-
-    branch_id=db.Column(
-        db.Integer,
-        db.ForeignKey('branch.id'),
-        nullable=True,
-        index=True
-    )
-
-    execution_type=db.Column(
-        db.String(40),
-        nullable=False,
-        index=True
-    )
-
-    status=db.Column(
-        db.String(40),
-        nullable=False,
-        default='READY_FOR_EXECUTION',
-        index=True
-    )
-
-    state_version=db.Column(
-        db.Integer,
-        nullable=False,
-        default=1
-    )
-
-    claimed_by=db.Column(
-        db.Integer,
-        db.ForeignKey('user.id'),
-        nullable=True,
-        index=True
-    )
-
-    executed_by=db.Column(
-        db.Integer,
-        db.ForeignKey('user.id'),
-        nullable=True
-    )
-
-    request_snapshot_json=db.Column(
-        db.Text,
-        nullable=False,
-        default='{}'
-    )
-
-    preflight_snapshot_json=db.Column(
-        db.Text,
-        nullable=False,
-        default='{}'
-    )
-
-    result_snapshot_json=db.Column(
-        db.Text,
-        nullable=False,
-        default='{}'
-    )
-
-    confirmation_token_hash=db.Column(
-        db.String(128),
-        nullable=True
-    )
-
-    confirmation_expires_at=db.Column(
-        db.DateTime,
-        nullable=True
-    )
-
-    failure_code=db.Column(
-        db.String(80),
-        nullable=True
-    )
-
-    failure_message=db.Column(
-        db.Text,
-        nullable=True
-    )
-
-    created_at=db.Column(
-        db.DateTime,
-        nullable=False,
-        default=datetime.utcnow
-    )
-
-    updated_at=db.Column(
-        db.DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
-    )
-
-    claimed_at=db.Column(
-        db.DateTime,
-        nullable=True
-    )
-
-    started_at=db.Column(
-        db.DateTime,
-        nullable=True
-    )
-
-    executed_at=db.Column(
-        db.DateTime,
-        nullable=True
-    )
-
-    verified_at=db.Column(
-        db.DateTime,
-        nullable=True
-    )
-
-    failed_at=db.Column(
-        db.DateTime,
-        nullable=True
-    )
+from infrastructure.models import CorrectionExecution
 
 
-class StorageLocation(db.Model):
-    """Logical storage target.
+from infrastructure.models import StorageLocation
 
-    The application stores a stable code and OS-visible mount path instead of
-    vendor-specific logic. Dell EMC, QNAP, TrueNAS, SAN and cloud gateways are
-    therefore interchangeable when mounted/exposed through the selected
-    protocol. Never store storage credentials in this table.
-    """
-    __tablename__='storage_location'
-    id=db.Column(db.Integer,primary_key=True)
-    code=db.Column(db.String(40),unique=True,nullable=False)
-    label=db.Column(db.String(160),nullable=False)
-    path=db.Column(db.String(700),nullable=False)
-    storage_type=db.Column(db.String(30),default='LOCAL') # LOCAL/PACS/ARCHIVE/BACKUP
-    protocol=db.Column(db.String(30),default='LOCAL') # LOCAL/NFS/SMB/ISCSI/S3/GATEWAY
-    role=db.Column(db.String(30),default='PRIMARY') # PRIMARY/ARCHIVE/BACKUP/DR
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    company_code=db.Column(db.String(60),default='',index=True)
-    vendor=db.Column(db.String(80),default='')
-    endpoint=db.Column(db.String(255),default='')
-    mount_source=db.Column(db.String(500),default='')
-    filesystem=db.Column(db.String(40),default='')
-    priority=db.Column(db.Integer,default=100)
-    read_only=db.Column(db.Boolean,default=False)
-    capacity_bytes=db.Column(db.BigInteger,default=0)
-    free_bytes=db.Column(db.BigInteger,default=0)
-    health_status=db.Column(db.String(30),default='UNKNOWN',index=True)
-    last_health_at=db.Column(db.DateTime)
-    notes=db.Column(db.Text,default='')
-    active=db.Column(db.Boolean,default=True)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    branch=db.relationship('Branch',foreign_keys=[branch_id])
+from infrastructure.models import ReplicationNode
 
-class ReplicationNode(db.Model):
-    """A primary/DR endpoint participating in data or configuration replication."""
-    __tablename__='replication_node'
-    id=db.Column(db.Integer,primary_key=True)
-    code=db.Column(db.String(60),unique=True,nullable=False,index=True)
-    name=db.Column(db.String(160),nullable=False)
-    node_role=db.Column(db.String(30),default='DR') # PRIMARY/DR/WITNESS/ARCHIVE
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
-    company_code=db.Column(db.String(60),default='',index=True)
-    host=db.Column(db.String(255),default='')
-    site=db.Column(db.String(160),default='')
-    active=db.Column(db.Boolean,default=True)
-    health_status=db.Column(db.String(30),default='UNKNOWN',index=True)
-    last_seen_at=db.Column(db.DateTime)
-    notes=db.Column(db.Text,default='')
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    branch=db.relationship('Branch',foreign_keys=[branch_id])
+from infrastructure.models import ReplicationPolicy
 
-class ReplicationPolicy(db.Model):
-    """Declarative DR policy. Execution is performed by external/worker services.
+from infrastructure.models import ReplicationState
 
-    Secrets and destructive failover commands are intentionally not persisted
-    here. The table stores topology, desired RPO/RTO and transport metadata.
-    """
-    __tablename__='replication_policy'
-    id=db.Column(db.Integer,primary_key=True)
-    code=db.Column(db.String(60),unique=True,nullable=False,index=True)
-    name=db.Column(db.String(180),nullable=False)
-    source_node_id=db.Column(db.Integer,db.ForeignKey('replication_node.id'),nullable=False)
-    target_node_id=db.Column(db.Integer,db.ForeignKey('replication_node.id'),nullable=False)
-    data_scope=db.Column(db.String(40),default='PACS') # PACS/DATABASE/REPORTS/ATTACHMENTS/CONFIG/ALL
-    transport=db.Column(db.String(50),default='RSYNC') # RSYNC/STORAGE_NATIVE/POSTGRES_STREAMING/DICOM_FORWARD/S3_REPLICATION
-    mode=db.Column(db.String(30),default='ASYNC') # ASYNC/SYNC/SCHEDULED
-    source_storage_id=db.Column(db.Integer,db.ForeignKey('storage_location.id'))
-    target_storage_id=db.Column(db.Integer,db.ForeignKey('storage_location.id'))
-    rpo_minutes=db.Column(db.Integer,default=15)
-    rto_minutes=db.Column(db.Integer,default=60)
-    schedule=db.Column(db.String(120),default='')
-    active=db.Column(db.Boolean,default=True)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    source_node=db.relationship('ReplicationNode',foreign_keys=[source_node_id])
-    target_node=db.relationship('ReplicationNode',foreign_keys=[target_node_id])
-    source_storage=db.relationship('StorageLocation',foreign_keys=[source_storage_id])
-    target_storage=db.relationship('StorageLocation',foreign_keys=[target_storage_id])
+from infrastructure.models import FailoverEvent
 
-class ReplicationState(db.Model):
-    __tablename__='replication_state'
-    id=db.Column(db.Integer,primary_key=True)
-    policy_id=db.Column(db.Integer,db.ForeignKey('replication_policy.id'),nullable=False,index=True)
-    status=db.Column(db.String(30),default='UNKNOWN',index=True) # HEALTHY/LAGGING/OFFLINE/RESYNCING/ERROR
-    last_success_at=db.Column(db.DateTime)
-    last_check_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    lag_seconds=db.Column(db.Integer,default=0)
-    pending_items=db.Column(db.BigInteger,default=0)
-    pending_bytes=db.Column(db.BigInteger,default=0)
-    checkpoint=db.Column(db.String(500),default='')
-    last_error=db.Column(db.Text,default='')
-    policy=db.relationship('ReplicationPolicy',foreign_keys=[policy_id])
+from infrastructure.models import CloudBackupConfig
 
-class FailoverEvent(db.Model):
-    __tablename__='failover_event'
-    id=db.Column(db.Integer,primary_key=True)
-    policy_id=db.Column(db.Integer,db.ForeignKey('replication_policy.id'),nullable=False,index=True)
-    action=db.Column(db.String(30),nullable=False) # PLAN/PROMOTE/FAILBACK/TEST
-    status=db.Column(db.String(30),default='PLANNED')
-    requested_by=db.Column(db.Integer)
-    requested_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    completed_at=db.Column(db.DateTime)
-    notes=db.Column(db.Text,default='')
-    policy=db.relationship('ReplicationPolicy',foreign_keys=[policy_id])
+from infrastructure.models import BackupRun
 
-class CloudBackupConfig(db.Model):
-    __tablename__='cloud_backup_config'
-    id=db.Column(db.Integer,primary_key=True)
-    name=db.Column(db.String(160),nullable=False)
-    provider=db.Column(db.String(40),default='RCLONE')
-    rclone_remote=db.Column(db.String(120),default='')
-    remote_root=db.Column(db.String(500),default='')
-    include_reports=db.Column(db.Boolean,default=True)
-    include_attachments=db.Column(db.Boolean,default=True)
-    include_database=db.Column(db.Boolean,default=True)
-    include_pacs=db.Column(db.Boolean,default=False)
-    schedule_hour=db.Column(db.Integer,default=2)
-    active=db.Column(db.Boolean,default=True)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
+from infrastructure.models import InventoryBatch
 
-class BackupRun(db.Model):
-    __tablename__='backup_run'
-    id=db.Column(db.Integer,primary_key=True)
-    config_id=db.Column(db.Integer,db.ForeignKey('cloud_backup_config.id'))
-    status=db.Column(db.String(30),default='RUNNING',index=True)
-    started_at=db.Column(db.DateTime,default=datetime.utcnow)
-    completed_at=db.Column(db.DateTime)
-    reports_files=db.Column(db.Integer,default=0)
-    attachments_files=db.Column(db.Integer,default=0)
-    database_file=db.Column(db.String(700),default='')
-    pacs_files=db.Column(db.Integer,default=0)
-    last_error=db.Column(db.Text,default='')
-    config=db.relationship('CloudBackupConfig',foreign_keys=[config_id])
+from infrastructure.models import StockMovement
 
-class InventoryBatch(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    consumable_id=db.Column(db.Integer,db.ForeignKey('consumable.id'),nullable=False,index=True)
-    batch_no=db.Column(db.String(120),nullable=False,default='')
-    expiry_date=db.Column(db.Date)
-    qty=db.Column(db.Float,default=0)
-    unit_cost=db.Column(db.Float,default=0)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'))
-    active=db.Column(db.Boolean,default=True)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    consumable=db.relationship('Consumable',foreign_keys=[consumable_id])
-    branch=db.relationship('Branch',foreign_keys=[branch_id])
-    __table_args__=(db.UniqueConstraint('consumable_id','batch_no','branch_id',name='uq_inventory_batch'),)
+from infrastructure.models import ERPItemMapping
 
-class StockMovement(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    movement_date=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    consumable_id=db.Column(db.Integer,db.ForeignKey('consumable.id'),nullable=False,index=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'))
-    movement_type=db.Column(db.String(40),nullable=False,index=True)
-    qty=db.Column(db.Float,nullable=False,default=0)
-    before_qty=db.Column(db.Float,default=0)
-    after_qty=db.Column(db.Float,default=0)
-    reference_type=db.Column(db.String(60),default='')
-    reference_id=db.Column(db.String(120),default='')
-    reason=db.Column(db.String(500),default='')
-    created_by=db.Column(db.Integer)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    consumable=db.relationship('Consumable',foreign_keys=[consumable_id])
-    branch=db.relationship('Branch',foreign_keys=[branch_id])
+from infrastructure.models import ERPSyncQueue
 
-class ERPItemMapping(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    consumable_id=db.Column(db.Integer,db.ForeignKey('consumable.id'),nullable=False,unique=True,index=True)
-    erp_item_code=db.Column(db.String(120),nullable=False,index=True)
-    erp_warehouse_code=db.Column(db.String(120),default='')
-    active=db.Column(db.Boolean,default=True)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    consumable=db.relationship('Consumable',foreign_keys=[consumable_id])
+from infrastructure.models import FinancialEntry
 
-class ERPSyncQueue(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    event_type=db.Column(db.String(80),nullable=False,index=True)
-    reference_type=db.Column(db.String(80),default='')
-    reference_id=db.Column(db.String(120),default='')
-    payload_json=db.Column(db.Text,default='{}')
-    status=db.Column(db.String(30),default='PENDING',index=True)
-    attempts=db.Column(db.Integer,default=0)
-    last_error=db.Column(db.Text,default='')
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    sent_at=db.Column(db.DateTime)
-
-class FinancialEntry(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    entry_date=db.Column(db.Date,nullable=False,default=date.today,index=True)
-    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'))
-    entry_type=db.Column(db.String(30),nullable=False,index=True)
-    category=db.Column(db.String(100),default='')
-    description=db.Column(db.String(255),default='')
-    amount=db.Column(db.Numeric(14,2),nullable=False,default=0)
-    payment_method=db.Column(db.String(30),default='')
-    device_id=db.Column(db.Integer,db.ForeignKey('device.id'))
-    user_id=db.Column(db.Integer,db.ForeignKey('user.id'))
-    consumable_id=db.Column(db.Integer,db.ForeignKey('consumable.id'))
-    quantity=db.Column(db.Float,default=0)
-    reference_no=db.Column(db.String(120),default='')
-    status=db.Column(db.String(30),default='POSTED')
-    notes=db.Column(db.Text,default='')
-    created_by=db.Column(db.Integer)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    branch=db.relationship('Branch',foreign_keys=[branch_id])
-    device=db.relationship('Device',foreign_keys=[device_id])
-    user=db.relationship('User',foreign_keys=[user_id])
-    consumable=db.relationship('Consumable',foreign_keys=[consumable_id])
-
-class Payment(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    method = db.Column(db.String(30), nullable=False)
-    reference = db.Column(db.String(120), default='')
-    status = db.Column(db.String(20), default='PAID')
-    created_by = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    order = db.relationship('Order')
+from infrastructure.models import Payment
 
 
-class PaymentRefund(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    payment_id=db.Column(db.Integer,db.ForeignKey('payment.id'),nullable=False,index=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    amount=db.Column(db.Float,nullable=False)
-    reason=db.Column(db.String(500),nullable=False,default='')
-    reference=db.Column(db.String(120),default='')
-    created_by=db.Column(db.Integer,nullable=False)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
-    payment=db.relationship('Payment',foreign_keys=[payment_id])
-    order=db.relationship('Order',foreign_keys=[order_id])
+from infrastructure.models import PaymentRefund
 
-class OrderConsumable(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
-    consumable_id = db.Column(db.Integer, db.ForeignKey('consumable.id'), nullable=False)
-    qty = db.Column(db.Float, nullable=False)
-    source = db.Column(db.String(30), default='DEFAULT')
-    created_by = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    order = db.relationship('Order')
-    consumable = db.relationship('Consumable')
+from infrastructure.models import OrderConsumable
 
 
-class NursingConsumableEntry(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    consumable_id=db.Column(db.Integer,db.ForeignKey('consumable.id'),nullable=False)
-    default_qty=db.Column(db.Float,default=0)
-    actual_qty=db.Column(db.Float,default=0)
-    confirmed=db.Column(db.Boolean,default=False)
-    confirmed_by=db.Column(db.Integer)
-    confirmed_at=db.Column(db.DateTime)
-    notes=db.Column(db.String(500),default='')
-    corrected_by=db.Column(db.Integer)
-    corrected_at=db.Column(db.DateTime)
-    correction_reason=db.Column(db.String(500),default='')
-    order=db.relationship('Order',foreign_keys=[order_id])
-    consumable=db.relationship('Consumable',foreign_keys=[consumable_id])
-    __table_args__=(db.UniqueConstraint('order_id','consumable_id',name='uq_nursing_order_cons'),)
+from infrastructure.models import NursingConsumableEntry
 
-class PortalAccessToken(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    token=db.Column(db.String(120),unique=True,nullable=False,index=True)
-    expires_at=db.Column(db.DateTime,nullable=False)
-    revoked=db.Column(db.Boolean,default=False)
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    order=db.relationship('Order',foreign_keys=[order_id])
+from infrastructure.models import PortalAccessToken
 
-class NotificationEvent(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
-    channel=db.Column(db.String(30),nullable=False)
-    recipient=db.Column(db.String(255),default='')
-    status=db.Column(db.String(30),default='PENDING')
-    attempts=db.Column(db.Integer,default=0)
-    last_error=db.Column(db.Text,default='')
-    created_at=db.Column(db.DateTime,default=datetime.utcnow)
-    sent_at=db.Column(db.DateTime)
-    order=db.relationship('Order',foreign_keys=[order_id])
-    __table_args__=(db.UniqueConstraint('order_id','channel','recipient',name='uq_final_notify_once'),)
+from infrastructure.models import NotificationEvent
 
-class Report(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), unique=True, nullable=False)
-    status = db.Column(db.String(20), default='UNREPORTED')
-    findings = db.Column(db.Text, default='')
-    impression = db.Column(db.Text, default='')
-    radiologist = db.Column(db.String(120), default='')
-    docx_path = db.Column(db.String(500))
-    pdf_path = db.Column(db.String(500))
-    source_path = db.Column(db.String(500))
-    source_type = db.Column(db.String(20), default='DOCX')
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    finalized_at = db.Column(db.DateTime)
-    verified_by = db.Column(db.String(160), default='')
-    verified_at = db.Column(db.DateTime)
-    second_verified_by = db.Column(db.String(160), default='')
-    second_verified_at = db.Column(db.DateTime)
-    finalized_by = db.Column(db.String(160), default='')
-    addendum_no = db.Column(db.Integer, default=0)
+from infrastructure.models import Report
 
-class ReportVersion(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    report_id = db.Column(db.Integer, db.ForeignKey('report.id'), nullable=False, index=True)
-    accession = db.Column(db.String(40), nullable=False, index=True)
-    version_no = db.Column(db.Integer, nullable=False)
-    action = db.Column(db.String(20), nullable=False)
-    findings = db.Column(db.Text, default='')
-    impression = db.Column(db.Text, default='')
-    radiologist = db.Column(db.String(120), default='')
-    docx_path = db.Column(db.String(500))
-    pdf_path = db.Column(db.String(500))
-    source_path = db.Column(db.String(500))
-    source_type = db.Column(db.String(20), default='DOCX')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    created_by = db.Column(db.Integer)
-    created_role = db.Column(db.String(60), default='')
-    change_summary = db.Column(db.String(500), default='')
-    sha256 = db.Column(db.String(64), default='')
-    file_size = db.Column(db.Integer, default=0)
-    signature = db.Column(db.Text)
-    signature_algorithm = db.Column(db.String(50))
-    signing_key_id = db.Column(db.Integer)
-    signed_by_user_id = db.Column(db.Integer)
-    signed_by_name = db.Column(db.String(180))
-    signed_at = db.Column(db.DateTime)
-    signature_status = db.Column(db.String(30))
-    signed_payload_sha256 = db.Column(db.String(64))
-    previous_version_sha256 = db.Column(db.String(64))
-
-    # Unified clinical report version safety metadata.
-    status = db.Column(db.String(30), default='DRAFT', nullable=False)
-    editor_type = db.Column(db.String(30), default='UNKNOWN', nullable=False)
-    base_version_no = db.Column(db.Integer)
-
-    # Idempotency token supplied per explicit clinical commit.
-    # A network retry must return the existing version rather
-    # than creating another clinical version.
-    commit_id = db.Column(db.String(36))
-    verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    verified_at = db.Column(db.DateTime)
-
-    # Finalization locks this VERIFIED version.
-    # Clinical content remains immutable.
-    finalized_by_user_id = db.Column(
-        db.Integer,
-        db.ForeignKey('user.id')
-    )
-    finalized_at = db.Column(db.DateTime)
-
-    __table_args__ = (
-        db.UniqueConstraint(
-            'report_id',
-            'version_no',
-            name='uq_report_version_report_version_no'
-        ),
-    )
+from infrastructure.models import ReportVersion
 
 
 # RB_REPORT_EDIT_LEASE_FRESH_BOOTSTRAP_MODEL_V1
 # Keep this SQLAlchemy metadata contract aligned with migration
 # 20260901_001_report_edit_lease.py. Fresh bootstrap uses db.create_all(),
 # so this table must be registered in application metadata as well.
-class ReportEditLease(db.Model):
-    __tablename__ = 'report_edit_lease'
-    __table_args__ = (
-        db.UniqueConstraint(
-            'order_id',
-            name='uq_report_edit_lease_order_id',
-        ),
-        db.Index(
-            'ix_report_edit_lease_expires_at',
-            'expires_at',
-        ),
-    )
-
-    id = db.Column(
-        db.Integer,
-        primary_key=True,
-    )
-    order_id = db.Column(
-        db.Integer,
-        db.ForeignKey('order.id'),
-        nullable=False,
-    )
-    report_id = db.Column(
-        db.Integer,
-        db.ForeignKey('report.id'),
-        nullable=False,
-    )
-    user_id = db.Column(
-        db.Integer,
-        db.ForeignKey('user.id'),
-        nullable=False,
-    )
-    editor_type = db.Column(
-        db.String(32),
-        nullable=False,
-    )
-    lease_token_hash = db.Column(
-        db.String(80),
-        nullable=False,
-    )
-    acquired_at = db.Column(
-        db.DateTime(timezone=True),
-        nullable=False,
-    )
-    renewed_at = db.Column(
-        db.DateTime(timezone=True),
-        nullable=False,
-    )
-    expires_at = db.Column(
-        db.DateTime(timezone=True),
-        nullable=False,
-    )
+from infrastructure.models import ReportEditLease
 
 
-class DoctorSigningKey(db.Model):
-    __tablename__ = 'doctor_signing_key'
-
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    key_id = db.Column(db.String(64), nullable=False, unique=True)
-    algorithm = db.Column(db.String(50), nullable=False, default='Ed25519')
-    public_key = db.Column(db.Text, nullable=False)
-    encrypted_private_key = db.Column(db.Text, nullable=False)
-    active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    revoked_at = db.Column(db.DateTime)
-    revoked_reason = db.Column(db.String(255))
-
-    user = db.relationship('User', foreign_keys=[user_id])
+from infrastructure.models import DoctorSigningKey
 
 
 
