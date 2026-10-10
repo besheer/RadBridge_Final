@@ -6,8 +6,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_backend_routes_and_models_are_present():
     source = (ROOT / "app.py").read_text(encoding="utf-8")
-    assert "class ReadinessSeriesAlias" in source
-    assert "class CaseExceptionResolutionEvent" in source
+    from infrastructure.models import ReadinessSeriesAlias, CaseExceptionResolutionEvent
+    assert ReadinessSeriesAlias.__table__.name == 'readiness_series_alias'
+    assert CaseExceptionResolutionEvent.__table__.name == 'case_exception_resolution_event'
     assert "def case_exception_resolver" in source
     assert "def case_exception_series_map" in source
     assert "def case_exception_history_add" in source
