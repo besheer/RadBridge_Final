@@ -1,0 +1,48 @@
+"""Run tests only against synthetic isolated databases and temporary file storage."""
+import argparse
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+from urllib.parse import urlsplit
+
+ROOT=Path(__file__).resolve().parents[1]
+
+def checked_pg_url(value):
+    url=urlsplit(value)
+    if url.scheme!="postgresql+psycopg2" or url.hostname not in {"localhost","127.0.0.1","postgres"} or url.path!="/radbridge_dev_test" or url.username!="radbridge_test":
+        raise ValueError("Only the dedicated local radbridge_dev_test database/user is allowed")
+    return value
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--postgres",action="store_true",help="Only isolated RT/readiness PostgreSQL contracts; may reset this synthetic test DB")
+    parser.add_argument("targets",nargs="*")
+    args=parser.parse_args()
+    if args.postgres and args.targets:parser.error("PostgreSQL mode has a fixed scoped suite")
+    with tempfile.TemporaryDirectory(prefix="radbridge-test-") as tmp:
+        tmp=Path(tmp)
+        env=dict(os.environ,SECRET_KEY="SYNTHETIC-TEST-ONLY",RADBRIDGE_BOOTSTRAP_ON_IMPORT="0",REPORT_DIR=str(tmp/"reports"),ATTACHMENT_DIR=str(tmp/"attachments"),BACKUP_DIR=str(tmp/"backups"),PYTHONUTF8="1")
+        if args.postgres:
+            try:dsn=checked_pg_url(os.environ.get("RADBRIDGE_TEST_DATABASE_URL",""))
+            except ValueError as e:parser.error(str(e))
+            source=tmp/"ris"
+            shutil.copytree(ROOT/"ris",source,ignore=shutil.ignore_patterns("__pycache__",".pytest_cache",".venv"))
+            fixture=source/"tests/conftest.py"
+            content=fixture.read_text(encoding="utf-8-sig")
+            first='os.environ["DATABASE_URL"] = "sqlite:///:memory:"'
+            second='SQLALCHEMY_DATABASE_URI="sqlite:///:memory:"'
+            if content.count(first)!=1 or content.count(second)!=1:raise RuntimeError("Fixture contract changed; review PG adaptation")
+            content=content.replace(first,'os.environ["DATABASE_URL"] = os.environ["RADBRIDGE_TEST_DATABASE_URL"]')
+            content=content.replace(second,'SQLALCHEMY_DATABASE_URI=os.environ["RADBRIDGE_TEST_DATABASE_URL"]')
+            fixture.write_text(content,encoding="utf-8")
+            env.update(DATABASE_URL=dsn,RADBRIDGE_TEST_DATABASE_URL=dsn)
+            targets=["tests/test_radiotherapy.py","tests/test_case_readiness_service.py","tests/test_domain_readiness.py"]
+        else:
+            source=ROOT/"ris";env["DATABASE_URL"]="sqlite:///:memory:"
+            targets=args.targets
+        return subprocess.call([sys.executable,"-m","pytest","-q","--disable-warnings","--tb=short",*targets],cwd=source,env=env)
+
+if __name__=="__main__":raise SystemExit(main())
