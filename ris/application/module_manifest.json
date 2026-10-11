@@ -75,7 +75,7 @@
   },
   {
     "legacy": "case_exception_resolution_service",
-    "canonical": "application.services.readiness.case_exception_resolution_service",
+    "canonical": "web.compatibility.case_exception_resolution_service",
     "original_sha256": "83a0935c1fdd98b700d1b149cedc3798a68cf8bf8d3b52e4e8fc296e3e1d49e0",
     "compatibility_runtime": false,
     "resources_from_ris_root": false

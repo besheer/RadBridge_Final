@@ -17,7 +17,9 @@ def test_phase9_routes_and_permissions_are_present():
 
 
 def test_phase9_service_is_atomic_and_evidence_grounded():
-    source = _read_source(ROOT / "case_exception_resolution_service.py", encoding="utf-8")
+    source = "\n".join((ROOT / path).read_text(encoding="utf-8") for path in (
+        "application/services/readiness/resolution_workflow.py",
+        "infrastructure/adapters/readiness/resolution_repository.py"))
     assert "SERIES_ALIAS_NOT_IN_PACS_EVIDENCE" in source
     assert "def atomic_deactivate_series_alias" in source
     assert "def atomic_deactivate_readiness_override" in source

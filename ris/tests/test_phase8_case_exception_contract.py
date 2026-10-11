@@ -19,7 +19,11 @@ def test_backend_routes_and_models_are_present():
 
 
 def test_service_owns_no_commit_and_protects_terminal_cases():
-    source = _read_source(ROOT / "case_exception_resolution_service.py", encoding="utf-8")
+    # Inspect the executable policy, workflow and persistence owners.
+    source = "\n".join((ROOT / path).read_text(encoding="utf-8") for path in (
+        "domain/readiness_resolution.py",
+        "application/services/readiness/resolution_workflow.py",
+        "infrastructure/adapters/readiness/resolution_repository.py"))
     assert ".commit(" not in source
     assert "with_for_update" in source
     assert "TERMINAL_CASE_RESOLUTION_LOCKED" in source

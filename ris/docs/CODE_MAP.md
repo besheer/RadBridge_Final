@@ -643,7 +643,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `backup_worker` | [workers.backup_worker](../workers/backup_worker.py) |
 | `bootstrap_db` | [workers.tools.bootstrap_db](../workers/tools/bootstrap_db.py) |
 | `case_assignment_service` | [web.compatibility.case_assignment_service](../web/compatibility/case_assignment_service.py) |
-| `case_exception_resolution_service` | [application.services.readiness.case_exception_resolution_service](../application/services/readiness/case_exception_resolution_service.py) |
+| `case_exception_resolution_service` | [web.compatibility.case_exception_resolution_service](../web/compatibility/case_exception_resolution_service.py) |
 | `case_operations_dashboard_service` | [application.services.readiness.case_operations_dashboard_service](../application/services/readiness/case_operations_dashboard_service.py) |
 | `clinical_scope` | [web.extensions.clinical_scope](../web/extensions/clinical_scope.py) |
 | `collection_policy` | [application.services.finance.collection_policy](../application/services/finance/collection_policy.py) |
@@ -727,6 +727,7 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.inventory.return_service](../application/services/inventory/return_service.py) | [infrastructure.adapters.inventory.return_repository](../infrastructure/adapters/inventory/return_repository.py) | [web.compatibility.inventory_safety](../web/compatibility/inventory_safety.py) |
 | [application.services.registration.visit_registration](../application/services/registration/visit_registration.py) | [infrastructure.adapters.registration.visit_repository](../infrastructure/adapters/registration/visit_repository.py) | [web.compatibility.registration_policy](../web/compatibility/registration_policy.py) |
 | [application.services.registration.insurance_readiness](../application/services/registration/insurance_readiness.py) | [infrastructure.adapters.registration.insurance_repository](../infrastructure/adapters/registration/insurance_repository.py) | [web.compatibility.insurance_policy](../web/compatibility/insurance_policy.py) |
+| [application.services.readiness.resolution_workflow](../application/services/readiness/resolution_workflow.py) | [infrastructure.adapters.readiness.resolution_repository](../infrastructure/adapters/readiness/resolution_repository.py) | [web.compatibility.case_exception_resolution_service](../web/compatibility/case_exception_resolution_service.py) |
 
 ## Key Worker / Module Files
 
