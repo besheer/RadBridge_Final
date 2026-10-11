@@ -88,10 +88,12 @@
   },
   {
     "legacy": "clinical_scope",
-    "canonical": "application.services.identity.clinical_scope",
+    "canonical": "web.extensions.clinical_scope",
     "original_sha256": "1cb86de12004a6d023894939272ee2db8160bfbd04ecf84200f1043576d3a8fe",
     "compatibility_runtime": false,
-    "resources_from_ris_root": false
+    "resources_from_ris_root": false,
+    "scope_service": "application.services.identity.scope_access",
+    "scope_domain": "domain.clinical.scope"
   },
   {
     "legacy": "collection_policy",

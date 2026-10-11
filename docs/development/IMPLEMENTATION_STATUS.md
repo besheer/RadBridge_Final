@@ -46,3 +46,5 @@ Candidate ordering and start-timeout selection now execute in the pure domain la
 Assignment mutations and offer acceptance now execute through explicit repository/policy ports (ADR 011). Legacy signatures are compatibility wrappers. Clinical qualification and grouped-visit callbacks still originate at the compatibility edge; this is not complete inversion of the whole assignment workflow. PostgreSQL CI adds an independent assignment suite.
 
 See ADRs 001–011 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+
+Clinical scope validation/access/persistence is separated in ADR 012. Request and ORM guards remain web responsibilities, with compatibility aliases preserving registration and patch state. The qualification evidence service uses an explicit repository; broader user lifecycle and other use-case dependencies remain unfinished. CI adds a separate PostgreSQL scope suite. The assignment transaction commit 1ec0d5cc6054af50a8e82e6acb7cd6a6281454a3 passed all four CI jobs, including both PostgreSQL suites and 1,836 SQLite tests (three skipped).
