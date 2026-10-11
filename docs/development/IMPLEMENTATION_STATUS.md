@@ -11,9 +11,9 @@ Clinical release metadata remains 5.46.9. Architecture work is a development ref
 | Patient registration, scheduling, insurance | `domain.registration`, `application.services.registration`, registration components/routes | Narrow database/configuration interfaces; external RIS connectors are separate integrations |
 | Technician, nursing, procedures, radiotherapy | `domain.clinical`, `application.services.clinical`, clinical components/routes | Explicit use cases and transaction ownership; treatment-device integration not supplied |
 | Readiness and exceptions | `domain.readiness`, `domain.readiness_checks`, `application.services.readiness` | Separate evidence acquisition from DB-backed orchestration |
-| Assignment and coordinator work | `domain.assignment`, explicit query/transaction services and repositories | Policy/count/capacity, ranking/deadlines, single-case mutations and offer acceptance are separated; qualification evidence and grouped-visit orchestration still need narrow dependencies |
+| Assignment and coordinator work | `domain.assignment`, explicit query/transaction/visit services and repositories | Policy/count/capacity, ranking/deadlines, single-case and grouped-visit mutations and offer acceptance are separated; coordinator preview, distribution evidence and workers still need narrow dependencies |
 | PACS matching, identity, viewers | `domain.imaging`, `application.services.imaging`, `infrastructure.adapters.imaging`, imaging routes and viewer extension | Provisioned synthetic PACS transport/failure acceptance |
-| Reporting, revisions, editor, exports | `domain.reporting`, `application.services.reporting`, `infrastructure.adapters.reporting`, reporting routes/extensions | Editor callback fault acceptance and explicit storage/transaction interfaces |
+| Reporting, revisions, editor, exports | `domain.reporting`, explicit report commit service/repository/artifact store, reporting routes/extensions | Commit ports are separated; revisions, finalization, callbacks and exports still need use-case dependencies and external fault acceptance |
 | Payments, collection, settlements | `application.services.finance`, finance components/routes | Narrow unit-of-work and settlement dependencies; retain existing exact-once contracts |
 | Inventory and consumables | `application.services.inventory`, inventory components/routes | Narrow stock repository interfaces; no stock data migration |
 | Users, clinical scope, security | `application.services.identity`, identity components/routes, security extension | Keep role/branch checks authoritative; host collection/VPN services remain external |
@@ -45,7 +45,9 @@ Candidate ordering and start-timeout selection now execute in the pure domain la
 
 Assignment mutations and offer acceptance now execute through explicit repository/policy ports (ADR 011). Legacy signatures are compatibility wrappers. Clinical qualification and grouped-visit callbacks still originate at the compatibility edge; this is not complete inversion of the whole assignment workflow. PostgreSQL CI adds an independent assignment suite.
 
-See ADRs 001–011 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+See ADRs 001–014 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+
+Report saving now executes through explicit persistence and immutable artifact ports (ADR 014), with independent dependency, retry, FINAL, stale-base and failed-flush tests. The grouped-visit commit 688bcd4f36476d79f9da01745bf56e20c7bf1404 passed all five CI jobs. The new reporting commit requires its own full checks; broader editor/revision and post-return transaction/crash acceptance remain unfinished.
 
 Clinical scope validation/access/persistence is separated in ADR 012. Request and ORM guards remain web responsibilities, with compatibility aliases preserving registration and patch state. The qualification evidence service uses an explicit repository; broader user lifecycle and other use-case dependencies remain unfinished. CI adds a separate PostgreSQL scope suite. The assignment transaction commit 1ec0d5cc6054af50a8e82e6acb7cd6a6281454a3 passed all four CI jobs, including both PostgreSQL suites and 1,836 SQLite tests (three skipped).
 

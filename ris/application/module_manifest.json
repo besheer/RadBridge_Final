@@ -399,7 +399,7 @@
   },
   {
     "legacy": "report_transaction_writer",
-    "canonical": "application.services.reporting.report_transaction_writer",
+    "canonical": "web.compatibility.report_transaction_writer",
     "original_sha256": "f05a90f6401c4da9f89cd626b07cedd405cb845762ab1914735aae2525669e04",
     "compatibility_runtime": false,
     "resources_from_ris_root": false
