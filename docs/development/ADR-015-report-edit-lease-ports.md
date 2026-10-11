@@ -11,3 +11,5 @@ Validation: 78 focused tests passed locally and one PostgreSQL-only test was ski
 The first PostgreSQL reporting run exposed an existing synthetic revision fixture whose branch code exceeded VARCHAR(20). The fixture now uses a shorter random suffix; no schema or clinical validation was relaxed. The prior report commit passed SQLite, Docker and all three other PostgreSQL suites, but its reporting job failed and must be rerun on this commit.
 
 No production change is included. Revision lifecycle/editor callback dependencies and broader transaction/crash acceptance remain separate unfinished work.
+
+Follow-up PostgreSQL validation caught SQL statements mapped to incorrect adapter operations during extraction. The adapter now maps order-owner read, report lock, lease lock and upsert to their original statements and parameters. The real PostgreSQL acquisition/renewal/release test remains mandatory; fake service ports alone did not detect this adapter defect.

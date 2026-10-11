@@ -11,16 +11,16 @@ class SqlAlchemyEditLeaseRepository:
 
     def lock_order_owner(self, order_id):
         self.session.execute(text('SELECT id FROM "order" WHERE id = :id FOR UPDATE'), {'id': int(order_id)})
-        return self.session.execute(text('\n            SELECT id\n            FROM report\n            WHERE id = :report_id\n            FOR UPDATE\n        '), {'id': int(order_id)}).scalar()
+        return self.session.execute(text('SELECT assigned_doctor_id FROM "order" WHERE id = :id'), {'id': int(order_id)}).scalar()
 
     def lock_report(self, report_id):
-        self.session.execute(text('\n            INSERT INTO report_edit_lease (\n                order_id,\n                report_id,\n                user_id,\n                editor_type,\n                lease_token_hash,\n                acquired_at,\n                renewed_at,\n                expires_at\n            )\n            VALUES (\n                :order_id,\n                :report_id,\n                :user_id,\n                :editor_type,\n                :lease_token_hash,\n                :now,\n                :now,\n                :expires\n            )\n            ON CONFLICT (order_id)\n            DO UPDATE SET\n                report_id = EXCLUDED.report_id,\n                user_id = EXCLUDED.user_id,\n                editor_type = EXCLUDED.editor_type,\n                lease_token_hash = EXCLUDED.lease_token_hash,\n                renewed_at = EXCLUDED.renewed_at,\n                expires_at = EXCLUDED.expires_at\n        '), {'report_id': int(report_id)})
+        self.session.execute(text('\n            SELECT id\n            FROM report\n            WHERE id = :report_id\n            FOR UPDATE\n        '), {'report_id': int(report_id)})
 
     def read_locked_lease(self, order_id):
-        return self.session.execute(text('SELECT assigned_doctor_id FROM "order" WHERE id = :id'), {'order_id': int(order_id)}).mappings().first()
+        return self.session.execute(text('\n            SELECT\n                user_id,\n                lease_token_hash,\n                expires_at\n            FROM report_edit_lease\n            WHERE order_id = :order_id\n            FOR UPDATE\n        '), {'order_id': int(order_id)}).mappings().first()
 
     def upsert(self, values):
-        self.session.execute(text('\n            SELECT\n                user_id,\n                lease_token_hash,\n                expires_at\n            FROM report_edit_lease\n            WHERE order_id = :order_id\n            FOR UPDATE\n        '), values)
+        self.session.execute(text('\n            INSERT INTO report_edit_lease (\n                order_id,\n                report_id,\n                user_id,\n                editor_type,\n                lease_token_hash,\n                acquired_at,\n                renewed_at,\n                expires_at\n            )\n            VALUES (\n                :order_id,\n                :report_id,\n                :user_id,\n                :editor_type,\n                :lease_token_hash,\n                :now,\n                :now,\n                :expires\n            )\n            ON CONFLICT (order_id)\n            DO UPDATE SET\n                report_id = EXCLUDED.report_id,\n                user_id = EXCLUDED.user_id,\n                editor_type = EXCLUDED.editor_type,\n                lease_token_hash = EXCLUDED.lease_token_hash,\n                renewed_at = EXCLUDED.renewed_at,\n                expires_at = EXCLUDED.expires_at\n        '), values)
 
     def release(self, order_id, user_id=None, token_hash=None):
         sql = 'DELETE FROM report_edit_lease WHERE order_id = :order_id'
