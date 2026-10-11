@@ -1,6 +1,7 @@
 """Branch-scoped closing and net receipt/refund movements; no automatic grants."""
 from datetime import date, datetime, timedelta
 from domain.finance.closing_policy import money
+from application.services.finance.closing_workflow import save_closing as _save_closing
 from application.services.finance import closing_totals as _closing_totals
 from infrastructure.adapters.finance.closing_repository import SqlAlchemyClosingRepository
 import json
@@ -74,29 +75,23 @@ def closing_page():
         except ValueError as exc:
             flash(str(exc), 'danger')
             return redirect(url_for('daily_closing', branch_id=branch_id, date=closing_date.isoformat()))
-        fields = ('status', 'expected_cash', 'expected_card', 'expected_other',
-                  'counted_cash', 'counted_card', 'counted_other', 'difference', 'notes')
-        before = {key: getattr(row, key) for key in fields} if row else None
-        if row is None:
-            row = m.DailyClosing(branch_id=branch_id, closing_date=closing_date, cashier_user_id=user.id)
-            m.db.session.add(row)
-        for key in totals:
-            setattr(row, 'expected_' + key.lower(), totals[key])
-            setattr(row, 'counted_' + key.lower(), float(counted[key]))
-        row.difference = float(sum(counted.values()) - sum(money(v) for v in totals.values()))
-        row.notes = (values.get('notes') or '').strip()
-        row.status = 'CLOSED' if action == 'CLOSE' else 'OPEN'
-        if action == 'CLOSE':
-            row.closed_by = user.id
-            row.closed_at = datetime.utcnow()
-        m.db.session.flush()
-        after = {key: getattr(row, key) for key in fields}
-        m.audit('DAILY_CLOSING_' + action, 'daily_closing', row.id,
-                json.dumps({'branch_id': branch_id, 'date': closing_date.isoformat(),
-                            'before': before, 'after': after}, ensure_ascii=False))
+        row = _save_closing(repository=SqlAlchemyClosingRepository(m.db.session,m.Order,m.Payment,
+            m.PaymentRefund,m.Branch,m.DailyClosing),authorize=lambda branch: _authorize_save(m,branch),
+            audit=m.audit,clock=datetime.utcnow,branch_id=branch_id,closing_date=closing_date,
+            actor_user_id=user.id,action=action,counted=counted,notes=values.get('notes'))
         m.db.session.commit()
         flash('Closing saved. / تم حفظ التقفيل.', 'success')
         return redirect(url_for('daily_closing', branch_id=branch_id, date=closing_date.isoformat()))
     return m.render_template('daily_closing.html', branches=branches.order_by(m.Branch.name).all(),
         branch_id=branch_id, closing_date=closing_date, totals=totals, row=row,
         can_edit=can_edit and not closed, closed=closed)
+
+
+def _authorize_save(m, branch_id):
+    user=m.current_user()
+    if not user or not user.active or not m.has_perm('cashier.workstation'):
+        abort(403)
+    role=user.role
+    global_access=bool(role and (role.code=='SUPER_ADMIN' or '*' in role.permissions()))
+    if not global_access and (not user.branch_id or user.branch_id!=branch_id):
+        abort(403)

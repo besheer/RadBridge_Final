@@ -733,6 +733,7 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.readiness.operations_snapshot](../application/services/readiness/operations_snapshot.py) | [infrastructure.adapters.readiness.snapshot_repository](../infrastructure/adapters/readiness/snapshot_repository.py) | [web.compatibility.case_operations_dashboard_service](../web/compatibility/case_operations_dashboard_service.py) |
 | [application.services.finance.collection_access](../application/services/finance/collection_access.py) | [infrastructure.adapters.finance.collection_repository](../infrastructure/adapters/finance/collection_repository.py) | [web.compatibility.collection_policy](../web/compatibility/collection_policy.py) |
 | [application.services.finance.closing_totals](../application/services/finance/closing_totals.py) | [infrastructure.adapters.finance.closing_repository](../infrastructure/adapters/finance/closing_repository.py) | [web.extensions.daily_closing_policy](../web/extensions/daily_closing_policy.py) |
+| [application.services.finance.closing_workflow](../application/services/finance/closing_workflow.py) | [infrastructure.adapters.finance.closing_repository](../infrastructure/adapters/finance/closing_repository.py) | [web.extensions.daily_closing_policy](../web/extensions/daily_closing_policy.py) |
 
 ## Key Worker / Module Files
 

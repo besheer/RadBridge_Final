@@ -85,6 +85,11 @@
       "module": "application.services.finance.closing_totals",
       "repository": "infrastructure.adapters.finance.closing_repository",
       "composition": "web.extensions.daily_closing_policy"
+    },
+    {
+      "module": "application.services.finance.closing_workflow",
+      "repository": "infrastructure.adapters.finance.closing_repository",
+      "composition": "web.extensions.daily_closing_policy"
     }
   ]
 }
