@@ -1,4 +1,4 @@
-"""Compatibility entry point for application.services.finance.collection_policy."""
+"""Compatibility entry point for web.compatibility.collection_policy."""
 import importlib as _importlib
 import sys as _sys
-_sys.modules[__name__] = _importlib.import_module('application.services.finance.collection_policy')
+_sys.modules[__name__] = _importlib.import_module('web.compatibility.collection_policy')

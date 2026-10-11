@@ -98,7 +98,7 @@
   },
   {
     "legacy": "collection_policy",
-    "canonical": "application.services.finance.collection_policy",
+    "canonical": "web.compatibility.collection_policy",
     "original_sha256": "09a8787aa11f2f42e1b07ea312a1f74f4d9d3864b44d48fda9ebc077f36545a4",
     "compatibility_runtime": true,
     "resources_from_ris_root": false
@@ -112,7 +112,7 @@
   },
   {
     "legacy": "daily_closing_policy",
-    "canonical": "application.services.finance.daily_closing_policy",
+    "canonical": "web.extensions.daily_closing_policy",
     "original_sha256": "ee700647779210f9abdf08e7dc0339c27d30d0209114f65e1a92e21097b32ff7",
     "compatibility_runtime": true,
     "resources_from_ris_root": false

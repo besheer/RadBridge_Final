@@ -54,7 +54,7 @@ def main():
                          "tests/test_report_commit_runtime.py", "tests/test_report_revisions.py",
                          "tests/test_report_identity_renewal.py", "tests/test_onlyoffice_callback_internal_download_url.py"]
             elif args.postgres_suite == "finance":
-                targets=["tests/test_settlement_workflow_dependencies.py", "tests/test_replacement_settlements.py"]
+                targets=["tests/test_settlement_workflow_dependencies.py", "tests/test_replacement_settlements.py", "tests/test_finance_evidence_dependencies.py", "tests/test_daily_closing_governance.py"]
             elif args.postgres_suite == "inventory":
                 targets=["tests/test_inventory_return_dependencies.py", "tests/test_inventory_safety.py"]
             elif args.postgres_suite == "registration":
@@ -66,5 +66,3 @@ def main():
         return subprocess.call([sys.executable,"-m","pytest","-q","--disable-warnings","--tb=short",*targets],cwd=source,env=env)
 
 if __name__=="__main__":raise SystemExit(main())
-
-

@@ -646,9 +646,9 @@ Additional extension routes and services are mapped by `application/module_manif
 | `case_exception_resolution_service` | [web.compatibility.case_exception_resolution_service](../web/compatibility/case_exception_resolution_service.py) |
 | `case_operations_dashboard_service` | [web.compatibility.case_operations_dashboard_service](../web/compatibility/case_operations_dashboard_service.py) |
 | `clinical_scope` | [web.extensions.clinical_scope](../web/extensions/clinical_scope.py) |
-| `collection_policy` | [application.services.finance.collection_policy](../application/services/finance/collection_policy.py) |
+| `collection_policy` | [web.compatibility.collection_policy](../web/compatibility/collection_policy.py) |
 | `coordinator_bulk_assignment` | [application.services.assignment.coordinator_bulk_assignment](../application/services/assignment/coordinator_bulk_assignment.py) |
-| `daily_closing_policy` | [application.services.finance.daily_closing_policy](../application/services/finance/daily_closing_policy.py) |
+| `daily_closing_policy` | [web.extensions.daily_closing_policy](../web/extensions/daily_closing_policy.py) |
 | `delivery_policy` | [application.services.finance.delivery_policy](../application/services/finance/delivery_policy.py) |
 | `dicom_connections` | [infrastructure.adapters.imaging.dicom_connections](../infrastructure/adapters/imaging/dicom_connections.py) |
 | `dicom_echo_worker` | [workers.dicom_echo_worker](../workers/dicom_echo_worker.py) |
@@ -731,6 +731,8 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.readiness.order_search](../application/services/readiness/order_search.py) | [infrastructure.adapters.readiness.search_repository](../infrastructure/adapters/readiness/search_repository.py) | [web.compatibility.case_exception_resolution_service](../web/compatibility/case_exception_resolution_service.py) |
 | [application.services.readiness.scheduling](../application/services/readiness/scheduling.py) | [infrastructure.adapters.readiness.schedule_repository](../infrastructure/adapters/readiness/schedule_repository.py) | [web.extensions.readiness_operations](../web/extensions/readiness_operations.py) |
 | [application.services.readiness.operations_snapshot](../application/services/readiness/operations_snapshot.py) | [infrastructure.adapters.readiness.snapshot_repository](../infrastructure/adapters/readiness/snapshot_repository.py) | [web.compatibility.case_operations_dashboard_service](../web/compatibility/case_operations_dashboard_service.py) |
+| [application.services.finance.collection_access](../application/services/finance/collection_access.py) | [infrastructure.adapters.finance.collection_repository](../infrastructure/adapters/finance/collection_repository.py) | [web.compatibility.collection_policy](../web/compatibility/collection_policy.py) |
+| [application.services.finance.closing_totals](../application/services/finance/closing_totals.py) | [infrastructure.adapters.finance.closing_repository](../infrastructure/adapters/finance/closing_repository.py) | [web.extensions.daily_closing_policy](../web/extensions/daily_closing_policy.py) |
 
 ## Key Worker / Module Files
 

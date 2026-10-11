@@ -75,6 +75,16 @@
       "module": "application.services.readiness.operations_snapshot",
       "repository": "infrastructure.adapters.readiness.snapshot_repository",
       "composition": "web.compatibility.case_operations_dashboard_service"
+    },
+    {
+      "module": "application.services.finance.collection_access",
+      "repository": "infrastructure.adapters.finance.collection_repository",
+      "composition": "web.compatibility.collection_policy"
+    },
+    {
+      "module": "application.services.finance.closing_totals",
+      "repository": "infrastructure.adapters.finance.closing_repository",
+      "composition": "web.extensions.daily_closing_policy"
     }
   ]
 }
