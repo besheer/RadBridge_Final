@@ -1,0 +1,37 @@
+# Architecture implementation and remaining gates
+
+Date: 2026-10-11. Scope: development source only; no production writes or deployment.
+
+Clinical release metadata remains 5.46.9. Architecture work is a development refactor, not a released clinical version. Canonical ownership is implemented throughout the reviewed RIS source, but clean dependency inversion and external-service acceptance are not complete.
+
+## Owned areas
+
+| Area | Executable ownership | Remaining dependency work |
+|---|---|---|
+| Patient registration, scheduling, insurance | `domain.registration`, `application.services.registration`, registration components/routes | Narrow database/configuration interfaces; external RIS connectors are separate integrations |
+| Technician, nursing, procedures, radiotherapy | `domain.clinical`, `application.services.clinical`, clinical components/routes | Explicit use cases and transaction ownership; treatment-device integration not supplied |
+| Readiness and exceptions | `domain.readiness`, `domain.readiness_checks`, `application.services.readiness` | Separate evidence acquisition from DB-backed orchestration |
+| Assignment and coordinator work | `domain.assignment`, `application.services.assignment` | Replace live legacy projections with narrow assignment dependencies |
+| PACS matching, identity, viewers | `domain.imaging`, `application.services.imaging`, `infrastructure.adapters.imaging`, imaging routes and viewer extension | Provisioned synthetic PACS transport/failure acceptance |
+| Reporting, revisions, editor, exports | `domain.reporting`, `application.services.reporting`, `infrastructure.adapters.reporting`, reporting routes/extensions | Editor callback fault acceptance and explicit storage/transaction interfaces |
+| Payments, collection, settlements | `application.services.finance`, finance components/routes | Narrow unit-of-work and settlement dependencies; retain existing exact-once contracts |
+| Inventory and consumables | `application.services.inventory`, inventory components/routes | Narrow stock repository interfaces; no stock data migration |
+| Users, clinical scope, security | `application.services.identity`, identity components/routes, security extension | Keep role/branch checks authoritative; host collection/VPN services remain external |
+| Communications, AI and telephony | communication components/routes, communication adapter and extensions | External-provider configuration and reviewed integration testing |
+| Operations, storage, administration | operations components/routes and extensions | Operational adapter separation and provisioned recovery tests |
+| Data, migrations, workers, resources | `infrastructure.models`, `infrastructure.schema`, `workers`, `infrastructure.resources` | Explicit worker lifecycle and production upgrade acceptance |
+
+`application/component_manifest.json` maps all 949 extracted functions and declared dependencies. `application/module_manifest.json` maps all 76 migrated modules. Compatibility files at the RIS root point to the real modules, not separate implementations.
+
+## Proven invariants
+
+Before/after captures compare the same 160 database tables and 546 route registrations, including column types/defaults, constraints, indexes, URL methods and endpoints. No migration or data transformation is added. Tests cover all original handler source hashes and facade object identity. Runtime suites retain authorization, branch scope, receiving assignment barriers, immutable reports, reconciliation, inventory and settlement assertions. Matching structure alone is insufficient to approve deployment.
+
+## Explicit unfinished gates
+
+1. Replace `Bindings` and `legacy_runtime` with narrow use-case dependencies. Existing m-based extension interfaces remain compatibility APIs, not a completed dependency inversion.
+2. Build a fully composed, isolated clinical application factory; only the web shell and ORM extension support independent instances today. Keep one clinical application per process.
+3. Run provisioned synthetic ONLYOFFICE/PACS/viewer failure scenarios: callback delay/loss, reassignment, partial transfer, queue restart and destination storage confirmation. The local Compose stack contains RIS/PostgreSQL only.
+4. Run role-based browser UAT and review the architecture PR. Production upgrade, rollback rehearsal, merge and deployment require a separate release decision.
+
+See ADRs 001–006 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.

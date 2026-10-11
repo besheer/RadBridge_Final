@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from web.source_contract import get_source as _get_source
 
 def test_v525_routes_and_golden_regression():
@@ -24,9 +25,9 @@ def test_v525_routes_and_golden_regression():
 def test_command_bar_and_dictation_templates():
     from pathlib import Path
     root=Path(__file__).parents[1]/"templates"
-    actions=(root/"order_actions.html").read_text()
+    actions=_read_source(root/"order_actions.html")
     for x in ["Receipt","Sticker","Print","Documents","PACS / AI","Report"]:
         assert x in actions
-    report=(root/"report_editor.html").read_text()
+    report=_read_source(root/"report_editor.html")
     assert "radiology-dictation-controls" in report
     assert "SpeechRecognition" in report

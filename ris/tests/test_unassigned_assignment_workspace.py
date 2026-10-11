@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from web.source_contract import get_source as _get_source
 import inspect
 from datetime import datetime, timedelta
@@ -98,8 +99,8 @@ def test_manual_and_auto_assignment_share_readiness_gate(app_ctx):
 
 
 def test_unassigned_workspace_is_compact_responsive_and_theme_safe():
-    template = (ROOT / "templates" / "unassigned_cases.html").read_text(encoding="utf-8")
-    css = (ROOT / "static" / "app.css").read_text(encoding="utf-8")
+    template = _read_source(ROOT / "templates" / "unassigned_cases.html", encoding="utf-8")
+    css = _read_source(ROOT / "static" / "app.css", encoding="utf-8")
     for marker in (
         'name="branch_id"', 'name="specialty"', 'name="modality"',
         'name="priority"', 'name="readiness"', 'name="sla"',

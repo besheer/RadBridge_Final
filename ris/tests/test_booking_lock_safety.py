@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from web.source_contract import get_source as _get_source
 from datetime import datetime, timedelta
 import inspect
@@ -137,10 +138,8 @@ def test_atomic_booking_lock_contract(app_ctx):
 
 def test_booking_control_template_has_safe_management_contract():
     from pathlib import Path
-    template = (
-        Path(__file__).resolve().parents[1]
-        / "templates" / "admin_booking_control.html"
-    ).read_text(encoding="utf-8")
+    template = _read_source(Path(__file__).resolve().parents[1]
+        / "templates" / "admin_booking_control.html", encoding="utf-8")
     for expected in (
         'name="block_type"', 'name="start_at"', 'name="end_at"',
         'name="reason_text"', "Create Block",

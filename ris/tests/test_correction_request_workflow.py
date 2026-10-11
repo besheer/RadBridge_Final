@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from web.source_contract import get_source as _get_source
 from werkzeug.security import generate_password_hash
 
@@ -162,7 +163,7 @@ def test_approved_request_cannot_be_marked_complete_manually(app_ctx):
 
 def test_dashboard_contains_correction_entry():
     from pathlib import Path
-    text=Path('templates/dashboard.html').read_text()
+    text=_read_source(Path('templates/dashboard.html'))
     assert "url_for('correction_center')" in text
     assert 'Correction & Cancellation' in text
 
@@ -1507,9 +1508,7 @@ def test_phase2a_execution_template_has_no_destructive_action(
         m.app.root_path
     ) / 'templates' / 'correction_execution_queue.html'
 
-    text=path.read_text(
-        encoding='utf-8'
-    )
+    text=_read_source(path, encoding='utf-8')
 
     assert 'Prepare Execution Ledger' in text
     assert '>Claim<' not in text or 'Claim' in text

@@ -86,11 +86,16 @@ def test_failed_registration_commit_cleans_saved_attachments():
     assert 'os.remove(saved_path)' in route
 
 
-def test_session_cookie_hardening_and_origin_guard_present():
-    assert "SESSION_COOKIE_HTTPONLY" in APP
-    assert "SESSION_COOKIE_SAMESITE" in APP
-    assert "SESSION_COOKIE_SECURE" in APP
-    assert 'def _same_origin_unsafe_request_guard()' in APP
+def test_session_cookie_hardening_and_origin_guard_present(app_ctx):
+    import os
+    from infrastructure.settings import WebSettings
+
+    expected = WebSettings.from_environment(os.environ).flask_config()
+    assert app_ctx.app.config['SESSION_COOKIE_HTTPONLY'] is True
+    for key in ('SESSION_COOKIE_SAMESITE', 'SESSION_COOKIE_SECURE'):
+        assert app_ctx.app.config[key] == expected[key]
+    assert any(handler.__name__ == '_same_origin_unsafe_request_guard'
+               for handler in app_ctx.app.before_request_funcs[None])
 
 
 def test_reporting_agent_v2_contract_replaces_legacy_package_gate():

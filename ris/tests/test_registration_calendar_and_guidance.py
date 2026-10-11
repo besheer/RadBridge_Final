@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from web.source_contract import get_source as _get_source
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -148,7 +149,7 @@ def test_appointment_order_model_and_migration_contract(app_ctx):
     assert hasattr(m.Appointment, "order_id")
     assert hasattr(m.Order, "appointment")
     migration_path = ROOT / "migrations" / "versions" / "20260908_002_appointment_order_link.py"
-    source = migration_path.read_text(encoding="utf-8")
+    source = _read_source(migration_path, encoding="utf-8")
     assert 'down_revision = "20260908_001"' in source
     assert "uq_appointment_order_id" in source
     assert "fk_appointment_order_id_order" in source
@@ -175,18 +176,18 @@ def test_calendar_and_unified_registration_source_contract(app_ctx):
     unified_source = _get_source(m.schedule_unified_submit)
     assert "acquire_booking_slot_lock" in unified_source
     assert "order_id=o.id" in unified_source
-    template = (ROOT / "templates" / "schedule_calendar.html").read_text(encoding="utf-8")
+    template = _read_source(ROOT / "templates" / "schedule_calendar.html", encoding="utf-8")
     assert "calendar_cells" in template
     assert "rb-occupied-tail" in template
     assert "order_detail" in template
 
 
 def test_action_guidance_is_top_layer_responsive_and_theme_safe():
-    macro = (ROOT / "templates" / "_action_guidance.html").read_text(encoding="utf-8")
-    css = (ROOT / "static" / "app.css").read_text(encoding="utf-8")
-    javascript = (ROOT / "static" / "action-guidance.js").read_text(encoding="utf-8")
-    base = (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
-    page = (ROOT / "templates" / "unassigned_cases.html").read_text(encoding="utf-8")
+    macro = _read_source(ROOT / "templates" / "_action_guidance.html", encoding="utf-8")
+    css = _read_source(ROOT / "static" / "app.css", encoding="utf-8")
+    javascript = _read_source(ROOT / "static" / "action-guidance.js", encoding="utf-8")
+    base = _read_source(ROOT / "templates" / "base.html", encoding="utf-8")
+    page = _read_source(ROOT / "templates" / "unassigned_cases.html", encoding="utf-8")
     assert "popover" in macro
     assert "<details" not in macro
     assert "popovertarget" in javascript

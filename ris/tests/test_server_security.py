@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 import base64
 import json
 import sqlite3
@@ -135,7 +136,7 @@ def test_vpn_inactive_target_and_stale_controller_rejected(security_env):
     # Actor itself is inactive: denied before any key is generated.
     assert post(client,token,'/admin/security/vpn/create',user_id=str(u.id),label='Synthetic').status_code==302
     u.active=True;m.db.session.commit()
-    data=json.loads((path/'status.json').read_text());data['updated_at']=(datetime.utcnow()-timedelta(minutes=10)).isoformat();(path/'status.json').write_text(json.dumps(data))
+    data=json.loads(_read_source(path/'status.json'));data['updated_at']=(datetime.utcnow()-timedelta(minutes=10)).isoformat();(path/'status.json').write_text(json.dumps(data))
     assert post(client,token,'/admin/security/vpn/create',user_id=str(u.id),label='Synthetic').status_code==503
 
 def test_deactivating_user_withdraws_peer(security_env):

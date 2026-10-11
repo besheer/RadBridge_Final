@@ -24,7 +24,8 @@ def main():
     if args.postgres and args.targets:parser.error("PostgreSQL mode has a fixed scoped suite")
     with tempfile.TemporaryDirectory(prefix="radbridge-test-") as tmp:
         tmp=Path(tmp)
-        env=dict(os.environ,SECRET_KEY="SYNTHETIC-TEST-ONLY",RADBRIDGE_BOOTSTRAP_ON_IMPORT="0",REPORT_DIR=str(tmp/"reports"),ATTACHMENT_DIR=str(tmp/"attachments"),BACKUP_DIR=str(tmp/"backups"),PYTHONUTF8="1")
+        env=dict(os.environ,SECRET_KEY="SYNTHETIC-TEST-ONLY",RADBRIDGE_BOOTSTRAP_ON_IMPORT="0",REPORT_DIR=str(tmp/"reports"),ATTACHMENT_DIR=str(tmp/"attachments"),BACKUP_DIR=str(tmp/"backups"),PYTHONUTF8="1",
+                 ORTHANC_URL="http://127.0.0.1:9",PACS_ORTHANC_URL="http://127.0.0.1:9")
         if args.postgres:
             try:dsn=checked_pg_url(os.environ.get("RADBRIDGE_TEST_DATABASE_URL",""))
             except ValueError as e:parser.error(str(e))

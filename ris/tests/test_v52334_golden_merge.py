@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from web.source_contract import get_source as _get_source
 
 def test_generated_attachment_names():
@@ -23,7 +24,7 @@ def test_both_registration_styles_keep_multi_attachment():
     from pathlib import Path
     root=Path(__file__).parents[1]/"templates"
     for name in ("order_form.html","order_form_classic.html"):
-        s=(root/name).read_text()
+        s=_read_source(root/name)
         assert "addAttachmentRow" in s
         assert "attachment_files" in s
         assert "attachment_categories" in s

@@ -23,7 +23,7 @@ def violations():
             for name in imports:
                 if name.split(".")[0] in {"app", "web", "application", "requests", "flask"}:
                     issues.append(f"{path.relative_to(ROOT)}:{node.lineno}: schema imports {name}")
-    for package in ("application/components", "web/routes"):
+    for package in ("application/components", "application/services", "web/routes", "web/extensions", "infrastructure/adapters"):
         for path in sorted((ROOT / package).rglob("*.py")):
             tree = ast.parse(path.read_text(encoding="utf-8-sig"))
             for node in ast.walk(tree):

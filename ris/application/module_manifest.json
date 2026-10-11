@@ -1,0 +1,534 @@
+[
+  {
+    "legacy": "admin_control_center",
+    "canonical": "web.extensions.admin_control_center",
+    "original_sha256": "f77f5d58016a311c74eaa8738e24a4cf0df34c8e5678c4a06618befc27919074",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "analytics_reference_routes",
+    "canonical": "web.extensions.analytics_reference_routes",
+    "original_sha256": "05d489e7ad4943e877eb5bb61734d8c4217a89b9acdc27d3d587a42545cd3c45",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "assignment_deadline_worker",
+    "canonical": "workers.assignment_deadline_worker",
+    "original_sha256": "92fbc25395470cbd8e0a195b0a34bea3642d9ef6c00ee1ed0763fb5df8a38347",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "assignment_distribution",
+    "canonical": "application.services.assignment.assignment_distribution",
+    "original_sha256": "8182113a8689eb8165c3bdbe79d0bcd18a798e176c5f231b7cd57058d9189bda",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "assignment_maintenance",
+    "canonical": "workers.assignment_maintenance",
+    "original_sha256": "a9c68ebbdfa21b409646515d3117ab5e97e155e360b97ab75aed1b9387ed8795",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": true
+  },
+  {
+    "legacy": "assignment_monitor",
+    "canonical": "application.services.assignment.assignment_monitor",
+    "original_sha256": "8b287a5b74a4baa3672750c1d779d6f12c457feb97aa5dc5f34d11bc11a6df68",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "assignment_visit_grouping",
+    "canonical": "application.services.assignment.assignment_visit_grouping",
+    "original_sha256": "b07120014084ed598efc164c1d7656e38d731c36ef16e06d7aa3d8ea9b56ac4c",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "backup_worker",
+    "canonical": "workers.backup_worker",
+    "original_sha256": "caaab0c24d4be89f5dc004c0f2c9294569e0e751ba0902eb70ea54274d71b480",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "bootstrap_db",
+    "canonical": "workers.tools.bootstrap_db",
+    "original_sha256": "cd2f6db11cad40f29589105a94cb1487dcb51be2e0d1b576e0a045830ea35225",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "case_assignment_service",
+    "canonical": "application.services.assignment.case_assignment_service",
+    "original_sha256": "dfcfb15a3a06e5128cc3259b2715ead14137026ffc265c02ad7d700e2b1309fc",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "case_exception_resolution_service",
+    "canonical": "application.services.readiness.case_exception_resolution_service",
+    "original_sha256": "83a0935c1fdd98b700d1b149cedc3798a68cf8bf8d3b52e4e8fc296e3e1d49e0",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "case_operations_dashboard_service",
+    "canonical": "application.services.readiness.case_operations_dashboard_service",
+    "original_sha256": "ca58c7af6a5d72364881653a81bab925b8df997304e643dc18154b54a7f1cfb7",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "clinical_scope",
+    "canonical": "application.services.identity.clinical_scope",
+    "original_sha256": "1cb86de12004a6d023894939272ee2db8160bfbd04ecf84200f1043576d3a8fe",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "collection_policy",
+    "canonical": "application.services.finance.collection_policy",
+    "original_sha256": "09a8787aa11f2f42e1b07ea312a1f74f4d9d3864b44d48fda9ebc077f36545a4",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "coordinator_bulk_assignment",
+    "canonical": "application.services.assignment.coordinator_bulk_assignment",
+    "original_sha256": "b0d95c160a2a9404ce07732d737df093a61f8a0b5a6b4c0628853cc09ed19f61",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "daily_closing_policy",
+    "canonical": "application.services.finance.daily_closing_policy",
+    "original_sha256": "ee700647779210f9abdf08e7dc0339c27d30d0209114f65e1a92e21097b32ff7",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "delivery_policy",
+    "canonical": "application.services.finance.delivery_policy",
+    "original_sha256": "8960806f8aad82a585e322d05fd29fd1f3d53401746b3925b529cbea6e5b0d97",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "dicom_connections",
+    "canonical": "infrastructure.adapters.imaging.dicom_connections",
+    "original_sha256": "cf166a95ab47e64413cbc192a8e1309896b168e8a273620163823d3762a3e4f1",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "dicom_echo_worker",
+    "canonical": "workers.dicom_echo_worker",
+    "original_sha256": "7b9437724ce9ef317cc0410288d23525fab2480e49ff6bd690f0a92028a1ee97",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "dicom_export_routes",
+    "canonical": "web.extensions.dicom_export_routes",
+    "original_sha256": "5ee3357e9c9211114f252c55cecc1274ea059fbd31f2ea9c036596947cae945e",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "dicom_node_control",
+    "canonical": "application.services.imaging.dicom_node_control",
+    "original_sha256": "98012a1f88f7717873cb70f157a9bcfb25f514400f131e99aacb45fb9617f5cc",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "dicom_reconciliation",
+    "canonical": "application.services.imaging.dicom_reconciliation",
+    "original_sha256": "af46d828d35249cb314f7918789bbe462f16dd392f273702fd4ca09a3fa9c391",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "insurance_policy",
+    "canonical": "application.services.registration.insurance_policy",
+    "original_sha256": "89609474aa48264729ac215b9aa08e2864727e3fd8946fe4bf1e21b1b2973822",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "inventory_safety",
+    "canonical": "application.services.inventory.inventory_safety",
+    "original_sha256": "c26d8f9a95361ded69ab7e6fbac30b324ea1fd7c3f7899c114830c67e1792771",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "legacy_booking",
+    "canonical": "application.services.registration.legacy_booking",
+    "original_sha256": "64171bf3341c2ddf1b50d4542dd1c34410e80ef7354f009ecd034485bccaee4d",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "live_self_test",
+    "canonical": "workers.tools.live_self_test",
+    "original_sha256": "53e660b5b65d1d3ef76f014e804383beede20c91e4180adeb636a7d44d2f7e3c",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "ohif_identity",
+    "canonical": "infrastructure.adapters.imaging.ohif_identity",
+    "original_sha256": "c90c92897617ad791ed70c297a7db108a5214c42654c586d16a9b78e6ea63442",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "onlyoffice_report_bridge",
+    "canonical": "infrastructure.adapters.reporting.onlyoffice_report_bridge",
+    "original_sha256": "af1424b9fbb10047d605806858cf59b22b89fb7cfe98a983b9cfba9c5648f248",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "operational_health_routes",
+    "canonical": "web.extensions.operational_health_routes",
+    "original_sha256": "9fef86236d3195a5402239f6f548c6f55d65e1ca09994b6bd942512c95770f80",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "pacs_resolution_service",
+    "canonical": "application.services.imaging.pacs_resolution_service",
+    "original_sha256": "442a12da7742ee58ac08710d6be7e4d668e1db22faf20a438fe5c21181ce1b4f",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "pacs_thumbnail",
+    "canonical": "infrastructure.adapters.imaging.pacs_thumbnail",
+    "original_sha256": "b9fceba65731e013d36df0194b9cb03b8c1db8da63e4284dbe49111cdc0a68ee",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "pacs_worker",
+    "canonical": "workers.pacs_worker",
+    "original_sha256": "c001ad852a89ef3c22210cf1247d1c2469fcd6dab134d832045e651fa5d14280",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "patient_correction_policy",
+    "canonical": "application.services.registration.patient_correction_policy",
+    "original_sha256": "1067484a1469b177ef63565d922abf41b2a402f70e5ed4a42a1b8e5696d6b377",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "physician_final_counts",
+    "canonical": "web.extensions.physician_final_counts",
+    "original_sha256": "a00589f296b11b5fa7c8d006f3eda84df6ef4ebae50b3ddd6f0bbbd65e28686f",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "physician_report_workload",
+    "canonical": "web.extensions.physician_report_workload",
+    "original_sha256": "81936ad6772b29624265d93331f112e2cd85c75e0cf0c1c5f6768eda2450d3f3",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "preflight",
+    "canonical": "workers.tools.preflight",
+    "original_sha256": "f97e42423eddfe20bd7601e42ad643834fd7e6c28521fa7a07ed2e6688c34d0a",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": true
+  },
+  {
+    "legacy": "procedure_catalog",
+    "canonical": "application.services.registration.procedure_catalog",
+    "original_sha256": "016f17907d48eaaed99d08d1283f72f68445b1ac8be7c15eaddfa3f13c7bea77",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "procedure_staff_workflow",
+    "canonical": "application.services.clinical.procedure_staff_workflow",
+    "original_sha256": "53c834cb68dbc93e7c55724dd3a6e37b1278c14a931cf0ae159d1f2410433629",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "radbridge_ocr",
+    "canonical": "infrastructure.adapters.registration.radbridge_ocr",
+    "original_sha256": "6b09765be8167844b2e88f8ad2cf2d838d1b768732acfd7c53d77c6705d86891",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "radiotherapy",
+    "canonical": "application.services.clinical.radiotherapy",
+    "original_sha256": "6ffa7380974097859843d62769bfa999cc3cadff1d504ff23637b2951e4a1741",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "radiotherapy_migration",
+    "canonical": "infrastructure.schema.radiotherapy_migration",
+    "original_sha256": "a13b091ab7dc700e0f66d1d80736376695c95139110831cacdfb994f79e08031",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "readiness_maintenance",
+    "canonical": "workers.readiness_maintenance",
+    "original_sha256": "d00c12d2728da1a96723718e230430e3ede65e2dbd1bd354ee4747e82f14e460",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "readiness_operations",
+    "canonical": "application.services.readiness.readiness_operations",
+    "original_sha256": "f2f6e97ecc1541ed53e8cc1a48b9544e8da9df57cffb2464fc2622ff431c9a1e",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "registration_policy",
+    "canonical": "application.services.registration.registration_policy",
+    "original_sha256": "43407b7f01894136cfa0f13f6dc50dae1a11e35da4cfb5f2756a41dc90ba495c",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "replacement_settlements",
+    "canonical": "application.services.finance.replacement_settlements",
+    "original_sha256": "d6ef08fd5eaf19c739b9e059f8b3716b2d105a49f92b53f0b38b1f9269be5f9c",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "report_commit_core",
+    "canonical": "infrastructure.adapters.reporting.report_commit_core",
+    "original_sha256": "501c680ab21b561df7912381143cb5565e5f00b394a9ada912cb79c8b270ed35",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "report_draft_warnings",
+    "canonical": "application.services.reporting.report_draft_warnings",
+    "original_sha256": "0acb85ba9f05736c878f897011c55e0a7e4198b599c94ccae94c53d5e732fb54",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "report_edit_control",
+    "canonical": "application.services.reporting.report_edit_control",
+    "original_sha256": "effbfc809e8a45436e5338d1de3dc302fad75689412a05ec062d3aefaa2e3219",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "report_exports",
+    "canonical": "web.extensions.report_exports",
+    "original_sha256": "0e9ab0e51c016ff72812fc2ff21ee776fe36d205ccdbe9ba64bcaf9f88908fee",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": true
+  },
+  {
+    "legacy": "report_identity_routes",
+    "canonical": "web.extensions.report_identity_routes",
+    "original_sha256": "55242bd7c9d1ddb4ecc9e3fe1d073bdd98d928c2a587135caafeb087f86ae902",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "report_revision_editor",
+    "canonical": "application.services.reporting.report_revision_editor",
+    "original_sha256": "44aa6523a590a4e75626ec3b6cb1718b90f37a80f1eafec7e84e749e3781da97",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "report_revisions",
+    "canonical": "application.services.reporting.report_revisions",
+    "original_sha256": "92ce4c007f133d50d339d027c57797ca646525aac59512836e385116f1f78e39",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "report_storage_safety",
+    "canonical": "infrastructure.adapters.reporting.report_storage_safety",
+    "original_sha256": "33b09145fd9bad988afd9cb23d35422e74b4bf50ea5443a1766471a4b7659c25",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "report_template_conversion",
+    "canonical": "infrastructure.adapters.reporting.report_template_conversion",
+    "original_sha256": "9fa3aadccb11a78231494459a4730ee0dab6b1e8ccacbf4a945971c93e8d1da5",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "report_template_library",
+    "canonical": "application.services.reporting.report_template_library",
+    "original_sha256": "9b3ecddda0780c24142cacff2a3890c4cf8e7dd000c7e5385f4d6828ca776ea0",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "report_template_routes",
+    "canonical": "web.extensions.report_template_routes",
+    "original_sha256": "b22e53fd031799519092da368fe034f2bad4683eb175926fc9513f913a19e1b0",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "report_transaction_writer",
+    "canonical": "application.services.reporting.report_transaction_writer",
+    "original_sha256": "f05a90f6401c4da9f89cd626b07cedd405cb845762ab1914735aae2525669e04",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "reporting_support_routes",
+    "canonical": "web.extensions.reporting_support_routes",
+    "original_sha256": "5dc52fc197c546e73cf9f1664dd848ca1865ef95fb2ee345e5ea4309bece8ad3",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "runtime_feature_schema",
+    "canonical": "infrastructure.schema.runtime_feature_schema",
+    "original_sha256": "86d82f1e45d12e166a848d0935b65f6b4267196f541a2b1c4174ca218c332acc",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": true
+  },
+  {
+    "legacy": "scheduling_reference_routes",
+    "canonical": "web.extensions.scheduling_reference_routes",
+    "original_sha256": "39e37c8e86703411dfd048b48c81c590a9aff3f959500cb1692c5272aa27be4c",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "schema_check",
+    "canonical": "workers.tools.schema_check",
+    "original_sha256": "84883f1d6dc35f0d89f4ac9b50e5fd4aae5820e50d1eb7de3e6755e6d9ee9041",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "security_dashboard",
+    "canonical": "web.extensions.security_dashboard",
+    "original_sha256": "2738faa09eaaf52b58d3342b3da15eecaff7f459fc123d1471a20dc2cb2271a6",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "smoke_test",
+    "canonical": "workers.tools.smoke_test",
+    "original_sha256": "f9e8953153e758b2d7529415643742c18021a83268f6fdefb810c4ea5087dbe1",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "smoke_test_v533",
+    "canonical": "workers.tools.smoke_test_v533",
+    "original_sha256": "928fa6f8f8a0ce31eff5fbe935456490157bb2db90557edf4b2c04beb2e8d3fe",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "stabilization_self_test",
+    "canonical": "workers.tools.stabilization_self_test",
+    "original_sha256": "e08ff112236eda5cb928c027f0079e33ef0dd5aaf7eb874ce3087fa1b6ccc048",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "staff_communications_reference_routes",
+    "canonical": "web.extensions.staff_communications_reference_routes",
+    "original_sha256": "60bfe7d1b451288e9e2bd8c0138a04b2e5afabd746092e1979f591864af5e1b4",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "staff_worklist_filters",
+    "canonical": "application.services.clinical.staff_worklist_filters",
+    "original_sha256": "d253ca5704ab347f81eda85744a904f8761053c476ddff52637190faea154ba6",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "storage_routes",
+    "canonical": "web.extensions.storage_routes",
+    "original_sha256": "8ba3b51876af5d35f400d5e82b730f806e95b3d7a878317749b71538bed21aa7",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "technician_queue",
+    "canonical": "application.services.clinical.technician_queue",
+    "original_sha256": "1fb8e83ef9dbb2f8790806111646287dc74a1ab79e3ad931bf42472fb77e125c",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "telephony_reference_routes",
+    "canonical": "web.extensions.telephony_reference_routes",
+    "original_sha256": "61e09a3d4244cb7c14364781ec2c41c851c443985ae8228b3344795c4f56322e",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "ui_localization",
+    "canonical": "web.extensions.ui_localization",
+    "original_sha256": "98ad6822e7d849cc35c7bd9e25ac19e2a3a76594a4663bff48afa4c1e8c00051",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": true
+  },
+  {
+    "legacy": "user_access_policy",
+    "canonical": "application.services.identity.user_access_policy",
+    "original_sha256": "38af6753f12cfad4f4240bba7306b345f81d7caa7e6e32a3a8f7f23594545de5",
+    "compatibility_runtime": true,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "user_csv_transfer",
+    "canonical": "application.services.identity.user_csv_transfer",
+    "original_sha256": "2cf4e1c0bbc142c285f5b89cc9151f34b8d8e781e383dff3e58fd54d59012ce3",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "viewer_choice",
+    "canonical": "web.extensions.viewer_choice",
+    "original_sha256": "ef9eac4bdb15fa5e9967f4d0aa21216e7f2f2b2a33b774f8a3d9afff8bcc1f27",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": true
+  },
+  {
+    "legacy": "voice_ai",
+    "canonical": "infrastructure.adapters.communications.voice_ai",
+    "original_sha256": "0006f499d3cc6fcbc5617f6aae6fb89ce3ef27351d3d2a6fb8a63a37d163169b",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  },
+  {
+    "legacy": "voice_scheduling_reference_routes",
+    "canonical": "web.extensions.voice_scheduling_reference_routes",
+    "original_sha256": "63a8dad95a183d209e61c5ccaa6b35c44532f1a6ef19da5063a52d30eaa6bce9",
+    "compatibility_runtime": false,
+    "resources_from_ris_root": false
+  }
+]

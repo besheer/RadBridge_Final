@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from web.source_contract import get_source as _get_source
 
 def test_model_routes_and_preserve_helpers():
@@ -23,6 +24,6 @@ def test_templates_use_form_data_and_defaults():
     from pathlib import Path
     root=Path(__file__).parents[1]/"templates"
     for name in ("order_form.html","order_form_classic.html","order_form_compact.html"):
-        s=(root/name).read_text()
+        s=_read_source(root/name)
         assert "form_data" in s
         assert "registration_defaults" in s

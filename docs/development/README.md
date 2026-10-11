@@ -1,6 +1,6 @@
-# Development foundation — phase 1
+# RadBridge architecture development
 
-This branch implements the first small architecture step without deploying to production. The legacy app remains a modularizing monolith; routes, DB tables and clinical rules are unchanged.
+This branch implements a modular monolith on an isolated development branch. It has not been deployed to production. The data and route contracts are preserved; see [implementation status](IMPLEMENTATION_STATUS.md) for the distinction between implemented ownership boundaries and remaining runtime coupling.
 
 ## What changed
 
@@ -9,6 +9,11 @@ This branch implements the first small architecture step without deploying to pr
 - Added dedicated `compose.dev.yaml`, a development Dockerfile/initializer and example environment settings. Existing historical deployment files are not used.
 - Captured exact resolved dependency versions in `development/constraints.txt`; install with the existing requirements plus those constraints.
 - CI defines a full SQLite suite and an isolated PostgreSQL RT/readiness contract suite. Neither job deploys or uses production credentials.
+- 151 ORM definitions moved into 11 canonical infrastructure model modules, with one shared unbound SQLAlchemy extension.
+- Ten independent policy modules moved into the domain packages; legacy imports retain module/object identity.
+- 949 executable handlers moved into 24 web/application components with explicit compatibility dependencies.
+- 76 existing services, adapters, extensions and worker modules moved into owned packages. Legacy import and CLI facades preserve callers.
+- Web settings and shell construction are independent of clinical composition. The supported clinical WSGI entry remains `app:app`.
 
 ## Start local RIS development (Ubuntu/Docker Compose v2)
 
@@ -38,4 +43,4 @@ The runner forces in-memory SQLite and temporary report/attachment/backup direct
 
 ## Next boundaries
 
-After accepting this stage, extract one additional policy seam at a time and preserve callable/route/data contracts. Do not mass-rewrite app.py or introduce microservices before the validation gates in docs/blueprint/VALIDATION_PLAN.md. This PR does not make the repository a complete PACS/ONLYOFFICE deployment or disaster-recovery package.
+Ownership extraction is implemented across the listed areas. Continue replacing wide compatibility bindings with narrow use-case dependencies and isolated application assembly, preserving callable/route/data contracts. Synthetic unit/contract tests block real HTTP transport; external-service acceptance belongs in a separate reviewed integration environment. Do not introduce microservices before the validation gates in docs/blueprint/VALIDATION_PLAN.md. This branch does not make the repository a complete PACS/ONLYOFFICE deployment or disaster-recovery package.

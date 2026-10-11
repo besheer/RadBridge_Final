@@ -53,7 +53,16 @@ def app_source():
 
 def read_source(path, *args, **kwargs):
     path = Path(path)
-    return app_source() if path.resolve() == (ROOT / "app.py").resolve() else path.read_text(*args, **kwargs)
+    if path.resolve() == (ROOT / "app.py").resolve():
+        return app_source()
+    if path.resolve().parent == ROOT and path.suffix == '.py':
+        manifest = ROOT / 'application/module_manifest.json'
+        if manifest.exists():
+            owner = next((entry['canonical'] for entry in json.loads(manifest.read_text(encoding='utf-8'))
+                          if entry['legacy'] == path.stem), None)
+            if owner:
+                return (ROOT / (owner.replace('.', '/') + '.py')).read_text(*args, **kwargs)
+    return path.read_text(*args, **kwargs)
 
 
 def get_source(obj):
