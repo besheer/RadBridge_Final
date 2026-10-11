@@ -672,7 +672,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `procedure_catalog` | [application.services.registration.procedure_catalog](../application/services/registration/procedure_catalog.py) |
 | `procedure_staff_workflow` | [application.services.clinical.procedure_staff_workflow](../application/services/clinical/procedure_staff_workflow.py) |
 | `radbridge_ocr` | [infrastructure.adapters.registration.radbridge_ocr](../infrastructure/adapters/registration/radbridge_ocr.py) |
-| `radiotherapy` | [application.services.clinical.radiotherapy](../application/services/clinical/radiotherapy.py) |
+| `radiotherapy` | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 | `radiotherapy_migration` | [infrastructure.schema.radiotherapy_migration](../infrastructure/schema/radiotherapy_migration.py) |
 | `readiness_maintenance` | [workers.readiness_maintenance](../workers/readiness_maintenance.py) |
 | `readiness_operations` | [web.extensions.readiness_operations](../web/extensions/readiness_operations.py) |

@@ -1,84 +1,59 @@
 # Architecture implementation and remaining gates
 
-Date: 2026-10-11. Scope: development source only; no production writes or deployment.
+Date: 2026-10-11. Scope: isolated development source on `refactor/development-foundation`, draft PR #1. Main and production have not been modified. Clinical release metadata remains 5.46.9; these changes are not a deployed clinical release.
 
-Clinical release metadata remains 5.46.9. Architecture work is a development refactor, not a released clinical version. Canonical ownership is implemented throughout the reviewed RIS source, but clean dependency inversion and external-service acceptance are not complete.
+## Implemented ownership
 
-## Owned areas
+- All 160 persisted models belong to 14 infrastructure model modules; the SQLAlchemy extension is unbound until application composition.
+- All 949 extracted functions have executable owners in 32 component/route/helper modules. Eighty HTTP-dependent installers were assigned to web ownership without changing their handler bodies.
+- All 76 migrated modules have one canonical owner and legacy aliases preserving module/exception/patch identity.
+- The clinical application factory supports independently supplied database, secret, storage, cookie and runtime URL configuration. Two-instance authorization/scope tests cover supported isolation; provider and host flags remain process-level.
+- Eighteen explicit workflow dependency boundaries are registered in `ris/application/port_contracts.json`. The architecture checker rejects infrastructure, web, framework and runtime imports in those services. This is a specific enforced registry, not a claim that all old services are clean.
 
-| Area | Executable ownership | Remaining dependency work |
+`ris/docs/CODE_MAP.md` links executable models, composed routes, canonical legacy owners and explicit port boundaries. Regenerate it using `python ris/tools/generate_code_map.py` after ownership changes. `application/component_manifest.json` and `application/module_manifest.json` remain the ownership inventories.
+
+## Explicit workflow boundaries
+
+| Area | Implemented dependency separation | Remaining work |
 |---|---|---|
-| Patient registration, scheduling, insurance | Patient validation and explicit visit registration/reservation ports; registration components/routes | Broader patient creation, booking/scheduling and insurance still need narrow interfaces; external RIS connectors are separate integrations |
-| Technician, nursing, procedures, radiotherapy | `domain.clinical`, `application.services.clinical`, clinical components/routes | Explicit use cases and transaction ownership; treatment-device integration not supplied |
-| Readiness and exceptions | `domain.readiness`, `domain.readiness_checks`, `application.services.readiness` | Separate evidence acquisition from DB-backed orchestration |
-| Assignment and coordinator work | `domain.assignment`, explicit query/transaction/visit services and repositories | Policy/count/capacity, ranking/deadlines, single-case and grouped-visit mutations and offer acceptance are separated; coordinator preview, distribution evidence and workers still need narrow dependencies |
-| PACS matching, identity, viewers | `domain.imaging`, `application.services.imaging`, `infrastructure.adapters.imaging`, imaging routes and viewer extension | Provisioned synthetic PACS transport/failure acceptance |
-| Reporting, revisions, editor, exports | `domain.reporting`, explicit report commit service/repository/artifact store, reporting routes/extensions | Commit ports are separated; revisions, finalization, callbacks and exports still need use-case dependencies and external fault acceptance |
-| Payments, collection, settlements | Explicit replacement settlement policy/workflow/repository; finance components/routes | Replacement transfer ports are separated; collection, closing, broader unit-of-work and cash-entry dependencies remain unfinished |
-| Inventory and consumables | Explicit original-lot return domain/service/repository; inventory components/routes | Consumption and general stock movement still need narrow transaction/repository interfaces; no stock data migration |
-| Users, clinical scope, security | `application.services.identity`, identity components/routes, security extension | Keep role/branch checks authoritative; host collection/VPN services remain external |
-| Communications, AI and telephony | communication components/routes, communication adapter and extensions | External-provider configuration and reviewed integration testing |
-| Operations, storage, administration | operations components/routes and extensions | Operational adapter separation and provisioned recovery tests |
-| Data, migrations, workers, resources | `infrastructure.models`, `infrastructure.schema`, `workers`, `infrastructure.resources` | Explicit worker lifecycle and production upgrade acceptance |
+| Assignment | Scoped queries, capacity/count policy, pure ranking/deadlines, case mutations/offer acceptance, grouped visit workflows | Coordinator previews, evidence gathering, broader workers and callbacks still compose at the compatibility edge |
+| Registration | Patient field/date/sex policy, visit selection and reserved assignment, latest-decision insurance readiness | Patient creation, scheduling/booking and external RIS interfaces |
+| Readiness | Exception/history/alias/override mutations, scoped RIS candidate search, bounded scheduling/refresh, read-only operations aggregation | Actual evidence acquisition/evaluation, broader exceptions and operational worker lifecycle |
+| Identity | Pure scope policy, explicit qualification/scope evidence and request/ORM guard ownership | Broader user lifecycle/import/contact dependencies, permission catalogue ownership and host security/VPN integration |
+| Reporting | Immutable report saving with repository/artifact ports, edit leases, correction request/review | Reference resolution, correction/editor finalization, callbacks, exports and external editor failure acceptance |
+| Finance | FINAL replacement entitlement settlement, branch collection checks, net receipt/refund evidence, authorized daily closing SAVE/CLOSE | Broader receipts/disbursements/refunds, finance unit-of-work/error presentation and external accounting integration |
+| Inventory | Original-lot return policy, repository and movement dependencies | Consumption, general stock movement, warehouse lifecycle and stock transport interfaces |
+| Clinical staff/RT | Owned models, pure manual RT input validation, components and web routes; externally approved RT records | Explicit staff/RT transaction use cases; no treatment-device integration or controller is supplied |
+| Imaging/viewers | Owned identity/matching policies, imaging adapters/routes and viewer extension | Provisioned synthetic PACS/viewer acceptance, partial transport/retry/recovery contracts |
+| Communications/operations | Owned adapter/extension/component modules | Narrow external-provider dependencies, operational recovery and storage/worker lifecycle |
 
-`application/component_manifest.json` maps all 949 extracted functions and declared dependencies. `application/module_manifest.json` maps all 76 migrated modules. Compatibility files at the RIS root point to the real modules, not separate implementations.
+Detailed decisions are in ADRs 001–027. Canonical ownership, explicit use-case inversion and real external integration are separate claims. A screen, a source assertion or a renamed module alone does not establish working integration.
 
-## Proven invariants
+## Preserved contracts and focused evidence
 
-Before/after captures compare the same 160 database tables and 546 route registrations, including column types/defaults, constraints, indexes, URL methods and endpoints. No migration or data transformation is added. Tests cover all original handler source hashes and facade object identity. Runtime suites retain authorization, branch scope, receiving assignment barriers, immutable reports, reconciliation, inventory and settlement assertions. Matching structure alone is insufficient to approve deployment.
+Before/after runtime captures retain the same 160 tables and 546 URL registrations, including types/defaults, foreign keys, indexes, constraints, methods and endpoints. No schema migration or data transformation was introduced. Handler-source and facade-identity tests remain active.
 
-## Explicit unfinished gates
+Focused runtime suites retain branch/role scope, receiving assignment barriers, immutable VERIFIED/FINAL reports, scoped editor leases, correction review and FINAL-only replacement settlement. Readiness aliasing requires captured PACS evidence; image exceptions cannot invent images; failed PACS evidence stays BLOCKED. Scheduling tests include PostgreSQL advisory-lock contention on two actual connections. Read-only receiving projections do not overwrite stored readiness.
 
-1. Replace `Bindings` and `legacy_runtime` with narrow use-case dependencies. Existing m-based extension interfaces remain compatibility APIs, not a completed dependency inversion.
-2. Run provisioned synthetic ONLYOFFICE/PACS/viewer failure scenarios: callback delay/loss, reassignment, partial transfer, queue restart and destination storage confirmation. The local Compose stack contains RIS/PostgreSQL only.
-3. Run role-based browser UAT and review the architecture PR. Production upgrade, rollback rehearsal, merge and deployment require a separate release decision.
+Inventory returns preserve original lots, costs and expiry; prior disbursements are retained during replacement entitlement adjustments. Closing totals use receipt/refund accounting timestamps, original payment method buckets and finite decimal values. Daily closing authorizes before persistence, locks branch before closing, recomputes expected evidence under the locked context, rejects CLOSED mutations and audits flushed snapshots. Callers own commit/rollback except the explicitly documented per-case scheduler transaction boundary.
 
-Clinical factory isolation is implemented for supported database, secret, storage, cookie and runtime URL settings, with authenticated two-instance and scope-listener tests. Host/provider feature settings remain process-level; extending per-instance configuration requires explicit contracts and tests. All 160 models are registered in infrastructure before composition. See ADR 007.
+Operations aggregation preserves existing auxiliary query scopes and window-based metrics. Global lease statistics and other aggregate visibility policies still require explicit branch/role review before release; existing broad queries are not certified as safe by an extraction test.
 
-The 949 component installers now belong to 32 modules: 12 application component modules, 12 route modules and eight web helper modules. Eighty installers were reassigned to web ownership without changing their original handler bodies. HTTP dependencies are checked at the component boundary; mixed extension registration/service modules still need narrower interfaces. See ADR 008.
+## CI evidence and current gate
 
-The clinical factory commit `1bc4840a1ae5fa02c9fe5b9b7a2a225724ba9573` passed the complete SQLite suite (1,814 passed, three skipped), PostgreSQL contracts and the independent Docker Compose smoke test in GitHub Actions run 38118087675. Later commits require their own green checks before review.
+GitHub Actions runs nine jobs: the complete SQLite suite, seven independent PostgreSQL suites (`clinical`, `assignment`, `scope`, `reporting`, `finance`, `inventory`, `registration`) and a separate Docker Compose build/start/login smoke check.
 
-Distribution query separation is implemented in ADR 009. The legacy module manifest now explicitly points the still-coupled distribution entry points to `web.compatibility`; old import paths remain aliases to that single implementation. The new application query service has no runtime resolver or framework imports and is tested with independent repositories/sessions.
+Latest completed baseline: daily closing workflow commit a1351f412d4068a49b87a6181fbdabd66de92a9c passed all nine jobs in run 38167336491, including 1,961 SQLite tests (five skipped), expanded persisted PostgreSQL closing governance and Docker smoke. Readiness resolution, search, scheduling, operations snapshot and collection evidence commits each passed their own nine jobs. Scheduler commit 8494b04402f11e53f4d47160c0d981a8da307423 passed the two-connection PostgreSQL lock test.
 
-Candidate ordering and start-timeout selection now execute in the pure domain layer over explicit facts (ADR 010). The compatibility layer still gathers scoped visit and availability evidence and handles mutations; those remain unfinished interfaces.
+The new manual RT validation/HTTP ownership move passed 29 focused local tests (one optional existing test skipped) and still requires its own complete CI. Synthetic fixture repairs use bounded codes and actual persisted actors; permission, branch, closed-day and monetary assertions are retained. Do not reuse an earlier commit's green result as evidence for a changed head.
 
-Assignment mutations and offer acceptance now execute through explicit repository/policy ports (ADR 011). Legacy signatures are compatibility wrappers. Clinical qualification and grouped-visit callbacks still originate at the compatibility edge; this is not complete inversion of the whole assignment workflow. PostgreSQL CI adds an independent assignment suite.
+The local runner forces synthetic SQLite and temporary artifact directories. PostgreSQL runs require the guarded isolated development database. Real provider HTTP is blocked in unit/contract tests. The Docker stack contains RIS/PostgreSQL only, not a complete PACS/ONLYOFFICE or host disaster-recovery package.
 
-See ADRs 001–026 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+## Release gates still open
 
-Insurance readiness uses an explicit latest-decision repository and pure contract/decision policy (ADR 020). Eighteen separated service boundaries are recorded in `application/port_contracts.json`, checked for infrastructure/web/runtime import isolation and linked in the generated code map. Registration commit ba44e3feeb0e4be288a28b97abb5049b97d03eac passed all nine CI jobs; insurance commit 29d9b8b8a6efd323ee158a6f7995a5c2afa638a4 passed all nine CI jobs in run 38157320020.
+1. Continue replacing `Bindings`, `legacy_runtime` and mixed extension callbacks with narrow evidence/repository/policy interfaces. Broad handler composition, cash entries, stock consumption, registration booking, clinical staff/RT and provider/worker lifecycles remain unfinished.
+2. Audit branch/role visibility of auxiliary queries and operations metrics, and run role-based browser UAT with synthetic cases.
+3. Provision synthetic PACS/OHIF/ONLYOFFICE failure acceptance: delayed/lost callbacks, reassignment, partial transfer, retry uncertainty, queue restart and destination storage confirmation. Screens/source checks do not replace these scenarios.
+4. Validate upgrade/rollback and operational recovery in an isolated environment. PR review, merge and production deployment require a separate release decision.
 
-Patient field/date/sex validation and visit selection/reserved assignment receive explicit rules/evidence/repository dependencies (ADR 019). CI adds PostgreSQL registration coverage. The preceding inventory commit 7d0a22a6c57bd3f19266e13f5a2ee3fdddbe9ddb passed all eight CI jobs; new registration checks require their own success before review.
-
-Original-lot returns use explicit quantity/credit policy, repository and movement dependencies (ADR 018). CI adds PostgreSQL inventory coverage and corrects the finance missing-CSRF fixture's rollback boundary; finance and inventory require green results on the new commit. The earlier corrected lease adapter commit passed all six CI jobs.
-
-Replacement entitlement planning/confirmation executes through explicit policy/evidence/persistence/audit ports (ADR 017), retaining original cash disbursements and FINAL-only/idempotency barriers. PostgreSQL reporting passed on the corrected lease adapter commit f57be1b513953900230c49ae38ef8b1cd4ce6e05; the finance suite is newly added and requires its own green CI result.
-
-Correction request/review transitions execute through explicit repository/evidence/audit/notification/clock policies (ADR 016). Document/reference resolution and editor/finalization still compose at the web extension edge. The PostgreSQL reporting suite also exposed synthetic full-name/foreign-key fixture defects, repaired without schema changes or weaker permission checks; a successful reporting CI run is still required.
-
-Report edit leases now use explicit persistence/clock/assignment dependencies (ADR 015). The prior report commit passed five of six CI jobs; the new PostgreSQL reporting job exposed an oversized synthetic branch code, corrected in its fixture. Full checks must pass on this commit before review. Role, FINAL, ownership and token-scoped release contracts remain authoritative.
-
-Report saving now executes through explicit persistence and immutable artifact ports (ADR 014), with independent dependency, retry, FINAL, stale-base and failed-flush tests. The grouped-visit commit 688bcd4f36476d79f9da01745bf56e20c7bf1404 passed all five CI jobs. The new reporting commit requires its own full checks; broader editor/revision and post-return transaction/crash acceptance remain unfinished.
-
-Clinical scope validation/access/persistence is separated in ADR 012. Request and ORM guards remain web responsibilities, with compatibility aliases preserving registration and patch state. The qualification evidence service uses an explicit repository; broader user lifecycle and other use-case dependencies remain unfinished. CI adds a separate PostgreSQL scope suite. The assignment transaction commit 1ec0d5cc6054af50a8e82e6acb7cd6a6281454a3 passed all four CI jobs, including both PostgreSQL suites and 1,836 SQLite tests (three skipped).
-
-Grouped visit creation/member checks/readiness/preference/assignment receive explicit repository and policy dependencies (ADR 013). Qualification callbacks still compose at the web compatibility edge; coordinator preview, distribution evidence and worker lifecycle remain unfinished. Scope commit 6c011ba64fe7ce9410768dee181317396c6b02e4 passed all five CI jobs, including clinical/assignment/scope PostgreSQL suites and the full SQLite suite.
-
-Readiness resolution mutations now use explicit repository/clock ports (ADR 021), preserving evidence, terminal-report, override limits and audit barriers. Fifty-three focused SQLite tests passed, including persisted synthetic resolution operations. PostgreSQL clinical coverage is expanded; full CI on the new commit remains required. RIS search and evidence acquisition remain at the compatibility edge.
-
-
-Read-only RIS candidate search uses explicit persistence, application orchestration and domain ranking (ADR 022). The original bounded SQL window, numeric-ID search, ranking and scoped ORM session remain intact. Search results never establish identity. Thirty-six focused tests passed; new search PostgreSQL clinical/full CI checks remain required.
-
-
-Readiness scheduling/refresh now use explicit repository, evaluation, audit and clock ports (ADR 023), with domain scheduling policy and web route ownership. Thirty-five focused tests passed locally; a PostgreSQL-only two-connection advisory-lock test is included in clinical CI. Search commit 1c6f6f6120819497bac0fabb28965eea86939051 passed all nine jobs (run 38166426996); new scheduling CI remains required. Actual PACS evaluation, process worker configuration and external acceptance remain unfinished.
-
-
-Operations dashboard aggregation has explicit read-only SQL/projection/clock dependencies (ADR 024). Eleven focused tests passed, including actual synthetic editor lease timestamps and receiving projections. Existing aggregate visibility policies, especially global lease statistics, still need branch/role review. Scheduler commit 8494b04402f11e53f4d47160c0d981a8da307423 passed all nine CI jobs (run 38166655249); the new snapshot commit needs its own complete checks.
-
-
-Collection access and net accounting evidence use explicit branch/payment repositories and pure monetary reconciliation (ADR 025). Ninety-one focused tests passed; PostgreSQL finance now includes closing governance and direct evidence tests. Daily closing mutation/transaction orchestration remains at the web edge. Operations snapshot commit 1f72b68bcffb51e0b197795bd265de9cf06680b6 passed all nine jobs (run 38166865498); new finance evidence CI requires its own success.
-
-Daily closing SAVE/CLOSE mutations use explicit authorization, SQL locks/evidence, audit and clock dependencies (ADR 026). Ninety-eight focused tests passed. The application rechecks authoritative CLOSED state and computes expected totals after branch/closing locks; caller commits and UI composition remain web responsibilities. Broader cash entries and error/rollback acceptance remain unfinished; new full CI is required.
-
-Collection/evidence commit d5ef5b41cd3fbb5ea8d531d06d664fb7a276c896 passed all nine CI jobs in run 38167130364, including expanded PostgreSQL closing governance. New daily closing mutation checks still require their own green results.
+Module/port counts are concrete inventory measures, not a percentage of total architecture completion or clinical deployment readiness. No live patient data, production database snapshot, credentials or host secrets are added by this development work.

@@ -280,7 +280,7 @@
   },
   {
     "legacy": "radiotherapy",
-    "canonical": "application.services.clinical.radiotherapy",
+    "canonical": "web.extensions.radiotherapy",
     "original_sha256": "6ffa7380974097859843d62769bfa999cc3cadff1d504ff23637b2951e4a1741",
     "compatibility_runtime": false,
     "resources_from_ris_root": false
