@@ -728,6 +728,7 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.registration.visit_registration](../application/services/registration/visit_registration.py) | [infrastructure.adapters.registration.visit_repository](../infrastructure/adapters/registration/visit_repository.py) | [web.compatibility.registration_policy](../web/compatibility/registration_policy.py) |
 | [application.services.registration.insurance_readiness](../application/services/registration/insurance_readiness.py) | [infrastructure.adapters.registration.insurance_repository](../infrastructure/adapters/registration/insurance_repository.py) | [web.compatibility.insurance_policy](../web/compatibility/insurance_policy.py) |
 | [application.services.readiness.resolution_workflow](../application/services/readiness/resolution_workflow.py) | [infrastructure.adapters.readiness.resolution_repository](../infrastructure/adapters/readiness/resolution_repository.py) | [web.compatibility.case_exception_resolution_service](../web/compatibility/case_exception_resolution_service.py) |
+| [application.services.readiness.order_search](../application/services/readiness/order_search.py) | [infrastructure.adapters.readiness.search_repository](../infrastructure/adapters/readiness/search_repository.py) | [web.compatibility.case_exception_resolution_service](../web/compatibility/case_exception_resolution_service.py) |
 
 ## Key Worker / Module Files
 

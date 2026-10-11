@@ -8,7 +8,8 @@ import json
 import re
 from datetime import datetime
 
-from sqlalchemy import or_
+from application.services.readiness import order_search as _order_search
+from infrastructure.adapters.readiness.search_repository import SqlAlchemyReadinessSearchRepository
 
 
 from domain.readiness_resolution import (
@@ -31,47 +32,9 @@ def latest_report_status(db, Report, order_id):
 
 
 def search_ris_orders(*, Order, Patient, query, limit=50):
-    """Search RIS Orders without changing state."""
-    query = str(query or "").strip()
-    if not query:
-        return []
-    limit = max(1, min(int(limit or 50), 100))
-    like = f"%{query}%"
-    filters = [
-        Order.accession.ilike(like),
-        Order.procedure.ilike(like),
-        Order.study_instance_uid.ilike(like),
-        Patient.name.ilike(like),
-        Patient.patient_id.ilike(like),
-        Patient.phone.ilike(like),
-        Patient.national_id.ilike(like),
-    ]
-    if query.isdigit():
-        filters.append(Order.id == int(query))
-    rows = (Order.query.join(Patient)
-            .filter(or_(*filters))
-            .order_by(Order.id.desc()).limit(limit).all())
-    needle = normalize(query)
-
-    def score(order):
-        values = [
-            (getattr(order, "accession", ""), 100),
-            (getattr(order.patient, "patient_id", ""), 95),
-            (getattr(order, "study_instance_uid", ""), 95),
-            (str(getattr(order, "id", "")), 90),
-            (getattr(order.patient, "name", ""), 80),
-            (getattr(order, "procedure", ""), 60),
-        ]
-        best = 0
-        for value, weight in values:
-            current = normalize(value)
-            if current == needle:
-                best = max(best, weight)
-            elif needle and needle in current:
-                best = max(best, weight - 20)
-        return best
-
-    return sorted(rows, key=lambda row: (-score(row), -row.id))
+    return _order_search.search_ris_orders(
+        repository=SqlAlchemyReadinessSearchRepository(Order.query.session, Order, Patient),
+        query=query, limit=limit)
 
 
 
