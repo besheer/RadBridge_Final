@@ -168,7 +168,7 @@
   },
   {
     "legacy": "inventory_safety",
-    "canonical": "application.services.inventory.inventory_safety",
+    "canonical": "web.compatibility.inventory_safety",
     "original_sha256": "c26d8f9a95361ded69ab7e6fbac30b324ea1fd7c3f7899c114830c67e1792771",
     "compatibility_runtime": true,
     "resources_from_ris_root": false

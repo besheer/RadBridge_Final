@@ -15,7 +15,7 @@ Clinical release metadata remains 5.46.9. Architecture work is a development ref
 | PACS matching, identity, viewers | `domain.imaging`, `application.services.imaging`, `infrastructure.adapters.imaging`, imaging routes and viewer extension | Provisioned synthetic PACS transport/failure acceptance |
 | Reporting, revisions, editor, exports | `domain.reporting`, explicit report commit service/repository/artifact store, reporting routes/extensions | Commit ports are separated; revisions, finalization, callbacks and exports still need use-case dependencies and external fault acceptance |
 | Payments, collection, settlements | Explicit replacement settlement policy/workflow/repository; finance components/routes | Replacement transfer ports are separated; collection, closing, broader unit-of-work and cash-entry dependencies remain unfinished |
-| Inventory and consumables | `application.services.inventory`, inventory components/routes | Narrow stock repository interfaces; no stock data migration |
+| Inventory and consumables | Explicit original-lot return domain/service/repository; inventory components/routes | Consumption and general stock movement still need narrow transaction/repository interfaces; no stock data migration |
 | Users, clinical scope, security | `application.services.identity`, identity components/routes, security extension | Keep role/branch checks authoritative; host collection/VPN services remain external |
 | Communications, AI and telephony | communication components/routes, communication adapter and extensions | External-provider configuration and reviewed integration testing |
 | Operations, storage, administration | operations components/routes and extensions | Operational adapter separation and provisioned recovery tests |
@@ -45,7 +45,9 @@ Candidate ordering and start-timeout selection now execute in the pure domain la
 
 Assignment mutations and offer acceptance now execute through explicit repository/policy ports (ADR 011). Legacy signatures are compatibility wrappers. Clinical qualification and grouped-visit callbacks still originate at the compatibility edge; this is not complete inversion of the whole assignment workflow. PostgreSQL CI adds an independent assignment suite.
 
-See ADRs 001–017 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+See ADRs 001–018 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+
+Original-lot returns use explicit quantity/credit policy, repository and movement dependencies (ADR 018). CI adds PostgreSQL inventory coverage and corrects the finance missing-CSRF fixture's rollback boundary; finance and inventory require green results on the new commit. The earlier corrected lease adapter commit passed all six CI jobs.
 
 Replacement entitlement planning/confirmation executes through explicit policy/evidence/persistence/audit ports (ADR 017), retaining original cash disbursements and FINAL-only/idempotency barriers. PostgreSQL reporting passed on the corrected lease adapter commit f57be1b513953900230c49ae38ef8b1cd4ce6e05; the finance suite is newly added and requires its own green CI result.
 

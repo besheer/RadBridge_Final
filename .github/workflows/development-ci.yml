@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [clinical, assignment, scope, reporting, finance]
+        suite: [clinical, assignment, scope, reporting, finance, inventory]
     services:
       postgres:
         image: postgres:16-alpine

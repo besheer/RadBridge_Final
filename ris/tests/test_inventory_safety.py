@@ -6,7 +6,7 @@ import pytest
 
 @pytest.fixture
 def stock_case(app_ctx,monkeypatch):
-    m=app_ctx;key='CODEX-UAT-'+uuid4().hex[:12]
+    m=app_ctx;key='CODEX-UAT-'+uuid4().hex[:8]
     b=m.Branch(code=key,name=key,active=True)
     p=m.Patient(patient_id=key,name='CODEX UAT STOCK',dob='19900101',sex='M')
     m.db.session.add_all([b,p]);m.db.session.flush()
@@ -14,7 +14,9 @@ def stock_case(app_ctx,monkeypatch):
     w=m.Warehouse(code=key,name=key,branch_id=b.id,warehouse_type='BRANCH',active=True)
     i=m.InventoryItem(code=key,name=key,unit='EA',track_expiry=True,default_cost=99,active=True)
     m.db.session.add_all([o,w,i]);m.db.session.flush()
-    user=SimpleNamespace(id=99300,active=True,username=key)
+    user=m.User(username=key,full_name='Synthetic Stock Technician',password_hash='disabled-test-account',
+                active=True,branch_id=b.id,role=m.Role.query.filter_by(code='TECHNICIAN').one())
+    m.db.session.add(user);m.db.session.flush()
     monkeypatch.setattr(m,'current_user',lambda:user)
     yield SimpleNamespace(m=m,order=o,wh=w,item=i,user=user)
     m.db.session.rollback();m.db.session.remove()

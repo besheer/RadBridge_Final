@@ -19,7 +19,7 @@ def checked_pg_url(value):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--postgres",action="store_true",help="Only isolated RT/readiness PostgreSQL contracts; may reset this synthetic test DB")
-    parser.add_argument("--postgres-suite", choices=("clinical", "assignment", "scope", "reporting", "finance"), default="clinical")
+    parser.add_argument("--postgres-suite", choices=("clinical", "assignment", "scope", "reporting", "finance", "inventory"), default="clinical")
     parser.add_argument("targets",nargs="*")
     args=parser.parse_args()
     if args.postgres and args.targets:parser.error("PostgreSQL mode has a fixed scoped suite")
@@ -54,6 +54,8 @@ def main():
                          "tests/test_report_identity_renewal.py", "tests/test_onlyoffice_callback_internal_download_url.py"]
             elif args.postgres_suite == "finance":
                 targets=["tests/test_settlement_workflow_dependencies.py", "tests/test_replacement_settlements.py"]
+            elif args.postgres_suite == "inventory":
+                targets=["tests/test_inventory_return_dependencies.py", "tests/test_inventory_safety.py"]
         else:
             source=ROOT/"ris";env["DATABASE_URL"]="sqlite:///:memory:"
             targets=args.targets
