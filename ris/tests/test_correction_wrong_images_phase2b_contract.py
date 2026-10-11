@@ -1,15 +1,12 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 import ast
 
 
 def source_text():
 
-    return (
-        Path(__file__).resolve().parents[1]
-        / "app.py"
-    ).read_text(
-        encoding="utf-8"
-    )
+    return _read_source(Path(__file__).resolve().parents[1]
+        / "app.py", encoding="utf-8")
 
 
 def tree():

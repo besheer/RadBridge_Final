@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 
@@ -5,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_phase9_routes_and_permissions_are_present():
-    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    source = _read_source(ROOT / "app.py", encoding="utf-8")
     assert source.count("def case_exception_series_map_deactivate") == 1
     assert source.count("def case_exception_image_minimum_deactivate") == 1
     assert source.count("@require_perm('pacs.reconcile')") >= 5
@@ -16,9 +17,7 @@ def test_phase9_routes_and_permissions_are_present():
 
 
 def test_phase9_service_is_atomic_and_evidence_grounded():
-    source = (ROOT / "case_exception_resolution_service.py").read_text(
-        encoding="utf-8"
-    )
+    source = _read_source(ROOT / "case_exception_resolution_service.py", encoding="utf-8")
     assert "SERIES_ALIAS_NOT_IN_PACS_EVIDENCE" in source
     assert "def atomic_deactivate_series_alias" in source
     assert "def atomic_deactivate_readiness_override" in source
@@ -27,9 +26,7 @@ def test_phase9_service_is_atomic_and_evidence_grounded():
 
 
 def test_phase9_template_has_queue_filters_and_safe_disable_actions():
-    source = (
-        ROOT / "templates" / "case_exception_resolver.html"
-    ).read_text(encoding="utf-8")
+    source = _read_source(ROOT / "templates" / "case_exception_resolver.html", encoding="utf-8")
     for token in (
         "Case Exception Queue",
         'name="scope"',

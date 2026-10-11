@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 
 from pathlib import Path
 import ast
@@ -5,7 +6,7 @@ import ast
 ROOT=Path(__file__).resolve().parents[1]
 
 def test_app_python_parses():
-    ast.parse((ROOT/"app.py").read_text(encoding="utf-8"))
+    ast.parse(_read_source(ROOT/"app.py", encoding="utf-8"))
 
 def test_critical_templates_exist():
     required=[
@@ -16,7 +17,7 @@ def test_critical_templates_exist():
         assert (ROOT/"templates"/name).exists(), name
 
 def test_critical_features_present():
-    s=(ROOT/"app.py").read_text(encoding="utf-8")
+    s=_read_source(ROOT/"app.py", encoding="utf-8")
     for token in [
         "def nursing_worklist(",
         "def pacs_tracking(",

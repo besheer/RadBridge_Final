@@ -1,12 +1,13 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CSS = (ROOT / "static" / "app.css").read_text(encoding="utf-8")
-BASE = (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
-DASHBOARD = (ROOT / "templates" / "dashboard.html").read_text(encoding="utf-8")
-PROFILE = (ROOT / "templates" / "my_profile.html").read_text(encoding="utf-8")
-APP = (ROOT / "app.py").read_text(encoding="utf-8")
+CSS = _read_source(ROOT / "static" / "app.css", encoding="utf-8")
+BASE = _read_source(ROOT / "templates" / "base.html", encoding="utf-8")
+DASHBOARD = _read_source(ROOT / "templates" / "dashboard.html", encoding="utf-8")
+PROFILE = _read_source(ROOT / "templates" / "my_profile.html", encoding="utf-8")
+APP = _read_source(ROOT / "app.py", encoding="utf-8")
 
 
 def _relative_luminance(color):

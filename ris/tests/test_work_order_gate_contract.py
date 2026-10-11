@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 import inspect
 from pathlib import Path
 
@@ -61,11 +62,9 @@ def test_registered_and_pending_orders_cannot_use_resend():
 
 def test_work_order_button_remains_permission_and_balance_gated():
     import app as m
-    template=(
-        Path(m.__file__).resolve().parent
+    template=_read_source(Path(m.__file__).resolve().parent
         / "templates"
-        / "order_detail.html"
-    ).read_text(encoding="utf-8")
+        / "order_detail.html", encoding="utf-8")
     assert "has_perm('orders.create')" in template
     assert "work_order_balance <= 0.01" in template
     assert "convert_to_work_order" in template

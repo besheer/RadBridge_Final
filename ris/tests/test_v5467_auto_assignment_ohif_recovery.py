@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 import pytest
@@ -8,10 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def read(rel):
-    return (ROOT / rel).read_text(
-        encoding="utf-8",
-        errors="ignore"
-    )
+    return _read_source(ROOT / rel, encoding="utf-8", errors="ignore")
 
 
 def test_release_identity():

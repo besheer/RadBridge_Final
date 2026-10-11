@@ -1,10 +1,11 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 import app as m
 
 
 def _response_source():
-    source = Path(m.__file__).read_text(encoding="utf-8")
+    source = _read_source(Path(m.__file__), encoding="utf-8")
     start = source.index("def assignment_offer_respond(offer_id):")
     end = source.index(
         "@app.post('/orders/<int:order_id>/assignment-offer/start')",

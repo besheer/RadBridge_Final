@@ -1,16 +1,15 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 from runtime_feature_schema import REQUIRED_RUNTIME_TABLES
 
 
 ROOT = Path(__file__).resolve().parents[1]
-APP = (ROOT / "app.py").read_text(encoding="utf-8")
-SQL = (
-    ROOT
+APP = _read_source(ROOT / "app.py", encoding="utf-8")
+SQL = _read_source(ROOT
     / "migrations"
     / "sql"
-    / "v5469_runtime_feature_schema.sql"
-).read_text(encoding="utf-8")
+    / "v5469_runtime_feature_schema.sql", encoding="utf-8")
 
 
 def test_v5469_release_identity():

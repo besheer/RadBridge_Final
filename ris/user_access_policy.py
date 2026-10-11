@@ -43,7 +43,8 @@ def require_manage_target(user=None,role=None):
 @lru_cache(maxsize=1)
 def route_catalog():
     import app as m
-    tree=ast.parse(Path(m.__file__).read_text())
+    from web.source_contract import app_source
+    tree=ast.parse(app_source())
     gates={}
     for fn in tree.body:
         if not isinstance(fn,(ast.FunctionDef,ast.AsyncFunctionDef)):continue
@@ -75,7 +76,8 @@ def permission_catalog():
     names=set(m.ALL_PERMISSIONS)
     for values in m.ROLE_PERMS.values():names.update(values)
     for role in m.Role.query.all():names.update(role.permissions())
-    tree=ast.parse(Path(m.__file__).read_text())
+    from web.source_contract import app_source
+    tree=ast.parse(app_source())
     for node in ast.walk(tree):
         if isinstance(node,ast.Call) and isinstance(node.func,ast.Name) and node.func.id=='require_perm' and node.args and isinstance(node.args[0],ast.Constant):
             names.add(node.args[0].value)

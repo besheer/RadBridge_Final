@@ -1,17 +1,12 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-APP = (ROOT / "app.py").read_text(encoding="utf-8")
-SERVICE = (
-    ROOT / "case_operations_dashboard_service.py"
-).read_text(encoding="utf-8")
-BASE = (ROOT / "templates" / "base.html").read_text(
-    encoding="utf-8"
-)
-TEMPLATE = (
-    ROOT / "templates" / "case_operations_control_center.html"
-).read_text(encoding="utf-8")
+APP = _read_source(ROOT / "app.py", encoding="utf-8")
+SERVICE = _read_source(ROOT / "case_operations_dashboard_service.py", encoding="utf-8")
+BASE = _read_source(ROOT / "templates" / "base.html", encoding="utf-8")
+TEMPLATE = _read_source(ROOT / "templates" / "case_operations_control_center.html", encoding="utf-8")
 
 
 def test_control_center_route_is_read_only_get():

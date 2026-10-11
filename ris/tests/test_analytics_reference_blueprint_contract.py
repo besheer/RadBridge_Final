@@ -1,14 +1,13 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-APP_SOURCE = (ROOT / "app.py").read_text(encoding="utf-8")
-BLUEPRINT_SOURCE = (ROOT / "analytics_reference_routes.py").read_text(
-    encoding="utf-8"
-)
+APP_SOURCE = _read_source(ROOT / "app.py", encoding="utf-8")
+BLUEPRINT_SOURCE = _read_source(ROOT / "analytics_reference_routes.py", encoding="utf-8")
 
-BASE_TEMPLATE = (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
-ADMIN_TEMPLATE = (ROOT / "templates" / "admin.html").read_text(encoding="utf-8")
+BASE_TEMPLATE = _read_source(ROOT / "templates" / "base.html", encoding="utf-8")
+ADMIN_TEMPLATE = _read_source(ROOT / "templates" / "admin.html", encoding="utf-8")
 
 
 ROUTES = {
@@ -63,7 +62,7 @@ def test_analytics_template_links_use_blueprint_endpoint():
     legacy = "url_for('analytics')"
 
     assert expected in BASE_TEMPLATE
-    assert 'analytics_reference.analytics' in (ROOT / 'admin_control_center.py').read_text(encoding='utf-8')
+    assert 'analytics_reference.analytics' in _read_source(ROOT / 'admin_control_center.py', encoding='utf-8')
     assert 'sections' in ADMIN_TEMPLATE
     assert legacy not in BASE_TEMPLATE
     assert legacy not in ADMIN_TEMPLATE

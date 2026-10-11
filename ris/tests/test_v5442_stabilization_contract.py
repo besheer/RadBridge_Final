@@ -1,9 +1,10 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-APP = (ROOT / 'app.py').read_text(encoding='utf-8')
-ORDER_FORM = (ROOT / 'templates' / 'order_form.html').read_text(encoding='utf-8')
-DOCKERFILE = (ROOT / 'Dockerfile').read_text(encoding='utf-8')
+APP = _read_source(ROOT / 'app.py', encoding='utf-8')
+ORDER_FORM = _read_source(ROOT / 'templates' / 'order_form.html', encoding='utf-8')
+DOCKERFILE = _read_source(ROOT / 'Dockerfile', encoding='utf-8')
 
 
 def test_release_metadata_is_v5442():
@@ -93,7 +94,7 @@ def test_session_cookie_hardening_and_origin_guard_present():
 
 
 def test_reporting_agent_v2_contract_replaces_legacy_package_gate():
-    contract = (ROOT / 'docs' / 'REPORTING_AGENT_V2_CONTRACT.md').read_text()
+    contract = _read_source(ROOT / 'docs' / 'REPORTING_AGENT_V2_CONTRACT.md')
     for marker in (
         'optional compatibility bridge',
         'X-RadBridge-Case-Token',
