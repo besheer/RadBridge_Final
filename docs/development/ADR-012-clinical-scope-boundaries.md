@@ -10,4 +10,4 @@ web.extensions.clinical_scope owns CSRF, permission/audit behavior, routes, requ
 
 Validation: 107 local scope/factory/CSV/technician/ownership/distribution tests passed, followed by 67 scope/dependency/factory/CSV/ownership tests after the explicit disabled-scope early-return correction. Subprocess tests import the domain/service without Flask, SQLAlchemy or runtime; tests reject corrupt scopes and ambiguous devices and use supplied evidence. CI adds an independent PostgreSQL scope matrix suite. Complete CI on this commit remains required. External integration, browser UAT and release acceptance remain unfinished.
 
-Local documentation synchronization is temporarily limited by a full Windows disk. The remote GitHub tree contains the reviewed documentation; no local files were deleted after automatic cleanup rejection. No production change was performed.
+No production change was performed.

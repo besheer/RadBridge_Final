@@ -44,7 +44,7 @@ def main():
             env.update(DATABASE_URL=dsn,RADBRIDGE_TEST_DATABASE_URL=dsn)
             targets=["tests/test_radiotherapy.py","tests/test_case_readiness_service.py","tests/test_domain_readiness.py","tests/test_clinical_app_factory.py"]
             if args.postgres_suite == "assignment":
-                targets=["tests/test_assignment_transaction_dependencies.py", "tests/test_distribution_domain.py",
+                targets=["tests/test_assignment_transaction_dependencies.py", "tests/test_visit_service_dependencies.py", "tests/test_distribution_domain.py",
                          "tests/test_assignment_visit_grouping.py", "tests/test_case_assignment_service.py"]
             elif args.postgres_suite == "scope":
                 targets=["tests/test_scope_dependencies.py", "tests/test_clinical_scope.py", "tests/test_clinical_app_factory.py"]

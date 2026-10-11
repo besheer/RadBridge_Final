@@ -49,3 +49,5 @@ The runner forces in-memory SQLite and temporary report/attachment/backup direct
 Ownership extraction is implemented across the listed areas. Continue replacing compatibility bindings with narrow use-case dependencies, preserving callable/route/data contracts. Synthetic unit/contract tests block real HTTP transport; external-service acceptance belongs in a separate reviewed integration environment. Do not introduce microservices before the validation gates in docs/blueprint/VALIDATION_PLAN.md. This branch does not make the repository a complete PACS/ONLYOFFICE deployment or disaster-recovery package.
 
 Clinical scope validation, access decisions and SQL queries have distinct owners (ADR 012); web registration retains CSRF, guards and listener lifecycle. PostgreSQL CI runs clinical, assignment and scope suites independently.
+
+Grouped visit workflows now execute through explicit evidence/repository/policy ports (ADR 013), preserving patient/branch/source identity, qualification, capacity and deadline behavior.

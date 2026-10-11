@@ -45,10 +45,11 @@
   },
   {
     "legacy": "assignment_visit_grouping",
-    "canonical": "application.services.assignment.assignment_visit_grouping",
+    "canonical": "web.compatibility.assignment_visit_grouping",
     "original_sha256": "b07120014084ed598efc164c1d7656e38d731c36ef16e06d7aa3d8ea9b56ac4c",
     "compatibility_runtime": true,
-    "resources_from_ris_root": false
+    "resources_from_ris_root": false,
+    "visit_service": "application.services.assignment.visit_assignment"
   },
   {
     "legacy": "backup_worker",
