@@ -90,6 +90,11 @@
       "module": "application.services.finance.closing_workflow",
       "repository": "infrastructure.adapters.finance.closing_repository",
       "composition": "web.extensions.daily_closing_policy"
+    },
+    {
+      "module": "application.services.clinical.rt_course_workflow",
+      "repository": "infrastructure.adapters.clinical.rt_course_repository",
+      "composition": "web.extensions.radiotherapy"
     }
   ]
 }

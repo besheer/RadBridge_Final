@@ -8,7 +8,7 @@ Date: 2026-10-11. Scope: isolated development source on `refactor/development-fo
 - All 949 extracted functions have executable owners in 32 component/route/helper modules. Eighty HTTP-dependent installers were assigned to web ownership without changing their handler bodies.
 - All 76 migrated modules have one canonical owner and legacy aliases preserving module/exception/patch identity.
 - The clinical application factory supports independently supplied database, secret, storage, cookie and runtime URL configuration. Two-instance authorization/scope tests cover supported isolation; provider and host flags remain process-level.
-- Eighteen explicit workflow dependency boundaries are registered in `ris/application/port_contracts.json`. The architecture checker rejects infrastructure, web, framework and runtime imports in those services. This is a specific enforced registry, not a claim that all old services are clean.
+- Nineteen explicit workflow dependency boundaries are registered in `ris/application/port_contracts.json`. The architecture checker rejects infrastructure, web, framework and runtime imports in those services. This is a specific enforced registry, not a claim that all old services are clean.
 
 `ris/docs/CODE_MAP.md` links executable models, composed routes, canonical legacy owners and explicit port boundaries. Regenerate it using `python ris/tools/generate_code_map.py` after ownership changes. `application/component_manifest.json` and `application/module_manifest.json` remain the ownership inventories.
 
@@ -23,11 +23,11 @@ Date: 2026-10-11. Scope: isolated development source on `refactor/development-fo
 | Reporting | Immutable report saving with repository/artifact ports, edit leases, correction request/review | Reference resolution, correction/editor finalization, callbacks, exports and external editor failure acceptance |
 | Finance | FINAL replacement entitlement settlement, branch collection checks, net receipt/refund evidence, authorized daily closing SAVE/CLOSE | Broader receipts/disbursements/refunds, finance unit-of-work/error presentation and external accounting integration |
 | Inventory | Original-lot return policy, repository and movement dependencies | Consumption, general stock movement, warehouse lifecycle and stock transport interfaces |
-| Clinical staff/RT | Owned models, pure manual RT input validation, components and web routes; externally approved RT records | Explicit staff/RT transaction use cases; no treatment-device integration or controller is supplied |
+| Clinical staff/RT | Owned models, pure RT input validation and explicit manual course/PET-link ports; components and web routes | Explicit staff and RT plan/session transaction use cases; no treatment-device integration or controller is supplied |
 | Imaging/viewers | Owned identity/matching policies, imaging adapters/routes and viewer extension | Provisioned synthetic PACS/viewer acceptance, partial transport/retry/recovery contracts |
 | Communications/operations | Owned adapter/extension/component modules | Narrow external-provider dependencies, operational recovery and storage/worker lifecycle |
 
-Detailed decisions are in ADRs 001–027. Canonical ownership, explicit use-case inversion and real external integration are separate claims. A screen, a source assertion or a renamed module alone does not establish working integration.
+Detailed decisions are in ADRs 001–028. Canonical ownership, explicit use-case inversion and real external integration are separate claims. A screen, a source assertion or a renamed module alone does not establish working integration.
 
 ## Preserved contracts and focused evidence
 
@@ -43,9 +43,9 @@ Operations aggregation preserves existing auxiliary query scopes and window-base
 
 GitHub Actions runs nine jobs: the complete SQLite suite, seven independent PostgreSQL suites (`clinical`, `assignment`, `scope`, `reporting`, `finance`, `inventory`, `registration`) and a separate Docker Compose build/start/login smoke check.
 
-Latest completed baseline: daily closing workflow commit a1351f412d4068a49b87a6181fbdabd66de92a9c passed all nine jobs in run 38167336491, including 1,961 SQLite tests (five skipped), expanded persisted PostgreSQL closing governance and Docker smoke. Readiness resolution, search, scheduling, operations snapshot and collection evidence commits each passed their own nine jobs. Scheduler commit 8494b04402f11e53f4d47160c0d981a8da307423 passed the two-connection PostgreSQL lock test.
+Latest completed baseline: manual RT validation ownership commit 4a47f25f0b5ce8fab63649ca0d88949eb4e819f7 passed all nine jobs in run 38167591224, including 1,963 SQLite tests (five skipped), persisted PostgreSQL clinical/closing governance and Docker smoke. Prior readiness, operations aggregation, collection evidence and daily closing mutation commits each passed their own nine jobs. Scheduler commit 8494b04402f11e53f4d47160c0d981a8da307423 passed the two-connection PostgreSQL lock test.
 
-The new manual RT validation/HTTP ownership move passed 29 focused local tests (one optional existing test skipped) and still requires its own complete CI. Synthetic fixture repairs use bounded codes and actual persisted actors; permission, branch, closed-day and monetary assertions are retained. Do not reuse an earlier commit's green result as evidence for a changed head.
+The new manual RT course/PET-link port move passed 41 focused local tests (one optional existing test skipped), with its own complete CI still required. Synthetic fixture repairs use bounded codes and actual persisted actors; permission, branch, closed-day and monetary assertions are retained. Do not reuse an earlier commit's green result as evidence for a changed head.
 
 The local runner forces synthetic SQLite and temporary artifact directories. PostgreSQL runs require the guarded isolated development database. Real provider HTTP is blocked in unit/contract tests. The Docker stack contains RIS/PostgreSQL only, not a complete PACS/ONLYOFFICE or host disaster-recovery package.
 

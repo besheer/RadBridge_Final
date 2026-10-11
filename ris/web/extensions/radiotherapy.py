@@ -4,6 +4,9 @@ import hashlib,json,secrets
 from datetime import datetime,date,timezone
 from decimal import Decimal,InvalidOperation
 from domain.clinical.rt_validation import amount, text, local_time
+from domain.clinical.rt_course_policy import RTWorkflowError
+from application.services.clinical import rt_course_workflow as _courses
+from infrastructure.adapters.clinical.rt_course_repository import SqlAlchemyRTCourseRepository
 from zoneinfo import ZoneInfo
 from flask import abort,request,session,redirect,url_for,render_template,flash
 from sqlalchemy.exc import IntegrityError
@@ -24,6 +27,7 @@ def register(m):
     Course,Plan,Fraction,PetLink,Note,Consumable=RTCourse,RTPlanVersion,RTFraction,RTPetLink,RTNote,RTConsumable
     models=dict(Course=Course,Plan=Plan,Fraction=Fraction,PetLink=PetLink,Note=Note,Consumable=Consumable)
     m.rt_models=models
+    def repository():return SqlAlchemyRTCourseRepository(db.session,m.Order,Course,PetLink)
 
     def actor():
         u=m.current_user()
@@ -93,6 +97,12 @@ def register(m):
         @wraps(fn)
         def wrapped(*args,**kwargs):
             try:return fn(*args,**kwargs)
+            except RTWorkflowError as exc:
+                statuses={'INVALID_COURSE_VERSION':400,'INVALID_PET_PURPOSE':400,
+                          'ORDER_NOT_FOUND':404,'COURSE_NOT_FOUND':404,
+                          'STALE_COURSE_VERSION':409,'PET_LINK_IDENTITY_MISMATCH':409,
+                          'ORDER_CANCELLED':409,'COURSE_TERMINAL':409}
+                abort(statuses.get(exc.code,500))
             except ValueError as exc:return invalid(exc)
             except IntegrityError:
                 db.session.rollback();abort(409)
@@ -115,10 +125,9 @@ def register(m):
     @m.require_perm('rt.course.create')
     @safe
     def rt_create_course():
-        order=m.Order.query.filter_by(accession=text(request.form.get('accession'),1,100)).first_or_404();clinical_order(order)
-        if order.status=='CANCELLED':abort(409)
-        c=Course(primary_order_id=order.id,patient_id=order.patient_id,branch_id=order.branch_id,reference=text(request.form.get('reference'),1,100),created_by=actor().id)
-        db.session.add(c);db.session.flush();audited('COURSE_CREATED','rt_course',c,{'primary_order_id':order.id,'source':'MANUAL'})
+        c=_courses.create_course(repository=repository(),authorize_order=clinical_order,
+            actor_id=lambda:actor().id,audit=audited,accession=request.form.get('accession'),
+            reference=request.form.get('reference'))
         return done(c)
 
     @m.app.get('/radiotherapy/<int:course_id>')
@@ -162,14 +171,11 @@ def register(m):
     @m.require_perm('rt.pet.link')
     @safe
     def rt_link_pet(course_id):
-        c=course(course_id,True);version(c)
-        if c.status in ('COMPLETED','CANCELLED'):abort(409)
-        o=m.Order.query.filter_by(accession=text(request.form.get('accession'),1,100)).first_or_404();clinical_order(o)
-        if o.patient_id!=c.patient_id or o.branch_id!=c.branch_id or str(o.modality or '').upper()!='PT' or o.status=='CANCELLED':abort(409)
-        purpose=request.form.get('purpose')
-        if purpose not in ('BASELINE','PLANNING_REFERENCE','FOLLOW_UP','OTHER'):abort(400)
-        link=PetLink(course_id=c.id,order_id=o.id,purpose=purpose,reason=text(request.form.get('reason'),5,1000),linked_by=actor().id)
-        db.session.add(link);db.session.flush();c.version+=1;audited('PET_LINKED','rt_pet_link',link,{'course_id':c.id,'order_id':o.id,'purpose':purpose,'reason':link.reason})
+        c,link=_courses.link_pet(repository=repository(),authorize_course=course_scope,
+            authorize_order=clinical_order,actor_id=lambda:actor().id,audit=audited,
+            course_id=course_id,expected_version=request.form.get('version',''),
+            accession=request.form.get('accession'),purpose=request.form.get('purpose'),
+            reason=request.form.get('reason'))
         return done(c)
 
     @m.app.post('/radiotherapy/<int:course_id>/fractions')
