@@ -315,7 +315,7 @@
   },
   {
     "legacy": "replacement_settlements",
-    "canonical": "application.services.finance.replacement_settlements",
+    "canonical": "web.extensions.replacement_settlements",
     "original_sha256": "d6ef08fd5eaf19c739b9e059f8b3716b2d105a49f92b53f0b38b1f9269be5f9c",
     "compatibility_runtime": false,
     "resources_from_ris_root": false

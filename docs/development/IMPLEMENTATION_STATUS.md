@@ -14,7 +14,7 @@ Clinical release metadata remains 5.46.9. Architecture work is a development ref
 | Assignment and coordinator work | `domain.assignment`, explicit query/transaction/visit services and repositories | Policy/count/capacity, ranking/deadlines, single-case and grouped-visit mutations and offer acceptance are separated; coordinator preview, distribution evidence and workers still need narrow dependencies |
 | PACS matching, identity, viewers | `domain.imaging`, `application.services.imaging`, `infrastructure.adapters.imaging`, imaging routes and viewer extension | Provisioned synthetic PACS transport/failure acceptance |
 | Reporting, revisions, editor, exports | `domain.reporting`, explicit report commit service/repository/artifact store, reporting routes/extensions | Commit ports are separated; revisions, finalization, callbacks and exports still need use-case dependencies and external fault acceptance |
-| Payments, collection, settlements | `application.services.finance`, finance components/routes | Narrow unit-of-work and settlement dependencies; retain existing exact-once contracts |
+| Payments, collection, settlements | Explicit replacement settlement policy/workflow/repository; finance components/routes | Replacement transfer ports are separated; collection, closing, broader unit-of-work and cash-entry dependencies remain unfinished |
 | Inventory and consumables | `application.services.inventory`, inventory components/routes | Narrow stock repository interfaces; no stock data migration |
 | Users, clinical scope, security | `application.services.identity`, identity components/routes, security extension | Keep role/branch checks authoritative; host collection/VPN services remain external |
 | Communications, AI and telephony | communication components/routes, communication adapter and extensions | External-provider configuration and reviewed integration testing |
@@ -45,7 +45,9 @@ Candidate ordering and start-timeout selection now execute in the pure domain la
 
 Assignment mutations and offer acceptance now execute through explicit repository/policy ports (ADR 011). Legacy signatures are compatibility wrappers. Clinical qualification and grouped-visit callbacks still originate at the compatibility edge; this is not complete inversion of the whole assignment workflow. PostgreSQL CI adds an independent assignment suite.
 
-See ADRs 001–016 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+See ADRs 001–017 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+
+Replacement entitlement planning/confirmation executes through explicit policy/evidence/persistence/audit ports (ADR 017), retaining original cash disbursements and FINAL-only/idempotency barriers. PostgreSQL reporting passed on the corrected lease adapter commit f57be1b513953900230c49ae38ef8b1cd4ce6e05; the finance suite is newly added and requires its own green CI result.
 
 Correction request/review transitions execute through explicit repository/evidence/audit/notification/clock policies (ADR 016). Document/reference resolution and editor/finalization still compose at the web extension edge. The PostgreSQL reporting suite also exposed synthetic full-name/foreign-key fixture defects, repaired without schema changes or weaker permission checks; a successful reporting CI run is still required.
 
