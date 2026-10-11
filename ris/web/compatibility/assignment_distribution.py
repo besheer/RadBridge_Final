@@ -2,6 +2,7 @@
 import json
 from datetime import datetime, timedelta
 from sqlalchemy import func
+from domain.assignment.distribution import start_timeout_seconds, CandidateFacts, rank_candidate_facts
 
 AUTO_TYPES = frozenset({'AUTO', 'AUTO_DIRECT', 'AUTO_OFFER'})
 SELECTION_MODES = frozenset({'LEAST_ACTIVE', 'ROUND_ROBIN', 'LONGEST_WAITING'})
@@ -19,20 +20,6 @@ def policy_snapshot():
     return _queries().policy_snapshot()
 
 
-def start_timeout_seconds(policy, modality, priority, images):
-    modality = str(modality or '').upper()
-    priority = str(priority or 'ROUTINE').upper()
-    matched = [r for r in policy['rules']
-               if r['modality'] in ('*', modality)
-               and r['priority'] in ('*', priority)
-               and int(r['min_images']) <= int(images or 0)]
-    if not matched:
-        raise ValueError('START_DEADLINE_RULE_MISSING')
-    rule = max(matched, key=lambda r: (r['priority'] != '*', r['modality'] != '*', r['min_images']))
-    percent = 100
-    if rule['priority'] == '*':
-        percent = policy['stat_percent'] if priority == 'STAT' else policy['urgent_percent'] if priority == 'URGENT' else 100
-    return max(60, int(rule['minutes']) * 60 * int(percent) // 100)
 
 
 def active_case_count(doctor_id):
@@ -78,7 +65,8 @@ def rank_candidates(candidates, policy=None,order=None):
     policy = policy or policy_snapshot()
     ranked = []
     now = datetime.utcnow()
-    for user, online, _old_count, weight in candidates:
+    users = {}
+    for index, (user, online, _old_count, weight) in enumerate(candidates):
         if order is not None:
             from assignment_visit_grouping import group_members
             from clinical_scope import allowed
@@ -89,19 +77,16 @@ def rank_candidates(candidates, policy=None,order=None):
         offers=m.AssignmentOffer.query.filter_by(doctor_user_id=user.id,status='PENDING').filter(m.AssignmentOffer.expires_at>now).all()
         from assignment_visit_grouping import group_members
         pending=sum(len(group_members(offer.order)) for offer in offers)
-        if active + pending >= case_capacity(user.id, policy):
+        capacity = case_capacity(user.id, policy)
+        if active + pending >= capacity:
             continue
         assigned = m.db.session.query(func.max(m.CaseAssignment.assigned_at)).filter_by(doctor_user_id=user.id).scalar()
         offered = m.db.session.query(func.max(m.AssignmentOffer.offered_at)).filter_by(doctor_user_id=user.id).scalar()
         last_turn = max(assigned or datetime.min, offered or datetime.min)
-        if policy['selection_mode'] == 'ROUND_ROBIN':
-            key = (last_turn, user.id)
-        elif policy['selection_mode'] == 'LONGEST_WAITING':
-            key = (0 if online else 1, last_turn, user.id)
-        else:
-            key = (0 if online else 1, active + pending, last_turn, -weight, user.id)
-        ranked.append((key, user))
-    return [user for _, user in sorted(ranked, key=lambda item: item[0])]
+        users[index] = user
+        ranked.append(CandidateFacts(index, user.id, online, active, pending, capacity, last_turn, weight))
+    return [users[index] for index in rank_candidate_facts(ranked, policy['selection_mode'])]
+
 
 
 def prepare_auto_assignment(order, doctor, assignment_type, now):

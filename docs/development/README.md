@@ -15,6 +15,7 @@ This branch implements a modular monolith on an isolated development branch. It 
 - 76 existing services, adapters, extensions and worker modules moved into owned packages. Legacy import and CLI facades preserve callers.
 - Web settings and clinical application construction are independent per supported instance settings. Development WSGI uses `web.factory:create_clinical_app()`; `app:app` remains compatible. See ADR 007 for configuration/lifecycle contracts.
 - Distribution policy, active-case and capacity queries execute through an explicitly injected service/repository pair. Remaining distribution orchestration is marked as web compatibility; see ADR 009.
+- Start-deadline and candidate-ordering decisions execute in `domain.assignment.distribution` over supplied facts, preserving the existing distribution keys; see ADR 010.
 
 ## Start local RIS development (Ubuntu/Docker Compose v2)
 
