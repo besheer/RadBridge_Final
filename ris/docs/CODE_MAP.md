@@ -675,7 +675,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `radiotherapy` | [application.services.clinical.radiotherapy](../application/services/clinical/radiotherapy.py) |
 | `radiotherapy_migration` | [infrastructure.schema.radiotherapy_migration](../infrastructure/schema/radiotherapy_migration.py) |
 | `readiness_maintenance` | [workers.readiness_maintenance](../workers/readiness_maintenance.py) |
-| `readiness_operations` | [application.services.readiness.readiness_operations](../application/services/readiness/readiness_operations.py) |
+| `readiness_operations` | [web.extensions.readiness_operations](../web/extensions/readiness_operations.py) |
 | `registration_policy` | [web.compatibility.registration_policy](../web/compatibility/registration_policy.py) |
 | `replacement_settlements` | [web.extensions.replacement_settlements](../web/extensions/replacement_settlements.py) |
 | `report_commit_core` | [infrastructure.adapters.reporting.report_commit_core](../infrastructure/adapters/reporting/report_commit_core.py) |
@@ -729,6 +729,7 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.registration.insurance_readiness](../application/services/registration/insurance_readiness.py) | [infrastructure.adapters.registration.insurance_repository](../infrastructure/adapters/registration/insurance_repository.py) | [web.compatibility.insurance_policy](../web/compatibility/insurance_policy.py) |
 | [application.services.readiness.resolution_workflow](../application/services/readiness/resolution_workflow.py) | [infrastructure.adapters.readiness.resolution_repository](../infrastructure/adapters/readiness/resolution_repository.py) | [web.compatibility.case_exception_resolution_service](../web/compatibility/case_exception_resolution_service.py) |
 | [application.services.readiness.order_search](../application/services/readiness/order_search.py) | [infrastructure.adapters.readiness.search_repository](../infrastructure/adapters/readiness/search_repository.py) | [web.compatibility.case_exception_resolution_service](../web/compatibility/case_exception_resolution_service.py) |
+| [application.services.readiness.scheduling](../application/services/readiness/scheduling.py) | [infrastructure.adapters.readiness.schedule_repository](../infrastructure/adapters/readiness/schedule_repository.py) | [web.extensions.readiness_operations](../web/extensions/readiness_operations.py) |
 
 ## Key Worker / Module Files
 

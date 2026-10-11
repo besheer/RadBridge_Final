@@ -301,7 +301,7 @@
   },
   {
     "legacy": "readiness_operations",
-    "canonical": "application.services.readiness.readiness_operations",
+    "canonical": "web.extensions.readiness_operations",
     "original_sha256": "f2f6e97ecc1541ed53e8cc1a48b9544e8da9df57cffb2464fc2622ff431c9a1e",
     "compatibility_runtime": false,
     "resources_from_ris_root": false

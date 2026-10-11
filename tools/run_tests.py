@@ -43,7 +43,7 @@ def main():
             fixture.write_text(content,encoding="utf-8")
             env.update(DATABASE_URL=dsn,RADBRIDGE_TEST_DATABASE_URL=dsn)
             targets=["tests/test_radiotherapy.py","tests/test_case_readiness_service.py","tests/test_domain_readiness.py","tests/test_clinical_app_factory.py",
-                     "tests/test_readiness_resolution_dependencies.py","tests/test_readiness_resolution_runtime.py","tests/test_readiness_search_dependencies.py","tests/test_readiness_search_runtime.py"]
+                     "tests/test_readiness_resolution_dependencies.py","tests/test_readiness_resolution_runtime.py","tests/test_readiness_search_dependencies.py","tests/test_readiness_search_runtime.py", "tests/test_readiness_scheduling_dependencies.py", "tests/test_readiness_scheduling_runtime.py"]
             if args.postgres_suite == "assignment":
                 targets=["tests/test_assignment_transaction_dependencies.py", "tests/test_visit_service_dependencies.py", "tests/test_distribution_domain.py",
                          "tests/test_assignment_visit_grouping.py", "tests/test_case_assignment_service.py"]
@@ -66,3 +66,4 @@ def main():
         return subprocess.call([sys.executable,"-m","pytest","-q","--disable-warnings","--tb=short",*targets],cwd=source,env=env)
 
 if __name__=="__main__":raise SystemExit(main())
+

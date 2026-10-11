@@ -65,6 +65,11 @@
       "module": "application.services.readiness.order_search",
       "repository": "infrastructure.adapters.readiness.search_repository",
       "composition": "web.compatibility.case_exception_resolution_service"
+    },
+    {
+      "module": "application.services.readiness.scheduling",
+      "repository": "infrastructure.adapters.readiness.schedule_repository",
+      "composition": "web.extensions.readiness_operations"
     }
   ]
 }
