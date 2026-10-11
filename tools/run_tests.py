@@ -19,9 +19,11 @@ def checked_pg_url(value):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--postgres",action="store_true",help="Only isolated RT/readiness PostgreSQL contracts; may reset this synthetic test DB")
+    parser.add_argument("--postgres-suite", choices=("clinical", "assignment"), default="clinical")
     parser.add_argument("targets",nargs="*")
     args=parser.parse_args()
     if args.postgres and args.targets:parser.error("PostgreSQL mode has a fixed scoped suite")
+    if not args.postgres and args.postgres_suite != "clinical":parser.error("--postgres-suite requires --postgres")
     with tempfile.TemporaryDirectory(prefix="radbridge-test-") as tmp:
         tmp=Path(tmp)
         env=dict(os.environ,SECRET_KEY="SYNTHETIC-TEST-ONLY",RADBRIDGE_BOOTSTRAP_ON_IMPORT="0",REPORT_DIR=str(tmp/"reports"),ATTACHMENT_DIR=str(tmp/"attachments"),BACKUP_DIR=str(tmp/"backups"),PYTHONUTF8="1",
@@ -41,6 +43,9 @@ def main():
             fixture.write_text(content,encoding="utf-8")
             env.update(DATABASE_URL=dsn,RADBRIDGE_TEST_DATABASE_URL=dsn)
             targets=["tests/test_radiotherapy.py","tests/test_case_readiness_service.py","tests/test_domain_readiness.py","tests/test_clinical_app_factory.py"]
+            if args.postgres_suite == "assignment":
+                targets=["tests/test_assignment_transaction_dependencies.py", "tests/test_distribution_domain.py",
+                         "tests/test_assignment_visit_grouping.py", "tests/test_case_assignment_service.py"]
         else:
             source=ROOT/"ris";env["DATABASE_URL"]="sqlite:///:memory:"
             targets=args.targets

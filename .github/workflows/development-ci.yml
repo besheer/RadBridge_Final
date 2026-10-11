@@ -22,6 +22,10 @@ jobs:
   postgres-contracts:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [clinical, assignment]
     services:
       postgres:
         image: postgres:16-alpine
@@ -41,7 +45,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -r ris/requirements.txt -c development/constraints.txt
-      - run: python tools/run_tests.py --postgres
+      - run: python tools/run_tests.py --postgres --postgres-suite ${{ matrix.suite }}
   development-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 20

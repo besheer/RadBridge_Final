@@ -66,10 +66,11 @@
   },
   {
     "legacy": "case_assignment_service",
-    "canonical": "application.services.assignment.case_assignment_service",
+    "canonical": "web.compatibility.case_assignment_service",
     "original_sha256": "dfcfb15a3a06e5128cc3259b2715ead14137026ffc265c02ad7d700e2b1309fc",
     "compatibility_runtime": true,
-    "resources_from_ris_root": false
+    "resources_from_ris_root": false,
+    "transaction_service": "application.services.assignment.assignment_transaction"
   },
   {
     "legacy": "case_exception_resolution_service",
