@@ -49,7 +49,7 @@ def main():
             elif args.postgres_suite == "scope":
                 targets=["tests/test_scope_dependencies.py", "tests/test_clinical_scope.py", "tests/test_clinical_app_factory.py"]
             elif args.postgres_suite == "reporting":
-                targets=["tests/test_report_commit_policy.py", "tests/test_report_commit_dependencies.py",
+                targets=["tests/test_report_edit_lease_dependencies.py", "tests/test_report_commit_policy.py", "tests/test_report_commit_dependencies.py",
                          "tests/test_report_commit_runtime.py", "tests/test_report_revisions.py",
                          "tests/test_report_identity_renewal.py", "tests/test_onlyoffice_callback_internal_download_url.py"]
         else:

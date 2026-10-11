@@ -11,7 +11,8 @@ import report_revision_editor as e
 
 @pytest.fixture
 def revision_case(app_ctx,monkeypatch,tmp_path):
-    m=app_ctx;key='CODEX-UAT-'+uuid4().hex[:12]
+    # Branch.code is VARCHAR(20); synthetic identifiers obey the real schema.
+    m=app_ctx;key='CODEX-UAT-'+uuid4().hex[:8]
     monkeypatch.setattr(m,'REPORT_DIR',str(tmp_path))
     monkeypatch.setattr(m,'ONLYOFFICE_JWT_SECRET','CODEX-UAT-isolated-JWT-secret')
     branch=m.Branch(code=key,name=key,active=True)

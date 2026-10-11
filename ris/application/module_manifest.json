@@ -336,7 +336,7 @@
   },
   {
     "legacy": "report_edit_control",
-    "canonical": "application.services.reporting.report_edit_control",
+    "canonical": "web.compatibility.report_edit_control",
     "original_sha256": "effbfc809e8a45436e5338d1de3dc302fad75689412a05ec062d3aefaa2e3219",
     "compatibility_runtime": false,
     "resources_from_ris_root": false
