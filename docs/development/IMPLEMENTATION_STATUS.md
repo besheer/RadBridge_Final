@@ -11,7 +11,7 @@ Clinical release metadata remains 5.46.9. Architecture work is a development ref
 | Patient registration, scheduling, insurance | `domain.registration`, `application.services.registration`, registration components/routes | Narrow database/configuration interfaces; external RIS connectors are separate integrations |
 | Technician, nursing, procedures, radiotherapy | `domain.clinical`, `application.services.clinical`, clinical components/routes | Explicit use cases and transaction ownership; treatment-device integration not supplied |
 | Readiness and exceptions | `domain.readiness`, `domain.readiness_checks`, `application.services.readiness` | Separate evidence acquisition from DB-backed orchestration |
-| Assignment and coordinator work | `domain.assignment`, `application.services.assignment` | Replace live legacy projections with narrow assignment dependencies |
+| Assignment and coordinator work | `domain.assignment`, `application.services.assignment`, injected assignment query repository | Policy/count/capacity queries are separated; remaining ranking, qualification and mutation orchestration needs narrow dependencies |
 | PACS matching, identity, viewers | `domain.imaging`, `application.services.imaging`, `infrastructure.adapters.imaging`, imaging routes and viewer extension | Provisioned synthetic PACS transport/failure acceptance |
 | Reporting, revisions, editor, exports | `domain.reporting`, `application.services.reporting`, `infrastructure.adapters.reporting`, reporting routes/extensions | Editor callback fault acceptance and explicit storage/transaction interfaces |
 | Payments, collection, settlements | `application.services.finance`, finance components/routes | Narrow unit-of-work and settlement dependencies; retain existing exact-once contracts |
@@ -39,4 +39,6 @@ The 949 component installers now belong to 32 modules: 12 application component 
 
 The clinical factory commit `1bc4840a1ae5fa02c9fe5b9b7a2a225724ba9573` passed the complete SQLite suite (1,814 passed, three skipped), PostgreSQL contracts and the independent Docker Compose smoke test in GitHub Actions run 38118087675. Later commits require their own green checks before review.
 
-See ADRs 001–008 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+Distribution query separation is implemented in ADR 009. The legacy module manifest now explicitly points the still-coupled distribution entry points to `web.compatibility`; old import paths remain aliases to that single implementation. The new application query service has no runtime resolver or framework imports and is tested with independent repositories/sessions.
+
+See ADRs 001–009 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.

@@ -22,10 +22,12 @@
   },
   {
     "legacy": "assignment_distribution",
-    "canonical": "application.services.assignment.assignment_distribution",
+    "canonical": "web.compatibility.assignment_distribution",
     "original_sha256": "8182113a8689eb8165c3bdbe79d0bcd18a798e176c5f231b7cd57058d9189bda",
     "compatibility_runtime": true,
-    "resources_from_ris_root": false
+    "resources_from_ris_root": false,
+    "query_service": "application.services.assignment.assignment_queries",
+    "query_adapter": "infrastructure.adapters.assignment.query_repository"
   },
   {
     "legacy": "assignment_maintenance",

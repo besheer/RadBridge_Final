@@ -14,6 +14,7 @@ This branch implements a modular monolith on an isolated development branch. It 
 - 949 executable handlers belong to 32 web/application modules with explicit compatibility dependencies. HTTP helpers and request hooks belong to the web layer; application components do not receive HTTP framework dependencies.
 - 76 existing services, adapters, extensions and worker modules moved into owned packages. Legacy import and CLI facades preserve callers.
 - Web settings and clinical application construction are independent per supported instance settings. Development WSGI uses `web.factory:create_clinical_app()`; `app:app` remains compatible. See ADR 007 for configuration/lifecycle contracts.
+- Distribution policy, active-case and capacity queries execute through an explicitly injected service/repository pair. Remaining distribution orchestration is marked as web compatibility; see ADR 009.
 
 ## Start local RIS development (Ubuntu/Docker Compose v2)
 

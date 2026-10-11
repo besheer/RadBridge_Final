@@ -1,4 +1,4 @@
-"""Compatibility entry point for application.services.assignment.assignment_distribution."""
+"""Compatibility alias for the legacy distribution entry points."""
 import importlib as _importlib
 import sys as _sys
-_sys.modules[__name__] = _importlib.import_module('application.services.assignment.assignment_distribution')
+_sys.modules[__name__] = _importlib.import_module('web.compatibility.assignment_distribution')
