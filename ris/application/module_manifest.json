@@ -82,7 +82,7 @@
   },
   {
     "legacy": "case_operations_dashboard_service",
-    "canonical": "application.services.readiness.case_operations_dashboard_service",
+    "canonical": "web.compatibility.case_operations_dashboard_service",
     "original_sha256": "ca58c7af6a5d72364881653a81bab925b8df997304e643dc18154b54a7f1cfb7",
     "compatibility_runtime": false,
     "resources_from_ris_root": false

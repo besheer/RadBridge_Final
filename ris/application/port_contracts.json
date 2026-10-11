@@ -70,6 +70,11 @@
       "module": "application.services.readiness.scheduling",
       "repository": "infrastructure.adapters.readiness.schedule_repository",
       "composition": "web.extensions.readiness_operations"
+    },
+    {
+      "module": "application.services.readiness.operations_snapshot",
+      "repository": "infrastructure.adapters.readiness.snapshot_repository",
+      "composition": "web.compatibility.case_operations_dashboard_service"
     }
   ]
 }

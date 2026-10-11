@@ -4,7 +4,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = _read_source(ROOT / "app.py", encoding="utf-8")
-SERVICE = _read_source(ROOT / "case_operations_dashboard_service.py", encoding="utf-8")
+SERVICE = "\n".join((ROOT / path).read_text(encoding="utf-8") for path in (
+    "web/compatibility/case_operations_dashboard_service.py",
+    "application/services/readiness/operations_snapshot.py",
+    "infrastructure/adapters/readiness/snapshot_repository.py"))
 BASE = _read_source(ROOT / "templates" / "base.html", encoding="utf-8")
 TEMPLATE = _read_source(ROOT / "templates" / "case_operations_control_center.html", encoding="utf-8")
 

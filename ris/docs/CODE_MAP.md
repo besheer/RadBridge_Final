@@ -644,7 +644,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `bootstrap_db` | [workers.tools.bootstrap_db](../workers/tools/bootstrap_db.py) |
 | `case_assignment_service` | [web.compatibility.case_assignment_service](../web/compatibility/case_assignment_service.py) |
 | `case_exception_resolution_service` | [web.compatibility.case_exception_resolution_service](../web/compatibility/case_exception_resolution_service.py) |
-| `case_operations_dashboard_service` | [application.services.readiness.case_operations_dashboard_service](../application/services/readiness/case_operations_dashboard_service.py) |
+| `case_operations_dashboard_service` | [web.compatibility.case_operations_dashboard_service](../web/compatibility/case_operations_dashboard_service.py) |
 | `clinical_scope` | [web.extensions.clinical_scope](../web/extensions/clinical_scope.py) |
 | `collection_policy` | [application.services.finance.collection_policy](../application/services/finance/collection_policy.py) |
 | `coordinator_bulk_assignment` | [application.services.assignment.coordinator_bulk_assignment](../application/services/assignment/coordinator_bulk_assignment.py) |
@@ -730,6 +730,7 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.readiness.resolution_workflow](../application/services/readiness/resolution_workflow.py) | [infrastructure.adapters.readiness.resolution_repository](../infrastructure/adapters/readiness/resolution_repository.py) | [web.compatibility.case_exception_resolution_service](../web/compatibility/case_exception_resolution_service.py) |
 | [application.services.readiness.order_search](../application/services/readiness/order_search.py) | [infrastructure.adapters.readiness.search_repository](../infrastructure/adapters/readiness/search_repository.py) | [web.compatibility.case_exception_resolution_service](../web/compatibility/case_exception_resolution_service.py) |
 | [application.services.readiness.scheduling](../application/services/readiness/scheduling.py) | [infrastructure.adapters.readiness.schedule_repository](../infrastructure/adapters/readiness/schedule_repository.py) | [web.extensions.readiness_operations](../web/extensions/readiness_operations.py) |
+| [application.services.readiness.operations_snapshot](../application/services/readiness/operations_snapshot.py) | [infrastructure.adapters.readiness.snapshot_repository](../infrastructure/adapters/readiness/snapshot_repository.py) | [web.compatibility.case_operations_dashboard_service](../web/compatibility/case_operations_dashboard_service.py) |
 
 ## Key Worker / Module Files
 

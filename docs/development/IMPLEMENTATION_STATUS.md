@@ -45,9 +45,9 @@ Candidate ordering and start-timeout selection now execute in the pure domain la
 
 Assignment mutations and offer acceptance now execute through explicit repository/policy ports (ADR 011). Legacy signatures are compatibility wrappers. Clinical qualification and grouped-visit callbacks still originate at the compatibility edge; this is not complete inversion of the whole assignment workflow. PostgreSQL CI adds an independent assignment suite.
 
-See ADRs 001–023 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+See ADRs 001–024 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
 
-Insurance readiness uses an explicit latest-decision repository and pure contract/decision policy (ADR 020). Fourteen separated service boundaries are recorded in `application/port_contracts.json`, checked for infrastructure/web/runtime import isolation and linked in the generated code map. Registration commit ba44e3feeb0e4be288a28b97abb5049b97d03eac passed all nine CI jobs; insurance commit 29d9b8b8a6efd323ee158a6f7995a5c2afa638a4 passed all nine CI jobs in run 38157320020.
+Insurance readiness uses an explicit latest-decision repository and pure contract/decision policy (ADR 020). Fifteen separated service boundaries are recorded in `application/port_contracts.json`, checked for infrastructure/web/runtime import isolation and linked in the generated code map. Registration commit ba44e3feeb0e4be288a28b97abb5049b97d03eac passed all nine CI jobs; insurance commit 29d9b8b8a6efd323ee158a6f7995a5c2afa638a4 passed all nine CI jobs in run 38157320020.
 
 Patient field/date/sex validation and visit selection/reserved assignment receive explicit rules/evidence/repository dependencies (ADR 019). CI adds PostgreSQL registration coverage. The preceding inventory commit 7d0a22a6c57bd3f19266e13f5a2ee3fdddbe9ddb passed all eight CI jobs; new registration checks require their own success before review.
 
@@ -72,4 +72,7 @@ Read-only RIS candidate search uses explicit persistence, application orchestrat
 
 
 Readiness scheduling/refresh now use explicit repository, evaluation, audit and clock ports (ADR 023), with domain scheduling policy and web route ownership. Thirty-five focused tests passed locally; a PostgreSQL-only two-connection advisory-lock test is included in clinical CI. Search commit 1c6f6f6120819497bac0fabb28965eea86939051 passed all nine jobs (run 38166426996); new scheduling CI remains required. Actual PACS evaluation, process worker configuration and external acceptance remain unfinished.
+
+
+Operations dashboard aggregation has explicit read-only SQL/projection/clock dependencies (ADR 024). Eleven focused tests passed, including actual synthetic editor lease timestamps and receiving projections. Existing aggregate visibility policies, especially global lease statistics, still need branch/role review. Scheduler commit 8494b04402f11e53f4d47160c0d981a8da307423 passed all nine CI jobs (run 38166655249); the new snapshot commit needs its own complete checks.
 
