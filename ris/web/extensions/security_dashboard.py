@@ -10,6 +10,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 from functools import wraps
+from infrastructure.adapters.operations.security_store import readonly_database as ro_db
 
 from flask import abort, request, session, render_template, redirect, url_for, Response, jsonify
 from werkzeug.security import check_password_hash
@@ -39,11 +40,6 @@ def client_ip(req, trusted):
 
 def root(m):
     return Path(m.app.config.get('SECURITY_DATA_DIR') or os.environ.get('SECURITY_DATA_DIR', '/app/security-data'))
-
-def ro_db(path):
-    c = sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True, timeout=3)
-    c.row_factory = sqlite3.Row
-    return c
 
 def country(m, ip):
     if ip is None:
