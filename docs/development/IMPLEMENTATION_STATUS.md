@@ -8,7 +8,7 @@ Clinical release metadata remains 5.46.9. Architecture work is a development ref
 
 | Area | Executable ownership | Remaining dependency work |
 |---|---|---|
-| Patient registration, scheduling, insurance | `domain.registration`, `application.services.registration`, registration components/routes | Narrow database/configuration interfaces; external RIS connectors are separate integrations |
+| Patient registration, scheduling, insurance | Patient validation and explicit visit registration/reservation ports; registration components/routes | Broader patient creation, booking/scheduling and insurance still need narrow interfaces; external RIS connectors are separate integrations |
 | Technician, nursing, procedures, radiotherapy | `domain.clinical`, `application.services.clinical`, clinical components/routes | Explicit use cases and transaction ownership; treatment-device integration not supplied |
 | Readiness and exceptions | `domain.readiness`, `domain.readiness_checks`, `application.services.readiness` | Separate evidence acquisition from DB-backed orchestration |
 | Assignment and coordinator work | `domain.assignment`, explicit query/transaction/visit services and repositories | Policy/count/capacity, ranking/deadlines, single-case and grouped-visit mutations and offer acceptance are separated; coordinator preview, distribution evidence and workers still need narrow dependencies |
@@ -45,7 +45,9 @@ Candidate ordering and start-timeout selection now execute in the pure domain la
 
 Assignment mutations and offer acceptance now execute through explicit repository/policy ports (ADR 011). Legacy signatures are compatibility wrappers. Clinical qualification and grouped-visit callbacks still originate at the compatibility edge; this is not complete inversion of the whole assignment workflow. PostgreSQL CI adds an independent assignment suite.
 
-See ADRs 001–018 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+See ADRs 001–019 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+
+Patient field/date/sex validation and visit selection/reserved assignment receive explicit rules/evidence/repository dependencies (ADR 019). CI adds PostgreSQL registration coverage. The preceding inventory commit 7d0a22a6c57bd3f19266e13f5a2ee3fdddbe9ddb passed all eight CI jobs; new registration checks require their own success before review.
 
 Original-lot returns use explicit quantity/credit policy, repository and movement dependencies (ADR 018). CI adds PostgreSQL inventory coverage and corrects the finance missing-CSRF fixture's rollback boundary; finance and inventory require green results on the new commit. The earlier corrected lease adapter commit passed all six CI jobs.
 

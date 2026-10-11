@@ -308,7 +308,7 @@
   },
   {
     "legacy": "registration_policy",
-    "canonical": "application.services.registration.registration_policy",
+    "canonical": "web.compatibility.registration_policy",
     "original_sha256": "43407b7f01894136cfa0f13f6dc50dae1a11e35da4cfb5f2756a41dc90ba495c",
     "compatibility_runtime": true,
     "resources_from_ris_root": false
