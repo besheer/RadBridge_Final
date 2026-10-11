@@ -51,3 +51,9 @@ Ownership extraction is implemented across the listed areas. Continue replacing 
 Clinical scope validation, access decisions and SQL queries have distinct owners (ADR 012); web registration retains CSRF, guards and listener lifecycle. PostgreSQL CI runs clinical, assignment and scope suites independently.
 
 Grouped visit workflows now execute through explicit evidence/repository/policy ports (ADR 013), preserving patient/branch/source identity, qualification, capacity and deadline behavior.
+
+Report saving, editing leases, correction request/review, replacement entitlement settlement, original-lot inventory returns and visit registration now have explicit workflow/evidence/repository dependencies (ADRs 014–019). Insurance readiness uses latest-decision evidence (ADR 020). Eleven service boundaries are listed in `ris/application/port_contracts.json` and enforced by `python tools/check_architecture.py`; this does not claim all legacy use cases are migrated.
+
+PostgreSQL CI runs independent `clinical`, `assignment`, `scope`, `reporting`, `finance`, `inventory` and `registration` suites. Select one locally with `python tools/run_tests.py --postgres --postgres-suite registration` (or another listed suite), using only the guarded synthetic database. SQLite runs the whole suite. Docker smoke checks the separate RIS/PostgreSQL development stack; external PACS/editor/viewer acceptance remains required.
+
+Regenerate `ris/docs/CODE_MAP.md` with `python ris/tools/generate_code_map.py` after ownership changes. It links models, composed routes, legacy module owners and the explicit port registry to executable code.

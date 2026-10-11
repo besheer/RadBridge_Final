@@ -45,7 +45,9 @@ Candidate ordering and start-timeout selection now execute in the pure domain la
 
 Assignment mutations and offer acceptance now execute through explicit repository/policy ports (ADR 011). Legacy signatures are compatibility wrappers. Clinical qualification and grouped-visit callbacks still originate at the compatibility edge; this is not complete inversion of the whole assignment workflow. PostgreSQL CI adds an independent assignment suite.
 
-See ADRs 001–019 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+See ADRs 001–020 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+
+Insurance readiness uses an explicit latest-decision repository and pure contract/decision policy (ADR 020). Eleven separated service boundaries are recorded in `application/port_contracts.json`, checked for infrastructure/web/runtime import isolation and linked in the generated code map. Registration commit ba44e3feeb0e4be288a28b97abb5049b97d03eac passed all nine CI jobs; the insurance commit requires new checks.
 
 Patient field/date/sex validation and visit selection/reserved assignment receive explicit rules/evidence/repository dependencies (ADR 019). CI adds PostgreSQL registration coverage. The preceding inventory commit 7d0a22a6c57bd3f19266e13f5a2ee3fdddbe9ddb passed all eight CI jobs; new registration checks require their own success before review.
 

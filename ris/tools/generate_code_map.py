@@ -72,6 +72,19 @@ def main():
     for n,ln,decos in routes:
         esc='<br>'.join('`'+d.replace('|','\\|')+'`' for d in decos)
         lines.append(f'| `{n}` | {esc} | {ln} |')
+    lines += ['', '## Legacy Import Ownership','', '| Legacy module | Executable owner |','|---|---|']
+    for entry in json.loads((ROOT / 'application/module_manifest.json').read_text(encoding='utf-8')):
+        relative=entry['canonical'].replace('.','/')+'.py'
+        lines.append(f"| `{entry['legacy']}` | [{entry['canonical']}](../{relative}) |")
+    lines += ['', '## Explicit Workflow Ports','',
+              'These services are checked for database/web/runtime import isolation. Compatibility owners compose their supplied dependencies; broader use cases remain unfinished.', '',
+              '| Application service | Persistence adapter | Composition edge |','|---|---|---|']
+    for entry in json.loads((ROOT / 'application/port_contracts.json').read_text(encoding='utf-8'))['services']:
+        cells=[]
+        for key in ('module','repository','composition'):
+            relative=entry[key].replace('.','/')+'.py'
+            cells.append(f"[{entry[key]}](../{relative})")
+        lines.append('| '+' | '.join(cells)+' |')
     lines += ['', '## Key Worker / Module Files','',
               '- `workers/pacs_worker.py` — PACS intake and queued transfer worker.',
               '- `workers/backup_worker.py` — scheduled DB/files/cloud backup worker.',

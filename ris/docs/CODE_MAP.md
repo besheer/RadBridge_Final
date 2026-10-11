@@ -629,6 +629,105 @@ Additional extension routes and services are mapped by `application/module_manif
 | `staff_attachment_reject` | `app.post('/api/staff/attachments/<int:attachment_id>/reject')` | [web/routes/shared.py:3508](../web/routes/shared.py#L3508) |
 | `admin_ivr` | `app.route('/admin/ivr')` | [web/routes/operations.py:1172](../web/routes/operations.py#L1172) |
 
+## Legacy Import Ownership
+
+| Legacy module | Executable owner |
+|---|---|
+| `admin_control_center` | [web.extensions.admin_control_center](../web/extensions/admin_control_center.py) |
+| `analytics_reference_routes` | [web.extensions.analytics_reference_routes](../web/extensions/analytics_reference_routes.py) |
+| `assignment_deadline_worker` | [workers.assignment_deadline_worker](../workers/assignment_deadline_worker.py) |
+| `assignment_distribution` | [web.compatibility.assignment_distribution](../web/compatibility/assignment_distribution.py) |
+| `assignment_maintenance` | [workers.assignment_maintenance](../workers/assignment_maintenance.py) |
+| `assignment_monitor` | [application.services.assignment.assignment_monitor](../application/services/assignment/assignment_monitor.py) |
+| `assignment_visit_grouping` | [web.compatibility.assignment_visit_grouping](../web/compatibility/assignment_visit_grouping.py) |
+| `backup_worker` | [workers.backup_worker](../workers/backup_worker.py) |
+| `bootstrap_db` | [workers.tools.bootstrap_db](../workers/tools/bootstrap_db.py) |
+| `case_assignment_service` | [web.compatibility.case_assignment_service](../web/compatibility/case_assignment_service.py) |
+| `case_exception_resolution_service` | [application.services.readiness.case_exception_resolution_service](../application/services/readiness/case_exception_resolution_service.py) |
+| `case_operations_dashboard_service` | [application.services.readiness.case_operations_dashboard_service](../application/services/readiness/case_operations_dashboard_service.py) |
+| `clinical_scope` | [web.extensions.clinical_scope](../web/extensions/clinical_scope.py) |
+| `collection_policy` | [application.services.finance.collection_policy](../application/services/finance/collection_policy.py) |
+| `coordinator_bulk_assignment` | [application.services.assignment.coordinator_bulk_assignment](../application/services/assignment/coordinator_bulk_assignment.py) |
+| `daily_closing_policy` | [application.services.finance.daily_closing_policy](../application/services/finance/daily_closing_policy.py) |
+| `delivery_policy` | [application.services.finance.delivery_policy](../application/services/finance/delivery_policy.py) |
+| `dicom_connections` | [infrastructure.adapters.imaging.dicom_connections](../infrastructure/adapters/imaging/dicom_connections.py) |
+| `dicom_echo_worker` | [workers.dicom_echo_worker](../workers/dicom_echo_worker.py) |
+| `dicom_export_routes` | [web.extensions.dicom_export_routes](../web/extensions/dicom_export_routes.py) |
+| `dicom_node_control` | [application.services.imaging.dicom_node_control](../application/services/imaging/dicom_node_control.py) |
+| `dicom_reconciliation` | [application.services.imaging.dicom_reconciliation](../application/services/imaging/dicom_reconciliation.py) |
+| `insurance_policy` | [web.compatibility.insurance_policy](../web/compatibility/insurance_policy.py) |
+| `inventory_safety` | [web.compatibility.inventory_safety](../web/compatibility/inventory_safety.py) |
+| `legacy_booking` | [application.services.registration.legacy_booking](../application/services/registration/legacy_booking.py) |
+| `live_self_test` | [workers.tools.live_self_test](../workers/tools/live_self_test.py) |
+| `ohif_identity` | [infrastructure.adapters.imaging.ohif_identity](../infrastructure/adapters/imaging/ohif_identity.py) |
+| `onlyoffice_report_bridge` | [infrastructure.adapters.reporting.onlyoffice_report_bridge](../infrastructure/adapters/reporting/onlyoffice_report_bridge.py) |
+| `operational_health_routes` | [web.extensions.operational_health_routes](../web/extensions/operational_health_routes.py) |
+| `pacs_resolution_service` | [application.services.imaging.pacs_resolution_service](../application/services/imaging/pacs_resolution_service.py) |
+| `pacs_thumbnail` | [infrastructure.adapters.imaging.pacs_thumbnail](../infrastructure/adapters/imaging/pacs_thumbnail.py) |
+| `pacs_worker` | [workers.pacs_worker](../workers/pacs_worker.py) |
+| `patient_correction_policy` | [application.services.registration.patient_correction_policy](../application/services/registration/patient_correction_policy.py) |
+| `physician_final_counts` | [web.extensions.physician_final_counts](../web/extensions/physician_final_counts.py) |
+| `physician_report_workload` | [web.extensions.physician_report_workload](../web/extensions/physician_report_workload.py) |
+| `preflight` | [workers.tools.preflight](../workers/tools/preflight.py) |
+| `procedure_catalog` | [application.services.registration.procedure_catalog](../application/services/registration/procedure_catalog.py) |
+| `procedure_staff_workflow` | [application.services.clinical.procedure_staff_workflow](../application/services/clinical/procedure_staff_workflow.py) |
+| `radbridge_ocr` | [infrastructure.adapters.registration.radbridge_ocr](../infrastructure/adapters/registration/radbridge_ocr.py) |
+| `radiotherapy` | [application.services.clinical.radiotherapy](../application/services/clinical/radiotherapy.py) |
+| `radiotherapy_migration` | [infrastructure.schema.radiotherapy_migration](../infrastructure/schema/radiotherapy_migration.py) |
+| `readiness_maintenance` | [workers.readiness_maintenance](../workers/readiness_maintenance.py) |
+| `readiness_operations` | [application.services.readiness.readiness_operations](../application/services/readiness/readiness_operations.py) |
+| `registration_policy` | [web.compatibility.registration_policy](../web/compatibility/registration_policy.py) |
+| `replacement_settlements` | [web.extensions.replacement_settlements](../web/extensions/replacement_settlements.py) |
+| `report_commit_core` | [infrastructure.adapters.reporting.report_commit_core](../infrastructure/adapters/reporting/report_commit_core.py) |
+| `report_draft_warnings` | [application.services.reporting.report_draft_warnings](../application/services/reporting/report_draft_warnings.py) |
+| `report_edit_control` | [web.compatibility.report_edit_control](../web/compatibility/report_edit_control.py) |
+| `report_exports` | [web.extensions.report_exports](../web/extensions/report_exports.py) |
+| `report_identity_routes` | [web.extensions.report_identity_routes](../web/extensions/report_identity_routes.py) |
+| `report_revision_editor` | [application.services.reporting.report_revision_editor](../application/services/reporting/report_revision_editor.py) |
+| `report_revisions` | [web.extensions.report_revisions](../web/extensions/report_revisions.py) |
+| `report_storage_safety` | [infrastructure.adapters.reporting.report_storage_safety](../infrastructure/adapters/reporting/report_storage_safety.py) |
+| `report_template_conversion` | [infrastructure.adapters.reporting.report_template_conversion](../infrastructure/adapters/reporting/report_template_conversion.py) |
+| `report_template_library` | [application.services.reporting.report_template_library](../application/services/reporting/report_template_library.py) |
+| `report_template_routes` | [web.extensions.report_template_routes](../web/extensions/report_template_routes.py) |
+| `report_transaction_writer` | [web.compatibility.report_transaction_writer](../web/compatibility/report_transaction_writer.py) |
+| `reporting_support_routes` | [web.extensions.reporting_support_routes](../web/extensions/reporting_support_routes.py) |
+| `runtime_feature_schema` | [infrastructure.schema.runtime_feature_schema](../infrastructure/schema/runtime_feature_schema.py) |
+| `scheduling_reference_routes` | [web.extensions.scheduling_reference_routes](../web/extensions/scheduling_reference_routes.py) |
+| `schema_check` | [workers.tools.schema_check](../workers/tools/schema_check.py) |
+| `security_dashboard` | [web.extensions.security_dashboard](../web/extensions/security_dashboard.py) |
+| `smoke_test` | [workers.tools.smoke_test](../workers/tools/smoke_test.py) |
+| `smoke_test_v533` | [workers.tools.smoke_test_v533](../workers/tools/smoke_test_v533.py) |
+| `stabilization_self_test` | [workers.tools.stabilization_self_test](../workers/tools/stabilization_self_test.py) |
+| `staff_communications_reference_routes` | [web.extensions.staff_communications_reference_routes](../web/extensions/staff_communications_reference_routes.py) |
+| `staff_worklist_filters` | [application.services.clinical.staff_worklist_filters](../application/services/clinical/staff_worklist_filters.py) |
+| `storage_routes` | [web.extensions.storage_routes](../web/extensions/storage_routes.py) |
+| `technician_queue` | [application.services.clinical.technician_queue](../application/services/clinical/technician_queue.py) |
+| `telephony_reference_routes` | [web.extensions.telephony_reference_routes](../web/extensions/telephony_reference_routes.py) |
+| `ui_localization` | [web.extensions.ui_localization](../web/extensions/ui_localization.py) |
+| `user_access_policy` | [application.services.identity.user_access_policy](../application/services/identity/user_access_policy.py) |
+| `user_csv_transfer` | [application.services.identity.user_csv_transfer](../application/services/identity/user_csv_transfer.py) |
+| `viewer_choice` | [web.extensions.viewer_choice](../web/extensions/viewer_choice.py) |
+| `voice_ai` | [infrastructure.adapters.communications.voice_ai](../infrastructure/adapters/communications/voice_ai.py) |
+| `voice_scheduling_reference_routes` | [web.extensions.voice_scheduling_reference_routes](../web/extensions/voice_scheduling_reference_routes.py) |
+
+## Explicit Workflow Ports
+
+These services are checked for database/web/runtime import isolation. Compatibility owners compose their supplied dependencies; broader use cases remain unfinished.
+
+| Application service | Persistence adapter | Composition edge |
+|---|---|---|
+| [application.services.assignment.assignment_queries](../application/services/assignment/assignment_queries.py) | [infrastructure.adapters.assignment.query_repository](../infrastructure/adapters/assignment/query_repository.py) | [web.compatibility.assignment_distribution](../web/compatibility/assignment_distribution.py) |
+| [application.services.assignment.assignment_transaction](../application/services/assignment/assignment_transaction.py) | [infrastructure.adapters.assignment.transaction_repository](../infrastructure/adapters/assignment/transaction_repository.py) | [web.compatibility.case_assignment_service](../web/compatibility/case_assignment_service.py) |
+| [application.services.assignment.visit_assignment](../application/services/assignment/visit_assignment.py) | [infrastructure.adapters.assignment.visit_repository](../infrastructure/adapters/assignment/visit_repository.py) | [web.compatibility.assignment_visit_grouping](../web/compatibility/assignment_visit_grouping.py) |
+| [application.services.identity.scope_access](../application/services/identity/scope_access.py) | [infrastructure.adapters.identity.scope_repository](../infrastructure/adapters/identity/scope_repository.py) | [web.extensions.clinical_scope](../web/extensions/clinical_scope.py) |
+| [application.services.reporting.report_commit_service](../application/services/reporting/report_commit_service.py) | [infrastructure.adapters.reporting.commit_repository](../infrastructure/adapters/reporting/commit_repository.py) | [web.compatibility.report_transaction_writer](../web/compatibility/report_transaction_writer.py) |
+| [application.services.reporting.edit_lease_service](../application/services/reporting/edit_lease_service.py) | [infrastructure.adapters.reporting.edit_lease_repository](../infrastructure/adapters/reporting/edit_lease_repository.py) | [web.compatibility.report_edit_control](../web/compatibility/report_edit_control.py) |
+| [application.services.reporting.revision_workflow](../application/services/reporting/revision_workflow.py) | [infrastructure.adapters.reporting.revision_repository](../infrastructure/adapters/reporting/revision_repository.py) | [web.extensions.report_revisions](../web/extensions/report_revisions.py) |
+| [application.services.finance.settlement_workflow](../application/services/finance/settlement_workflow.py) | [infrastructure.adapters.finance.settlement_repository](../infrastructure/adapters/finance/settlement_repository.py) | [web.extensions.replacement_settlements](../web/extensions/replacement_settlements.py) |
+| [application.services.inventory.return_service](../application/services/inventory/return_service.py) | [infrastructure.adapters.inventory.return_repository](../infrastructure/adapters/inventory/return_repository.py) | [web.compatibility.inventory_safety](../web/compatibility/inventory_safety.py) |
+| [application.services.registration.visit_registration](../application/services/registration/visit_registration.py) | [infrastructure.adapters.registration.visit_repository](../infrastructure/adapters/registration/visit_repository.py) | [web.compatibility.registration_policy](../web/compatibility/registration_policy.py) |
+| [application.services.registration.insurance_readiness](../application/services/registration/insurance_readiness.py) | [infrastructure.adapters.registration.insurance_repository](../infrastructure/adapters/registration/insurance_repository.py) | [web.compatibility.insurance_policy](../web/compatibility/insurance_policy.py) |
+
 ## Key Worker / Module Files
 
 - `workers/pacs_worker.py` — PACS intake and queued transfer worker.

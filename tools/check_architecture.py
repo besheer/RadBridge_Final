@@ -1,5 +1,6 @@
 """Check actual import boundaries, not directory names alone."""
 import ast
+import json
 from pathlib import Path
 import sys
 
@@ -8,6 +9,20 @@ ROOT = Path(__file__).resolve().parents[1] / "ris"
 
 def violations():
     issues = []
+    contracts=json.loads((ROOT / 'application/port_contracts.json').read_text(encoding='utf-8'))
+    for entry in contracts['services']:
+        for key in ('module','repository','composition'):
+            owner=ROOT / (entry[key].replace('.','/')+'.py')
+            if not owner.is_file():
+                issues.append(f"port contract missing {key}: {entry[key]}")
+        path=ROOT / (entry['module'].replace('.','/')+'.py')
+        if not path.is_file():continue
+        tree=ast.parse(path.read_text(encoding='utf-8-sig'))
+        for node in ast.walk(tree):
+            imports=[a.name for a in node.names] if isinstance(node,ast.Import) else [node.module or ''] if isinstance(node,ast.ImportFrom) else []
+            for name in imports:
+                if name.split('.')[0] in {'app','web','infrastructure','flask','sqlalchemy','requests'} or name=='application.legacy_runtime':
+                    issues.append(f"{path.relative_to(ROOT)}:{node.lineno}: port service imports {name}")
     for path in sorted((ROOT / "domain").rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8-sig"))
         for node in ast.walk(tree):

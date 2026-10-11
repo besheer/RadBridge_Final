@@ -57,7 +57,8 @@ def main():
             elif args.postgres_suite == "inventory":
                 targets=["tests/test_inventory_return_dependencies.py", "tests/test_inventory_safety.py"]
             elif args.postgres_suite == "registration":
-                targets=["tests/test_registration_dependencies.py", "tests/test_registration_policy.py"]
+                targets=["tests/test_registration_dependencies.py", "tests/test_registration_policy.py",
+                         "tests/test_insurance_readiness_dependencies.py", "tests/test_insurance_work_order.py"]
         else:
             source=ROOT/"ris";env["DATABASE_URL"]="sqlite:///:memory:"
             targets=args.targets

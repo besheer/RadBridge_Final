@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "services": [
+    {"module": "application.services.assignment.assignment_queries", "repository": "infrastructure.adapters.assignment.query_repository", "composition": "web.compatibility.assignment_distribution"},
+    {"module": "application.services.assignment.assignment_transaction", "repository": "infrastructure.adapters.assignment.transaction_repository", "composition": "web.compatibility.case_assignment_service"},
+    {"module": "application.services.assignment.visit_assignment", "repository": "infrastructure.adapters.assignment.visit_repository", "composition": "web.compatibility.assignment_visit_grouping"},
+    {"module": "application.services.identity.scope_access", "repository": "infrastructure.adapters.identity.scope_repository", "composition": "web.extensions.clinical_scope"},
+    {"module": "application.services.reporting.report_commit_service", "repository": "infrastructure.adapters.reporting.commit_repository", "composition": "web.compatibility.report_transaction_writer"},
+    {"module": "application.services.reporting.edit_lease_service", "repository": "infrastructure.adapters.reporting.edit_lease_repository", "composition": "web.compatibility.report_edit_control"},
+    {"module": "application.services.reporting.revision_workflow", "repository": "infrastructure.adapters.reporting.revision_repository", "composition": "web.extensions.report_revisions"},
+    {"module": "application.services.finance.settlement_workflow", "repository": "infrastructure.adapters.finance.settlement_repository", "composition": "web.extensions.replacement_settlements"},
+    {"module": "application.services.inventory.return_service", "repository": "infrastructure.adapters.inventory.return_repository", "composition": "web.compatibility.inventory_safety"},
+    {"module": "application.services.registration.visit_registration", "repository": "infrastructure.adapters.registration.visit_repository", "composition": "web.compatibility.registration_policy"},
+    {"module": "application.services.registration.insurance_readiness", "repository": "infrastructure.adapters.registration.insurance_repository", "composition": "web.compatibility.insurance_policy"}
+  ]
+}

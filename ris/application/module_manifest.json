@@ -161,7 +161,7 @@
   },
   {
     "legacy": "insurance_policy",
-    "canonical": "application.services.registration.insurance_policy",
+    "canonical": "web.compatibility.insurance_policy",
     "original_sha256": "89609474aa48264729ac215b9aa08e2864727e3fd8946fe4bf1e21b1b2973822",
     "compatibility_runtime": true,
     "resources_from_ris_root": false
