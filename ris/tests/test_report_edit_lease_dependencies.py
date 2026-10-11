@@ -79,7 +79,7 @@ def test_postgres_real_lease_lock_upsert_renewal_and_token_scoped_release(app_ct
     key = 'SYNTHETIC-LEASE-' + uuid.uuid4().hex[:8]
     try:
         patient = m.Patient(patient_id=key, name='Synthetic Lease Patient')
-        doctor = m.User(username=key, active=True, password_hash='synthetic-only',
+        doctor = m.User(username=key, full_name='Synthetic Lease Doctor', active=True, password_hash='synthetic-only',
                         role=m.Role.query.filter_by(code='RADIOLOGIST').one())
         m.db.session.add_all([patient, doctor]); m.db.session.flush()
         order = m.Order(patient_id=patient.id, accession=key, modality='CT', procedure='Synthetic',

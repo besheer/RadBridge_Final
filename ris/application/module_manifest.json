@@ -364,7 +364,7 @@
   },
   {
     "legacy": "report_revisions",
-    "canonical": "application.services.reporting.report_revisions",
+    "canonical": "web.extensions.report_revisions",
     "original_sha256": "92ce4c007f133d50d339d027c57797ca646525aac59512836e385116f1f78e39",
     "compatibility_runtime": false,
     "resources_from_ris_root": false

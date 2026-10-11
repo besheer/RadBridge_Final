@@ -202,7 +202,9 @@ def test_coordinator_cannot_write_and_other_branch_denied(revision_case):
     c.current['user']=c.coord
     with client.session_transaction() as session:session['report_revision_csrf']='CODEX-CSRF'
     assert client.post(f'/report-revisions/{row.id}/lease',json={},headers={'X-Report-Revision-CSRF':'CODEX-CSRF'}).status_code==403
-    c.coord.branch_id=99999
+    other=c.m.Branch(code='OTHER-'+uuid4().hex[:8],name='Synthetic Other Branch',active=True)
+    c.m.db.session.add(other);c.m.db.session.flush()
+    c.coord.branch_id=other.id
     assert client.get(f'/report-revisions/{row.id}').status_code==403
 
 def test_csrf_required_for_review(revision_case):

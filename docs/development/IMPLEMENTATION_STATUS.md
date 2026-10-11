@@ -45,7 +45,9 @@ Candidate ordering and start-timeout selection now execute in the pure domain la
 
 Assignment mutations and offer acceptance now execute through explicit repository/policy ports (ADR 011). Legacy signatures are compatibility wrappers. Clinical qualification and grouped-visit callbacks still originate at the compatibility edge; this is not complete inversion of the whole assignment workflow. PostgreSQL CI adds an independent assignment suite.
 
-See ADRs 001–015 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+See ADRs 001–016 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+
+Correction request/review transitions execute through explicit repository/evidence/audit/notification/clock policies (ADR 016). Document/reference resolution and editor/finalization still compose at the web extension edge. The PostgreSQL reporting suite also exposed synthetic full-name/foreign-key fixture defects, repaired without schema changes or weaker permission checks; a successful reporting CI run is still required.
 
 Report edit leases now use explicit persistence/clock/assignment dependencies (ADR 015). The prior report commit passed five of six CI jobs; the new PostgreSQL reporting job exposed an oversized synthetic branch code, corrected in its fixture. Full checks must pass on this commit before review. Role, FINAL, ownership and token-scoped release contracts remain authoritative.
 
