@@ -138,6 +138,22 @@ def install_0201(_rb):
     return doctor_workspace_column_layout_save
 
 
+def install_0204(_rb):
+    @_rb.app.before_request
+    def doctor_report_ownership_guard():
+        # Apply to legacy report URLs too, before get_report can create a record.
+        if not _rb.request.path.startswith('/reports/'):
+            return None
+        user=_rb.current_user()
+        role=(user.role.code if user and user.role else '').upper()
+        if role not in ('RADIOLOGIST','DOCTOR','CONSULTANT','RADIOLOGY_CONSULTANT'):
+            return None
+        order_id=(_rb.request.view_args or {}).get('order_id')
+        if order_id is not None and not _rb.doctor_case_access_allowed(user,_rb.db.session.get(_rb.Order,order_id)):
+            _rb.abort(403)
+    return doctor_report_ownership_guard
+
+
 def install_0205(_rb):
     @_rb.app.get('/doctor/cases/<int:order_id>/open')
     @_rb.require_perm('reports.view')
@@ -6075,3 +6091,4 @@ def install_0902(_rb):
                 'message': str(exc)
             }), 500
     return api_ohif_onlyoffice_callback
+

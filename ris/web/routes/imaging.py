@@ -3,6 +3,15 @@
 Legacy behavior is preserved; new policies belong in the independent domain layer.
 """
 
+def install_0136(_rb):
+    @_rb.app.context_processor
+    def inject_pacs_helpers():
+        return {
+            'case_pacs_url': _rb.case_pacs_url,
+        }
+    return inject_pacs_helpers
+
+
 def install_0166(_rb):
     @_rb.app.route('/orders/<int:order_id>/resend-mwl',methods=['POST'])
     @_rb.require_perm('devices.manage')
@@ -1077,3 +1086,4 @@ def install_0854(_rb):
         _rb.db.session.commit()
         return _rb.redirect(_rb.url_for('pacs_discovery'))
     return pacs_discovery_manual
+

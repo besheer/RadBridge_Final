@@ -71,6 +71,6 @@ def get_source(obj):
         return app_source()
     source = inspect.getsource(obj)
     module = getattr(obj, '__module__', '')
-    if module.startswith(('application.components.', 'web.routes.')):
+    if module.startswith(('application.components.', 'web.routes.', 'web.components.')):
         return source.replace('_rb.namespace()', 'globals()').replace('_rb.', '')
     return source

@@ -3478,3 +3478,4 @@ def install_0811(_rb):
             _rb.flash(f'Delete-all operation failed and database changes were rolled back: {e}','danger')
         return _rb.redirect(_rb.url_for('admin_data_management'))
     return admin_delete_all_patients
+

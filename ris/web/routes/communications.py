@@ -2375,3 +2375,4 @@ def install_0943(_rb):
             uploaded=uploaded
         )
     return public_contact_attachment_upload
+

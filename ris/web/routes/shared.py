@@ -3,6 +3,71 @@
 Legacy behavior is preserved; new policies belong in the independent domain layer.
 """
 
+def install_0000(_rb):
+    @_rb.app.before_request
+    def _same_origin_unsafe_request_guard():
+        """Reject explicit cross-origin browser writes for authenticated sessions.
+
+    This is a compatibility-safe CSRF hardening layer for the legacy form estate.
+    Requests without an Origin header are left to existing auth/token controls.
+    """
+        if _rb.request.method not in ('POST', 'PUT', 'PATCH', 'DELETE'):
+            return None
+        if not _rb.session.get('uid'):
+            return None
+        origin = (_rb.request.headers.get('Origin') or '').rstrip('/')
+        if not origin:
+            return None
+
+        # Some same-origin browser form navigations can serialize an opaque
+        # origin as the literal value "null".  Do not trust "null" globally:
+        # accept it only when Fetch Metadata confirms a same-origin request.
+        if origin == 'null':
+            fetch_site = (_rb.request.headers.get('Sec-Fetch-Site') or '').strip().lower()
+            if fetch_site == 'same-origin':
+                return None
+            _rb.abort(403)
+
+        allowed = {_rb.request.host_url.rstrip('/'), _rb.RIS_PUBLIC_URL.rstrip('/') if 'RIS_PUBLIC_URL' in _rb.namespace() else ''}
+        configured = _rb.os.getenv('RADBRIDGE_TRUSTED_ORIGINS', '')
+        allowed.update(x.strip().rstrip('/') for x in configured.split(',') if x.strip())
+        if origin not in allowed:
+            _rb.abort(403)
+        return None
+    return _same_origin_unsafe_request_guard
+
+
+def install_0139(_rb):
+    @_rb.app.context_processor
+    def template_globals():
+        lang=_rb.current_ui_language()
+        u=_rb.current_user()
+        profile=_rb.get_user_profile(u) if u else None
+        return {
+            'me':u,
+            'has_perm':_rb.has_perm,
+            'pacs_online':_rb.orthanc_ok(),
+            'ris_public_url':_rb.RIS_PUBLIC_URL,
+            'procedure_name':_rb.procedure_display_name,
+            'company':_rb.get_company_profile(),
+            't':_rb.ui_text,
+            'status_label':_rb.status_text,
+            'ui_lang':lang,
+            'ui_phrase':lambda text, language=None: __import__('ui_localization').translate(text, language or lang),
+            'ui_role':lambda role: __import__('ui_localization').role_label(role, lang),
+            'ui_client_catalog':__import__('ui_localization').client_catalog(lang),
+            'ui_dir':'rtl' if lang=='ar' else 'ltr',
+            'worklist_name_map':_rb.ARABIC_NAME_MAP,
+            'user_profile':profile,
+            'ribbon_actions':_rb.ribbon_actions_for_user(u,'GLOBAL') if u else [],
+            'unread_chat_count':_rb.unread_chat_count(u) if u else 0,
+            'role_quick_actions':_rb.role_quick_actions(u) if u else [],
+            'quick_action_role':_rb.quick_action_role(u) if u else 'MANAGEMENT',
+            'safe_url_for_endpoint':_rb.safe_url_for_endpoint
+        }
+    return template_globals
+
+
 def install_0141(_rb):
     @_rb.app.route('/lang/<code>')
     @_rb.login_required
@@ -3259,6 +3324,16 @@ def install_0770(_rb):
     return studio_shortcut_reorder
 
 
+def install_0772(_rb):
+    @_rb.app.context_processor
+    def inject_studio_shortcuts():
+        return {
+            'studio_shortcuts_for': _rb.studio_shortcuts_for,
+            'studio_icon_map': _rb.STUDIO_ICON_MAP,
+        }
+    return inject_studio_shortcuts
+
+
 def install_0773(_rb):
     @_rb.app.get('/management')
     @_rb.require_perm('orders.view')
@@ -3456,3 +3531,4 @@ def install_0947(_rb):
 
         return _rb.jsonify(ok=True)
     return staff_attachment_reject
+

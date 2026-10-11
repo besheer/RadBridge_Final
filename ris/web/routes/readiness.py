@@ -345,3 +345,4 @@ def install_0721(_rb):
         rows=[(o,_rb.case_delay_snapshot(o)) for o in orders]
         return _rb.render_template('tat_dashboard.html',rows=rows)
     return tat_dashboard
+

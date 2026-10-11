@@ -304,3 +304,4 @@ def install_0296(_rb):
                 rows.append({'policy':p,'available':available,'shortage':max(0,float(p.target_level or 0)-available)})
         return rows
     return low_stock_rows
+

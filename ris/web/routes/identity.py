@@ -67,3 +67,4 @@ def install_0551(_rb):
         _rb.db.session.commit(); _rb.flash('Password reset. User must change it at next login.','success')
         return _rb.redirect(_rb.url_for('admin_users'))
     return admin_user_reset_password
+

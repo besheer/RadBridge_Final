@@ -2,7 +2,7 @@
   {
     "id": "0000",
     "symbol": "_same_origin_unsafe_request_guard",
-    "module": "application.components.shared",
+    "module": "web.routes.shared",
     "installer": "install_0000",
     "dependencies": [
       "RIS_PUBLIC_URL",
@@ -47,7 +47,7 @@
   {
     "id": "0004",
     "symbol": "lang",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0004",
     "dependencies": [
       "current_ui_language",
@@ -94,7 +94,7 @@
   {
     "id": "0008",
     "symbol": "queue_final_delivery",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0008",
     "dependencies": [
       "NotificationEvent",
@@ -114,7 +114,7 @@
   {
     "id": "0009",
     "symbol": "_final_portal_url",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0009",
     "dependencies": [
       "RIS_PUBLIC_URL",
@@ -223,7 +223,7 @@
   {
     "id": "0017",
     "symbol": "_finance_filters",
-    "module": "application.components.finance",
+    "module": "web.components.finance",
     "installer": "install_0017",
     "dependencies": [
       "date",
@@ -298,7 +298,7 @@
   {
     "id": "0023",
     "symbol": "_export_csv",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0023",
     "dependencies": [
       "csv",
@@ -310,7 +310,7 @@
   {
     "id": "0024",
     "symbol": "_export_xlsx",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0024",
     "dependencies": [
       "Alignment",
@@ -326,7 +326,7 @@
   {
     "id": "0025",
     "symbol": "_export_pdf",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0025",
     "dependencies": [
       "A4",
@@ -402,7 +402,7 @@
   {
     "id": "0031",
     "symbol": "_portal_url_for_order",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0031",
     "dependencies": [
       "RIS_PUBLIC_URL",
@@ -984,7 +984,7 @@
   {
     "id": "0079",
     "symbol": "get_ohif_doctor_identity",
-    "module": "application.components.imaging",
+    "module": "web.components.imaging",
     "installer": "install_0079",
     "dependencies": [
       "request",
@@ -1007,7 +1007,7 @@
   {
     "id": "0081",
     "symbol": "require_ohif_doctor_user",
-    "module": "application.components.imaging",
+    "module": "web.components.imaging",
     "installer": "install_0081",
     "dependencies": [
       "Order",
@@ -1047,7 +1047,7 @@
   {
     "id": "0084",
     "symbol": "case_pacs_url",
-    "module": "application.components.imaging",
+    "module": "web.components.imaging",
     "installer": "install_0084",
     "dependencies": [
       "current_user",
@@ -1316,7 +1316,7 @@
   {
     "id": "0108",
     "symbol": "current_user",
-    "module": "application.components.identity",
+    "module": "web.components.identity",
     "installer": "install_0108",
     "dependencies": [
       "User",
@@ -1337,7 +1337,7 @@
   {
     "id": "0110",
     "symbol": "login_required",
-    "module": "application.components.identity",
+    "module": "web.components.identity",
     "installer": "install_0110",
     "dependencies": [
       "current_user",
@@ -1351,7 +1351,7 @@
   {
     "id": "0111",
     "symbol": "require_perm",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0111",
     "dependencies": [
       "abort",
@@ -1367,7 +1367,7 @@
   {
     "id": "0112",
     "symbol": "_security_audit_ip",
-    "module": "application.components.identity",
+    "module": "web.components.identity",
     "installer": "install_0112",
     "dependencies": [
       "app",
@@ -1464,7 +1464,7 @@
   {
     "id": "0120",
     "symbol": "_rb_calendar_redirect",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0120",
     "dependencies": [
       "redirect",
@@ -1636,7 +1636,7 @@
   {
     "id": "0136",
     "symbol": "inject_pacs_helpers",
-    "module": "application.components.imaging",
+    "module": "web.routes.imaging",
     "installer": "install_0136",
     "dependencies": [
       "app",
@@ -1668,7 +1668,7 @@
   {
     "id": "0139",
     "symbol": "template_globals",
-    "module": "application.components.shared",
+    "module": "web.routes.shared",
     "installer": "install_0139",
     "dependencies": [
       "ARABIC_NAME_MAP",
@@ -1772,7 +1772,7 @@
   {
     "id": "0146",
     "symbol": "_safe_login_next",
-    "module": "application.components.identity",
+    "module": "web.components.identity",
     "installer": "install_0146",
     "dependencies": [
       "url_for"
@@ -1946,7 +1946,7 @@
   {
     "id": "0154",
     "symbol": "api_registration_procedures",
-    "module": "application.components.registration",
+    "module": "web.components.registration",
     "installer": "install_0154",
     "dependencies": [
       "allowed_procedures_for_branch",
@@ -1959,7 +1959,7 @@
   {
     "id": "0155",
     "symbol": "api_pricing",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0155",
     "dependencies": [
       "Contract",
@@ -2580,7 +2580,7 @@
   {
     "id": "0187",
     "symbol": "flash_exam_transition_blocked",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0187",
     "dependencies": [
       "flash"
@@ -2590,7 +2590,7 @@
   {
     "id": "0188",
     "symbol": "_apply_exam_transition",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0188",
     "dependencies": [
       "__name__",
@@ -2636,7 +2636,7 @@
   {
     "id": "0190",
     "symbol": "reporting_agent_download",
-    "module": "application.components.reporting",
+    "module": "web.components.reporting",
     "installer": "install_0190",
     "dependencies": [
       "__file__",
@@ -2650,7 +2650,7 @@
   {
     "id": "0191",
     "symbol": "api_reporting_health",
-    "module": "application.components.reporting",
+    "module": "web.components.reporting",
     "installer": "install_0191",
     "dependencies": [
       "APP_VERSION",
@@ -2880,7 +2880,7 @@
   {
     "id": "0204",
     "symbol": "doctor_report_ownership_guard",
-    "module": "application.components.reporting",
+    "module": "web.routes.reporting",
     "installer": "install_0204",
     "dependencies": [
       "Order",
@@ -3220,7 +3220,7 @@
   {
     "id": "0222",
     "symbol": "reporting_actor",
-    "module": "application.components.reporting",
+    "module": "web.components.reporting",
     "installer": "install_0222",
     "dependencies": [
       "BadSignature",
@@ -3237,7 +3237,7 @@
   {
     "id": "0223",
     "symbol": "_reporting_api_authorized",
-    "module": "application.components.reporting",
+    "module": "web.components.reporting",
     "installer": "install_0223",
     "dependencies": [
       "RADBRIDGE_REPORTING_TOKEN",
@@ -3252,7 +3252,7 @@
   {
     "id": "0224",
     "symbol": "require_reporting_api",
-    "module": "application.components.reporting",
+    "module": "web.components.reporting",
     "installer": "install_0224",
     "dependencies": [
       "_reporting_api_authorized",
@@ -3265,7 +3265,7 @@
   {
     "id": "0225",
     "symbol": "word_addin_taskpane",
-    "module": "application.components.reporting",
+    "module": "web.components.reporting",
     "installer": "install_0225",
     "dependencies": [
       "render_template"
@@ -3275,7 +3275,7 @@
   {
     "id": "0226",
     "symbol": "word_addin_manifest",
-    "module": "application.components.reporting",
+    "module": "web.components.reporting",
     "installer": "install_0226",
     "dependencies": [
       "RIS_PUBLIC_URL",
@@ -3643,7 +3643,7 @@
   {
     "id": "0253",
     "symbol": "current_ui_language",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0253",
     "dependencies": [
       "UserProfile",
@@ -4246,7 +4246,7 @@
   {
     "id": "0305",
     "symbol": "executive_analytics_filters",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0305",
     "dependencies": [
       "request"
@@ -4290,7 +4290,7 @@
   {
     "id": "0309",
     "symbol": "management_date_range",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0309",
     "dependencies": [
       "request"
@@ -4382,7 +4382,7 @@
   {
     "id": "0317",
     "symbol": "render_registration_form",
-    "module": "application.components.registration",
+    "module": "web.components.registration",
     "installer": "install_0317",
     "dependencies": [
       "registration_form_context",
@@ -4394,7 +4394,7 @@
   {
     "id": "0318",
     "symbol": "registration_validation_error",
-    "module": "application.components.registration",
+    "module": "web.components.registration",
     "installer": "install_0318",
     "dependencies": [
       "db",
@@ -4593,7 +4593,7 @@
   {
     "id": "0337",
     "symbol": "safe_url_for_endpoint",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0337",
     "dependencies": [
       "url_for"
@@ -4603,7 +4603,7 @@
   {
     "id": "0338",
     "symbol": "common_search_filters",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0338",
     "dependencies": [
       "request"
@@ -5122,7 +5122,7 @@
   {
     "id": "0383",
     "symbol": "advanced_order_query",
-    "module": "application.components.registration",
+    "module": "web.components.registration",
     "installer": "install_0383",
     "dependencies": [
       "CaseAssignment",
@@ -5289,7 +5289,7 @@
   {
     "id": "0397",
     "symbol": "_intake_redirect",
-    "module": "application.components.registration",
+    "module": "web.components.registration",
     "installer": "install_0397",
     "dependencies": [
       "re",
@@ -5404,7 +5404,7 @@
   {
     "id": "0405",
     "symbol": "api_slots",
-    "module": "application.components.registration",
+    "module": "web.components.registration",
     "installer": "install_0405",
     "dependencies": [
       "Device",
@@ -5457,7 +5457,7 @@
   {
     "id": "0408",
     "symbol": "_rb_v5462_allow_registration",
-    "module": "application.components.registration",
+    "module": "web.components.registration",
     "installer": "install_0408",
     "dependencies": [
       "abort",
@@ -5488,7 +5488,7 @@
   {
     "id": "0411",
     "symbol": "_rb_v5462_direct_attachments",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0411",
     "dependencies": [
       "ATTACHMENT_DIR",
@@ -5504,7 +5504,7 @@
   {
     "id": "0412",
     "symbol": "_rb_v5462_attach_ocr",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0412",
     "dependencies": [
       "Attachment",
@@ -5547,7 +5547,7 @@
   {
     "id": "0415",
     "symbol": "_rb_v5462_payment",
-    "module": "application.components.finance",
+    "module": "web.components.finance",
     "installer": "install_0415",
     "dependencies": [
       "Payment",
@@ -5954,7 +5954,7 @@
   {
     "id": "0433",
     "symbol": "api_booking_procedures",
-    "module": "application.components.registration",
+    "module": "web.components.registration",
     "installer": "install_0433",
     "dependencies": [
       "Device",
@@ -6515,7 +6515,7 @@
   {
     "id": "0463",
     "symbol": "analytics_query",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0463",
     "dependencies": [
       "Order",
@@ -6527,7 +6527,7 @@
   {
     "id": "0464",
     "symbol": "analytics",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0464",
     "dependencies": [
       "Appointment",
@@ -6548,7 +6548,7 @@
   {
     "id": "0465",
     "symbol": "analytics_export_csv",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0465",
     "dependencies": [
       "Order",
@@ -7078,7 +7078,7 @@
   {
     "id": "0491",
     "symbol": "admin_qa",
-    "module": "application.components.operations",
+    "module": "web.components.operations",
     "installer": "install_0491",
     "dependencies": [
       "EventOutbox",
@@ -8555,7 +8555,7 @@
   {
     "id": "0576",
     "symbol": "cancellation_reason",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0576",
     "dependencies": [
       "abort",
@@ -8677,7 +8677,7 @@
   {
     "id": "0586",
     "symbol": "granular_delete_reports_only_execute",
-    "module": "application.components.reporting",
+    "module": "web.components.reporting",
     "installer": "install_0586",
     "dependencies": [
       "Order",
@@ -8759,7 +8759,7 @@
   {
     "id": "0592",
     "symbol": "granular_delete_ris_case_only_execute",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0592",
     "dependencies": [
       "Order",
@@ -8923,7 +8923,7 @@
   {
     "id": "0603",
     "symbol": "granular_delete_full_case_orchestration_execute",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0603",
     "dependencies": [
       "Order",
@@ -9246,7 +9246,7 @@
   {
     "id": "0626",
     "symbol": "correction_execution_http_error",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0626",
     "dependencies": [
       "abort"
@@ -11164,7 +11164,7 @@
   {
     "id": "0726",
     "symbol": "_saved_view_page_or_404",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0726",
     "dependencies": [
       "SAVED_VIEW_PAGES",
@@ -11653,7 +11653,7 @@
   {
     "id": "0754",
     "symbol": "_block_intake_registration",
-    "module": "application.components.registration",
+    "module": "web.components.registration",
     "installer": "install_0754",
     "dependencies": [
       "_intake_redirect",
@@ -11982,7 +11982,7 @@
   {
     "id": "0771",
     "symbol": "inject_finance_helpers",
-    "module": "application.components.finance",
+    "module": "web.routes.finance",
     "installer": "install_0771",
     "dependencies": [
       "app",
@@ -11994,7 +11994,7 @@
   {
     "id": "0772",
     "symbol": "inject_studio_shortcuts",
-    "module": "application.components.shared",
+    "module": "web.routes.shared",
     "installer": "install_0772",
     "dependencies": [
       "STUDIO_ICON_MAP",
@@ -13183,7 +13183,7 @@
   {
     "id": "0834",
     "symbol": "api_ops_health",
-    "module": "application.components.operations",
+    "module": "web.components.operations",
     "installer": "install_0834",
     "dependencies": [
       "PacsStudyInbox",
@@ -13244,7 +13244,7 @@
   {
     "id": "0838",
     "symbol": "_apply_discovered_node_policy",
-    "module": "application.components.shared",
+    "module": "web.components.shared",
     "installer": "install_0838",
     "dependencies": [
       "PACS_ORTHANC_URL",
@@ -13354,7 +13354,7 @@
   {
     "id": "0846",
     "symbol": "queue_external_intake",
-    "module": "application.components.registration",
+    "module": "web.components.registration",
     "installer": "install_0846",
     "dependencies": [
       "Attachment",
@@ -13582,7 +13582,7 @@
   {
     "id": "0857",
     "symbol": "require_ohif_token",
-    "module": "application.components.imaging",
+    "module": "web.components.imaging",
     "installer": "install_0857",
     "dependencies": [
       "OHIF_REPORTING_TOKEN",
@@ -13602,7 +13602,7 @@
   {
     "id": "0859",
     "symbol": "validate_ohif_case_context",
-    "module": "application.components.imaging",
+    "module": "web.components.imaging",
     "installer": "install_0859",
     "dependencies": [
       "_normalize_case_uid",
@@ -13614,7 +13614,7 @@
   {
     "id": "0860",
     "symbol": "require_valid_ohif_case_context",
-    "module": "application.components.imaging",
+    "module": "web.components.imaging",
     "installer": "install_0860",
     "dependencies": [
       "audit",
@@ -13638,7 +13638,7 @@
   {
     "id": "0862",
     "symbol": "_ohif_json_body",
-    "module": "application.components.imaging",
+    "module": "web.components.imaging",
     "installer": "install_0862",
     "dependencies": [
       "request"
@@ -13670,7 +13670,7 @@
   {
     "id": "0864",
     "symbol": "api_ohif_reporting_agent_download",
-    "module": "application.components.reporting",
+    "module": "web.components.reporting",
     "installer": "install_0864",
     "dependencies": [
       "__file__",
@@ -13961,7 +13961,7 @@
   {
     "id": "0876",
     "symbol": "api_ohif_reporting_health",
-    "module": "application.components.reporting",
+    "module": "web.components.reporting",
     "installer": "install_0876",
     "dependencies": [
       "jsonify"
@@ -14091,7 +14091,7 @@
   {
     "id": "0887",
     "symbol": "api_ohif_onlyoffice_health",
-    "module": "application.components.reporting",
+    "module": "web.components.reporting",
     "installer": "install_0887",
     "dependencies": [
       "ONLYOFFICE_INTERNAL_URL",
@@ -14377,7 +14377,7 @@
   {
     "id": "0903",
     "symbol": "_voice_api_authorized",
-    "module": "application.components.communications",
+    "module": "web.components.communications",
     "installer": "install_0903",
     "dependencies": [
       "os",
@@ -14388,7 +14388,7 @@
   {
     "id": "0904",
     "symbol": "_voice_api_unauthorized",
-    "module": "application.components.communications",
+    "module": "web.components.communications",
     "installer": "install_0904",
     "dependencies": [
       "jsonify"
@@ -14398,7 +14398,7 @@
   {
     "id": "0905",
     "symbol": "voice_api_branches",
-    "module": "application.components.communications",
+    "module": "web.components.communications",
     "installer": "install_0905",
     "dependencies": [
       "Branch",
@@ -14412,7 +14412,7 @@
   {
     "id": "0906",
     "symbol": "voice_api_procedures",
-    "module": "application.components.communications",
+    "module": "web.components.communications",
     "installer": "install_0906",
     "dependencies": [
       "Procedure",
@@ -14480,7 +14480,7 @@
   {
     "id": "0910",
     "symbol": "voice_api_slots",
-    "module": "application.components.communications",
+    "module": "web.components.communications",
     "installer": "install_0910",
     "dependencies": [
       "Branch",
@@ -14604,7 +14604,7 @@
   {
     "id": "0917",
     "symbol": "telephony_me",
-    "module": "application.components.communications",
+    "module": "web.components.communications",
     "installer": "install_0917",
     "dependencies": [
       "TelephonyExtension",
@@ -14617,7 +14617,7 @@
   {
     "id": "0918",
     "symbol": "telephony_directory",
-    "module": "application.components.communications",
+    "module": "web.components.communications",
     "installer": "install_0918",
     "dependencies": [
       "TelephonyExtension",
@@ -14806,7 +14806,7 @@
   {
     "id": "0934",
     "symbol": "staff_communications_queue",
-    "module": "application.components.communications",
+    "module": "web.components.communications",
     "installer": "install_0934",
     "dependencies": [
       "_rb_staff_role_allowed",
@@ -14870,7 +14870,7 @@
   {
     "id": "0938",
     "symbol": "staff_chat_messages",
-    "module": "application.components.communications",
+    "module": "web.components.communications",
     "installer": "install_0938",
     "dependencies": [
       "_rb_staff_role_allowed",
@@ -14958,7 +14958,7 @@
   {
     "id": "0944",
     "symbol": "staff_contact_attachments",
-    "module": "application.components.communications",
+    "module": "web.components.communications",
     "installer": "install_0944",
     "dependencies": [
       "_rb_staff_role_allowed",

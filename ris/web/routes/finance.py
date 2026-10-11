@@ -223,6 +223,13 @@ def install_0656(_rb):
     return receipt_studio_print
 
 
+def install_0771(_rb):
+    @_rb.app.context_processor
+    def inject_finance_helpers():
+        return {'effective_patient_due':_rb.effective_patient_due,'total_order_discount':_rb.total_order_discount}
+    return inject_finance_helpers
+
+
 def install_0775(_rb):
     @_rb.app.route('/admin/referral-commissions',methods=['GET','POST'])
     @_rb.require_perm('users.view')
@@ -370,3 +377,4 @@ def install_0783(_rb):
         _rb.db.session.commit()
         return _rb.redirect(_rb.url_for('discount_approval_queue'))
     return discount_approval_decision
+

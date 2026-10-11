@@ -423,3 +423,4 @@ def install_0528(_rb):
 
         return _rb.render_template('diagnostics.html',checks=checks,version=_rb.APP_VERSION)
     return admin_diagnostics
+

@@ -36,7 +36,7 @@ def test_every_original_handler_is_present_once_and_preserves_its_source():
 
 
 def test_component_files_parse_and_do_not_import_the_composition_root():
-    for package in ("application/components", "web/routes"):
+    for package in ("application/components", "web/routes", "web/components"):
         for path in (ROOT / package).glob("*.py"):
             tree = ast.parse(_read_source(path, encoding="utf-8"))
             for node in ast.walk(tree):
@@ -44,3 +44,12 @@ def test_component_files_parse_and_do_not_import_the_composition_root():
                     assert all(alias.name != "app" for alias in node.names), path
                 elif isinstance(node, ast.ImportFrom):
                     assert node.module != "app", path
+
+
+def test_application_components_do_not_receive_http_framework_dependencies():
+    http = {'request', 'session', 'g', 'render_template', 'abort', 'flash', 'redirect',
+            'url_for', 'jsonify', 'make_response', 'send_file', 'Response', 'has_request_context', 'current_app'}
+    entries = json.loads(_read_source(ROOT / "application/component_manifest.json", encoding='utf-8'))
+    for entry in entries:
+        if entry['module'].startswith('application.components.'):
+            assert not http.intersection(entry['dependencies']), entry['symbol']

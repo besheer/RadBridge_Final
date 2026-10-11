@@ -1191,3 +1191,4 @@ def install_0855(_rb):
                 'special_code':order.assignment_special_code or '',
                 'visit_examinations':[{'order_id':o.id,'modality':o.modality,'procedure':o.procedure} for o in members]}
     return assignment_visit_summary
+

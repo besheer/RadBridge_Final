@@ -11,7 +11,7 @@ This branch implements a modular monolith on an isolated development branch. It 
 - CI defines a full SQLite suite and an isolated PostgreSQL RT/readiness contract suite. Neither job deploys or uses production credentials.
 - All 160 ORM definitions belong to 14 canonical infrastructure model modules, with one shared unbound SQLAlchemy extension.
 - Ten independent policy modules moved into the domain packages; legacy imports retain module/object identity.
-- 949 executable handlers moved into 24 web/application components with explicit compatibility dependencies.
+- 949 executable handlers belong to 32 web/application modules with explicit compatibility dependencies. HTTP helpers and request hooks belong to the web layer; application components do not receive HTTP framework dependencies.
 - 76 existing services, adapters, extensions and worker modules moved into owned packages. Legacy import and CLI facades preserve callers.
 - Web settings and clinical application construction are independent per supported instance settings. Development WSGI uses `web.factory:create_clinical_app()`; `app:app` remains compatible. See ADR 007 for configuration/lifecycle contracts.
 

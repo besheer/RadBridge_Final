@@ -819,3 +819,4 @@ def install_0803(_rb):
         _rb.flash(f'Warehouse created for {branch.name}: {wh.name}','success')
         return _rb.redirect(_rb.request.referrer or _rb.url_for('inventory_warehouses'))
     return inventory_create_for_branch
+

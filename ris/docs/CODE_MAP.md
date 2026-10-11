@@ -177,14 +177,14 @@ Additional extension routes and services are mapped by `application/module_manif
 
 | Function | Decorator(s) | Executable source |
 |---|---|---|
-| `set_language` | `app.route('/lang/<code>')` | [web/routes/shared.py:9](../web/routes/shared.py#L9) |
+| `set_language` | `app.route('/lang/<code>')` | [web/routes/shared.py:74](../web/routes/shared.py#L74) |
 | `login` | `app.route('/login', methods=['GET', 'POST'])` | [web/routes/identity.py:8](../web/routes/identity.py#L8) |
 | `logout` | `app.route('/logout')` | [web/routes/identity.py:29](../web/routes/identity.py#L29) |
-| `dashboard` | `app.route('/')` | [web/routes/shared.py:92](../web/routes/shared.py#L92) |
+| `dashboard` | `app.route('/')` | [web/routes/shared.py:157](../web/routes/shared.py#L157) |
 | `patients` | `app.route('/patients')` | [web/routes/registration.py:9](../web/routes/registration.py#L9) |
 | `new_patient` | `app.route('/patients/new', methods=['GET', 'POST'])` | [web/routes/registration.py:48](../web/routes/registration.py#L48) |
-| `orders` | `app.route('/orders')` | [web/routes/shared.py:169](../web/routes/shared.py#L169) |
-| `new_order` | `app.route('/orders/new', methods=['GET', 'POST'])` | [web/routes/shared.py:181](../web/routes/shared.py#L181) |
+| `orders` | `app.route('/orders')` | [web/routes/shared.py:234](../web/routes/shared.py#L234) |
+| `new_order` | `app.route('/orders/new', methods=['GET', 'POST'])` | [web/routes/shared.py:246](../web/routes/shared.py#L246) |
 | `change_password` | `app.route('/profile/password', methods=['GET', 'POST'])` | [web/routes/identity.py:37](../web/routes/identity.py#L37) |
 | `admin_insurance_approvals` | `app.route('/admin/insurance-approvals', methods=['GET', 'POST'])` | [web/routes/registration.py:98](../web/routes/registration.py#L98) |
 | `admin_insurance_approval_edit` | `app.get('/admin/insurance-approvals/<int:portal_id>')` | [web/routes/registration.py:271](../web/routes/registration.py#L271) |
@@ -195,7 +195,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `insurance_approval_start` | `app.post('/orders/<int:order_id>/insurance-approval/start')` | [web/routes/registration.py:477](../web/routes/registration.py#L477) |
 | `insurance_approval_update` | `app.post('/orders/<int:order_id>/insurance-approval/update')` | [web/routes/registration.py:539](../web/routes/registration.py#L539) |
 | `convert_to_work_order` | `app.post('/orders/<int:order_id>/convert-to-work-order')` | [web/routes/registration.py:609](../web/routes/registration.py#L609) |
-| `resend_mwl` | `app.route('/orders/<int:order_id>/resend-mwl', methods=['POST'])` | [web/routes/imaging.py:9](../web/routes/imaging.py#L9) |
+| `resend_mwl` | `app.route('/orders/<int:order_id>/resend-mwl', methods=['POST'])` | [web/routes/imaging.py:18](../web/routes/imaging.py#L18) |
 | `add_payment` | `app.route('/payments/<int:order_id>', methods=['POST'])` | [web/routes/finance.py:9](../web/routes/finance.py#L9) |
 | `nursing_worklist` | `app.route('/nursing')` | [web/routes/clinical.py:9](../web/routes/clinical.py#L9) |
 | `nursing_case` | `app.route('/nursing/<int:order_id>', methods=['GET', 'POST'])` | [web/routes/inventory.py:9](../web/routes/inventory.py#L9) |
@@ -207,7 +207,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `admin_notifications` | `app.route('/admin/notifications')` | [web/routes/communications.py:9](../web/routes/communications.py#L9) |
 | `admin_notifications_process` | `app.post('/admin/notifications/process')` | [web/routes/communications.py:17](../web/routes/communications.py#L17) |
 | `admin_notification_retry` | `app.post('/admin/notifications/<int:notification_id>/retry')` | [web/routes/communications.py:27](../web/routes/communications.py#L27) |
-| `order_study_thumbnail` | `app.get('/orders/<int:order_id>/study-thumbnail')` | [web/routes/imaging.py:44](../web/routes/imaging.py#L44) |
+| `order_study_thumbnail` | `app.get('/orders/<int:order_id>/study-thumbnail')` | [web/routes/imaging.py:53](../web/routes/imaging.py#L53) |
 | `technician_case_workspace` | `app.get('/technician/<int:order_id>')` | [web/routes/clinical.py:100](../web/routes/clinical.py#L100) |
 | `technician_case_note` | `app.post('/technician/<int:order_id>/note')` | [web/routes/clinical.py:177](../web/routes/clinical.py#L177) |
 | `technician_case_consume` | `app.post('/technician/<int:order_id>/consume')` | [web/routes/inventory.py:121](../web/routes/inventory.py#L121) |
@@ -216,33 +216,33 @@ Additional extension routes and services are mapped by `application/module_manif
 | `technician_status` | `app.route('/technician/<int:order_id>/status', methods=['POST'])` | [web/routes/clinical.py:243](../web/routes/clinical.py#L243) |
 | `order_exam_status` | `app.post('/orders/<int:order_id>/exam-status')` | [web/routes/clinical.py:288](../web/routes/clinical.py#L288) |
 | `order_exam_status_override` | `app.post('/orders/<int:order_id>/exam-status/override')` | [web/routes/clinical.py:335](../web/routes/clinical.py#L335) |
-| `pacs_home` | `app.route('/pacs')`<br>`app.route('/pacs/')` | [web/routes/imaging.py:85](../web/routes/imaging.py#L85) |
-| `pacs_tracking` | `app.route('/pacs/tracking')` | [web/routes/imaging.py:99](../web/routes/imaging.py#L99) |
-| `pacs_tracking_refresh` | `app.post('/pacs/tracking/refresh')` | [web/routes/imaging.py:110](../web/routes/imaging.py#L110) |
+| `pacs_home` | `app.route('/pacs')`<br>`app.route('/pacs/')` | [web/routes/imaging.py:94](../web/routes/imaging.py#L94) |
+| `pacs_tracking` | `app.route('/pacs/tracking')` | [web/routes/imaging.py:108](../web/routes/imaging.py#L108) |
+| `pacs_tracking_refresh` | `app.post('/pacs/tracking/refresh')` | [web/routes/imaging.py:119](../web/routes/imaging.py#L119) |
 | `doctor_presence_heartbeat` | `app.post('/api/doctor/presence/heartbeat')` | [web/routes/assignment.py:9](../web/routes/assignment.py#L9) |
 | `doctor_workspace` | `app.route('/doctor')` | [web/routes/reporting.py:24](../web/routes/reporting.py#L24) |
 | `doctor_workspace_data` | `app.get('/api/doctor/workspace')` | [web/routes/reporting.py:39](../web/routes/reporting.py#L39) |
 | `doctor_workspace_column_layout_save` | `app.post('/api/doctor/workspace/column-layout')` | [web/routes/reporting.py:124](../web/routes/reporting.py#L124) |
-| `doctor_workspace_open` | `app.get('/doctor/cases/<int:order_id>/open')` | [web/routes/reporting.py:144](../web/routes/reporting.py#L144) |
+| `doctor_workspace_open` | `app.get('/doctor/cases/<int:order_id>/open')` | [web/routes/reporting.py:160](../web/routes/reporting.py#L160) |
 | `admin_assignment_visits` | `app.route('/admin/assignment-visits', methods=['GET', 'POST'])` | [web/routes/assignment.py:28](../web/routes/assignment.py#L28) |
 | `api_registration_visits` | `app.get('/api/registration/visits')` | [web/routes/registration.py:764](../web/routes/registration.py#L764) |
 | `complete_visit_registration` | `app.post('/admin/assignment-visits/<visit_id>/complete-registration')` | [web/routes/assignment.py:80](../web/routes/assignment.py#L80) |
 | `admin_assignment_monitor` | `app.get('/admin/assignment-monitor')` | [web/routes/assignment.py:99](../web/routes/assignment.py#L99) |
 | `coordinator_assignments` | `app.get('/coordinator/assignments')` | [web/routes/assignment.py:107](../web/routes/assignment.py#L107) |
 | `admin_assignment_distribution` | `app.route('/admin/assignment-distribution', methods=['GET', 'POST'])` | [web/routes/assignment.py:120](../web/routes/assignment.py#L120) |
-| `doctor_reading_start` | `app.post('/doctor/cases/<int:order_id>/start-reading')` | [web/routes/reporting.py:155](../web/routes/reporting.py#L155) |
-| `reports` | `app.route('/reports')` | [web/routes/reporting.py:170](../web/routes/reporting.py#L170) |
-| `admin_report_reopen` | `app.post('/reports/<int:order_id>/admin-reopen')` | [web/routes/reporting.py:179](../web/routes/reporting.py#L179) |
-| `report_lease_acquire` | `app.post('/reports/<int:order_id>/lease/acquire')` | [web/routes/reporting.py:225](../web/routes/reporting.py#L225) |
-| `report_lease_release` | `app.post('/reports/<int:order_id>/lease/release')` | [web/routes/reporting.py:309](../web/routes/reporting.py#L309) |
-| `report_editor` | `app.route('/reports/<int:order_id>', methods=['GET', 'POST'])` | [web/routes/reporting.py:358](../web/routes/reporting.py#L358) |
-| `word_template` | `app.route('/reports/<int:order_id>/word')` | [web/routes/reporting.py:837](../web/routes/reporting.py#L837) |
-| `api_reporting_case` | `app.route('/api/reporting/cases/<accession>')` | [web/routes/reporting.py:913](../web/routes/reporting.py#L913) |
-| `api_reporting_lease_acquire` | `app.post('/api/reporting/cases/<accession>/lease/acquire')` | [web/routes/reporting.py:921](../web/routes/reporting.py#L921) |
-| `api_reporting_lease_release` | `app.post('/api/reporting/cases/<accession>/lease/release')` | [web/routes/reporting.py:1014](../web/routes/reporting.py#L1014) |
-| `api_reporting_draft` | `app.route('/api/reporting/cases/<accession>/draft', methods=['POST'])` | [web/routes/reporting.py:1067](../web/routes/reporting.py#L1067) |
-| `api_reporting_verify` | `app.post('/api/reporting/cases/<accession>/verify')` | [web/routes/reporting.py:1291](../web/routes/reporting.py#L1291) |
-| `api_reporting_finalize` | `app.route('/api/reporting/cases/<accession>/finalize', methods=['POST'])` | [web/routes/reporting.py:1495](../web/routes/reporting.py#L1495) |
+| `doctor_reading_start` | `app.post('/doctor/cases/<int:order_id>/start-reading')` | [web/routes/reporting.py:171](../web/routes/reporting.py#L171) |
+| `reports` | `app.route('/reports')` | [web/routes/reporting.py:186](../web/routes/reporting.py#L186) |
+| `admin_report_reopen` | `app.post('/reports/<int:order_id>/admin-reopen')` | [web/routes/reporting.py:195](../web/routes/reporting.py#L195) |
+| `report_lease_acquire` | `app.post('/reports/<int:order_id>/lease/acquire')` | [web/routes/reporting.py:241](../web/routes/reporting.py#L241) |
+| `report_lease_release` | `app.post('/reports/<int:order_id>/lease/release')` | [web/routes/reporting.py:325](../web/routes/reporting.py#L325) |
+| `report_editor` | `app.route('/reports/<int:order_id>', methods=['GET', 'POST'])` | [web/routes/reporting.py:374](../web/routes/reporting.py#L374) |
+| `word_template` | `app.route('/reports/<int:order_id>/word')` | [web/routes/reporting.py:853](../web/routes/reporting.py#L853) |
+| `api_reporting_case` | `app.route('/api/reporting/cases/<accession>')` | [web/routes/reporting.py:929](../web/routes/reporting.py#L929) |
+| `api_reporting_lease_acquire` | `app.post('/api/reporting/cases/<accession>/lease/acquire')` | [web/routes/reporting.py:937](../web/routes/reporting.py#L937) |
+| `api_reporting_lease_release` | `app.post('/api/reporting/cases/<accession>/lease/release')` | [web/routes/reporting.py:1030](../web/routes/reporting.py#L1030) |
+| `api_reporting_draft` | `app.route('/api/reporting/cases/<accession>/draft', methods=['POST'])` | [web/routes/reporting.py:1083](../web/routes/reporting.py#L1083) |
+| `api_reporting_verify` | `app.post('/api/reporting/cases/<accession>/verify')` | [web/routes/reporting.py:1307](../web/routes/reporting.py#L1307) |
+| `api_reporting_finalize` | `app.route('/api/reporting/cases/<accession>/finalize', methods=['POST'])` | [web/routes/reporting.py:1511](../web/routes/reporting.py#L1511) |
 | `schedule_calendar` | `app.route('/schedule/calendar')` | [web/routes/registration.py:779](../web/routes/registration.py#L779) |
 | `schedule_ocr_preview` | `app.post('/schedule/ocr-preview')` | [web/routes/registration.py:866](../web/routes/registration.py#L866) |
 | `schedule_unified_submit` | `app.post('/schedule/unified-submit')` | [web/routes/registration.py:945](../web/routes/registration.py#L945) |
@@ -262,19 +262,19 @@ Additional extension routes and services are mapped by `application/module_manif
 | `api_smart_booking_availability` | `app.get('/api/booking/smart-availability')` | [web/routes/registration.py:1546](../web/routes/registration.py#L1546) |
 | `admin_booking_availability_seed` | `app.post('/admin/booking-availability/seed')` | [web/routes/registration.py:1734](../web/routes/registration.py#L1734) |
 | `order_clinical_notes` | `app.route('/orders/<int:order_id>/clinical-notes', methods=['GET', 'POST'])` | [web/routes/clinical.py:368](../web/routes/clinical.py#L368) |
-| `my_profile` | `app.route('/my/profile', methods=['GET', 'POST'])` | [web/routes/shared.py:537](../web/routes/shared.py#L537) |
+| `my_profile` | `app.route('/my/profile', methods=['GET', 'POST'])` | [web/routes/shared.py:602](../web/routes/shared.py#L602) |
 | `admin_dictionary` | `app.route('/admin/dictionary', methods=['GET', 'POST'])` | [web/routes/operations.py:9](../web/routes/operations.py#L9) |
 | `admin_booking_control_center` | `app.get('/admin/booking-control-center')` | [web/routes/registration.py:1746](../web/routes/registration.py#L1746) |
 | `admin_booking_control` | `app.route('/admin/booking-control', methods=['GET', 'POST'])` | [web/routes/registration.py:1818](../web/routes/registration.py#L1818) |
 | `admin_booking_control_deactivate` | `app.post('/admin/booking-control/<int:block_id>/deactivate')` | [web/routes/registration.py:1852](../web/routes/registration.py#L1852) |
-| `ui_language_switch` | `app.post('/ui/language')` | [web/routes/shared.py:647](../web/routes/shared.py#L647) |
+| `ui_language_switch` | `app.post('/ui/language')` | [web/routes/shared.py:712](../web/routes/shared.py#L712) |
 | `admin_dictionary_reset` | `app.post('/admin/dictionary/<int:entry_id>/reset')` | [web/routes/operations.py:36](../web/routes/operations.py#L36) |
-| `my_ribbon` | `app.route('/my/ribbon', methods=['GET', 'POST'])` | [web/routes/shared.py:666](../web/routes/shared.py#L666) |
+| `my_ribbon` | `app.route('/my/ribbon', methods=['GET', 'POST'])` | [web/routes/shared.py:731](../web/routes/shared.py#L731) |
 | `admin_ribbon_designer` | `app.route('/admin/ribbon-designer', methods=['GET', 'POST'])` | [web/routes/operations.py:52](../web/routes/operations.py#L52) |
-| `operations_journey` | `app.get('/operations/journey')` | [web/routes/shared.py:696](../web/routes/shared.py#L696) |
+| `operations_journey` | `app.get('/operations/journey')` | [web/routes/shared.py:761](../web/routes/shared.py#L761) |
 | `order_journey_stage` | `app.post('/orders/<int:order_id>/journey/<stage>')` | [web/routes/registration.py:1866](../web/routes/registration.py#L1866) |
 | `operations_booking_board` | `app.get('/operations/booking-board')` | [web/routes/registration.py:1885](../web/routes/registration.py#L1885) |
-| `operations_dashboard` | `app.get('/operations/dashboard')` | [web/routes/shared.py:707](../web/routes/shared.py#L707) |
+| `operations_dashboard` | `app.get('/operations/dashboard')` | [web/routes/shared.py:772](../web/routes/shared.py#L772) |
 | `chat_home` | `app.get('/chat')` | [web/routes/communications.py:40](../web/routes/communications.py#L40) |
 | `chat_direct_create` | `app.post('/chat/direct')` | [web/routes/communications.py:50](../web/routes/communications.py#L50) |
 | `chat_group_create` | `app.post('/chat/group')` | [web/routes/communications.py:64](../web/routes/communications.py#L64) |
@@ -283,8 +283,8 @@ Additional extension routes and services are mapped by `application/module_manif
 | `chat_message_to_clinical_note` | `app.post('/chat/<int:thread_id>/add-to-clinical-note/<int:message_id>')` | [web/routes/clinical.py:385](../web/routes/clinical.py#L385) |
 | `patient_documents` | `app.route('/patients/<int:patient_id>/documents', methods=['GET', 'POST'])` | [web/routes/registration.py:1896](../web/routes/registration.py#L1896) |
 | `patient_timeline` | `app.get('/patients/<int:patient_id>/timeline')` | [web/routes/registration.py:1937](../web/routes/registration.py#L1937) |
-| `document_review` | `app.get('/documents/<int:document_id>/review')` | [web/routes/shared.py:726](../web/routes/shared.py#L726) |
-| `document_review_save` | `app.post('/documents/<int:document_id>/review')` | [web/routes/shared.py:736](../web/routes/shared.py#L736) |
+| `document_review` | `app.get('/documents/<int:document_id>/review')` | [web/routes/shared.py:791](../web/routes/shared.py#L791) |
+| `document_review_save` | `app.post('/documents/<int:document_id>/review')` | [web/routes/shared.py:801](../web/routes/shared.py#L801) |
 | `telephony_incoming` | `app.post('/api/telephony/incoming')` | [web/routes/communications.py:102](../web/routes/communications.py#L102) |
 | `telephony_calls` | `app.get('/telephony/calls')` | [web/routes/communications.py:123](../web/routes/communications.py#L123) |
 | `telephony_caller` | `app.get('/telephony/caller/<int:call_id>')` | [web/routes/communications.py:132](../web/routes/communications.py#L132) |
@@ -292,52 +292,52 @@ Additional extension routes and services are mapped by `application/module_manif
 | `admin_referrers` | `app.route('/admin/referrers', methods=['GET', 'POST'])` | [web/routes/operations.py:81](../web/routes/operations.py#L81) |
 | `admin_import_export` | `app.route('/admin/import-export', methods=['GET', 'POST'])` | [web/routes/operations.py:100](../web/routes/operations.py#L100) |
 | `admin_export_entity` | `app.route('/admin/export/<entity>.csv')` | [web/routes/operations.py:174](../web/routes/operations.py#L174) |
-| `report_upload` | `app.route('/reports/<int:order_id>/upload', methods=['POST'])` | [web/routes/reporting.py:1694](../web/routes/reporting.py#L1694) |
-| `report_source` | `app.route('/reports/<int:order_id>/source')` | [web/routes/reporting.py:2013](../web/routes/reporting.py#L2013) |
-| `attachment_upload` | `app.route('/attachments/upload', methods=['POST'])` | [web/routes/shared.py:753](../web/routes/shared.py#L753) |
-| `attachment_download` | `app.route('/attachments/<int:attachment_id>')` | [web/routes/shared.py:790](../web/routes/shared.py#L790) |
-| `attachment_preview` | `app.route('/attachments/<int:attachment_id>/preview')` | [web/routes/shared.py:799](../web/routes/shared.py#L799) |
-| `attachment_delete` | `app.post('/attachments/<int:attachment_id>/delete')` | [web/routes/shared.py:810](../web/routes/shared.py#L810) |
+| `report_upload` | `app.route('/reports/<int:order_id>/upload', methods=['POST'])` | [web/routes/reporting.py:1710](../web/routes/reporting.py#L1710) |
+| `report_source` | `app.route('/reports/<int:order_id>/source')` | [web/routes/reporting.py:2029](../web/routes/reporting.py#L2029) |
+| `attachment_upload` | `app.route('/attachments/upload', methods=['POST'])` | [web/routes/shared.py:818](../web/routes/shared.py#L818) |
+| `attachment_download` | `app.route('/attachments/<int:attachment_id>')` | [web/routes/shared.py:855](../web/routes/shared.py#L855) |
+| `attachment_preview` | `app.route('/attachments/<int:attachment_id>/preview')` | [web/routes/shared.py:864](../web/routes/shared.py#L864) |
+| `attachment_delete` | `app.post('/attachments/<int:attachment_id>/delete')` | [web/routes/shared.py:875](../web/routes/shared.py#L875) |
 | `order_attachments` | `app.get('/orders/<int:order_id>/attachments')` | [web/routes/registration.py:1946](../web/routes/registration.py#L1946) |
 | `order_sticker` | `app.route('/orders/<int:order_id>/sticker')` | [web/routes/registration.py:1958](../web/routes/registration.py#L1958) |
 | `order_sticker_preview` | `app.route('/orders/<int:order_id>/sticker/preview')` | [web/routes/registration.py:1986](../web/routes/registration.py#L1986) |
-| `barcode_scan` | `app.route('/scan', methods=['GET', 'POST'])` | [web/routes/shared.py:829](../web/routes/shared.py#L829) |
+| `barcode_scan` | `app.route('/scan', methods=['GET', 'POST'])` | [web/routes/shared.py:894](../web/routes/shared.py#L894) |
 | `admin_company` | `app.route('/admin/company', methods=['GET', 'POST'])` | [web/routes/operations.py:203](../web/routes/operations.py#L203) |
-| `company_logo` | `app.route('/company/logo')` | [web/routes/shared.py:843](../web/routes/shared.py#L843) |
+| `company_logo` | `app.route('/company/logo')` | [web/routes/shared.py:908](../web/routes/shared.py#L908) |
 | `admin_sticker_templates` | `app.route('/admin/sticker-templates', methods=['GET', 'POST'])` | [web/routes/operations.py:224](../web/routes/operations.py#L224) |
-| `pacs_reconciliation_preview` | `app.get('/pacs/reconciliation/<study_id>/preview')` | [web/routes/imaging.py:152](../web/routes/imaging.py#L152) |
-| `pacs_reconciliation_correct_dicom` | `app.post('/pacs/reconciliation/<study_id>/correct-dicom')` | [web/routes/imaging.py:174](../web/routes/imaging.py#L174) |
-| `pacs_reconciliation_audit` | `app.get('/pacs/reconciliation/audit')` | [web/routes/imaging.py:197](../web/routes/imaging.py#L197) |
-| `pacs_reconciliation_example` | `app.get('/pacs/reconciliation/example')` | [web/routes/imaging.py:211](../web/routes/imaging.py#L211) |
-| `pacs_reconciliation` | `app.route('/pacs/reconciliation')` | [web/routes/imaging.py:229](../web/routes/imaging.py#L229) |
-| `pacs_exam_link_create` | `app.post('/pacs/exam-link')` | [web/routes/imaging.py:368](../web/routes/imaging.py#L368) |
-| `pacs_exam_link_remove` | `app.post('/pacs/exam-link/<int:link_id>/remove')` | [web/routes/imaging.py:436](../web/routes/imaging.py#L436) |
-| `pacs_reconciliation_match` | `app.post('/pacs/reconciliation/<study_id>/match')` | [web/routes/imaging.py:483](../web/routes/imaging.py#L483) |
-| `pacs_reconciliation_quarantine` | `app.post('/pacs/reconciliation/<study_id>/quarantine')` | [web/routes/imaging.py:540](../web/routes/imaging.py#L540) |
-| `pacs_reconciliation_auto_safe` | `app.post('/pacs/reconciliation/auto-safe')` | [web/routes/imaging.py:580](../web/routes/imaging.py#L580) |
+| `pacs_reconciliation_preview` | `app.get('/pacs/reconciliation/<study_id>/preview')` | [web/routes/imaging.py:161](../web/routes/imaging.py#L161) |
+| `pacs_reconciliation_correct_dicom` | `app.post('/pacs/reconciliation/<study_id>/correct-dicom')` | [web/routes/imaging.py:183](../web/routes/imaging.py#L183) |
+| `pacs_reconciliation_audit` | `app.get('/pacs/reconciliation/audit')` | [web/routes/imaging.py:206](../web/routes/imaging.py#L206) |
+| `pacs_reconciliation_example` | `app.get('/pacs/reconciliation/example')` | [web/routes/imaging.py:220](../web/routes/imaging.py#L220) |
+| `pacs_reconciliation` | `app.route('/pacs/reconciliation')` | [web/routes/imaging.py:238](../web/routes/imaging.py#L238) |
+| `pacs_exam_link_create` | `app.post('/pacs/exam-link')` | [web/routes/imaging.py:377](../web/routes/imaging.py#L377) |
+| `pacs_exam_link_remove` | `app.post('/pacs/exam-link/<int:link_id>/remove')` | [web/routes/imaging.py:445](../web/routes/imaging.py#L445) |
+| `pacs_reconciliation_match` | `app.post('/pacs/reconciliation/<study_id>/match')` | [web/routes/imaging.py:492](../web/routes/imaging.py#L492) |
+| `pacs_reconciliation_quarantine` | `app.post('/pacs/reconciliation/<study_id>/quarantine')` | [web/routes/imaging.py:549](../web/routes/imaging.py#L549) |
+| `pacs_reconciliation_auto_safe` | `app.post('/pacs/reconciliation/auto-safe')` | [web/routes/imaging.py:589](../web/routes/imaging.py#L589) |
 | `api_command_center_case_graph_v3` | `app.get('/api/command-center/case/<int:order_id>/graph-v3')` | [web/routes/registration.py:1997](../web/routes/registration.py#L1997) |
-| `api_command_center_control_get` | `app.get('/api/command-center/control')` | [web/routes/shared.py:853](../web/routes/shared.py#L853) |
-| `api_command_center_control_set` | `app.post('/api/command-center/control')` | [web/routes/shared.py:864](../web/routes/shared.py#L864) |
-| `api_command_center_resources` | `app.get('/api/command-center/resources')` | [web/routes/shared.py:951](../web/routes/shared.py#L951) |
-| `command_center_events_stream` | `app.get('/api/command-center/events/stream')` | [web/routes/shared.py:1021](../web/routes/shared.py#L1021) |
-| `live_command_center` | `app.route('/operations/live-command-center')` | [web/routes/shared.py:1165](../web/routes/shared.py#L1165) |
-| `command_center_events` | `app.route('/api/command-center/events')` | [web/routes/shared.py:1173](../web/routes/shared.py#L1173) |
-| `command_center_snapshot` | `app.route('/api/command-center/snapshot')` | [web/routes/shared.py:1784](../web/routes/shared.py#L1784) |
+| `api_command_center_control_get` | `app.get('/api/command-center/control')` | [web/routes/shared.py:918](../web/routes/shared.py#L918) |
+| `api_command_center_control_set` | `app.post('/api/command-center/control')` | [web/routes/shared.py:929](../web/routes/shared.py#L929) |
+| `api_command_center_resources` | `app.get('/api/command-center/resources')` | [web/routes/shared.py:1016](../web/routes/shared.py#L1016) |
+| `command_center_events_stream` | `app.get('/api/command-center/events/stream')` | [web/routes/shared.py:1086](../web/routes/shared.py#L1086) |
+| `live_command_center` | `app.route('/operations/live-command-center')` | [web/routes/shared.py:1230](../web/routes/shared.py#L1230) |
+| `command_center_events` | `app.route('/api/command-center/events')` | [web/routes/shared.py:1238](../web/routes/shared.py#L1238) |
+| `command_center_snapshot` | `app.route('/api/command-center/snapshot')` | [web/routes/shared.py:1849](../web/routes/shared.py#L1849) |
 | `financial_center` | `app.route('/accounting/financial-center')` | [web/routes/finance.py:18](../web/routes/finance.py#L18) |
 | `financial_center_export` | `app.route('/accounting/financial-center/export/<fmt>')` | [web/routes/finance.py:32](../web/routes/finance.py#L32) |
 | `financial_entries` | `app.route('/accounting/entries', methods=['GET', 'POST'])` | [web/routes/finance.py:46](../web/routes/finance.py#L46) |
 | `financial_entry_void` | `app.post('/accounting/entries/<int:entry_id>/void')` | [web/routes/finance.py:75](../web/routes/finance.py#L75) |
-| `receivables` | `app.route('/accounting/receivables')` | [web/routes/shared.py:1984](../web/routes/shared.py#L1984) |
-| `receivables_csv` | `app.route('/accounting/receivables.csv')` | [web/routes/shared.py:2005](../web/routes/shared.py#L2005) |
+| `receivables` | `app.route('/accounting/receivables')` | [web/routes/shared.py:2049](../web/routes/shared.py#L2049) |
+| `receivables_csv` | `app.route('/accounting/receivables.csv')` | [web/routes/shared.py:2070](../web/routes/shared.py#L2070) |
 | `receive_payment` | `app.route('/orders/<int:order_id>/payment', methods=['POST'])` | [web/routes/finance.py:86](../web/routes/finance.py#L86) |
 | `receipt_view` | `app.route('/receipts/<int:receipt_id>')` | [web/routes/finance.py:129](../web/routes/finance.py#L129) |
 | `mark_delivery` | `app.route('/orders/<int:order_id>/delivery/<item_type>', methods=['POST'])` | [web/routes/registration.py:2362](../web/routes/registration.py#L2362) |
 | `cashier_workstation` | `app.route('/cashier')` | [web/routes/finance.py:141](../web/routes/finance.py#L141) |
 | `refund_payment` | `app.post('/payments/<int:payment_id>/refund')` | [web/routes/finance.py:168](../web/routes/finance.py#L168) |
-| `accounting_reports` | `app.route('/accounting/reports')` | [web/routes/reporting.py:2040](../web/routes/reporting.py#L2040) |
-| `accounting_reports_csv` | `app.route('/accounting/reports.csv')` | [web/routes/reporting.py:2080](../web/routes/reporting.py#L2080) |
+| `accounting_reports` | `app.route('/accounting/reports')` | [web/routes/reporting.py:2056](../web/routes/reporting.py#L2056) |
+| `accounting_reports_csv` | `app.route('/accounting/reports.csv')` | [web/routes/reporting.py:2096](../web/routes/reporting.py#L2096) |
 | `admin_diagnostics` | `app.route('/admin/diagnostics')` | [web/routes/clinical.py:395](../web/routes/clinical.py#L395) |
-| `admin_reporting_demo` | `app.route('/admin/demo/reporting', methods=['GET', 'POST'])` | [web/routes/reporting.py:2095](../web/routes/reporting.py#L2095) |
+| `admin_reporting_demo` | `app.route('/admin/demo/reporting', methods=['GET', 'POST'])` | [web/routes/reporting.py:2111](../web/routes/reporting.py#L2111) |
 | `admin_assignment` | `app.route('/admin/assignment', methods=['GET', 'POST'])` | [web/routes/assignment.py:206](../web/routes/assignment.py#L206) |
 | `admin_assignment_strategies` | `app.route('/admin/assignment-strategies', methods=['GET', 'POST'])` | [web/routes/assignment.py:239](../web/routes/assignment.py#L239) |
 | `admin_assignment_strategy_simulate` | `app.post('/admin/assignment-strategies/simulate')` | [web/routes/assignment.py:548](../web/routes/assignment.py#L548) |
@@ -347,8 +347,8 @@ Additional extension routes and services are mapped by `application/module_manif
 | `admin_assignment_strategy_history` | `app.get('/admin/assignment-strategies/<int:strategy_id>/history')` | [web/routes/assignment.py:838](../web/routes/assignment.py#L838) |
 | `admin_assignment_strategy_rollback` | `app.post('/admin/assignment-strategies/<int:strategy_id>/rollback/<int:version_id>')` | [web/routes/assignment.py:860](../web/routes/assignment.py#L860) |
 | `assign_case` | `app.route('/orders/<int:order_id>/assign', methods=['GET', 'POST'])` | [web/routes/assignment.py:960](../web/routes/assignment.py#L960) |
-| `take_case` | `app.route('/orders/<int:order_id>/take', methods=['POST'])` | [web/routes/imaging.py:634](../web/routes/imaging.py#L634) |
-| `unassigned_cases` | `app.route('/assignment/unassigned')` | [web/routes/reporting.py:2107](../web/routes/reporting.py#L2107) |
+| `take_case` | `app.route('/orders/<int:order_id>/take', methods=['POST'])` | [web/routes/imaging.py:643](../web/routes/imaging.py#L643) |
+| `unassigned_cases` | `app.route('/assignment/unassigned')` | [web/routes/reporting.py:2123](../web/routes/reporting.py#L2123) |
 | `admin_home` | `app.route('/admin')`<br>`app.route('/admin/')` | [web/routes/operations.py:244](../web/routes/operations.py#L244) |
 | `admin_users` | `app.route('/admin/users', methods=['GET', 'POST'])` | [web/routes/operations.py:277](../web/routes/operations.py#L277) |
 | `admin_user_toggle` | `app.post('/admin/users/<int:user_id>/toggle')` | [web/routes/operations.py:306](../web/routes/operations.py#L306) |
@@ -356,9 +356,9 @@ Additional extension routes and services are mapped by `application/module_manif
 | `admin_user_reset_password` | `app.post('/admin/users/<int:user_id>/reset-password')` | [web/routes/identity.py:56](../web/routes/identity.py#L56) |
 | `admin_device_schedules` | `app.route('/admin/device-schedules', methods=['GET', 'POST'])` | [web/routes/registration.py:2401](../web/routes/registration.py#L2401) |
 | `admin_device_blocks` | `app.route('/admin/device-blocks', methods=['POST'])` | [web/routes/registration.py:2429](../web/routes/registration.py#L2429) |
-| `dicom_connections_page` | `app.get('/admin/dicom-connections')` | [web/routes/imaging.py:665](../web/routes/imaging.py#L665) |
-| `dicom_connection_edit` | `app.route('/admin/dicom-connections/branches/<int:branch_id>', methods=['GET', 'POST'])` | [web/routes/imaging.py:687](../web/routes/imaging.py#L687) |
-| `dicom_connection_echo` | `app.post('/admin/dicom-connections/<int:endpoint_id>/echo')` | [web/routes/imaging.py:714](../web/routes/imaging.py#L714) |
+| `dicom_connections_page` | `app.get('/admin/dicom-connections')` | [web/routes/imaging.py:674](../web/routes/imaging.py#L674) |
+| `dicom_connection_edit` | `app.route('/admin/dicom-connections/branches/<int:branch_id>', methods=['GET', 'POST'])` | [web/routes/imaging.py:696](../web/routes/imaging.py#L696) |
+| `dicom_connection_echo` | `app.post('/admin/dicom-connections/<int:endpoint_id>/echo')` | [web/routes/imaging.py:723](../web/routes/imaging.py#L723) |
 | `admin_branch_edit` | `app.route('/admin/branches/<int:branch_id>/edit', methods=['GET', 'POST'])` | [web/routes/operations.py:349](../web/routes/operations.py#L349) |
 | `admin_devices` | `app.route('/admin/devices', methods=['GET', 'POST'])` | [web/routes/operations.py:369](../web/routes/operations.py#L369) |
 | `admin_device_edit` | `app.route('/admin/devices/<int:device_id>/edit', methods=['POST'])` | [web/routes/registration.py:2453](../web/routes/registration.py#L2453) |
@@ -381,22 +381,22 @@ Additional extension routes and services are mapped by `application/module_manif
 | `granular_delete_order_images_only` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-images')` | [web/routes/registration.py:2511](../web/routes/registration.py#L2511) |
 | `granular_delete_preview_home` | `app.get('/admin/cancellation-center/preview')` | [web/routes/operations.py:407](../web/routes/operations.py#L407) |
 | `granular_delete_order_preview` | `app.get('/admin/cancellation-center/order/<int:order_id>/preview')` | [web/routes/registration.py:2533](../web/routes/registration.py#L2533) |
-| `granular_delete_order_reports_only` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-reports')` | [web/routes/reporting.py:2187](../web/routes/reporting.py#L2187) |
+| `granular_delete_order_reports_only` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-reports')` | [web/routes/reporting.py:2203](../web/routes/reporting.py#L2203) |
 | `granular_delete_order_ris_case_data_only` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-ris-case-data')` | [web/routes/registration.py:2558](../web/routes/registration.py#L2558) |
 | `granular_delete_order_full_case` | `app.post('/admin/cancellation-center/order/<int:order_id>/delete-full-case')` | [web/routes/registration.py:2574](../web/routes/registration.py#L2574) |
 | `granular_delete_patient_preview` | `app.get('/admin/cancellation-center/patient/<int:patient_id>/preview')` | [web/routes/registration.py:2592](../web/routes/registration.py#L2592) |
-| `correction_center` | `app.get('/correction-center')` | [web/routes/shared.py:2023](../web/routes/shared.py#L2023) |
+| `correction_center` | `app.get('/correction-center')` | [web/routes/shared.py:2088](../web/routes/shared.py#L2088) |
 | `patient_demographics_correction` | `app.route('/correction-center/orders/<int:order_id>/demographics', methods=['GET', 'POST'])` | [web/routes/registration.py:2617](../web/routes/registration.py#L2617) |
 | `patient_demographics_correction_view` | `app.get('/correction-center/requests/<int:request_id>/demographics')` | [web/routes/registration.py:2638](../web/routes/registration.py#L2638) |
-| `correction_request_submit` | `app.post('/correction-center/request')` | [web/routes/shared.py:2047](../web/routes/shared.py#L2047) |
-| `correction_execution_queue` | `app.get('/correction-center/executions')` | [web/routes/shared.py:2098](../web/routes/shared.py#L2098) |
-| `correction_execution_prepare_route` | `app.post('/correction-center/requests/<int:request_id>/execution/prepare')` | [web/routes/shared.py:2191](../web/routes/shared.py#L2191) |
-| `correction_execution_claim_route` | `app.post('/correction-center/executions/<int:execution_id>/claim')` | [web/routes/shared.py:2256](../web/routes/shared.py#L2256) |
-| `correction_execution_hold_route` | `app.post('/correction-center/executions/<int:execution_id>/hold')` | [web/routes/shared.py:2321](../web/routes/shared.py#L2321) |
-| `correction_execution_release_route` | `app.post('/correction-center/executions/<int:execution_id>/release')` | [web/routes/shared.py:2385](../web/routes/shared.py#L2385) |
-| `correction_execution_execute_route` | `app.post('/correction-center/executions/<int:execution_id>/execute')` | [web/routes/shared.py:2449](../web/routes/shared.py#L2449) |
-| `correction_request_queue` | `app.get('/correction-center/requests')` | [web/routes/shared.py:2562](../web/routes/shared.py#L2562) |
-| `correction_request_action` | `app.post('/correction-center/requests/<int:request_id>/action')` | [web/routes/shared.py:2583](../web/routes/shared.py#L2583) |
+| `correction_request_submit` | `app.post('/correction-center/request')` | [web/routes/shared.py:2112](../web/routes/shared.py#L2112) |
+| `correction_execution_queue` | `app.get('/correction-center/executions')` | [web/routes/shared.py:2163](../web/routes/shared.py#L2163) |
+| `correction_execution_prepare_route` | `app.post('/correction-center/requests/<int:request_id>/execution/prepare')` | [web/routes/shared.py:2256](../web/routes/shared.py#L2256) |
+| `correction_execution_claim_route` | `app.post('/correction-center/executions/<int:execution_id>/claim')` | [web/routes/shared.py:2321](../web/routes/shared.py#L2321) |
+| `correction_execution_hold_route` | `app.post('/correction-center/executions/<int:execution_id>/hold')` | [web/routes/shared.py:2386](../web/routes/shared.py#L2386) |
+| `correction_execution_release_route` | `app.post('/correction-center/executions/<int:execution_id>/release')` | [web/routes/shared.py:2450](../web/routes/shared.py#L2450) |
+| `correction_execution_execute_route` | `app.post('/correction-center/executions/<int:execution_id>/execute')` | [web/routes/shared.py:2514](../web/routes/shared.py#L2514) |
+| `correction_request_queue` | `app.get('/correction-center/requests')` | [web/routes/shared.py:2627](../web/routes/shared.py#L2627) |
+| `correction_request_action` | `app.post('/correction-center/requests/<int:request_id>/action')` | [web/routes/shared.py:2648](../web/routes/shared.py#L2648) |
 | `admin_data_deletion_center` | `app.get('/admin/data-deletion-center')` | [web/routes/operations.py:417](../web/routes/operations.py#L417) |
 | `admin_cancellation_center` | `app.get('/admin/cancellation-center')` | [web/routes/operations.py:432](../web/routes/operations.py#L432) |
 | `admin_cancel_appointment` | `app.post('/admin/cancellation-center/appointments/<int:appointment_id>/cancel')` | [web/routes/registration.py:2654](../web/routes/registration.py#L2654) |
@@ -411,34 +411,34 @@ Additional extension routes and services are mapped by `application/module_manif
 | `patient_alerts` | `app.route('/patients/<int:patient_id>/alerts', methods=['GET', 'POST'])` | [web/routes/registration.py:2731](../web/routes/registration.py#L2731) |
 | `patient_alert_resolve` | `app.post('/patient-alerts/<int:alert_id>/resolve')` | [web/routes/registration.py:2748](../web/routes/registration.py#L2748) |
 | `admin_company_legal` | `app.route('/admin/company-legal', methods=['GET', 'POST'])` | [web/routes/operations.py:523](../web/routes/operations.py#L523) |
-| `studio_home` | `app.route('/studio')` | [web/routes/shared.py:2650](../web/routes/shared.py#L2650) |
-| `studio_templates` | `app.route('/studio/templates/<template_type>', methods=['GET', 'POST'])` | [web/routes/shared.py:2657](../web/routes/shared.py#L2657) |
-| `studio_template_publish` | `app.post('/studio/templates/<int:template_id>/publish')` | [web/routes/shared.py:2675](../web/routes/shared.py#L2675) |
-| `doctor_templates` | `app.route('/doctor/templates', methods=['GET', 'POST'])` | [web/routes/shared.py:2689](../web/routes/shared.py#L2689) |
+| `studio_home` | `app.route('/studio')` | [web/routes/shared.py:2715](../web/routes/shared.py#L2715) |
+| `studio_templates` | `app.route('/studio/templates/<template_type>', methods=['GET', 'POST'])` | [web/routes/shared.py:2722](../web/routes/shared.py#L2722) |
+| `studio_template_publish` | `app.post('/studio/templates/<int:template_id>/publish')` | [web/routes/shared.py:2740](../web/routes/shared.py#L2740) |
+| `doctor_templates` | `app.route('/doctor/templates', methods=['GET', 'POST'])` | [web/routes/shared.py:2754](../web/routes/shared.py#L2754) |
 | `receipt_studio_print` | `app.get('/receipts/<int:receipt_id>/studio-print')` | [web/routes/finance.py:210](../web/routes/finance.py#L210) |
-| `studio_template_preview` | `app.get('/studio/templates/<int:template_id>/preview')` | [web/routes/shared.py:2708](../web/routes/shared.py#L2708) |
-| `report_word_from_doctor_template` | `app.get('/reports/<int:order_id>/word-template/<int:template_id>')` | [web/routes/reporting.py:2210](../web/routes/reporting.py#L2210) |
-| `admin_ai_reporting` | `app.route('/admin/ai-reporting', methods=['GET', 'POST'])` | [web/routes/reporting.py:2269](../web/routes/reporting.py#L2269) |
-| `ai_report_assistant` | `app.get('/reports/<int:order_id>/ai-assistant')` | [web/routes/reporting.py:2289](../web/routes/reporting.py#L2289) |
-| `ai_report_generate` | `app.post('/reports/<int:order_id>/ai-assistant/generate')` | [web/routes/reporting.py:2304](../web/routes/reporting.py#L2304) |
-| `ai_report_apply` | `app.post('/reports/<int:order_id>/ai-assistant/<int:draft_id>/apply')` | [web/routes/reporting.py:2324](../web/routes/reporting.py#L2324) |
-| `ai_report_reject` | `app.post('/reports/<int:order_id>/ai-assistant/<int:draft_id>/reject')` | [web/routes/reporting.py:2339](../web/routes/reporting.py#L2339) |
-| `report_prior_select` | `app.post('/reports/<int:order_id>/priors/select')` | [web/routes/reporting.py:2349](../web/routes/reporting.py#L2349) |
+| `studio_template_preview` | `app.get('/studio/templates/<int:template_id>/preview')` | [web/routes/shared.py:2773](../web/routes/shared.py#L2773) |
+| `report_word_from_doctor_template` | `app.get('/reports/<int:order_id>/word-template/<int:template_id>')` | [web/routes/reporting.py:2226](../web/routes/reporting.py#L2226) |
+| `admin_ai_reporting` | `app.route('/admin/ai-reporting', methods=['GET', 'POST'])` | [web/routes/reporting.py:2285](../web/routes/reporting.py#L2285) |
+| `ai_report_assistant` | `app.get('/reports/<int:order_id>/ai-assistant')` | [web/routes/reporting.py:2305](../web/routes/reporting.py#L2305) |
+| `ai_report_generate` | `app.post('/reports/<int:order_id>/ai-assistant/generate')` | [web/routes/reporting.py:2320](../web/routes/reporting.py#L2320) |
+| `ai_report_apply` | `app.post('/reports/<int:order_id>/ai-assistant/<int:draft_id>/apply')` | [web/routes/reporting.py:2340](../web/routes/reporting.py#L2340) |
+| `ai_report_reject` | `app.post('/reports/<int:order_id>/ai-assistant/<int:draft_id>/reject')` | [web/routes/reporting.py:2355](../web/routes/reporting.py#L2355) |
+| `report_prior_select` | `app.post('/reports/<int:order_id>/priors/select')` | [web/routes/reporting.py:2365](../web/routes/reporting.py#L2365) |
 | `patient_external_priors` | `app.route('/patients/<int:patient_id>/external-priors', methods=['GET', 'POST'])` | [web/routes/registration.py:2757](../web/routes/registration.py#L2757) |
-| `external_prior_confirm_match` | `app.post('/external-priors/<int:prior_id>/confirm-match')` | [web/routes/reporting.py:2364](../web/routes/reporting.py#L2364) |
-| `external_prior_mark_mismatch` | `app.post('/external-priors/<int:prior_id>/mark-mismatch')` | [web/routes/reporting.py:2373](../web/routes/reporting.py#L2373) |
-| `my_quick_actions` | `app.get('/my/quick-actions')` | [web/routes/shared.py:2719](../web/routes/shared.py#L2719) |
-| `universal_search` | `app.get('/search')` | [web/routes/shared.py:2728](../web/routes/shared.py#L2728) |
+| `external_prior_confirm_match` | `app.post('/external-priors/<int:prior_id>/confirm-match')` | [web/routes/reporting.py:2380](../web/routes/reporting.py#L2380) |
+| `external_prior_mark_mismatch` | `app.post('/external-priors/<int:prior_id>/mark-mismatch')` | [web/routes/reporting.py:2389](../web/routes/reporting.py#L2389) |
+| `my_quick_actions` | `app.get('/my/quick-actions')` | [web/routes/shared.py:2784](../web/routes/shared.py#L2784) |
+| `universal_search` | `app.get('/search')` | [web/routes/shared.py:2793](../web/routes/shared.py#L2793) |
 | `admin_communications` | `app.route('/admin/communications', methods=['GET', 'POST'])` | [web/routes/communications.py:158](../web/routes/communications.py#L158) |
 | `admin_communication_template_save` | `app.route('/admin/communication-templates', methods=['POST'])` | [web/routes/communications.py:184](../web/routes/communications.py#L184) |
 | `patient_communications` | `app.route('/patients/<int:patient_id>/communications', methods=['GET', 'POST'])` | [web/routes/communications.py:206](../web/routes/communications.py#L206) |
 | `communication_retry` | `app.post('/communications/<int:comm_id>/retry')` | [web/routes/communications.py:242](../web/routes/communications.py#L242) |
-| `admin_imaging_ai` | `app.route('/admin/imaging-ai', methods=['GET', 'POST'])` | [web/routes/imaging.py:730](../web/routes/imaging.py#L730) |
-| `imaging_ai_workspace` | `app.get('/reports/<int:order_id>/imaging-ai')` | [web/routes/reporting.py:2382](../web/routes/reporting.py#L2382) |
-| `imaging_ai_verify_demographics` | `app.post('/reports/<int:order_id>/imaging-ai/verify-demographics')` | [web/routes/reporting.py:2392](../web/routes/reporting.py#L2392) |
-| `imaging_ai_demographic_override` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/override')` | [web/routes/reporting.py:2439](../web/routes/reporting.py#L2439) |
-| `imaging_ai_analyze` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/analyze')` | [web/routes/reporting.py:2460](../web/routes/reporting.py#L2460) |
-| `imaging_ai_mark_reviewed` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/mark-reviewed')` | [web/routes/reporting.py:2507](../web/routes/reporting.py#L2507) |
+| `admin_imaging_ai` | `app.route('/admin/imaging-ai', methods=['GET', 'POST'])` | [web/routes/imaging.py:739](../web/routes/imaging.py#L739) |
+| `imaging_ai_workspace` | `app.get('/reports/<int:order_id>/imaging-ai')` | [web/routes/reporting.py:2398](../web/routes/reporting.py#L2398) |
+| `imaging_ai_verify_demographics` | `app.post('/reports/<int:order_id>/imaging-ai/verify-demographics')` | [web/routes/reporting.py:2408](../web/routes/reporting.py#L2408) |
+| `imaging_ai_demographic_override` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/override')` | [web/routes/reporting.py:2455](../web/routes/reporting.py#L2455) |
+| `imaging_ai_analyze` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/analyze')` | [web/routes/reporting.py:2476](../web/routes/reporting.py#L2476) |
+| `imaging_ai_mark_reviewed` | `app.post('/reports/<int:order_id>/imaging-ai/<int:analysis_id>/mark-reviewed')` | [web/routes/reporting.py:2523](../web/routes/reporting.py#L2523) |
 | `admin_qa_control` | `app.route('/admin/qa-control')` | [web/routes/operations.py:539](../web/routes/operations.py#L539) |
 | `admin_qa_control_run` | `app.post('/admin/qa-control/run')` | [web/routes/operations.py:567](../web/routes/operations.py#L567) |
 | `admin_qa_retry_failed` | `app.post('/admin/qa-control/retry-failed')` | [web/routes/operations.py:650](../web/routes/operations.py#L650) |
@@ -453,7 +453,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `assignment_offer_start` | `app.post('/orders/<int:order_id>/assignment-offer/start')` | [web/routes/assignment.py:1306](../web/routes/assignment.py#L1306) |
 | `assignment_offers_expire_now` | `app.post('/assignment/offers/expire-now')` | [web/routes/assignment.py:1322](../web/routes/assignment.py#L1322) |
 | `case_readiness_dashboard` | `app.get('/operations/case-readiness')` | [web/routes/readiness.py:9](../web/routes/readiness.py#L9) |
-| `case_operations_control_center` | `app.get('/operations/case-control-center')` | [web/routes/shared.py:2767](../web/routes/shared.py#L2767) |
+| `case_operations_control_center` | `app.get('/operations/case-control-center')` | [web/routes/shared.py:2832](../web/routes/shared.py#L2832) |
 | `case_exception_resolver` | `app.get('/operations/case-exceptions')` | [web/routes/readiness.py:19](../web/routes/readiness.py#L19) |
 | `case_exception_series_map` | `app.post('/orders/<int:order_id>/exceptions/series-map')` | [web/routes/readiness.py:123](../web/routes/readiness.py#L123) |
 | `case_exception_series_map_deactivate` | `app.post('/orders/<int:order_id>/exceptions/series-map/<int:alias_id>/deactivate')` | [web/routes/readiness.py:157](../web/routes/readiness.py#L157) |
@@ -463,35 +463,35 @@ Additional extension routes and services are mapped by `application/module_manif
 | `case_exception_refresh` | `app.post('/orders/<int:order_id>/exceptions/refresh')` | [web/routes/readiness.py:265](../web/routes/readiness.py#L265) |
 | `case_readiness_check` | `app.post('/orders/<int:order_id>/readiness/check')` | [web/routes/readiness.py:291](../web/routes/readiness.py#L291) |
 | `admin_procedure_quality_rules` | `app.route('/admin/procedure-quality-rules', methods=['GET', 'POST'])` | [web/routes/readiness.py:303](../web/routes/readiness.py#L303) |
-| `return_case_to_workflow` | `app.post('/reports/<int:order_id>/return-case')` | [web/routes/reporting.py:2520](../web/routes/reporting.py#L2520) |
-| `return_case_form` | `app.get('/reports/<int:order_id>/return-case')` | [web/routes/reporting.py:2571](../web/routes/reporting.py#L2571) |
-| `returned_cases_queue` | `app.get('/returned-cases')` | [web/routes/shared.py:2803](../web/routes/shared.py#L2803) |
-| `resolve_returned_case` | `app.post('/returned-cases/<int:event_id>/resolve')` | [web/routes/shared.py:2884](../web/routes/shared.py#L2884) |
-| `report_portal_download` | `app.get('/reports-portal/<int:order_id>/download')` | [web/routes/reporting.py:2582](../web/routes/reporting.py#L2582) |
-| `report_portal_download_pdf` | `app.get('/reports-portal/<int:order_id>/pdf')` | [web/routes/reporting.py:2651](../web/routes/reporting.py#L2651) |
-| `report_portal_download_docx` | `app.get('/reports-portal/<int:order_id>/docx')` | [web/routes/reporting.py:2674](../web/routes/reporting.py#L2674) |
-| `reports_portal` | `app.get('/reports-portal')` | [web/routes/reporting.py:2718](../web/routes/reporting.py#L2718) |
-| `reports_portal_csv` | `app.get('/reports-portal.csv')` | [web/routes/reporting.py:2998](../web/routes/reporting.py#L2998) |
+| `return_case_to_workflow` | `app.post('/reports/<int:order_id>/return-case')` | [web/routes/reporting.py:2536](../web/routes/reporting.py#L2536) |
+| `return_case_form` | `app.get('/reports/<int:order_id>/return-case')` | [web/routes/reporting.py:2587](../web/routes/reporting.py#L2587) |
+| `returned_cases_queue` | `app.get('/returned-cases')` | [web/routes/shared.py:2868](../web/routes/shared.py#L2868) |
+| `resolve_returned_case` | `app.post('/returned-cases/<int:event_id>/resolve')` | [web/routes/shared.py:2949](../web/routes/shared.py#L2949) |
+| `report_portal_download` | `app.get('/reports-portal/<int:order_id>/download')` | [web/routes/reporting.py:2598](../web/routes/reporting.py#L2598) |
+| `report_portal_download_pdf` | `app.get('/reports-portal/<int:order_id>/pdf')` | [web/routes/reporting.py:2667](../web/routes/reporting.py#L2667) |
+| `report_portal_download_docx` | `app.get('/reports-portal/<int:order_id>/docx')` | [web/routes/reporting.py:2690](../web/routes/reporting.py#L2690) |
+| `reports_portal` | `app.get('/reports-portal')` | [web/routes/reporting.py:2734](../web/routes/reporting.py#L2734) |
+| `reports_portal_csv` | `app.get('/reports-portal.csv')` | [web/routes/reporting.py:3014](../web/routes/reporting.py#L3014) |
 | `admin_tat_policies` | `app.route('/admin/tat-policies', methods=['GET', 'POST'])` | [web/routes/assignment.py:1335](../web/routes/assignment.py#L1335) |
 | `tat_dashboard` | `app.get('/operations/tat')` | [web/routes/readiness.py:343](../web/routes/readiness.py#L343) |
 | `notification_center` | `app.get('/notifications')` | [web/routes/communications.py:253](../web/routes/communications.py#L253) |
 | `notification_ack` | `app.post('/notifications/<int:notification_id>/ack')` | [web/routes/communications.py:263](../web/routes/communications.py#L263) |
-| `escalation_board` | `app.get('/operations/escalations')` | [web/routes/shared.py:2995](../web/routes/shared.py#L2995) |
-| `advanced_search` | `app.get('/search/advanced')` | [web/routes/shared.py:3004](../web/routes/shared.py#L3004) |
-| `saved_view_save` | `app.post('/saved-views/<page_key>/save')` | [web/routes/shared.py:3024](../web/routes/shared.py#L3024) |
-| `saved_view_update` | `app.post('/saved-views/<page_key>/<int:view_id>/update')` | [web/routes/shared.py:3049](../web/routes/shared.py#L3049) |
-| `saved_view_apply` | `app.get('/saved-views/<page_key>/<int:view_id>/apply')` | [web/routes/shared.py:3072](../web/routes/shared.py#L3072) |
-| `saved_view_set_default` | `app.post('/saved-views/<page_key>/<int:view_id>/default')` | [web/routes/shared.py:3095](../web/routes/shared.py#L3095) |
-| `saved_view_rename` | `app.post('/saved-views/<page_key>/<int:view_id>/rename')` | [web/routes/shared.py:3119](../web/routes/shared.py#L3119) |
-| `saved_view_delete` | `app.post('/saved-views/<page_key>/<int:view_id>/delete')` | [web/routes/shared.py:3142](../web/routes/shared.py#L3142) |
-| `advanced_search_save` | `app.post('/search/advanced/save')` | [web/routes/shared.py:3161](../web/routes/shared.py#L3161) |
-| `advanced_search_apply_saved` | `app.get('/search/advanced/saved/<int:filter_id>')` | [web/routes/shared.py:3176](../web/routes/shared.py#L3176) |
+| `escalation_board` | `app.get('/operations/escalations')` | [web/routes/shared.py:3060](../web/routes/shared.py#L3060) |
+| `advanced_search` | `app.get('/search/advanced')` | [web/routes/shared.py:3069](../web/routes/shared.py#L3069) |
+| `saved_view_save` | `app.post('/saved-views/<page_key>/save')` | [web/routes/shared.py:3089](../web/routes/shared.py#L3089) |
+| `saved_view_update` | `app.post('/saved-views/<page_key>/<int:view_id>/update')` | [web/routes/shared.py:3114](../web/routes/shared.py#L3114) |
+| `saved_view_apply` | `app.get('/saved-views/<page_key>/<int:view_id>/apply')` | [web/routes/shared.py:3137](../web/routes/shared.py#L3137) |
+| `saved_view_set_default` | `app.post('/saved-views/<page_key>/<int:view_id>/default')` | [web/routes/shared.py:3160](../web/routes/shared.py#L3160) |
+| `saved_view_rename` | `app.post('/saved-views/<page_key>/<int:view_id>/rename')` | [web/routes/shared.py:3184](../web/routes/shared.py#L3184) |
+| `saved_view_delete` | `app.post('/saved-views/<page_key>/<int:view_id>/delete')` | [web/routes/shared.py:3207](../web/routes/shared.py#L3207) |
+| `advanced_search_save` | `app.post('/search/advanced/save')` | [web/routes/shared.py:3226](../web/routes/shared.py#L3226) |
+| `advanced_search_apply_saved` | `app.get('/search/advanced/saved/<int:filter_id>')` | [web/routes/shared.py:3241](../web/routes/shared.py#L3241) |
 | `order_actions` | `app.get('/orders/<int:order_id>/actions')` | [web/routes/registration.py:2790](../web/routes/registration.py#L2790) |
 | `order_label_print` | `app.get('/orders/<int:order_id>/label-print')` | [web/routes/registration.py:2799](../web/routes/registration.py#L2799) |
 | `admin_label_templates` | `app.route('/admin/label-templates', methods=['GET', 'POST'])` | [web/routes/operations.py:854](../web/routes/operations.py#L854) |
-| `assignment_reports` | `app.get('/operations/assignment-reports')` | [web/routes/reporting.py:3179](../web/routes/reporting.py#L3179) |
+| `assignment_reports` | `app.get('/operations/assignment-reports')` | [web/routes/reporting.py:3195](../web/routes/reporting.py#L3195) |
 | `assignment_dashboard` | `app.get('/operations/assignment-dashboard')` | [web/routes/assignment.py:1612](../web/routes/assignment.py#L1612) |
-| `assignment_report_csv` | `app.get('/operations/assignment-report.csv')` | [web/routes/reporting.py:3188](../web/routes/reporting.py#L3188) |
+| `assignment_report_csv` | `app.get('/operations/assignment-report.csv')` | [web/routes/reporting.py:3204](../web/routes/reporting.py#L3204) |
 | `smart_intake_start` | `app.route('/intake/smart', methods=['GET', 'POST'])` | [web/routes/registration.py:2813](../web/routes/registration.py#L2813) |
 | `smart_intake_workspace` | `app.get('/intake/smart/<int:intake_id>')` | [web/routes/registration.py:2827](../web/routes/registration.py#L2827) |
 | `smart_intake_document_file` | `app.get('/intake/smart/<int:intake_id>/document/<int:doc_id>/file')` | [web/routes/registration.py:2870](../web/routes/registration.py#L2870) |
@@ -502,28 +502,28 @@ Additional extension routes and services are mapped by `application/module_manif
 | `smart_intake_review_save` | `app.post('/intake/smart/<int:intake_id>/review-save')` | [web/routes/registration.py:3140](../web/routes/registration.py#L3140) |
 | `admin_ocr_settings` | `app.route('/admin/ocr-settings', methods=['GET', 'POST'])` | [web/routes/operations.py:874](../web/routes/operations.py#L874) |
 | `admin_ocr_settings_validate` | `app.post('/admin/ocr-settings/validate')` | [web/routes/operations.py:939](../web/routes/operations.py#L939) |
-| `doctor_clinical_workspace` | `app.route('/doctor/case/<int:order_id>/workspace', methods=['GET', 'POST'])` | [web/routes/reporting.py:3210](../web/routes/reporting.py#L3210) |
+| `doctor_clinical_workspace` | `app.route('/doctor/case/<int:order_id>/workspace', methods=['GET', 'POST'])` | [web/routes/reporting.py:3226](../web/routes/reporting.py#L3226) |
 | `admin_printer_profiles` | `app.route('/admin/printer-profiles', methods=['GET', 'POST'])` | [web/routes/operations.py:959](../web/routes/operations.py#L959) |
 | `admin_printer_profile_delete` | `app.post('/admin/printer-profiles/<int:profile_id>/delete')` | [web/routes/operations.py:986](../web/routes/operations.py#L986) |
 | `order_print_center` | `app.get('/orders/<int:order_id>/print-center')` | [web/routes/registration.py:3234](../web/routes/registration.py#L3234) |
 | `my_registration_defaults` | `app.route('/my/registration-defaults', methods=['GET', 'POST'])` | [web/routes/registration.py:3246](../web/routes/registration.py#L3246) |
 | `admin_registration_defaults` | `app.route('/admin/registration-defaults', methods=['GET', 'POST'])` | [web/routes/registration.py:3275](../web/routes/registration.py#L3275) |
-| `studio_shortcuts` | `app.route('/studio/shortcuts', methods=['GET', 'POST'])` | [web/routes/shared.py:3186](../web/routes/shared.py#L3186) |
-| `studio_shortcut_toggle` | `app.post('/studio/shortcuts/<int:shortcut_id>/toggle')` | [web/routes/shared.py:3228](../web/routes/shared.py#L3228) |
-| `studio_shortcut_delete` | `app.post('/studio/shortcuts/<int:shortcut_id>/delete')` | [web/routes/shared.py:3239](../web/routes/shared.py#L3239) |
-| `studio_shortcut_reorder` | `app.post('/studio/shortcuts/reorder')` | [web/routes/shared.py:3250](../web/routes/shared.py#L3250) |
-| `management_dashboard` | `app.get('/management')` | [web/routes/shared.py:3265](../web/routes/shared.py#L3265) |
-| `referral_analytics` | `app.get('/management/referrals')` | [web/routes/shared.py:3280](../web/routes/shared.py#L3280) |
-| `admin_referral_commissions` | `app.route('/admin/referral-commissions', methods=['GET', 'POST'])` | [web/routes/finance.py:229](../web/routes/finance.py#L229) |
-| `daily_closing` | `app.route('/accounting/daily-closing', methods=['GET', 'POST'])` | [web/routes/finance.py:243](../web/routes/finance.py#L243) |
-| `admin_doctor_share_rules` | `app.route('/admin/doctor-share-rules', methods=['GET', 'POST'])` | [web/routes/finance.py:252](../web/routes/finance.py#L252) |
-| `doctor_share_rule_toggle` | `app.post('/admin/doctor-share-rules/<int:rule_id>/toggle')` | [web/routes/finance.py:285](../web/routes/finance.py#L285) |
+| `studio_shortcuts` | `app.route('/studio/shortcuts', methods=['GET', 'POST'])` | [web/routes/shared.py:3251](../web/routes/shared.py#L3251) |
+| `studio_shortcut_toggle` | `app.post('/studio/shortcuts/<int:shortcut_id>/toggle')` | [web/routes/shared.py:3293](../web/routes/shared.py#L3293) |
+| `studio_shortcut_delete` | `app.post('/studio/shortcuts/<int:shortcut_id>/delete')` | [web/routes/shared.py:3304](../web/routes/shared.py#L3304) |
+| `studio_shortcut_reorder` | `app.post('/studio/shortcuts/reorder')` | [web/routes/shared.py:3315](../web/routes/shared.py#L3315) |
+| `management_dashboard` | `app.get('/management')` | [web/routes/shared.py:3340](../web/routes/shared.py#L3340) |
+| `referral_analytics` | `app.get('/management/referrals')` | [web/routes/shared.py:3355](../web/routes/shared.py#L3355) |
+| `admin_referral_commissions` | `app.route('/admin/referral-commissions', methods=['GET', 'POST'])` | [web/routes/finance.py:236](../web/routes/finance.py#L236) |
+| `daily_closing` | `app.route('/accounting/daily-closing', methods=['GET', 'POST'])` | [web/routes/finance.py:250](../web/routes/finance.py#L250) |
+| `admin_doctor_share_rules` | `app.route('/admin/doctor-share-rules', methods=['GET', 'POST'])` | [web/routes/finance.py:259](../web/routes/finance.py#L259) |
+| `doctor_share_rule_toggle` | `app.post('/admin/doctor-share-rules/<int:rule_id>/toggle')` | [web/routes/finance.py:292](../web/routes/finance.py#L292) |
 | `set_performing_doctor` | `app.route('/orders/<int:order_id>/performing-doctor', methods=['POST'])` | [web/routes/registration.py:3320](../web/routes/registration.py#L3320) |
-| `admin_discount_policies` | `app.route('/admin/discount-policies', methods=['GET', 'POST'])` | [web/routes/finance.py:296](../web/routes/finance.py#L296) |
-| `discount_policy_toggle` | `app.post('/admin/discount-policies/<int:policy_id>/toggle')` | [web/routes/finance.py:328](../web/routes/finance.py#L328) |
-| `discount_approval_queue` | `app.get('/finance/discount-approvals')` | [web/routes/finance.py:339](../web/routes/finance.py#L339) |
-| `discount_approval_decision` | `app.post('/finance/discount-approvals/<int:req_id>/decision')` | [web/routes/finance.py:351](../web/routes/finance.py#L351) |
-| `doctor_earnings_report` | `app.get('/finance/doctor-earnings')` | [web/routes/reporting.py:3317](../web/routes/reporting.py#L3317) |
+| `admin_discount_policies` | `app.route('/admin/discount-policies', methods=['GET', 'POST'])` | [web/routes/finance.py:303](../web/routes/finance.py#L303) |
+| `discount_policy_toggle` | `app.post('/admin/discount-policies/<int:policy_id>/toggle')` | [web/routes/finance.py:335](../web/routes/finance.py#L335) |
+| `discount_approval_queue` | `app.get('/finance/discount-approvals')` | [web/routes/finance.py:346](../web/routes/finance.py#L346) |
+| `discount_approval_decision` | `app.post('/finance/discount-approvals/<int:req_id>/decision')` | [web/routes/finance.py:358](../web/routes/finance.py#L358) |
+| `doctor_earnings_report` | `app.get('/finance/doctor-earnings')` | [web/routes/reporting.py:3333](../web/routes/reporting.py#L3333) |
 | `inventory_warehouses` | `app.route('/inventory/warehouses', methods=['GET', 'POST'])` | [web/routes/inventory.py:427](../web/routes/inventory.py#L427) |
 | `inventory_items` | `app.route('/inventory/items', methods=['GET', 'POST'])` | [web/routes/inventory.py:449](../web/routes/inventory.py#L449) |
 | `inventory_migrate_legacy_items` | `app.post('/inventory/migrate-legacy-items')` | [web/routes/inventory.py:470](../web/routes/inventory.py#L470) |
@@ -539,8 +539,8 @@ Additional extension routes and services are mapped by `application/module_manif
 | `order_consumables_available_stock` | `app.get('/orders/<int:order_id>/consumables/available-stock')` | [web/routes/inventory.py:686](../web/routes/inventory.py#L686) |
 | `order_consumables` | `app.route('/orders/<int:order_id>/consumables', methods=['GET', 'POST'])` | [web/routes/inventory.py:702](../web/routes/inventory.py#L702) |
 | `order_consumables_apply_defaults` | `app.post('/orders/<int:order_id>/consumables/apply-defaults')` | [web/routes/inventory.py:741](../web/routes/inventory.py#L741) |
-| `inventory_ledger` | `app.get('/inventory/ledger')` | [web/routes/reporting.py:3349](../web/routes/reporting.py#L3349) |
-| `inventory_consumption_report` | `app.get('/inventory/consumption-report')` | [web/routes/reporting.py:3365](../web/routes/reporting.py#L3365) |
+| `inventory_ledger` | `app.get('/inventory/ledger')` | [web/routes/reporting.py:3365](../web/routes/reporting.py#L3365) |
+| `inventory_consumption_report` | `app.get('/inventory/consumption-report')` | [web/routes/reporting.py:3381](../web/routes/reporting.py#L3381) |
 | `inventory_warehouses_auto_create` | `app.post('/inventory/warehouses/auto-create')` | [web/routes/inventory.py:762](../web/routes/inventory.py#L762) |
 | `inventory_create_for_branch` | `app.post('/inventory/warehouses/create-for-branch/<int:branch_id>')` | [web/routes/inventory.py:784](../web/routes/inventory.py#L784) |
 | `admin_data_management` | `app.get('/admin/data-management')` | [web/routes/operations.py:997](../web/routes/operations.py#L997) |
@@ -551,55 +551,55 @@ Additional extension routes and services are mapped by `application/module_manif
 | `admin_reset_module` | `app.post('/admin/data-management/reset-module')` | [web/routes/operations.py:1031](../web/routes/operations.py#L1031) |
 | `admin_backup_all_patients` | `app.post('/admin/data-management/backup-all-patients')` | [web/routes/registration.py:3438](../web/routes/registration.py#L3438) |
 | `admin_delete_all_patients` | `app.post('/admin/data-management/delete-all-patients')` | [web/routes/registration.py:3460](../web/routes/registration.py#L3460) |
-| `executive_analytics` | `app.get('/analytics/executive')` | [web/routes/shared.py:3297](../web/routes/shared.py#L3297) |
-| `workflow_command_center` | `app.get('/operations/command-center')` | [web/routes/shared.py:3314](../web/routes/shared.py#L3314) |
-| `pacs_unregistered_cases` | `app.get('/pacs/unregistered')` | [web/routes/imaging.py:753](../web/routes/imaging.py#L753) |
-| `pacs_unregistered_run` | `app.post('/pacs/unregistered/run')` | [web/routes/imaging.py:762](../web/routes/imaging.py#L762) |
-| `pacs_destinations` | `app.route('/admin/pacs/destinations', methods=['GET', 'POST'])` | [web/routes/imaging.py:772](../web/routes/imaging.py#L772) |
-| `pacs_routing_rules` | `app.route('/admin/pacs/routing', methods=['GET', 'POST'])` | [web/routes/imaging.py:800](../web/routes/imaging.py#L800) |
-| `pacs_case_actions` | `app.get('/pacs/actions/<int:order_id>')` | [web/routes/imaging.py:819](../web/routes/imaging.py#L819) |
-| `pacs_case_send` | `app.post('/pacs/actions/<int:order_id>/send')` | [web/routes/imaging.py:833](../web/routes/imaging.py#L833) |
-| `pacs_transfer_retry` | `app.post('/pacs/transfers/<int:job_id>/retry')` | [web/routes/imaging.py:852](../web/routes/imaging.py#L852) |
-| `pacs_transfer_cancel` | `app.post('/pacs/transfers/<int:job_id>/cancel')` | [web/routes/imaging.py:865](../web/routes/imaging.py#L865) |
-| `pacs_destination_echo` | `app.post('/pacs/destinations/<int:destination_id>/echo')` | [web/routes/imaging.py:878](../web/routes/imaging.py#L878) |
-| `pacs_transfer_process` | `app.post('/pacs/transfers/process')` | [web/routes/imaging.py:893](../web/routes/imaging.py#L893) |
-| `pacs_archive_dashboard` | `app.get('/pacs/archive')` | [web/routes/imaging.py:902](../web/routes/imaging.py#L902) |
-| `coordinator_queue` | `app.get('/coordinator')` | [web/routes/reporting.py:3376](../web/routes/reporting.py#L3376) |
-| `coordinator_action` | `app.post('/coordinator/<int:task_id>/action')` | [web/routes/reporting.py:3389](../web/routes/reporting.py#L3389) |
+| `executive_analytics` | `app.get('/analytics/executive')` | [web/routes/shared.py:3372](../web/routes/shared.py#L3372) |
+| `workflow_command_center` | `app.get('/operations/command-center')` | [web/routes/shared.py:3389](../web/routes/shared.py#L3389) |
+| `pacs_unregistered_cases` | `app.get('/pacs/unregistered')` | [web/routes/imaging.py:762](../web/routes/imaging.py#L762) |
+| `pacs_unregistered_run` | `app.post('/pacs/unregistered/run')` | [web/routes/imaging.py:771](../web/routes/imaging.py#L771) |
+| `pacs_destinations` | `app.route('/admin/pacs/destinations', methods=['GET', 'POST'])` | [web/routes/imaging.py:781](../web/routes/imaging.py#L781) |
+| `pacs_routing_rules` | `app.route('/admin/pacs/routing', methods=['GET', 'POST'])` | [web/routes/imaging.py:809](../web/routes/imaging.py#L809) |
+| `pacs_case_actions` | `app.get('/pacs/actions/<int:order_id>')` | [web/routes/imaging.py:828](../web/routes/imaging.py#L828) |
+| `pacs_case_send` | `app.post('/pacs/actions/<int:order_id>/send')` | [web/routes/imaging.py:842](../web/routes/imaging.py#L842) |
+| `pacs_transfer_retry` | `app.post('/pacs/transfers/<int:job_id>/retry')` | [web/routes/imaging.py:861](../web/routes/imaging.py#L861) |
+| `pacs_transfer_cancel` | `app.post('/pacs/transfers/<int:job_id>/cancel')` | [web/routes/imaging.py:874](../web/routes/imaging.py#L874) |
+| `pacs_destination_echo` | `app.post('/pacs/destinations/<int:destination_id>/echo')` | [web/routes/imaging.py:887](../web/routes/imaging.py#L887) |
+| `pacs_transfer_process` | `app.post('/pacs/transfers/process')` | [web/routes/imaging.py:902](../web/routes/imaging.py#L902) |
+| `pacs_archive_dashboard` | `app.get('/pacs/archive')` | [web/routes/imaging.py:911](../web/routes/imaging.py#L911) |
+| `coordinator_queue` | `app.get('/coordinator')` | [web/routes/reporting.py:3392](../web/routes/reporting.py#L3392) |
+| `coordinator_action` | `app.post('/coordinator/<int:task_id>/action')` | [web/routes/reporting.py:3405](../web/routes/reporting.py#L3405) |
 | `storage_dr_manager` | `app.route('/admin/storage-dr', methods=['GET', 'POST'])` | [web/routes/operations.py:1054](../web/routes/operations.py#L1054) |
 | `storage_target_health` | `app.post('/admin/storage-dr/storage/<int:storage_id>/health')` | [web/routes/operations.py:1109](../web/routes/operations.py#L1109) |
 | `replication_state_update` | `app.post('/admin/storage-dr/policy/<int:policy_id>/state')` | [web/routes/operations.py:1118](../web/routes/operations.py#L1118) |
 | `dr_failover_request` | `app.post('/admin/storage-dr/policy/<int:policy_id>/failover')` | [web/routes/operations.py:1132](../web/routes/operations.py#L1132) |
 | `storage_cloud_manager` | `app.route('/admin/storage-cloud', methods=['GET', 'POST'])` | [web/routes/operations.py:1146](../web/routes/operations.py#L1146) |
-| `pacs_discovery` | `app.get('/admin/pacs/discovery')` | [web/routes/imaging.py:912](../web/routes/imaging.py#L912) |
+| `pacs_discovery` | `app.get('/admin/pacs/discovery')` | [web/routes/imaging.py:921](../web/routes/imaging.py#L921) |
 | `admin_external_intake` | `app.route('/admin/external-intake', methods=['GET', 'POST'])` | [web/routes/assignment.py:1664](../web/routes/assignment.py#L1664) |
 | `admin_external_intake_attachment_upload` | `app.post('/admin/external-intake/<int:intake_id>/attachments')` | [web/routes/assignment.py:1736](../web/routes/assignment.py#L1736) |
 | `admin_external_intake_decision` | `app.post('/admin/external-intake/<int:intake_id>/decision')` | [web/routes/assignment.py:1778](../web/routes/assignment.py#L1778) |
-| `pacs_discovery_approve` | `app.post('/admin/pacs/discovery/<int:node_id>/approve')` | [web/routes/imaging.py:941](../web/routes/imaging.py#L941) |
-| `pacs_discovery_block` | `app.post('/admin/pacs/discovery/<int:node_id>/block')` | [web/routes/imaging.py:961](../web/routes/imaging.py#L961) |
-| `pacs_discovery_legacy_endpoint` | `app.post('/admin/pacs/discovery/<int:node_id>/legacy-endpoint')` | [web/routes/imaging.py:972](../web/routes/imaging.py#L972) |
-| `pacs_discovery_dismiss` | `app.post('/admin/pacs/discovery/<int:node_id>/dismiss')` | [web/routes/imaging.py:1036](../web/routes/imaging.py#L1036) |
-| `pacs_discovery_manual` | `app.post('/admin/pacs/discovery/manual')` | [web/routes/imaging.py:1056](../web/routes/imaging.py#L1056) |
+| `pacs_discovery_approve` | `app.post('/admin/pacs/discovery/<int:node_id>/approve')` | [web/routes/imaging.py:950](../web/routes/imaging.py#L950) |
+| `pacs_discovery_block` | `app.post('/admin/pacs/discovery/<int:node_id>/block')` | [web/routes/imaging.py:970](../web/routes/imaging.py#L970) |
+| `pacs_discovery_legacy_endpoint` | `app.post('/admin/pacs/discovery/<int:node_id>/legacy-endpoint')` | [web/routes/imaging.py:981](../web/routes/imaging.py#L981) |
+| `pacs_discovery_dismiss` | `app.post('/admin/pacs/discovery/<int:node_id>/dismiss')` | [web/routes/imaging.py:1045](../web/routes/imaging.py#L1045) |
+| `pacs_discovery_manual` | `app.post('/admin/pacs/discovery/manual')` | [web/routes/imaging.py:1065](../web/routes/imaging.py#L1065) |
 | `api_assignment_offer_pending` | `app.get('/api/assignment/offers/pending')` | [web/routes/assignment.py:1834](../web/routes/assignment.py#L1834) |
-| `api_ohif_report_get` | `app.get('/api/ohif/report/<int:order_id>')` | [web/routes/reporting.py:3423](../web/routes/reporting.py#L3423) |
-| `api_ohif_report_word` | `app.get('/api/ohif/report/<int:order_id>/word')` | [web/routes/reporting.py:3468](../web/routes/reporting.py#L3468) |
-| `api_ohif_report_word_draft` | `app.post('/api/ohif/report/<int:order_id>/word/draft')` | [web/routes/reporting.py:3610](../web/routes/reporting.py#L3610) |
-| `api_ohif_report_word_verify` | `app.post('/api/ohif/report/<int:order_id>/word/verify')` | [web/routes/reporting.py:3830](../web/routes/reporting.py#L3830) |
-| `api_ohif_report_word_finalize` | `app.post('/api/ohif/report/<int:order_id>/word/finalize')` | [web/routes/reporting.py:3995](../web/routes/reporting.py#L3995) |
-| `api_ohif_report_lease_acquire` | `app.post('/api/ohif/report/<int:order_id>/lease/acquire')` | [web/routes/reporting.py:4196](../web/routes/reporting.py#L4196) |
-| `api_ohif_report_lease_release` | `app.post('/api/ohif/report/<int:order_id>/lease/release')` | [web/routes/reporting.py:4289](../web/routes/reporting.py#L4289) |
-| `api_ohif_report_draft` | `app.post('/api/ohif/report/<int:order_id>/draft')` | [web/routes/reporting.py:4347](../web/routes/reporting.py#L4347) |
-| `api_ohif_report_verify` | `app.post('/api/ohif/report/<int:order_id>/verify')` | [web/routes/reporting.py:4571](../web/routes/reporting.py#L4571) |
-| `api_ohif_report_finalize` | `app.post('/api/ohif/report/<int:order_id>/finalize')` | [web/routes/reporting.py:4728](../web/routes/reporting.py#L4728) |
-| `api_ohif_report_return` | `app.post('/api/ohif/report/<int:order_id>/return')` | [web/routes/reporting.py:4920](../web/routes/reporting.py#L4920) |
-| `api_ohif_reporting_preferences` | `app.route('/api/ohif/report/<int:order_id>/preferences', methods=['GET', 'POST'])` | [web/routes/reporting.py:5005](../web/routes/reporting.py#L5005) |
-| `api_ohif_onlyoffice_config` | `app.get('/api/ohif/report/<int:order_id>/onlyoffice/config')` | [web/routes/reporting.py:5070](../web/routes/reporting.py#L5070) |
-| `api_ohif_onlyoffice_forcesave` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/forcesave')` | [web/routes/reporting.py:5286](../web/routes/reporting.py#L5286) |
-| `api_ohif_onlyoffice_document` | `app.get('/api/ohif/report/<int:order_id>/onlyoffice/document')` | [web/routes/reporting.py:5483](../web/routes/reporting.py#L5483) |
-| `api_ohif_onlyoffice_commit_draft` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/commit-draft')` | [web/routes/reporting.py:5557](../web/routes/reporting.py#L5557) |
-| `api_ohif_onlyoffice_verify` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/verify')` | [web/routes/reporting.py:5684](../web/routes/reporting.py#L5684) |
-| `api_ohif_onlyoffice_finalize` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/finalize')` | [web/routes/reporting.py:5800](../web/routes/reporting.py#L5800) |
-| `api_ohif_onlyoffice_callback` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/callback')` | [web/routes/reporting.py:5916](../web/routes/reporting.py#L5916) |
+| `api_ohif_report_get` | `app.get('/api/ohif/report/<int:order_id>')` | [web/routes/reporting.py:3439](../web/routes/reporting.py#L3439) |
+| `api_ohif_report_word` | `app.get('/api/ohif/report/<int:order_id>/word')` | [web/routes/reporting.py:3484](../web/routes/reporting.py#L3484) |
+| `api_ohif_report_word_draft` | `app.post('/api/ohif/report/<int:order_id>/word/draft')` | [web/routes/reporting.py:3626](../web/routes/reporting.py#L3626) |
+| `api_ohif_report_word_verify` | `app.post('/api/ohif/report/<int:order_id>/word/verify')` | [web/routes/reporting.py:3846](../web/routes/reporting.py#L3846) |
+| `api_ohif_report_word_finalize` | `app.post('/api/ohif/report/<int:order_id>/word/finalize')` | [web/routes/reporting.py:4011](../web/routes/reporting.py#L4011) |
+| `api_ohif_report_lease_acquire` | `app.post('/api/ohif/report/<int:order_id>/lease/acquire')` | [web/routes/reporting.py:4212](../web/routes/reporting.py#L4212) |
+| `api_ohif_report_lease_release` | `app.post('/api/ohif/report/<int:order_id>/lease/release')` | [web/routes/reporting.py:4305](../web/routes/reporting.py#L4305) |
+| `api_ohif_report_draft` | `app.post('/api/ohif/report/<int:order_id>/draft')` | [web/routes/reporting.py:4363](../web/routes/reporting.py#L4363) |
+| `api_ohif_report_verify` | `app.post('/api/ohif/report/<int:order_id>/verify')` | [web/routes/reporting.py:4587](../web/routes/reporting.py#L4587) |
+| `api_ohif_report_finalize` | `app.post('/api/ohif/report/<int:order_id>/finalize')` | [web/routes/reporting.py:4744](../web/routes/reporting.py#L4744) |
+| `api_ohif_report_return` | `app.post('/api/ohif/report/<int:order_id>/return')` | [web/routes/reporting.py:4936](../web/routes/reporting.py#L4936) |
+| `api_ohif_reporting_preferences` | `app.route('/api/ohif/report/<int:order_id>/preferences', methods=['GET', 'POST'])` | [web/routes/reporting.py:5021](../web/routes/reporting.py#L5021) |
+| `api_ohif_onlyoffice_config` | `app.get('/api/ohif/report/<int:order_id>/onlyoffice/config')` | [web/routes/reporting.py:5086](../web/routes/reporting.py#L5086) |
+| `api_ohif_onlyoffice_forcesave` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/forcesave')` | [web/routes/reporting.py:5302](../web/routes/reporting.py#L5302) |
+| `api_ohif_onlyoffice_document` | `app.get('/api/ohif/report/<int:order_id>/onlyoffice/document')` | [web/routes/reporting.py:5499](../web/routes/reporting.py#L5499) |
+| `api_ohif_onlyoffice_commit_draft` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/commit-draft')` | [web/routes/reporting.py:5573](../web/routes/reporting.py#L5573) |
+| `api_ohif_onlyoffice_verify` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/verify')` | [web/routes/reporting.py:5700](../web/routes/reporting.py#L5700) |
+| `api_ohif_onlyoffice_finalize` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/finalize')` | [web/routes/reporting.py:5816](../web/routes/reporting.py#L5816) |
+| `api_ohif_onlyoffice_callback` | `app.post('/api/ohif/report/<int:order_id>/onlyoffice/callback')` | [web/routes/reporting.py:5932](../web/routes/reporting.py#L5932) |
 | `voice_api_patient_search` | `app.route('/api/voice/patient/search', methods=['GET'])` | [web/routes/communications.py:272](../web/routes/communications.py#L272) |
 | `voice_api_patient_create` | `app.route('/api/voice/patient', methods=['POST'])` | [web/routes/communications.py:309](../web/routes/communications.py#L309) |
 | `voice_api_inquiry` | `app.route('/api/voice/inquiry', methods=['GET'])` | [web/routes/communications.py:400](../web/routes/communications.py#L400) |
@@ -611,7 +611,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `voice_intake_caller_history` | `app.get('/voice-intake/<int:intake_id>/caller-history')` | [web/routes/communications.py:1059](../web/routes/communications.py#L1059) |
 | `telephony_console` | `app.route('/telephony')` | [web/routes/communications.py:1134](../web/routes/communications.py#L1134) |
 | `telephony_credentials` | `app.route('/api/telephony/credentials')` | [web/routes/communications.py:1154](../web/routes/communications.py#L1154) |
-| `public_click_to_call` | `app.route('/call', methods=['GET'])` | [web/routes/shared.py:3322](../web/routes/shared.py#L3322) |
+| `public_click_to_call` | `app.route('/call', methods=['GET'])` | [web/routes/shared.py:3397](../web/routes/shared.py#L3397) |
 | `public_call_config` | `app.route('/api/public-call/config', methods=['GET'])` | [web/routes/communications.py:1230](../web/routes/communications.py#L1230) |
 | `public_contact_request_create` | `app.post('/api/public-call/request')` | [web/routes/communications.py:1277](../web/routes/communications.py#L1277) |
 | `public_chat_start` | `app.post('/api/public-chat/start')` | [web/routes/communications.py:1373](../web/routes/communications.py#L1373) |
@@ -624,9 +624,9 @@ Additional extension routes and services are mapped by `application/module_manif
 | `staff_chat_message` | `app.post('/api/staff/chat/<int:request_id>/message')` | [web/routes/communications.py:1948](../web/routes/communications.py#L1948) |
 | `public_contact_request_details` | `app.post('/api/public-call/request/<int:request_id>/details')` | [web/routes/communications.py:2037](../web/routes/communications.py#L2037) |
 | `public_contact_attachment_upload` | `app.post('/api/public-call/request/<int:request_id>/attachments')` | [web/routes/communications.py:2190](../web/routes/communications.py#L2190) |
-| `staff_public_attachment_view` | `app.get('/staff/public-attachment/<int:attachment_id>')` | [web/routes/shared.py:3335](../web/routes/shared.py#L3335) |
-| `staff_attachment_verify` | `app.post('/api/staff/attachments/<int:attachment_id>/verify')` | [web/routes/shared.py:3399](../web/routes/shared.py#L3399) |
-| `staff_attachment_reject` | `app.post('/api/staff/attachments/<int:attachment_id>/reject')` | [web/routes/shared.py:3433](../web/routes/shared.py#L3433) |
+| `staff_public_attachment_view` | `app.get('/staff/public-attachment/<int:attachment_id>')` | [web/routes/shared.py:3410](../web/routes/shared.py#L3410) |
+| `staff_attachment_verify` | `app.post('/api/staff/attachments/<int:attachment_id>/verify')` | [web/routes/shared.py:3474](../web/routes/shared.py#L3474) |
+| `staff_attachment_reject` | `app.post('/api/staff/attachments/<int:attachment_id>/reject')` | [web/routes/shared.py:3508](../web/routes/shared.py#L3508) |
 | `admin_ivr` | `app.route('/admin/ivr')` | [web/routes/operations.py:1172](../web/routes/operations.py#L1172) |
 
 ## Key Worker / Module Files

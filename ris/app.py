@@ -125,7 +125,7 @@ db.init_app(app)
 
 
 # RB_BIND:0000
-from application.components.shared import install_0000 as _rb_install_0000
+from web.routes.shared import install_0000 as _rb_install_0000
 _same_origin_unsafe_request_guard = _rb_install_0000(_rb_bind(_rb_sys.modules[__name__], ('RIS_PUBLIC_URL', 'abort', 'app', 'os', 'request', 'session')))
 
 ORTHANC = os.getenv('ORTHANC_URL', 'http://ris-pacs:8042')
@@ -660,7 +660,7 @@ I18N = {
  }
 }
 # RB_BIND:0004
-from application.components.shared import install_0004 as _rb_install_0004
+from web.components.shared import install_0004 as _rb_install_0004
 lang = _rb_install_0004(_rb_bind(_rb_sys.modules[__name__], ('current_ui_language', 'session')))
 # RB_BIND:0005
 from application.components.shared import install_0005 as _rb_install_0005
@@ -677,11 +677,11 @@ from application.components.communications import install_0007 as _rb_install_00
 _notification_exists = _rb_install_0007(_rb_bind(_rb_sys.modules[__name__], ('NotificationEvent',)))
 
 # RB_BIND:0008
-from application.components.shared import install_0008 as _rb_install_0008
+from web.components.shared import install_0008 as _rb_install_0008
 queue_final_delivery = _rb_install_0008(_rb_bind(_rb_sys.modules[__name__], ('NotificationEvent', 'RIS_PUBLIC_URL', 'SMTP_ENABLED', 'TELEGRAM_ENABLED', 'TELEGRAM_STAFF_CHAT_ID', 'WHATSAPP_ENABLED', '_active_portal_token', '_notification_exists', 'audit', 'db', 'url_for')))
 
 # RB_BIND:0009
-from application.components.shared import install_0009 as _rb_install_0009
+from web.components.shared import install_0009 as _rb_install_0009
 _final_portal_url = _rb_install_0009(_rb_bind(_rb_sys.modules[__name__], ('RIS_PUBLIC_URL', '_active_portal_token', 'url_for')))
 
 # RB_BIND:0010
@@ -738,7 +738,7 @@ from application.components.shared import install_0016 as _rb_install_0016
 _money = _rb_install_0016(_rb_bind(_rb_sys.modules[__name__], ()))
 
 # RB_BIND:0017
-from application.components.finance import install_0017 as _rb_install_0017
+from web.components.finance import install_0017 as _rb_install_0017
 _finance_filters = _rb_install_0017(_rb_bind(_rb_sys.modules[__name__], ('date', 'request')))
 
 # RB_BIND:0018
@@ -762,15 +762,15 @@ from application.components.finance import install_0022 as _rb_install_0022
 _financial_dataset = _rb_install_0022(_rb_bind(_rb_sys.modules[__name__], ('Consumable', 'FINANCIAL_REPORTS', 'NursingConsumableEntry', 'Receipt', '_entries_for_finance', '_money', '_order_direct_consumable_cost', '_order_revenue', '_orders_for_finance', 'date', 'order_balance')))
 
 # RB_BIND:0023
-from application.components.shared import install_0023 as _rb_install_0023
+from web.components.shared import install_0023 as _rb_install_0023
 _export_csv = _rb_install_0023(_rb_bind(_rb_sys.modules[__name__], ('csv', 'io', 'send_file')))
 
 # RB_BIND:0024
-from application.components.shared import install_0024 as _rb_install_0024
+from web.components.shared import install_0024 as _rb_install_0024
 _export_xlsx = _rb_install_0024(_rb_bind(_rb_sys.modules[__name__], ('Alignment', 'Font', 'PatternFill', 'Workbook', 'get_column_letter', 'io', 'send_file')))
 
 # RB_BIND:0025
-from application.components.shared import install_0025 as _rb_install_0025
+from web.components.shared import install_0025 as _rb_install_0025
 _export_pdf = _rb_install_0025(_rb_bind(_rb_sys.modules[__name__], ('A4', 'Paragraph', 'SimpleDocTemplate', 'Spacer', 'Table', 'TableStyle', 'colors', 'getSampleStyleSheet', 'io', 'send_file')))
 
 
@@ -808,7 +808,7 @@ from application.components.shared import install_0030 as _rb_install_0030
 _sticker_value = _rb_install_0030(_rb_bind(_rb_sys.modules[__name__], ()))
 
 # RB_BIND:0031
-from application.components.shared import install_0031 as _rb_install_0031
+from web.components.shared import install_0031 as _rb_install_0031
 _portal_url_for_order = _rb_install_0031(_rb_bind(_rb_sys.modules[__name__], ('RIS_PUBLIC_URL', '_active_portal_token', 'db', 'url_for')))
 
 # RB_BIND:0032
@@ -1071,7 +1071,7 @@ verify_ohif_doctor_identity = _rb_install_0078(_rb_bind(_rb_sys.modules[__name__
 
 
 # RB_BIND:0079
-from application.components.imaging import install_0079 as _rb_install_0079
+from web.components.imaging import install_0079 as _rb_install_0079
 get_ohif_doctor_identity = _rb_install_0079(_rb_bind(_rb_sys.modules[__name__], ('request', 'verify_ohif_doctor_identity')))
 
 
@@ -1082,7 +1082,7 @@ audit_as_user = _rb_install_0080(_rb_bind(_rb_sys.modules[__name__], ('AuditLog'
 
 
 # RB_BIND:0081
-from application.components.imaging import install_0081 as _rb_install_0081
+from web.components.imaging import install_0081 as _rb_install_0081
 require_ohif_doctor_user = _rb_install_0081(_rb_bind(_rb_sys.modules[__name__], ('Order', '__name__', '_reporting_support_sys', 'db', 'get_ohif_doctor_identity', 'jsonify')))
 
 
@@ -1097,7 +1097,7 @@ ohif_url_for_order = _rb_install_0083(_rb_bind(_rb_sys.modules[__name__], ('OHIF
 
 
 # RB_BIND:0084
-from application.components.imaging import install_0084 as _rb_install_0084
+from web.components.imaging import install_0084 as _rb_install_0084
 case_pacs_url = _rb_install_0084(_rb_bind(_rb_sys.modules[__name__], ('current_user', 'doctor_case_access_allowed', 'ohif_url_for_order', 'url_for')))
 
 
@@ -1214,7 +1214,7 @@ from application.components.shared import install_0107 as _rb_install_0107
 normalized_person_name = _rb_install_0107(_rb_bind(_rb_sys.modules[__name__], ('re',)))
 
 # RB_BIND:0108
-from application.components.identity import install_0108 as _rb_install_0108
+from web.components.identity import install_0108 as _rb_install_0108
 current_user = _rb_install_0108(_rb_bind(_rb_sys.modules[__name__], ('User', 'session')))
 
 # RB_BIND:0109
@@ -1222,15 +1222,15 @@ from application.components.identity import install_0109 as _rb_install_0109
 has_perm = _rb_install_0109(_rb_bind(_rb_sys.modules[__name__], ('current_user',)))
 
 # RB_BIND:0110
-from application.components.identity import install_0110 as _rb_install_0110
+from web.components.identity import install_0110 as _rb_install_0110
 login_required = _rb_install_0110(_rb_bind(_rb_sys.modules[__name__], ('current_user', 'redirect', 'request', 'url_for', 'wraps')))
 
 # RB_BIND:0111
-from application.components.shared import install_0111 as _rb_install_0111
+from web.components.shared import install_0111 as _rb_install_0111
 require_perm = _rb_install_0111(_rb_bind(_rb_sys.modules[__name__], ('abort', 'current_user', 'has_perm', 'redirect', 'request', 'url_for', 'wraps')))
 
 # RB_BIND:0112
-from application.components.identity import install_0112 as _rb_install_0112
+from web.components.identity import install_0112 as _rb_install_0112
 _security_audit_ip = _rb_install_0112(_rb_bind(_rb_sys.modules[__name__], ('app', 'os', 'request')))
 
 
@@ -1268,7 +1268,7 @@ from application.components.registration import install_0119 as _rb_install_0119
 _rb_registration_v2_create_patient = _rb_install_0119(_rb_bind(_rb_sys.modules[__name__], ('Patient', 'PatientDemographicsExtra', '_rb_registration_v2_name_parts', '_rb_registration_v2_patient_name', '_rb_registration_v2_worklist_name', 'audit', 'db', 'find_duplicate_patients', 'generate_patient_id', 'next_patient_id', 'resolve_patient_dob', 'secrets')))
 
 # RB_BIND:0120
-from application.components.shared import install_0120 as _rb_install_0120
+from web.components.shared import install_0120 as _rb_install_0120
 _rb_calendar_redirect = _rb_install_0120(_rb_bind(_rb_sys.modules[__name__], ('redirect', 'url_for')))
 
 # RB_BIND:0121
@@ -1334,7 +1334,7 @@ case_json = _rb_install_0135(_rb_bind(_rb_sys.modules[__name__], ('ORTHANC_PUBLI
 
 
 # RB_BIND:0136
-from application.components.imaging import install_0136 as _rb_install_0136
+from web.routes.imaging import install_0136 as _rb_install_0136
 inject_pacs_helpers = _rb_install_0136(_rb_bind(_rb_sys.modules[__name__], ('app', 'case_pacs_url')))
 
 # RB_BIND:0137
@@ -1353,7 +1353,7 @@ flash = _rb_install_0138(_rb_bind(_rb_sys.modules[__name__], ('_flask_flash', 'u
 app.jinja_env.globals['ui_phrase'] = ui_phrase
 
 # RB_BIND:0139
-from application.components.shared import install_0139 as _rb_install_0139
+from web.routes.shared import install_0139 as _rb_install_0139
 template_globals = _rb_install_0139(_rb_bind(_rb_sys.modules[__name__], ('ARABIC_NAME_MAP', 'RIS_PUBLIC_URL', 'app', 'current_ui_language', 'current_user', 'get_company_profile', 'get_user_profile', 'has_perm', 'orthanc_ok', 'procedure_display_name', 'quick_action_role', 'ribbon_actions_for_user', 'role_quick_actions', 'safe_url_for_endpoint', 'status_text', 'ui_text', 'unread_chat_count')))
 
 
@@ -1386,7 +1386,7 @@ friendly_500 = _rb_install_0145(_rb_bind(_rb_sys.modules[__name__], ('_error_id'
 
 
 # RB_BIND:0146
-from application.components.identity import install_0146 as _rb_install_0146
+from web.components.identity import install_0146 as _rb_install_0146
 _safe_login_next = _rb_install_0146(_rb_bind(_rb_sys.modules[__name__], ('url_for',)))
 
 
@@ -1421,11 +1421,11 @@ new_order = _rb_install_0153(_rb_bind(_rb_sys.modules[__name__], ('ATTACHMENT_DI
 
 
 # RB_BIND:0154
-from application.components.registration import install_0154 as _rb_install_0154
+from web.components.registration import install_0154 as _rb_install_0154
 api_registration_procedures = _rb_install_0154(_rb_bind(_rb_sys.modules[__name__], ('allowed_procedures_for_branch', 'jsonify', 'login_required', 'request')))
 
 # RB_BIND:0155
-from application.components.shared import install_0155 as _rb_install_0155
+from web.components.shared import install_0155 as _rb_install_0155
 api_pricing = _rb_install_0155(_rb_bind(_rb_sys.modules[__name__], ('Contract', 'Procedure', 'jsonify', 'login_required', 'price_order', 'request')))
 
 # RB_BIND:0156
@@ -1578,12 +1578,12 @@ technician_check_images = _rb_install_0186(_rb_bind(_rb_sys.modules[__name__], (
 
 
 # RB_BIND:0187
-from application.components.shared import install_0187 as _rb_install_0187
+from web.components.shared import install_0187 as _rb_install_0187
 flash_exam_transition_blocked = _rb_install_0187(_rb_bind(_rb_sys.modules[__name__], ('flash',)))
 
 
 # RB_BIND:0188
-from application.components.shared import install_0188 as _rb_install_0188
+from web.components.shared import install_0188 as _rb_install_0188
 _apply_exam_transition = _rb_install_0188(_rb_bind(_rb_sys.modules[__name__], ('__name__', '_reporting_support_sys', 'audit', 'current_user', 'datetime', 'exam_transition_gate', 'flash', 'json', 'order_status_for_exam_transition', 'pacs_demographic_gate', 'technician_completion_evidence')))
 
 
@@ -1593,13 +1593,13 @@ technician_status = _rb_install_0189(_rb_bind(_rb_sys.modules[__name__], ('Audit
 
 
 # RB_BIND:0190
-from application.components.reporting import install_0190 as _rb_install_0190
+from web.components.reporting import install_0190 as _rb_install_0190
 reporting_agent_download = _rb_install_0190(_rb_bind(_rb_sys.modules[__name__], ('__file__', 'abort', 'login_required', 'os', 'send_file')))
 
 
 
 # RB_BIND:0191
-from application.components.reporting import install_0191 as _rb_install_0191
+from web.components.reporting import install_0191 as _rb_install_0191
 api_reporting_health = _rb_install_0191(_rb_bind(_rb_sys.modules[__name__], ('APP_VERSION', 'ATTACHMENT_DIR', 'REPORT_DIR', '__file__', 'db', 'jsonify', 'orthanc_ok', 'os', 'text')))
 
 
@@ -1676,7 +1676,7 @@ doctor_case_access_allowed = _rb_install_0203(_rb_bind(_rb_sys.modules[__name__]
 
 
 # RB_BIND:0204
-from application.components.reporting import install_0204 as _rb_install_0204
+from web.routes.reporting import install_0204 as _rb_install_0204
 doctor_report_ownership_guard = _rb_install_0204(_rb_bind(_rb_sys.modules[__name__], ('Order', 'abort', 'app', 'current_user', 'db', 'doctor_case_access_allowed', 'request')))
 
 
@@ -1777,26 +1777,26 @@ _valid_reporting_case_token = _rb_install_0221(_rb_bind(_rb_sys.modules[__name__
 
 
 # RB_BIND:0222
-from application.components.reporting import install_0222 as _rb_install_0222
+from web.components.reporting import install_0222 as _rb_install_0222
 reporting_actor = _rb_install_0222(_rb_bind(_rb_sys.modules[__name__], ('BadSignature', 'REPORTING_CASE_TOKEN_TTL_SECONDS', 'SignatureExpired', 'User', '_reporting_serializer', 'current_user', 'db', 'request')))
 
 
 # RB_BIND:0223
-from application.components.reporting import install_0223 as _rb_install_0223
+from web.components.reporting import install_0223 as _rb_install_0223
 _reporting_api_authorized = _rb_install_0223(_rb_bind(_rb_sys.modules[__name__], ('RADBRIDGE_REPORTING_TOKEN', '_valid_reporting_case_token', 'current_user', 'has_perm', 'hmac', 'request')))
 
 
 # RB_BIND:0224
-from application.components.reporting import install_0224 as _rb_install_0224
+from web.components.reporting import install_0224 as _rb_install_0224
 require_reporting_api = _rb_install_0224(_rb_bind(_rb_sys.modules[__name__], ('_reporting_api_authorized', 'current_user', 'jsonify', 'wraps')))
 
 # RB_BIND:0225
-from application.components.reporting import install_0225 as _rb_install_0225
+from web.components.reporting import install_0225 as _rb_install_0225
 word_addin_taskpane = _rb_install_0225(_rb_bind(_rb_sys.modules[__name__], ('render_template',)))
 
 
 # RB_BIND:0226
-from application.components.reporting import install_0226 as _rb_install_0226
+from web.components.reporting import install_0226 as _rb_install_0226
 word_addin_manifest = _rb_install_0226(_rb_bind(_rb_sys.modules[__name__], ('RIS_PUBLIC_URL', 'Response', 'render_template')))
 
 
@@ -2208,7 +2208,7 @@ for _row in ORGANIZED_UI_DICTIONARY:
 DEFAULT_UI_MAP={k:{'module':m,'en':en,'ar':ar} for k,m,en,ar in DEFAULT_UI_DICTIONARY}
 
 # RB_BIND:0253
-from application.components.shared import install_0253 as _rb_install_0253
+from web.components.shared import install_0253 as _rb_install_0253
 current_ui_language = _rb_install_0253(_rb_bind(_rb_sys.modules[__name__], ('UserProfile', 'current_user', 'session')))
 
 # RB_BIND:0254
@@ -2472,7 +2472,7 @@ performing_doctor_share_for_order = _rb_install_0304(_rb_bind(_rb_sys.modules[__
 
 
 # RB_BIND:0305
-from application.components.shared import install_0305 as _rb_install_0305
+from web.components.shared import install_0305 as _rb_install_0305
 executive_analytics_filters = _rb_install_0305(_rb_bind(_rb_sys.modules[__name__], ('request',)))
 
 # RB_BIND:0306
@@ -2488,7 +2488,7 @@ from application.components.shared import install_0308 as _rb_install_0308
 executive_analytics_payload = _rb_install_0308(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Device', 'Patient', 'Report', 'User', '_chart_rows', 'executive_orders')))
 
 # RB_BIND:0309
-from application.components.shared import install_0309 as _rb_install_0309
+from web.components.shared import install_0309 as _rb_install_0309
 management_date_range = _rb_install_0309(_rb_bind(_rb_sys.modules[__name__], ('request',)))
 
 # RB_BIND:0310
@@ -2520,11 +2520,11 @@ from application.components.registration import install_0316 as _rb_install_0316
 registration_form_context = _rb_install_0316(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Contract', 'Patient', 'Procedure', 'ReferringDoctor', 'registration_defaults_for', 'registration_rule_map', 'registration_style_for')))
 
 # RB_BIND:0317
-from application.components.registration import install_0317 as _rb_install_0317
+from web.components.registration import install_0317 as _rb_install_0317
 render_registration_form = _rb_install_0317(_rb_bind(_rb_sys.modules[__name__], ('registration_form_context', 'registration_template_for', 'render_template')))
 
 # RB_BIND:0318
-from application.components.registration import install_0318 as _rb_install_0318
+from web.components.registration import install_0318 as _rb_install_0318
 registration_validation_error = _rb_install_0318(_rb_bind(_rb_sys.modules[__name__], ('db', 'flash', 'render_registration_form', 'request')))
 
 # RB_BIND:0319
@@ -2652,11 +2652,11 @@ from application.components.shared import install_0336 as _rb_install_0336
 role_quick_actions = _rb_install_0336(_rb_bind(_rb_sys.modules[__name__], ('ROLE_QUICK_ACTION_PRESETS', 'quick_action_role')))
 
 # RB_BIND:0337
-from application.components.shared import install_0337 as _rb_install_0337
+from web.components.shared import install_0337 as _rb_install_0337
 safe_url_for_endpoint = _rb_install_0337(_rb_bind(_rb_sys.modules[__name__], ('url_for',)))
 
 # RB_BIND:0338
-from application.components.shared import install_0338 as _rb_install_0338
+from web.components.shared import install_0338 as _rb_install_0338
 common_search_filters = _rb_install_0338(_rb_bind(_rb_sys.modules[__name__], ('request',)))
 
 
@@ -2901,7 +2901,7 @@ case_delay_snapshot = _rb_install_0382(_rb_bind(_rb_sys.modules[__name__], ('Cas
 
 
 # RB_BIND:0383
-from application.components.registration import install_0383 as _rb_install_0383
+from web.components.registration import install_0383 as _rb_install_0383
 advanced_order_query = _rb_install_0383(_rb_bind(_rb_sys.modules[__name__], ('CaseAssignment', 'CaseReadiness', 'CaseWorkflowEvent', 'Order', 'Patient', 'PatientDocument', 'Report', 'case_delay_snapshot', 'external_priors_for_order', 'or_', 'related_prior_orders', 'request')))
 
 # RB_BIND:0384
@@ -3000,7 +3000,7 @@ _intake_normalized_field = _rb_install_0396(_rb_bind(_rb_sys.modules[__name__], 
 
 
 # RB_BIND:0397
-from application.components.registration import install_0397 as _rb_install_0397
+from web.components.registration import install_0397 as _rb_install_0397
 _intake_redirect = _rb_install_0397(_rb_bind(_rb_sys.modules[__name__], ('re', 'redirect', 'url_for')))
 
 # RB_BIND:0398
@@ -3038,7 +3038,7 @@ rebuild_intake_summary = _rb_install_0404(_rb_bind(_rb_sys.modules[__name__], ('
 
 
 # RB_BIND:0405
-from application.components.registration import install_0405 as _rb_install_0405
+from web.components.registration import install_0405 as _rb_install_0405
 api_slots = _rb_install_0405(_rb_bind(_rb_sys.modules[__name__], ('Device', 'Procedure', 'abort', 'datetime', 'generate_slots', 'jsonify', 'request', 'require_perm')))
 
 # RB_BIND:0406
@@ -3057,7 +3057,7 @@ build_calendar_cells = _rb_install_0407(_rb_bind(_rb_sys.modules[__name__], ('ti
 # ============================================================
 
 # RB_BIND:0408
-from application.components.registration import install_0408 as _rb_install_0408
+from web.components.registration import install_0408 as _rb_install_0408
 _rb_v5462_allow_registration = _rb_install_0408(_rb_bind(_rb_sys.modules[__name__], ('abort', 'current_user', 'has_perm')))
 
 # RB_BIND:0409
@@ -3069,11 +3069,11 @@ from application.components.registration import install_0410 as _rb_install_0410
 _rb_v5462_patient = _rb_install_0410(_rb_bind(_rb_sys.modules[__name__], ('Patient', '_rb_registration_v2_create_patient')))
 
 # RB_BIND:0411
-from application.components.shared import install_0411 as _rb_install_0411
+from web.components.shared import install_0411 as _rb_install_0411
 _rb_v5462_direct_attachments = _rb_install_0411(_rb_bind(_rb_sys.modules[__name__], ('ATTACHMENT_DIR', 'Attachment', 'current_user', 'db', 'generated_attachment_filename', 'os', 'request')))
 
 # RB_BIND:0412
-from application.components.shared import install_0412 as _rb_install_0412
+from web.components.shared import install_0412 as _rb_install_0412
 _rb_v5462_attach_ocr = _rb_install_0412(_rb_bind(_rb_sys.modules[__name__], ('Attachment', 'PatientDocument', 'SmartIntakeDocument', 'SmartIntakeSession', 'current_user', 'datetime', 'db', 'request')))
 
 # RB_BIND:0413
@@ -3085,7 +3085,7 @@ from application.components.shared import install_0414 as _rb_install_0414
 _rb_v5462_notes = _rb_install_0414(_rb_bind(_rb_sys.modules[__name__], ('ClinicalNote', 'current_user', 'db')))
 
 # RB_BIND:0415
-from application.components.finance import install_0415 as _rb_install_0415
+from web.components.finance import install_0415 as _rb_install_0415
 _rb_v5462_payment = _rb_install_0415(_rb_bind(_rb_sys.modules[__name__], ('Payment', 'Receipt', 'abort', 'audit', 'current_user', 'db', 'has_perm', 'next_receipt_no')))
 
 # RB_BIND:0416
@@ -3168,7 +3168,7 @@ from web.routes.registration import install_0432 as _rb_install_0432
 admin_booking_availability_seed = _rb_install_0432(_rb_bind(_rb_sys.modules[__name__], ('app', 'audit', 'db', 'ensure_default_procedure_branch_mappings', 'flash', 'redirect', 'require_perm', 'url_for')))
 
 # RB_BIND:0433
-from application.components.registration import install_0433 as _rb_install_0433
+from web.components.registration import install_0433 as _rb_install_0433
 api_booking_procedures = _rb_install_0433(_rb_bind(_rb_sys.modules[__name__], ('Device', 'allowed_procedures_for_branch', 'jsonify', 'request', 'require_perm')))
 
 
@@ -3296,15 +3296,15 @@ from web.routes.operations import install_0462 as _rb_install_0462
 admin_referrers = _rb_install_0462(_rb_bind(_rb_sys.modules[__name__], ('ReferringDoctor', 'app', 'audit', 'db', 'flash', 'render_template', 'request', 'require_perm')))
 
 # RB_BIND:0463
-from application.components.shared import install_0463 as _rb_install_0463
+from web.components.shared import install_0463 as _rb_install_0463
 analytics_query = _rb_install_0463(_rb_bind(_rb_sys.modules[__name__], ('Order', 'datetime', 'request')))
 
 # RB_BIND:0464
-from application.components.shared import install_0464 as _rb_install_0464
+from web.components.shared import install_0464 as _rb_install_0464
 analytics = _rb_install_0464(_rb_bind(_rb_sys.modules[__name__], ('Appointment', 'Branch', 'Contract', 'Order', 'OrderConsumable', 'analytics_query', 'datetime', 'order_balance', 'render_template', 'request', 'require_perm', 'timedelta')))
 
 # RB_BIND:0465
-from application.components.shared import install_0465 as _rb_install_0465
+from web.components.shared import install_0465 as _rb_install_0465
 analytics_export_csv = _rb_install_0465(_rb_bind(_rb_sys.modules[__name__], ('Order', 'analytics_query', 'csv', 'io', 'require_perm', 'send_file')))
 
 # RB_BIND:0466
@@ -3426,7 +3426,7 @@ pacs_reconciliation_auto_safe = _rb_install_0490(_rb_bind(_rb_sys.modules[__name
 
 
 # RB_BIND:0491
-from application.components.operations import install_0491 as _rb_install_0491
+from web.components.operations import install_0491 as _rb_install_0491
 admin_qa = _rb_install_0491(_rb_bind(_rb_sys.modules[__name__], ('EventOutbox', 'Order', 'Patient', 'User', 'render_template')))
 
 
@@ -3876,7 +3876,7 @@ from web.routes.operations import install_0575 as _rb_install_0575
 admin_audit = _rb_install_0575(_rb_bind(_rb_sys.modules[__name__], ('AuditLog', 'app', 'datetime', 'render_template', 'request', 'require_perm', 'timedelta')))
 
 # RB_BIND:0576
-from application.components.shared import install_0576 as _rb_install_0576
+from web.components.shared import install_0576 as _rb_install_0576
 cancellation_reason = _rb_install_0576(_rb_bind(_rb_sys.modules[__name__], ('abort', 'request')))
 
 # RB_BIND:0577
@@ -3930,7 +3930,7 @@ _delete_reports_only_blocked_response = _rb_install_0585(_rb_bind(_rb_sys.module
 
 
 # RB_BIND:0586
-from application.components.reporting import install_0586 as _rb_install_0586
+from web.components.reporting import install_0586 as _rb_install_0586
 granular_delete_reports_only_execute = _rb_install_0586(_rb_bind(_rb_sys.modules[__name__], ('Order', 'Patient', 'REPORT_DIR', 'Report', 'ReportVersion', '_delete_reports_only_blocked_response', '_delete_reports_only_is_super_admin', '_delete_reports_only_quarantine_target', 'abort', 'audit', 'current_user', 'datetime', 'db', 'granular_delete_reports_only_preview_snapshot', 'os', 'secrets')))
 
 
@@ -4016,7 +4016,7 @@ _ris_case_only_blocked_response = _rb_install_0591(_rb_bind(_rb_sys.modules[__na
 
 
 # RB_BIND:0592
-from application.components.shared import install_0592 as _rb_install_0592
+from web.components.shared import install_0592 as _rb_install_0592
 granular_delete_ris_case_only_execute = _rb_install_0592(_rb_bind(_rb_sys.modules[__name__], ('Order', 'Patient', 'Report', '_RIS_CASE_ONLY_DEPENDENCY_POLICY', '_delete_reports_only_is_super_admin', '_ris_case_only_blocked_response', '_ris_case_only_dependency_rows', 'abort', 'audit', 'current_user', 'datetime', 'db', 'granular_delete_ris_case_only_execution_preview_snapshot')))
 
 
@@ -4074,7 +4074,7 @@ _full_case_orchestration_final_postcheck = _rb_install_0602(_rb_bind(_rb_sys.mod
 
 
 # RB_BIND:0603
-from application.components.shared import install_0603 as _rb_install_0603
+from web.components.shared import install_0603 as _rb_install_0603
 granular_delete_full_case_orchestration_execute = _rb_install_0603(_rb_bind(_rb_sys.modules[__name__], ('Order', 'Patient', 'Report', '_delete_reports_only_is_super_admin', '_full_case_orchestration_execution_enabled', '_full_case_orchestration_failure', '_full_case_orchestration_final_postcheck', 'abort', 'audit', 'current_user', 'db', 'granular_delete_images_only_execute', 'granular_delete_order_preview_snapshot', 'granular_delete_reports_only_execute', 'granular_delete_ris_case_only_execute')))
 
 
@@ -4307,7 +4307,7 @@ correction_execution_assert_request_actor = _rb_install_0625(_rb_bind(_rb_sys.mo
 
 
 # RB_BIND:0626
-from application.components.shared import install_0626 as _rb_install_0626
+from web.components.shared import install_0626 as _rb_install_0626
 correction_execution_http_error = _rb_install_0626(_rb_bind(_rb_sys.modules[__name__], ('abort',)))
 
 
@@ -4818,7 +4818,7 @@ SAVED_VIEW_FILTER_KEYS = {
 }
 
 # RB_BIND:0726
-from application.components.shared import install_0726 as _rb_install_0726
+from web.components.shared import install_0726 as _rb_install_0726
 _saved_view_page_or_404 = _rb_install_0726(_rb_bind(_rb_sys.modules[__name__], ('SAVED_VIEW_PAGES', '__name__', '_reporting_support_sys', 'abort')))
 
 # RB_BIND:0727
@@ -4941,7 +4941,7 @@ _attach_intake_documents = _rb_install_0753(_rb_bind(_rb_sys.modules[__name__], 
 
 
 # RB_BIND:0754
-from application.components.registration import install_0754 as _rb_install_0754
+from web.components.registration import install_0754 as _rb_install_0754
 _block_intake_registration = _rb_install_0754(_rb_bind(_rb_sys.modules[__name__], ('_intake_redirect', 'audit', 'db', 'flash')))
 
 
@@ -5024,11 +5024,11 @@ studio_shortcut_reorder = _rb_install_0770(_rb_bind(_rb_sys.modules[__name__], (
 
 
 # RB_BIND:0771
-from application.components.finance import install_0771 as _rb_install_0771
+from web.routes.finance import install_0771 as _rb_install_0771
 inject_finance_helpers = _rb_install_0771(_rb_bind(_rb_sys.modules[__name__], ('app', 'effective_patient_due', 'total_order_discount')))
 
 # RB_BIND:0772
-from application.components.shared import install_0772 as _rb_install_0772
+from web.routes.shared import install_0772 as _rb_install_0772
 inject_studio_shortcuts = _rb_install_0772(_rb_bind(_rb_sys.modules[__name__], ('STUDIO_ICON_MAP', 'app', 'studio_shortcuts_for')))
 
 
@@ -5304,7 +5304,7 @@ from web.routes.operations import install_0833 as _rb_install_0833
 storage_cloud_manager = _rb_install_0833(_rb_bind(_rb_sys.modules[__name__], ('BackupRun', 'CloudBackupConfig', 'StorageLocation', 'abort', 'app', 'db', 'flash', 'has_perm', 'redirect', 'render_template', 'request', 'require_perm', 'storage_defaults', 'url_for')))
 
 # RB_BIND:0834
-from application.components.operations import install_0834 as _rb_install_0834
+from web.components.operations import install_0834 as _rb_install_0834
 api_ops_health = _rb_install_0834(_rb_bind(_rb_sys.modules[__name__], ('PacsStudyInbox', 'PacsTransferJob', 'jsonify', 'login_required', 'workflow_command_snapshot')))
 
 
@@ -5325,7 +5325,7 @@ _write_managed_dicom_modality = _rb_install_0837(_rb_bind(_rb_sys.modules[__name
 
 
 # RB_BIND:0838
-from application.components.shared import install_0838 as _rb_install_0838
+from web.components.shared import install_0838 as _rb_install_0838
 _apply_discovered_node_policy = _rb_install_0838(_rb_bind(_rb_sys.modules[__name__], ('PACS_ORTHANC_URL', '_managed_dicom_modality', '_orthanc_auth', '_write_managed_dicom_modality', 'abort', 'app', 'audit', 'current_user', 'datetime', 'db', 'dicom_ingress_policy_ready', 'modality_key', 'requests')))
 
 
@@ -5365,7 +5365,7 @@ external_intake_demographic_verification = _rb_install_0845(_rb_bind(_rb_sys.mod
 
 
 # RB_BIND:0846
-from application.components.registration import install_0846 as _rb_install_0846
+from web.components.registration import install_0846 as _rb_install_0846
 queue_external_intake = _rb_install_0846(_rb_bind(_rb_sys.modules[__name__], ('Attachment', 'AuditLog', 'Branch', 'ExternalCenterDoctor', 'Order', 'Patient', '_external_intake_generated_accession', '_external_intake_local_patient_id', 'current_user', 'datetime', 'db', 'external_intake_demographic_verification', 'external_reporting_setting', 'normalize_date', 'offer_next_doctor', 'request')))
 
 
@@ -5445,7 +5445,7 @@ if os.getenv('RADBRIDGE_BOOTSTRAP_ON_IMPORT','0') == '1':
 OHIF_REPORTING_TOKEN = os.getenv("OHIF_REPORTING_TOKEN", "").strip()
 
 # RB_BIND:0857
-from application.components.imaging import install_0857 as _rb_install_0857
+from web.components.imaging import install_0857 as _rb_install_0857
 require_ohif_token = _rb_install_0857(_rb_bind(_rb_sys.modules[__name__], ('OHIF_REPORTING_TOKEN', 'jsonify', 'request')))
 
 
@@ -5457,12 +5457,12 @@ _normalize_case_uid = _rb_install_0858(_rb_bind(_rb_sys.modules[__name__], ()))
 
 
 # RB_BIND:0859
-from application.components.imaging import install_0859 as _rb_install_0859
+from web.components.imaging import install_0859 as _rb_install_0859
 validate_ohif_case_context = _rb_install_0859(_rb_bind(_rb_sys.modules[__name__], ('_normalize_case_uid', 'ohif_study_uid', 'request')))
 
 
 # RB_BIND:0860
-from application.components.imaging import install_0860 as _rb_install_0860
+from web.components.imaging import install_0860 as _rb_install_0860
 require_valid_ohif_case_context = _rb_install_0860(_rb_bind(_rb_sys.modules[__name__], ('audit', 'db', 'jsonify', 'validate_ohif_case_context')))
 
 
@@ -5473,7 +5473,7 @@ _ohif_report_json = _rb_install_0861(_rb_bind(_rb_sys.modules[__name__], ('allow
 
 
 # RB_BIND:0862
-from application.components.imaging import install_0862 as _rb_install_0862
+from web.components.imaging import install_0862 as _rb_install_0862
 _ohif_json_body = _rb_install_0862(_rb_bind(_rb_sys.modules[__name__], ('request',)))
 
 
@@ -5483,7 +5483,7 @@ api_ohif_report_get = _rb_install_0863(_rb_bind(_rb_sys.modules[__name__], ('Aud
 
 
 # RB_BIND:0864
-from application.components.reporting import install_0864 as _rb_install_0864
+from web.components.reporting import install_0864 as _rb_install_0864
 api_ohif_reporting_agent_download = _rb_install_0864(_rb_bind(_rb_sys.modules[__name__], ('__file__', 'jsonify', 'os', 'require_ohif_token', 'send_file')))
 
 
@@ -5547,7 +5547,7 @@ api_ohif_report_return = _rb_install_0875(_rb_bind(_rb_sys.modules[__name__], ('
 
 
 # RB_BIND:0876
-from application.components.reporting import install_0876 as _rb_install_0876
+from web.components.reporting import install_0876 as _rb_install_0876
 api_ohif_reporting_health = _rb_install_0876(_rb_bind(_rb_sys.modules[__name__], ('jsonify',)))
 
 
@@ -5634,7 +5634,7 @@ api_ohif_reporting_preferences = _rb_install_0886(_rb_bind(_rb_sys.modules[__nam
 
 
 # RB_BIND:0887
-from application.components.reporting import install_0887 as _rb_install_0887
+from web.components.reporting import install_0887 as _rb_install_0887
 api_ohif_onlyoffice_health = _rb_install_0887(_rb_bind(_rb_sys.modules[__name__], ('ONLYOFFICE_INTERNAL_URL', 'ONLYOFFICE_JWT_SECRET', 'jsonify', 'requests')))
 
 
@@ -5758,22 +5758,22 @@ except Exception as _voice_error:
 # ===== RADBRIDGE VOICE BOOKING API V5.37 =====
 
 # RB_BIND:0903
-from application.components.communications import install_0903 as _rb_install_0903
+from web.components.communications import install_0903 as _rb_install_0903
 _voice_api_authorized = _rb_install_0903(_rb_bind(_rb_sys.modules[__name__], ('os', 'request')))
 
 
 # RB_BIND:0904
-from application.components.communications import install_0904 as _rb_install_0904
+from web.components.communications import install_0904 as _rb_install_0904
 _voice_api_unauthorized = _rb_install_0904(_rb_bind(_rb_sys.modules[__name__], ('jsonify',)))
 
 
 # RB_BIND:0905
-from application.components.communications import install_0905 as _rb_install_0905
+from web.components.communications import install_0905 as _rb_install_0905
 voice_api_branches = _rb_install_0905(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Device', '_voice_api_authorized', '_voice_api_unauthorized', 'jsonify')))
 
 
 # RB_BIND:0906
-from application.components.communications import install_0906 as _rb_install_0906
+from web.components.communications import install_0906 as _rb_install_0906
 voice_api_procedures = _rb_install_0906(_rb_bind(_rb_sys.modules[__name__], ('Procedure', '_voice_api_authorized', '_voice_api_unauthorized', 'jsonify', 'procedure_available_in_branch', 'request')))
 
 
@@ -5799,7 +5799,7 @@ voice_api_inquiry = _rb_install_0909(_rb_bind(_rb_sys.modules[__name__], ('Order
 
 
 # RB_BIND:0910
-from application.components.communications import install_0910 as _rb_install_0910
+from web.components.communications import install_0910 as _rb_install_0910
 voice_api_slots = _rb_install_0910(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Device', 'Procedure', '_voice_api_authorized', '_voice_api_unauthorized', 'booking_restriction_reason', 'booking_v2_slots', 'datetime', 'db', 'jsonify', 'procedure_available_in_branch', 'request')))
 
 
@@ -5865,12 +5865,12 @@ voice_intake_caller_history = _rb_install_0916(_rb_bind(_rb_sys.modules[__name__
 # ============================================================
 
 # RB_BIND:0917
-from application.components.communications import install_0917 as _rb_install_0917
+from web.components.communications import install_0917 as _rb_install_0917
 telephony_me = _rb_install_0917(_rb_bind(_rb_sys.modules[__name__], ('TelephonyExtension', 'current_user', 'jsonify', 'login_required')))
 
 
 # RB_BIND:0918
-from application.components.communications import install_0918 as _rb_install_0918
+from web.components.communications import install_0918 as _rb_install_0918
 telephony_directory = _rb_install_0918(_rb_bind(_rb_sys.modules[__name__], ('TelephonyExtension', 'jsonify', 'login_required')))
 
 
@@ -5964,7 +5964,7 @@ communications_dashboard = _rb_install_0933(_rb_bind(_rb_sys.modules[__name__], 
 
 
 # RB_BIND:0934
-from application.components.communications import install_0934 as _rb_install_0934
+from web.components.communications import install_0934 as _rb_install_0934
 staff_communications_queue = _rb_install_0934(_rb_bind(_rb_sys.modules[__name__], ('_rb_staff_role_allowed', 'abort', 'db', 'jsonify', 'login_required')))
 
 
@@ -5984,7 +5984,7 @@ staff_communications_reject = _rb_install_0937(_rb_bind(_rb_sys.modules[__name__
 
 
 # RB_BIND:0938
-from application.components.communications import install_0938 as _rb_install_0938
+from web.components.communications import install_0938 as _rb_install_0938
 staff_chat_messages = _rb_install_0938(_rb_bind(_rb_sys.modules[__name__], ('_rb_staff_role_allowed', 'abort', 'db', 'jsonify', 'login_required')))
 
 
@@ -6052,7 +6052,7 @@ public_contact_attachment_upload = _rb_install_0943(_rb_bind(_rb_sys.modules[__n
 
 
 # RB_BIND:0944
-from application.components.communications import install_0944 as _rb_install_0944
+from web.components.communications import install_0944 as _rb_install_0944
 staff_contact_attachments = _rb_install_0944(_rb_bind(_rb_sys.modules[__name__], ('_rb_staff_role_allowed', 'abort', 'db', 'jsonify', 'login_required')))
 
 

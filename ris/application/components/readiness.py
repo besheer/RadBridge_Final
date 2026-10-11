@@ -172,3 +172,4 @@ def install_0717(_rb):
 
         return ' '.join(parts)
     return format_sla_minutes
+

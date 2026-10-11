@@ -35,4 +35,8 @@ Before/after captures compare the same 160 database tables and 546 route registr
 
 Clinical factory isolation is implemented for supported database, secret, storage, cookie and runtime URL settings, with authenticated two-instance and scope-listener tests. Host/provider feature settings remain process-level; extending per-instance configuration requires explicit contracts and tests. All 160 models are registered in infrastructure before composition. See ADR 007.
 
-See ADRs 001–006 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
+The 949 component installers now belong to 32 modules: 12 application component modules, 12 route modules and eight web helper modules. Eighty installers were reassigned to web ownership without changing their original handler bodies. HTTP dependencies are checked at the component boundary; mixed extension registration/service modules still need narrower interfaces. See ADR 008.
+
+The clinical factory commit `1bc4840a1ae5fa02c9fe5b9b7a2a225724ba9573` passed the complete SQLite suite (1,814 passed, three skipped), PostgreSQL contracts and the independent Docker Compose smoke test in GitHub Actions run 38118087675. Later commits require their own green checks before review.
+
+See ADRs 001–008 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
