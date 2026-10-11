@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_auto_warehouse_routes_and_helpers():
  import app as m
@@ -12,5 +13,5 @@ def test_golden_inventory_preserved():
  for n in ['Warehouse','InventoryItem','InventoryLot','StockTransfer','DiscountPolicy','StudioShortcut']:
   assert hasattr(m,n)
  assert hasattr(m,'next_patient_id')
- assert 'CaseReadiness=CaseReadiness' in inspect.getsource(m.advanced_search)
- assert 'active=True' not in inspect.getsource(m.device_booking_reason)
+ assert 'CaseReadiness=CaseReadiness' in _get_source(m.advanced_search)
+ assert 'active=True' not in _get_source(m.device_booking_reason)

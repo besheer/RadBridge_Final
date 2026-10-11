@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_model_routes_and_preserve_helpers():
     import app as m, inspect
@@ -5,14 +6,14 @@ def test_model_routes_and_preserve_helpers():
     rules={r.rule for r in m.app.url_map.iter_rules()}
     assert "/my/registration-defaults" in rules
     assert "/admin/registration-defaults" in rules
-    src=inspect.getsource(m.new_order)
+    src=_get_source(m.new_order)
     assert "registration_validation_error" in src
     assert "return redirect(url_for('new_order'))" not in src
 
 def test_existing_regressions_preserved():
     import app as m,inspect
-    assert "CaseReadiness=CaseReadiness" in inspect.getsource(m.advanced_search)
-    assert "active=True" not in inspect.getsource(m.device_booking_reason)
+    assert "CaseReadiness=CaseReadiness" in _get_source(m.advanced_search)
+    assert "active=True" not in _get_source(m.device_booking_reason)
     rules={r.rule for r in m.app.url_map.iter_rules()}
     for r in ["/admin/printer-profiles","/orders/<int:order_id>/print-center",
               "/doctor/case/<int:order_id>/workspace","/orders/<int:order_id>/attachments"]:

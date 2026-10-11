@@ -15,6 +15,7 @@ Each installer receives an explicit list of its existing dependencies through `a
 - `web/source_contract.py` inspects the actual executable handlers for existing static contracts and permission catalogues. It stores no duplicate clinical implementation. The source hash test checks all 949 bodies, including decorators and literal content.
 - Existing runtime authorization, branch, clinical workflow and transactional tests remain mandatory. Matching source/schema alone does not establish clinical acceptance.
 - Function implementation modules and qualified names change. Old serialized Python functions are not a supported migration contract; inventory custom integrations before release.
+- Implicit module globals such as `__name__` must also be bound to the composition root. They cannot fall back to the component module's identity; existing clinical/viewer services use that identity to resolve models and access checks. The full runtime suite verifies those paths.
 
 ## Remaining work
 

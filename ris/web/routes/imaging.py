@@ -155,7 +155,7 @@ def install_0481(_rb):
         inbox=_rb.PacsStudyInbox.query.filter_by(orthanc_study_id=study_id).first_or_404()
         order=_rb.Order.query.get_or_404(_rb.request.args.get('order_id',type=int))
         try:
-            before,after,token=preview(sys.modules[__name__],inbox,order)
+            before,after,token=preview(sys.modules[_rb.__name__],inbox,order)
         except CorrectionError as exc:
             return _rb.jsonify(error=str(exc)),409
         except _rb.requests.RequestException:
@@ -182,7 +182,7 @@ def install_0482(_rb):
         inbox=_rb.PacsStudyInbox.query.filter_by(orthanc_study_id=study_id).first_or_404()
         order=_rb.Order.query.get_or_404(_rb.request.form.get('order_id',type=int))
         try:
-            job=execute(sys.modules[__name__],inbox,order,_rb.request.form['preview_token'],reason)
+            job=execute(sys.modules[_rb.__name__],inbox,order,_rb.request.form['preview_token'],reason)
             _rb.flash('DICOM corrected and verified. Original retained. Audit correction #'+str(job.id),'success')
         except (CorrectionError,_rb.requests.RequestException) as exc:
             _rb.db.session.rollback()
@@ -346,7 +346,7 @@ def install_0485(_rb):
             if row['inbox'].orthanc_study_id==_rb.request.args.get('study_id') and _rb.request.args.get('order_id') and _rb.has_perm('pacs.reconcile'):
                 selected=_rb.Order.query.get_or_404(_rb.request.args.get('order_id',type=int))
                 try:
-                    before,after,token=preview(sys.modules[__name__],row['inbox'],selected)
+                    before,after,token=preview(sys.modules[_rb.__name__],row['inbox'],selected)
                     row['preview']={'before':before,'after':after,'token':token,'order':selected}
                 except CorrectionError as exc:_rb.flash(str(exc),'danger')
                 except _rb.requests.RequestException:_rb.flash('PACS unavailable; preview blocked.','danger')
@@ -496,8 +496,8 @@ def install_0488(_rb):
         from dicom_reconciliation import preview,validate_token,CorrectionError
         if _rb.request.form.get('identity_confirmed')!='1':_rb.abort(400)
         try:
-            before,after,_=preview(sys.modules[__name__],inbox,order)
-            validate_token(sys.modules[__name__],_rb.request.form.get('preview_token',''),inbox,order,before,after)
+            before,after,_=preview(sys.modules[_rb.__name__],inbox,order)
+            validate_token(sys.modules[_rb.__name__],_rb.request.form.get('preview_token',''),inbox,order,before,after)
         except CorrectionError as exc:
             _rb.flash(str(exc),'danger');return _rb.redirect(_rb.url_for('pacs_reconciliation'))
         except _rb.requests.RequestException:

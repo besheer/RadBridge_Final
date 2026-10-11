@@ -49,7 +49,7 @@ def install_0517(_rb):
             if typ not in _rb.FINANCE_ENTRY_TYPES:_rb.flash('Invalid entry type.','danger');return _rb.redirect(_rb.url_for('financial_entries'))
             if typ=='DOCTOR_FEE':
                 from replacement_settlements import guard_case_payout
-                guard_case_payout(_rb._reporting_support_sys.modules[__name__],_rb.request.form.get('branch_id',type=int),
+                guard_case_payout(_rb._reporting_support_sys.modules[_rb.__name__],_rb.request.form.get('branch_id',type=int),
                     _rb.request.form.get('user_id',type=int),_rb.request.form.get('reference_no'))
             try:amount=float(_rb.request.form.get('amount') or 0)
             except:amount=0

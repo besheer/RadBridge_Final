@@ -1011,6 +1011,7 @@
     "installer": "install_0081",
     "dependencies": [
       "Order",
+      "__name__",
       "_reporting_support_sys",
       "db",
       "get_ohif_doctor_identity",
@@ -1208,6 +1209,7 @@
     "installer": "install_0099",
     "dependencies": [
       "DoctorAssignmentProfile",
+      "__name__",
       "_csv_values",
       "_reporting_support_sys",
       "doctor_active_case_count"
@@ -2220,6 +2222,7 @@
       "Order",
       "Patient",
       "ProcedureConsumable",
+      "__name__",
       "_order_attachment_count",
       "_reporting_support_sys",
       "_saved_views_for",
@@ -2442,6 +2445,7 @@
       "InventoryItem",
       "Order",
       "OrderConsumableUsage",
+      "__name__",
       "_reporting_support_sys",
       "app",
       "case_return_snapshot",
@@ -2485,6 +2489,7 @@
     "dependencies": [
       "InventoryItem",
       "Order",
+      "__name__",
       "_reporting_support_sys",
       "app",
       "audit",
@@ -2506,6 +2511,7 @@
     "module": "web.routes.clinical",
     "installer": "install_0182",
     "dependencies": [
+      "__name__",
       "_reporting_support_sys",
       "app",
       "require_perm"
@@ -2539,6 +2545,7 @@
     "installer": "install_0185",
     "dependencies": [
       "ReadinessSeriesAlias",
+      "__name__",
       "_reporting_support_sys",
       "evaluate_case_readiness",
       "pacs_demographic_gate",
@@ -2555,6 +2562,7 @@
     "installer": "install_0186",
     "dependencies": [
       "Order",
+      "__name__",
       "_reporting_support_sys",
       "app",
       "audit",
@@ -2585,6 +2593,7 @@
     "module": "application.components.shared",
     "installer": "install_0188",
     "dependencies": [
+      "__name__",
       "_reporting_support_sys",
       "audit",
       "current_user",
@@ -2607,6 +2616,7 @@
       "AuditLog",
       "NursingConsumableEntry",
       "Order",
+      "__name__",
       "_apply_exam_transition",
       "_reporting_support_sys",
       "abort",
@@ -2662,6 +2672,7 @@
     "installer": "install_0192",
     "dependencies": [
       "Order",
+      "__name__",
       "_apply_exam_transition",
       "_reporting_support_sys",
       "app",
@@ -2689,6 +2700,7 @@
     "dependencies": [
       "EXAM_STATUS_ORDER",
       "Order",
+      "__name__",
       "_apply_exam_transition",
       "_reporting_support_sys",
       "abort",
@@ -2859,6 +2871,7 @@
     "module": "application.components.shared",
     "installer": "install_0203",
     "dependencies": [
+      "__name__",
       "_reporting_support_sys",
       "doctor_workspace_user"
     ],
@@ -4223,6 +4236,7 @@
     "installer": "install_0304",
     "dependencies": [
       "PerformingDoctorShareRule",
+      "__name__",
       "_reporting_support_sys",
       "effective_patient_due",
       "performing_doctor_for_order"
@@ -6855,6 +6869,7 @@
     "dependencies": [
       "Order",
       "PacsStudyInbox",
+      "__name__",
       "app",
       "jsonify",
       "request",
@@ -6871,6 +6886,7 @@
     "dependencies": [
       "Order",
       "PacsStudyInbox",
+      "__name__",
       "abort",
       "app",
       "db",
@@ -6926,6 +6942,7 @@
       "PacsStudyInbox",
       "Patient",
       "Report",
+      "__name__",
       "app",
       "correction_search_orders",
       "current_user",
@@ -6992,6 +7009,7 @@
       "PacsStudyInbox",
       "PacsStudyMatch",
       "Report",
+      "__name__",
       "_orthanc_recent_studies",
       "_study_tags_extended",
       "abort",
@@ -7433,6 +7451,7 @@
       "FINANCE_ENTRY_TYPES",
       "FinancialEntry",
       "User",
+      "__name__",
       "_reporting_support_sys",
       "app",
       "audit",
@@ -7906,6 +7925,7 @@
     "installer": "install_0543",
     "dependencies": [
       "Order",
+      "__name__",
       "abort",
       "app",
       "assignment_readiness_decision",
@@ -8001,6 +8021,7 @@
       "Role",
       "User",
       "UserProfile",
+      "__name__",
       "_reporting_support_sys",
       "abort",
       "app",
@@ -8043,6 +8064,7 @@
     "dependencies": [
       "Role",
       "User",
+      "__name__",
       "_reporting_support_sys",
       "app",
       "audit",
@@ -10828,6 +10850,7 @@
       "CaseReturnReason",
       "CaseWorkflowEvent",
       "Order",
+      "__name__",
       "_reporting_support_sys",
       "abort",
       "app",
@@ -10853,6 +10876,7 @@
     "dependencies": [
       "CaseReturnReason",
       "Order",
+      "__name__",
       "_reporting_support_sys",
       "app",
       "login_required",
@@ -10890,6 +10914,7 @@
       "Order",
       "Report",
       "User",
+      "__name__",
       "_reporting_support_sys",
       "abort",
       "app",
@@ -11143,6 +11168,7 @@
     "installer": "install_0726",
     "dependencies": [
       "SAVED_VIEW_PAGES",
+      "__name__",
       "_reporting_support_sys",
       "abort"
     ],
@@ -12189,6 +12215,7 @@
     "installer": "install_0784",
     "dependencies": [
       "Order",
+      "__name__",
       "_reporting_support_sys",
       "abort",
       "app",
@@ -13915,6 +13942,7 @@
       "CaseReturnReason",
       "CaseWorkflowEvent",
       "Order",
+      "__name__",
       "_ohif_json_body",
       "_reporting_support_sys",
       "abort",
@@ -14083,6 +14111,7 @@
       "ONLYOFFICE_RIS_INTERNAL_URL",
       "Order",
       "ReportEditControlError",
+      "__name__",
       "_next_report_version",
       "_onlyoffice_jwt_encode",
       "_onlyoffice_link_token",

@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_v525_routes_and_golden_regression():
     import app as m, inspect
@@ -17,8 +18,8 @@ def test_v525_routes_and_golden_regression():
     for r in required: assert r in rules
     assert hasattr(m,"PrinterProfile")
     assert hasattr(m,"order_visual_state")
-    assert "CaseReadiness=CaseReadiness" in inspect.getsource(m.advanced_search)
-    assert "active=True" not in inspect.getsource(m.device_booking_reason)
+    assert "CaseReadiness=CaseReadiness" in _get_source(m.advanced_search)
+    assert "active=True" not in _get_source(m.device_booking_reason)
 
 def test_command_bar_and_dictation_templates():
     from pathlib import Path

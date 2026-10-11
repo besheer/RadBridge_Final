@@ -1,9 +1,10 @@
+from web.source_contract import get_source as _get_source
 
 import inspect
 
 def test_deviceblock_query_does_not_use_missing_active_column():
     import app as m
-    src = inspect.getsource(m.device_booking_reason)
+    src = _get_source(m.device_booking_reason)
     assert "DeviceBlock.query.filter_by(device_id=device.id,active=True)" not in src
     assert "DeviceBlock.query.filter_by(device_id=device.id).all()" in src
 

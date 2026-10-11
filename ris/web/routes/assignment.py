@@ -963,7 +963,7 @@ def install_0543(_rb):
             # Review links must never perform assignment; use the scoped preview workflow.
             import sys
             from coordinator_bulk_assignment import actor, in_scope
-            module = sys.modules[__name__]
+            module = sys.modules[_rb.__name__]
             user = actor(module)
             if not in_scope(module, user, order):
                 _rb.abort(403)

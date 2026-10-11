@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 from datetime import timedelta
 from pathlib import Path
 
@@ -246,7 +247,7 @@ def test_reports_only_preview_route_and_helper_are_read_only(app_ctx,tmp_path):
     )
     assert after==before
 
-    source=inspect.getsource(m.granular_delete_reports_only_preview_snapshot)
+    source=_get_source(m.granular_delete_reports_only_preview_snapshot)
     for forbidden in (
         'db.session.delete',
         'requests.delete',

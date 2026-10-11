@@ -2520,7 +2520,7 @@ def install_0709(_rb):
     def return_case_to_workflow(order_id):
         o=_rb.Order.query.get_or_404(order_id)
         from technician_queue import return_actor
-        return_actor(_rb._reporting_support_sys.modules[__name__],o)
+        return_actor(_rb._reporting_support_sys.modules[_rb.__name__],o)
         code=(_rb.request.form.get('reason_code') or 'OTHER').upper()
         rr=_rb.CaseReturnReason.query.filter_by(code=code,active=True).first()
         note=(_rb.request.form.get('note') or '').strip()
@@ -2571,7 +2571,7 @@ def install_0710(_rb):
     def return_case_form(order_id):
         order=_rb.Order.query.get_or_404(order_id)
         from technician_queue import return_actor
-        return_actor(_rb._reporting_support_sys.modules[__name__],order)
+        return_actor(_rb._reporting_support_sys.modules[_rb.__name__],order)
         return _rb.render_template('return_case.html',order=order,reasons=_rb.CaseReturnReason.query.filter_by(active=True).order_by(_rb.CaseReturnReason.label).all())
     return return_case_form
 
@@ -3318,7 +3318,7 @@ def install_0784(_rb):
         start,end,start_dt,end_dt=_rb.management_date_range()
         doctor_id=_rb.request.args.get('doctor_id',type=int)
         from replacement_settlements import actor
-        user=actor(_rb._reporting_support_sys.modules[__name__])
+        user=actor(_rb._reporting_support_sys.modules[_rb.__name__])
         branch_id=_rb.request.args.get('branch_id',type=int)
         if not _rb.has_perm('*'):
             if branch_id and branch_id!=user.branch_id:_rb.abort(403)
@@ -4929,7 +4929,7 @@ def install_0875(_rb):
             return identity_block
 
         from technician_queue import mutable_return
-        mutable_return(_rb._reporting_support_sys.modules[__name__],order)
+        mutable_return(_rb._reporting_support_sys.modules[_rb.__name__],order)
 
         data = _rb._ohif_json_body()
 
@@ -5130,7 +5130,7 @@ def install_0888(_rb):
                     _rb.assert_role_allowed(doctor_user, 'DRAFT')
                     _rb.assert_lease_owner(db=_rb.db, order=order, report=report, user=doctor_user,
                         lease_token=str(_rb.request.headers.get('X-RadBridge-Report-Lease') or ''))
-                path = initialize(_report_template_sys.modules[__name__], order, report, doctor_user, template_id)
+                path = initialize(_report_template_sys.modules[_rb.__name__], order, report, doctor_user, template_id)
             except (TemplateError, _rb.ReportEditControlError) as exc:
                 _rb.db.session.rollback()
                 return _rb.jsonify(ok=False, error=str(exc)), 409

@@ -283,7 +283,7 @@ def install_0548(_rb):
             role=_rb.Role.query.get_or_404(_rb.request.form.get('role_id',type=int))
             require_manage_target(role=role)
             from clinical_scope import parse_form,save as save_clinical_scope
-            try:scope=parse_form(_rb._reporting_support_sys.modules[__name__],_rb.request.form,role)
+            try:scope=parse_form(_rb._reporting_support_sys.modules[_rb.__name__],_rb.request.form,role)
             except ValueError as exc:_rb.flash(str(exc),'danger');return _rb.redirect(_rb.url_for('admin_users'))
             username=_rb.request.form['username'].strip()
             password=_rb.request.form.get('password','')
@@ -295,7 +295,7 @@ def install_0548(_rb):
                    password_hash=_rb.generate_password_hash(password),
                    role_id=int(_rb.request.form['role_id']),branch_id=(int(_rb.request.form['branch_id']) if _rb.request.form.get('branch_id') else None),
                    active=True,must_change_password=True)
-            _rb.db.session.add(u); _rb.db.session.flush(); save_contacts(u,data,_rb.request.form); save_clinical_scope(_rb._reporting_support_sys.modules[__name__],u,scope); _rb.audit('USER_CONTACTS_SAVE','user',u.id,'Contact fields updated'); _rb.audit('USER_CREATE','user','',u.username); _rb.db.session.commit(); _rb.flash('User created. Temporary password must be changed at first login.','success')
+            _rb.db.session.add(u); _rb.db.session.flush(); save_contacts(u,data,_rb.request.form); save_clinical_scope(_rb._reporting_support_sys.modules[_rb.__name__],u,scope); _rb.audit('USER_CONTACTS_SAVE','user',u.id,'Contact fields updated'); _rb.audit('USER_CREATE','user','',u.username); _rb.db.session.commit(); _rb.flash('User created. Temporary password must be changed at first login.','success')
         return _rb.render_template('admin_users.html',users=_rb.User.query.order_by(_rb.User.username).all(),roles=_rb.Role.query.order_by(_rb.Role.name).all(),branches=_rb.Branch.query.order_by(_rb.Branch.name).all(),contact_fields=CONTACT_FIELDS,user_contacts=contacts,user_profiles={x.user_id:x for x in _rb.UserProfile.query.all()})
     return admin_users
 
@@ -335,7 +335,7 @@ def install_0550(_rb):
         u.active=_rb.request.form.get('active')=='1'
         save_contacts(u,data,_rb.request.form)
         from clinical_scope import CLINICAL_ROLES,save as save_clinical_scope
-        if role.code.upper() not in CLINICAL_ROLES:save_clinical_scope(_rb._reporting_support_sys.modules[__name__],u,None)
+        if role.code.upper() not in CLINICAL_ROLES:save_clinical_scope(_rb._reporting_support_sys.modules[_rb.__name__],u,None)
         _rb.audit('USER_CONTACTS_SAVE','user',u.id,'Contact fields updated')
         _rb.audit('USER_EDIT','user',u.id,f'role {old_role}->{_rb.Role.query.get(u.role_id).code if u.role_id else ""}; active={u.active}')
         _rb.db.session.commit(); _rb.flash('User updated.','success')

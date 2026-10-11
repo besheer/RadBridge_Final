@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 from datetime import datetime, timedelta
 from pathlib import Path
 import importlib.util
@@ -171,7 +172,7 @@ def test_appointment_order_model_and_migration_contract(app_ctx):
 
 def test_calendar_and_unified_registration_source_contract(app_ctx):
     m = app_ctx
-    unified_source = inspect.getsource(m.schedule_unified_submit)
+    unified_source = _get_source(m.schedule_unified_submit)
     assert "acquire_booking_slot_lock" in unified_source
     assert "order_id=o.id" in unified_source
     template = (ROOT / "templates" / "schedule_calendar.html").read_text(encoding="utf-8")

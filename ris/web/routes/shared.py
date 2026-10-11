@@ -2894,8 +2894,8 @@ def install_0712(_rb):
         if role not in allowed_roles:
             _rb.abort(403)
         from technician_queue import scoped_order, mutable_return, ACTIVE_CORRECTIONS
-        scoped_order(_rb._reporting_support_sys.modules[__name__],o)
-        mutable_return(_rb._reporting_support_sys.modules[__name__],o)
+        scoped_order(_rb._reporting_support_sys.modules[_rb.__name__],o)
+        mutable_return(_rb._reporting_support_sys.modules[_rb.__name__],o)
         state=_rb.case_return_snapshot(o.id)
         if ev.event_type!='RETURNED' or not state['open'] or state['return_event'].id!=ev.id:
             _rb.abort(409)
@@ -2913,7 +2913,7 @@ def install_0712(_rb):
             from technician_queue import correction_documents_ready
             image_result,image_evidence=_rb.technician_completion_evidence(o)
             strict_images=bool(image_result['allowed'])
-            documents_ready=correction_documents_ready(_rb._reporting_support_sys.modules[__name__],o,state)
+            documents_ready=correction_documents_ready(_rb._reporting_support_sys.modules[_rb.__name__],o,state)
             readiness=_rb.evaluate_case_readiness(o,pacs_evidence=image_evidence)
         else:
             readiness=_rb.evaluate_case_readiness(o)

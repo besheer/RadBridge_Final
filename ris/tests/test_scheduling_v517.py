@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_smart_scheduling_routes():
     import app as m
@@ -14,7 +15,7 @@ def test_status_palette():
 
 def test_mwl_uses_tags_envelope():
     import app as m, inspect
-    src=inspect.getsource(m.send_mwl)
+    src=_get_source(m.send_mwl)
     assert "'Tags':tags" in src
     assert "ScheduledProcedureStepSequence" in src
 

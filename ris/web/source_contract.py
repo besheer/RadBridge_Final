@@ -6,6 +6,7 @@ copy of clinical handlers. Runtime behavior is validated by the existing suites.
 import ast
 from functools import lru_cache
 import io
+import inspect
 import json
 from pathlib import Path
 import re
@@ -53,3 +54,14 @@ def app_source():
 def read_source(path, *args, **kwargs):
     path = Path(path)
     return app_source() if path.resolve() == (ROOT / "app.py").resolve() else path.read_text(*args, **kwargs)
+
+
+def get_source(obj):
+    """Inspect the real implementation, normalizing explicit compatibility names."""
+    if inspect.ismodule(obj) and Path(obj.__file__).resolve() == (ROOT / 'app.py').resolve():
+        return app_source()
+    source = inspect.getsource(obj)
+    module = getattr(obj, '__module__', '')
+    if module.startswith(('application.components.', 'web.routes.')):
+        return source.replace('_rb.namespace()', 'globals()').replace('_rb.', '')
+    return source

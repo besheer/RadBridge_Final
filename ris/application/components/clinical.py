@@ -44,7 +44,7 @@ def install_0184(_rb):
 def install_0185(_rb):
     def technician_completion_evidence(order):
         import procedure_staff_workflow as staff
-        mod=_rb._reporting_support_sys.modules[__name__]
+        mod=_rb._reporting_support_sys.modules[_rb.__name__]
         configured=staff.policy(mod,order)
         extra=staff.requirements(mod,order,configured)
         if configured.get('configured') and not configured.get('require_images') and not order.pacs_study_id and not (order.pacs_image_count or 0) and (order.pacs_status or '').upper()!='RECEIVING':

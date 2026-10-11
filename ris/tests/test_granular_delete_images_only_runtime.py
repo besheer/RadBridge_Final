@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 from datetime import datetime
 from unittest.mock import Mock
 
@@ -648,7 +649,7 @@ def test_verify_not_404_keeps_ris_state(monkeypatch,app_ctx):
 def test_source_never_deletes_ris_objects(app_ctx):
     import inspect
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_order_images_only
     )
 

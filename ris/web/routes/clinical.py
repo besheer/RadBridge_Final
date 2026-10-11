@@ -8,9 +8,9 @@ def install_0168(_rb):
     @_rb.require_perm('nursing.worklist')
     def nursing_worklist():
         from staff_worklist_filters import default_redirect, context, apply
-        redirect_default=default_redirect(_rb._reporting_support_sys.modules[__name__],'NURSING')
+        redirect_default=default_redirect(_rb._reporting_support_sys.modules[_rb.__name__],'NURSING')
         if redirect_default:return redirect_default
-        staff_context=context(_rb._reporting_support_sys.modules[__name__],'NURSING')
+        staff_context=context(_rb._reporting_support_sys.modules[_rb.__name__],'NURSING')
         # RB_ROLE_WORKLIST_FILTERS_V1
         q = _rb.Order.query.filter(_rb.Order.status.notin_(['FINAL', 'CANCELLED']))
 
@@ -48,7 +48,7 @@ def install_0168(_rb):
             except ValueError:
                 pass
 
-        q=apply(_rb._reporting_support_sys.modules[__name__],q,'NURSING',staff_context)
+        q=apply(_rb._reporting_support_sys.modules[_rb.__name__],q,'NURSING',staff_context)
         orders = (
             q.order_by(_rb.Order.scheduled.desc())
             .limit(300)
@@ -100,7 +100,7 @@ def install_0179(_rb):
     def technician_case_workspace(order_id):
         order = _rb.Order.query.get_or_404(order_id)
         from technician_queue import scoped_order
-        scoped_order(_rb._reporting_support_sys.modules[__name__], order)
+        scoped_order(_rb._reporting_support_sys.modules[_rb.__name__], order)
         warehouse = _rb.default_warehouse_for_order(order)
 
         notes = (
@@ -213,7 +213,7 @@ def install_0182(_rb):
     @_rb.require_perm('technician.worklist')
     def technician_worklist():
         from technician_queue import render_worklist
-        return render_worklist(_rb._reporting_support_sys.modules[__name__])
+        return render_worklist(_rb._reporting_support_sys.modules[_rb.__name__])
     return technician_worklist
 
 
@@ -223,7 +223,7 @@ def install_0186(_rb):
     def technician_check_images(order_id):
         order=_rb.Order.query.get_or_404(order_id)
         from technician_queue import scoped_order
-        scoped_order(_rb._reporting_support_sys.modules[__name__],order)
+        scoped_order(_rb._reporting_support_sys.modules[_rb.__name__],order)
         result,evidence=_rb.technician_completion_evidence(order)
         _rb.evaluate_case_readiness(order,pacs_evidence=evidence)
         _rb.audit('TECHNICIAN_IMAGE_CHECK','order',order.id,_rb.json.dumps(result,sort_keys=True))
@@ -244,7 +244,7 @@ def install_0189(_rb):
         # Legacy compatibility endpoint routed through the canonical exam engine.
         order=_rb.Order.query.get_or_404(order_id)
         from technician_queue import scoped_order
-        scoped_order(_rb._reporting_support_sys.modules[__name__],order)
+        scoped_order(_rb._reporting_support_sys.modules[_rb.__name__],order)
         new=(_rb.request.form.get('status') or '').upper().strip()
         role_code=(_rb.current_user().role.code if _rb.current_user() and _rb.current_user().role else '').upper()
 
@@ -288,7 +288,7 @@ def install_0192(_rb):
     def order_exam_status(order_id):
         order=_rb.Order.query.get_or_404(order_id)
         from technician_queue import scoped_order
-        scoped_order(_rb._reporting_support_sys.modules[__name__],order)
+        scoped_order(_rb._reporting_support_sys.modules[_rb.__name__],order)
         target=(_rb.request.form.get('status') or '').upper().strip()
         role_code=(_rb.current_user().role.code if _rb.current_user() and _rb.current_user().role else '').upper()
 
@@ -307,7 +307,7 @@ def install_0192(_rb):
         _rb.db.session.commit()
 
         # RB_POST_EXAM_ASSIGNMENT_TRIGGER_V1
-        if target=='EXAM_COMPLETED' and __import__('procedure_staff_workflow').policy(_rb._reporting_support_sys.modules[__name__],order)['require_images']:
+        if target=='EXAM_COMPLETED' and __import__('procedure_staff_workflow').policy(_rb._reporting_support_sys.modules[_rb.__name__],order)['require_images']:
             try:
                 _rb.pacs_lookup_order(order)
                 _rb.evaluate_case_readiness(order)
@@ -335,7 +335,7 @@ def install_0193(_rb):
     def order_exam_status_override(order_id):
         order=_rb.Order.query.get_or_404(order_id)
         from technician_queue import scoped_order
-        scoped_order(_rb._reporting_support_sys.modules[__name__],order)
+        scoped_order(_rb._reporting_support_sys.modules[_rb.__name__],order)
         target=(_rb.request.form.get('status') or '').upper().strip()
         reason=(_rb.request.form.get('reason') or '').strip()
         if target not in _rb.EXAM_STATUS_ORDER: _rb.abort(400)

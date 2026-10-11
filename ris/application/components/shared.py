@@ -537,7 +537,7 @@ def install_0099(_rb):
             if not user or not getattr(user,'active',True):
                 continue
             from clinical_scope import allowed as clinical_scope_allowed
-            if not clinical_scope_allowed(_rb._reporting_support_sys.modules[__name__],user,order):continue
+            if not clinical_scope_allowed(_rb._reporting_support_sys.modules[_rb.__name__],user,order):continue
             modalities=_rb._csv_values(p.modalities)
             branches=_rb._csv_values(p.branches)
             specialties=_rb._csv_values(p.specialties)
@@ -845,7 +845,7 @@ def install_0187(_rb):
 def install_0188(_rb):
     def _apply_exam_transition(order,target,role_code,override=False):
         import procedure_staff_workflow as staff
-        mod=_rb._reporting_support_sys.modules[__name__]
+        mod=_rb._reporting_support_sys.modules[_rb.__name__]
         from flask import has_request_context
         if getattr(order,'procedure_id',None):
             staff.lock_policy(mod,order.procedure_id)
@@ -878,7 +878,7 @@ def install_0188(_rb):
             return decision,current
 
         import procedure_staff_workflow as staff
-        mod=_rb._reporting_support_sys.modules[__name__]
+        mod=_rb._reporting_support_sys.modules[_rb.__name__]
         p=staff.policy(mod,order)
         if target in ('IN_PROGRESS','EXAM_COMPLETED') and (p.get('invalid') or p['mode']!='EXAM'):
             from technician_image_policy import ImageCompletionDecision
@@ -960,7 +960,7 @@ def install_0203(_rb):
         if not _rb.doctor_workspace_user(user):
             return False
         from clinical_scope import allowed as clinical_scope_allowed
-        if not clinical_scope_allowed(_rb._reporting_support_sys.modules[__name__],user,order):
+        if not clinical_scope_allowed(_rb._reporting_support_sys.modules[_rb.__name__],user,order):
             return False
         role=(user.role.code if user.role else '').upper()
         if role in ('SUPER_ADMIN','ADMIN'):
@@ -1258,7 +1258,7 @@ def install_0303(_rb):
 def install_0304(_rb):
     def performing_doctor_share_for_order(order):
         from replacement_settlements import effective_share
-        frozen=effective_share(_rb._reporting_support_sys.modules[__name__],order)
+        frozen=effective_share(_rb._reporting_support_sys.modules[_rb.__name__],order)
         if frozen is not None:return frozen
         doctor=_rb.performing_doctor_for_order(order)
         if not doctor:return 0.0,None,None
@@ -6000,7 +6000,7 @@ def install_0726(_rb):
         if key not in _rb.SAVED_VIEW_PAGES:
             _rb.abort(404)
         from staff_worklist_filters import page_access
-        page_access(_rb._reporting_support_sys.modules[__name__],key)
+        page_access(_rb._reporting_support_sys.modules[_rb.__name__],key)
         return key
     return _saved_view_page_or_404
 

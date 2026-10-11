@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 import pytest
 from datetime import datetime, timedelta
@@ -81,7 +82,7 @@ def test_08_event_outbox_present(app_ctx):
 
 def test_09_permissions_superadmin_bypass_source(app_ctx):
     import inspect
-    src=inspect.getsource(app_ctx.has_perm)
+    src=_get_source(app_ctx.has_perm)
     assert "SUPER_ADMIN" in src or "'*'" in src or '"*"' in src
 
 def test_10_duplicate_patient_safety_present(app_ctx):

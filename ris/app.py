@@ -105,17 +105,14 @@ from radbridge_intake import (
     validate_identity as validate_intake_identity,
 )
 
-app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'change-me-now')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///ris.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 30 * 1024 * 1024
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
-app.config['SESSION_COOKIE_SECURE'] = os.getenv(
-    'SESSION_COOKIE_SECURE',
-    '1' if os.getenv('RIS_PUBLIC_URL', 'https://ris.dynuddns.net').lower().startswith('https://') else '0'
-) == '1'
+from infrastructure.settings import WebSettings
+from web.factory import create_web_app
+
+app = create_web_app(
+    __name__,
+    root_path=os.path.dirname(os.path.abspath(__file__)),
+    settings=WebSettings.from_environment(os.environ),
+)
 
 REPORT_DIR = os.getenv('REPORT_DIR', '/app/report-files')
 ATTACHMENT_DIR = os.getenv('ATTACHMENT_DIR', '/app/attachments')
@@ -1083,7 +1080,7 @@ audit_as_user = _rb_install_0080(_rb_bind(_rb_sys.modules[__name__], ('AuditLog'
 
 # RB_BIND:0081
 from application.components.imaging import install_0081 as _rb_install_0081
-require_ohif_doctor_user = _rb_install_0081(_rb_bind(_rb_sys.modules[__name__], ('Order', '_reporting_support_sys', 'db', 'get_ohif_doctor_identity', 'jsonify')))
+require_ohif_doctor_user = _rb_install_0081(_rb_bind(_rb_sys.modules[__name__], ('Order', '__name__', '_reporting_support_sys', 'db', 'get_ohif_doctor_identity', 'jsonify')))
 
 
 # RB_BIND:0082
@@ -1171,7 +1168,7 @@ doctor_active_case_count = _rb_install_0098(_rb_bind(_rb_sys.modules[__name__], 
 
 # RB_BIND:0099
 from application.components.shared import install_0099 as _rb_install_0099
-eligible_doctors_for_order = _rb_install_0099(_rb_bind(_rb_sys.modules[__name__], ('DoctorAssignmentProfile', '_csv_values', '_reporting_support_sys', 'doctor_active_case_count')))
+eligible_doctors_for_order = _rb_install_0099(_rb_bind(_rb_sys.modules[__name__], ('DoctorAssignmentProfile', '__name__', '_csv_values', '_reporting_support_sys', 'doctor_active_case_count')))
 
 # RB_BIND:0100
 from application.components.assignment import install_0100 as _rb_install_0100
@@ -1491,7 +1488,7 @@ add_payment = _rb_install_0167(_rb_bind(_rb_sys.modules[__name__], ('app', 'rece
 
 # RB_BIND:0168
 from web.routes.clinical import install_0168 as _rb_install_0168
-nursing_worklist = _rb_install_0168(_rb_bind(_rb_sys.modules[__name__], ('NursingConsumableEntry', 'Order', 'Patient', 'ProcedureConsumable', '_order_attachment_count', '_reporting_support_sys', '_saved_views_for', 'app', 'clinical_image_only_url', 'datetime', 'db', 'render_template', 'request', 'require_perm', 'timedelta')))
+nursing_worklist = _rb_install_0168(_rb_bind(_rb_sys.modules[__name__], ('NursingConsumableEntry', 'Order', 'Patient', 'ProcedureConsumable', '__name__', '_order_attachment_count', '_reporting_support_sys', '_saved_views_for', 'app', 'clinical_image_only_url', 'datetime', 'db', 'render_template', 'request', 'require_perm', 'timedelta')))
 
 # RB_BIND:0169
 from web.routes.inventory import install_0169 as _rb_install_0169
@@ -1539,7 +1536,7 @@ order_study_thumbnail = _rb_install_0178(_rb_bind(_rb_sys.modules[__name__], ('O
 # RB_UNIFIED_TECHNICIAN_CASE_WORKSPACE_V1
 # RB_BIND:0179
 from web.routes.clinical import install_0179 as _rb_install_0179
-technician_case_workspace = _rb_install_0179(_rb_bind(_rb_sys.modules[__name__], ('Attachment', 'AuditLog', 'CaseReadiness', 'ClinicalNote', 'CorrectionRequest', 'InventoryItem', 'Order', 'OrderConsumableUsage', '_reporting_support_sys', 'app', 'case_return_snapshot', 'clinical_image_only_url', 'default_warehouse_for_order', 'inventory_available_qty', 'order_consumable_cost', 'quality_rule_for', 'render_template', 'require_perm', 'technician_acquisition_notes', 'technician_minimum_requirement')))
+technician_case_workspace = _rb_install_0179(_rb_bind(_rb_sys.modules[__name__], ('Attachment', 'AuditLog', 'CaseReadiness', 'ClinicalNote', 'CorrectionRequest', 'InventoryItem', 'Order', 'OrderConsumableUsage', '__name__', '_reporting_support_sys', 'app', 'case_return_snapshot', 'clinical_image_only_url', 'default_warehouse_for_order', 'inventory_available_qty', 'order_consumable_cost', 'quality_rule_for', 'render_template', 'require_perm', 'technician_acquisition_notes', 'technician_minimum_requirement')))
 
 
 # RB_BIND:0180
@@ -1549,12 +1546,12 @@ technician_case_note = _rb_install_0180(_rb_bind(_rb_sys.modules[__name__], ('Cl
 
 # RB_BIND:0181
 from web.routes.inventory import install_0181 as _rb_install_0181
-technician_case_consume = _rb_install_0181(_rb_bind(_rb_sys.modules[__name__], ('InventoryItem', 'Order', '_reporting_support_sys', 'app', 'audit', 'consume_inventory', 'current_user', 'db', 'default_warehouse_for_order', 'flash', 'redirect', 'request', 'require_perm', 'url_for')))
+technician_case_consume = _rb_install_0181(_rb_bind(_rb_sys.modules[__name__], ('InventoryItem', 'Order', '__name__', '_reporting_support_sys', 'app', 'audit', 'consume_inventory', 'current_user', 'db', 'default_warehouse_for_order', 'flash', 'redirect', 'request', 'require_perm', 'url_for')))
 
 
 # RB_BIND:0182
 from web.routes.clinical import install_0182 as _rb_install_0182
-technician_worklist = _rb_install_0182(_rb_bind(_rb_sys.modules[__name__], ('_reporting_support_sys', 'app', 'require_perm')))
+technician_worklist = _rb_install_0182(_rb_bind(_rb_sys.modules[__name__], ('__name__', '_reporting_support_sys', 'app', 'require_perm')))
 
 
 # RB_BIND:0183
@@ -1569,12 +1566,12 @@ technician_minimum_requirement = _rb_install_0184(_rb_bind(_rb_sys.modules[__nam
 
 # RB_BIND:0185
 from application.components.clinical import install_0185 as _rb_install_0185
-technician_completion_evidence = _rb_install_0185(_rb_bind(_rb_sys.modules[__name__], ('ReadinessSeriesAlias', '_reporting_support_sys', 'evaluate_case_readiness', 'pacs_demographic_gate', 'pacs_readiness_evidence', 'quality_rule_for', 'technician_minimum_requirement')))
+technician_completion_evidence = _rb_install_0185(_rb_bind(_rb_sys.modules[__name__], ('ReadinessSeriesAlias', '__name__', '_reporting_support_sys', 'evaluate_case_readiness', 'pacs_demographic_gate', 'pacs_readiness_evidence', 'quality_rule_for', 'technician_minimum_requirement')))
 
 
 # RB_BIND:0186
 from web.routes.clinical import install_0186 as _rb_install_0186
-technician_check_images = _rb_install_0186(_rb_bind(_rb_sys.modules[__name__], ('Order', '_reporting_support_sys', 'app', 'audit', 'db', 'evaluate_case_readiness', 'flash', 'json', 'redirect', 'require_perm', 'technician_completion_evidence', 'url_for')))
+technician_check_images = _rb_install_0186(_rb_bind(_rb_sys.modules[__name__], ('Order', '__name__', '_reporting_support_sys', 'app', 'audit', 'db', 'evaluate_case_readiness', 'flash', 'json', 'redirect', 'require_perm', 'technician_completion_evidence', 'url_for')))
 
 
 # RB_BIND:0187
@@ -1584,12 +1581,12 @@ flash_exam_transition_blocked = _rb_install_0187(_rb_bind(_rb_sys.modules[__name
 
 # RB_BIND:0188
 from application.components.shared import install_0188 as _rb_install_0188
-_apply_exam_transition = _rb_install_0188(_rb_bind(_rb_sys.modules[__name__], ('_reporting_support_sys', 'audit', 'current_user', 'datetime', 'exam_transition_gate', 'flash', 'json', 'order_status_for_exam_transition', 'pacs_demographic_gate', 'technician_completion_evidence')))
+_apply_exam_transition = _rb_install_0188(_rb_bind(_rb_sys.modules[__name__], ('__name__', '_reporting_support_sys', 'audit', 'current_user', 'datetime', 'exam_transition_gate', 'flash', 'json', 'order_status_for_exam_transition', 'pacs_demographic_gate', 'technician_completion_evidence')))
 
 
 # RB_BIND:0189
 from web.routes.clinical import install_0189 as _rb_install_0189
-technician_status = _rb_install_0189(_rb_bind(_rb_sys.modules[__name__], ('AuditLog', 'NursingConsumableEntry', 'Order', '_apply_exam_transition', '_reporting_support_sys', 'abort', 'app', 'audit', 'current_user', 'db', 'flash', 'flash_exam_transition_blocked', 'redirect', 'request', 'require_perm', 'url_for')))
+technician_status = _rb_install_0189(_rb_bind(_rb_sys.modules[__name__], ('AuditLog', 'NursingConsumableEntry', 'Order', '__name__', '_apply_exam_transition', '_reporting_support_sys', 'abort', 'app', 'audit', 'current_user', 'db', 'flash', 'flash_exam_transition_blocked', 'redirect', 'request', 'require_perm', 'url_for')))
 
 
 # RB_BIND:0190
@@ -1606,11 +1603,11 @@ api_reporting_health = _rb_install_0191(_rb_bind(_rb_sys.modules[__name__], ('AP
 
 # RB_BIND:0192
 from web.routes.clinical import install_0192 as _rb_install_0192
-order_exam_status = _rb_install_0192(_rb_bind(_rb_sys.modules[__name__], ('Order', '_apply_exam_transition', '_reporting_support_sys', 'app', 'audit', 'coordinate_post_exam_assignment', 'current_user', 'db', 'enqueue_event', 'evaluate_case_readiness', 'flash', 'flash_exam_transition_blocked', 'pacs_lookup_order', 'redirect', 'request', 'require_perm', 'url_for')))
+order_exam_status = _rb_install_0192(_rb_bind(_rb_sys.modules[__name__], ('Order', '__name__', '_apply_exam_transition', '_reporting_support_sys', 'app', 'audit', 'coordinate_post_exam_assignment', 'current_user', 'db', 'enqueue_event', 'evaluate_case_readiness', 'flash', 'flash_exam_transition_blocked', 'pacs_lookup_order', 'redirect', 'request', 'require_perm', 'url_for')))
 
 # RB_BIND:0193
 from web.routes.clinical import install_0193 as _rb_install_0193
-order_exam_status_override = _rb_install_0193(_rb_bind(_rb_sys.modules[__name__], ('EXAM_STATUS_ORDER', 'Order', '_apply_exam_transition', '_reporting_support_sys', 'abort', 'app', 'audit', 'current_user', 'db', 'enqueue_event', 'flash', 'flash_exam_transition_blocked', 'redirect', 'request', 'require_perm', 'url_for')))
+order_exam_status_override = _rb_install_0193(_rb_bind(_rb_sys.modules[__name__], ('EXAM_STATUS_ORDER', 'Order', '__name__', '_apply_exam_transition', '_reporting_support_sys', 'abort', 'app', 'audit', 'current_user', 'db', 'enqueue_event', 'flash', 'flash_exam_transition_blocked', 'redirect', 'request', 'require_perm', 'url_for')))
 
 
 # RB_BIND:0194
@@ -1672,7 +1669,7 @@ doctor_workspace_user = _rb_install_0202(_rb_bind(_rb_sys.modules[__name__], ())
 
 # RB_BIND:0203
 from application.components.shared import install_0203 as _rb_install_0203
-doctor_case_access_allowed = _rb_install_0203(_rb_bind(_rb_sys.modules[__name__], ('_reporting_support_sys', 'doctor_workspace_user')))
+doctor_case_access_allowed = _rb_install_0203(_rb_bind(_rb_sys.modules[__name__], ('__name__', '_reporting_support_sys', 'doctor_workspace_user')))
 
 
 # RB_BIND:0204
@@ -2468,7 +2465,7 @@ performing_doctor_for_order = _rb_install_0303(_rb_bind(_rb_sys.modules[__name__
 
 # RB_BIND:0304
 from application.components.shared import install_0304 as _rb_install_0304
-performing_doctor_share_for_order = _rb_install_0304(_rb_bind(_rb_sys.modules[__name__], ('PerformingDoctorShareRule', '_reporting_support_sys', 'effective_patient_due', 'performing_doctor_for_order')))
+performing_doctor_share_for_order = _rb_install_0304(_rb_bind(_rb_sys.modules[__name__], ('PerformingDoctorShareRule', '__name__', '_reporting_support_sys', 'effective_patient_due', 'performing_doctor_for_order')))
 
 
 # RB_BIND:0305
@@ -3378,12 +3375,12 @@ admin_sticker_templates = _rb_install_0480(_rb_bind(_rb_sys.modules[__name__], (
 
 # RB_BIND:0481
 from web.routes.imaging import install_0481 as _rb_install_0481
-pacs_reconciliation_preview = _rb_install_0481(_rb_bind(_rb_sys.modules[__name__], ('Order', 'PacsStudyInbox', 'app', 'jsonify', 'request', 'requests', 'require_perm')))
+pacs_reconciliation_preview = _rb_install_0481(_rb_bind(_rb_sys.modules[__name__], ('Order', 'PacsStudyInbox', '__name__', 'app', 'jsonify', 'request', 'requests', 'require_perm')))
 
 
 # RB_BIND:0482
 from web.routes.imaging import install_0482 as _rb_install_0482
-pacs_reconciliation_correct_dicom = _rb_install_0482(_rb_bind(_rb_sys.modules[__name__], ('Order', 'PacsStudyInbox', 'abort', 'app', 'db', 'flash', 'has_perm', 'redirect', 'request', 'requests', 'require_perm', 'url_for')))
+pacs_reconciliation_correct_dicom = _rb_install_0482(_rb_bind(_rb_sys.modules[__name__], ('Order', 'PacsStudyInbox', '__name__', 'abort', 'app', 'db', 'flash', 'has_perm', 'redirect', 'request', 'requests', 'require_perm', 'url_for')))
 
 
 # RB_BIND:0483
@@ -3397,7 +3394,7 @@ pacs_reconciliation_example = _rb_install_0484(_rb_bind(_rb_sys.modules[__name__
 
 # RB_BIND:0485
 from web.routes.imaging import install_0485 as _rb_install_0485
-pacs_reconciliation = _rb_install_0485(_rb_bind(_rb_sys.modules[__name__], ('DicomCorrection', 'Order', 'PacsExamLink', 'PacsStudyInbox', 'Patient', 'Report', 'app', 'correction_search_orders', 'current_user', 'db', 'flash', 'has_perm', 'render_template', 'request', 'requests', 'require_perm')))
+pacs_reconciliation = _rb_install_0485(_rb_bind(_rb_sys.modules[__name__], ('DicomCorrection', 'Order', 'PacsExamLink', 'PacsStudyInbox', 'Patient', 'Report', '__name__', 'app', 'correction_search_orders', 'current_user', 'db', 'flash', 'has_perm', 'render_template', 'request', 'requests', 'require_perm')))
 
 
 # RB_BIND:0486
@@ -3412,7 +3409,7 @@ pacs_exam_link_remove = _rb_install_0487(_rb_bind(_rb_sys.modules[__name__], ('O
 
 # RB_BIND:0488
 from web.routes.imaging import install_0488 as _rb_install_0488
-pacs_reconciliation_match = _rb_install_0488(_rb_bind(_rb_sys.modules[__name__], ('Order', 'PacsResolutionEvent', 'PacsStudyInbox', 'PacsStudyMatch', 'Report', '_orthanc_recent_studies', '_study_tags_extended', 'abort', 'app', 'audit', 'current_user', 'db', 'enqueue_auto_routes_for_inbox', 'evaluate_case_readiness', 'flash', 'json', 'redirect', 'request', 'requests', 'require_perm', 'url_for')))
+pacs_reconciliation_match = _rb_install_0488(_rb_bind(_rb_sys.modules[__name__], ('Order', 'PacsResolutionEvent', 'PacsStudyInbox', 'PacsStudyMatch', 'Report', '__name__', '_orthanc_recent_studies', '_study_tags_extended', 'abort', 'app', 'audit', 'current_user', 'db', 'enqueue_auto_routes_for_inbox', 'evaluate_case_readiness', 'flash', 'json', 'redirect', 'request', 'requests', 'require_perm', 'url_for')))
 
 
 # RB_BIND:0489
@@ -3613,7 +3610,7 @@ financial_center_export = _rb_install_0516(_rb_bind(_rb_sys.modules[__name__], (
 
 # RB_BIND:0517
 from web.routes.finance import install_0517 as _rb_install_0517
-financial_entries = _rb_install_0517(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Consumable', 'Device', 'FINANCE_ENTRY_TYPES', 'FinancialEntry', 'User', '_reporting_support_sys', 'app', 'audit', 'current_user', 'date', 'db', 'flash', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
+financial_entries = _rb_install_0517(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Consumable', 'Device', 'FINANCE_ENTRY_TYPES', 'FinancialEntry', 'User', '__name__', '_reporting_support_sys', 'app', 'audit', 'current_user', 'date', 'db', 'flash', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
 
 # RB_BIND:0518
 from web.routes.finance import install_0518 as _rb_install_0518
@@ -3739,7 +3736,7 @@ admin_assignment_strategy_rollback = _rb_install_0542(_rb_bind(_rb_sys.modules[_
 
 # RB_BIND:0543
 from web.routes.assignment import install_0543 as _rb_install_0543
-assign_case = _rb_install_0543(_rb_bind(_rb_sys.modules[__name__], ('Order', 'abort', 'app', 'assignment_readiness_decision', 'current_user', 'db', 'flash', 'manual_assign_order', 'offer_next_doctor', 'redirect', 'request', 'require_perm', 'url_for')))
+assign_case = _rb_install_0543(_rb_bind(_rb_sys.modules[__name__], ('Order', '__name__', 'abort', 'app', 'assignment_readiness_decision', 'current_user', 'db', 'flash', 'manual_assign_order', 'offer_next_doctor', 'redirect', 'request', 'require_perm', 'url_for')))
 
 # RB_BIND:0544
 from web.routes.imaging import install_0544 as _rb_install_0544
@@ -3763,7 +3760,7 @@ admin_home = _rb_install_0547(_rb_bind(_rb_sys.modules[__name__], ('abort', 'app
 
 # RB_BIND:0548
 from web.routes.operations import install_0548 as _rb_install_0548
-admin_users = _rb_install_0548(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Role', 'User', 'UserProfile', '_reporting_support_sys', 'abort', 'app', 'audit', 'db', 'flash', 'generate_password_hash', 'has_perm', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
+admin_users = _rb_install_0548(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Role', 'User', 'UserProfile', '__name__', '_reporting_support_sys', 'abort', 'app', 'audit', 'db', 'flash', 'generate_password_hash', 'has_perm', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
 
 # RB_BIND:0549
 from web.routes.operations import install_0549 as _rb_install_0549
@@ -3771,7 +3768,7 @@ admin_user_toggle = _rb_install_0549(_rb_bind(_rb_sys.modules[__name__], ('User'
 
 # RB_BIND:0550
 from web.routes.operations import install_0550 as _rb_install_0550
-admin_user_edit = _rb_install_0550(_rb_bind(_rb_sys.modules[__name__], ('Role', 'User', '_reporting_support_sys', 'app', 'audit', 'current_user', 'db', 'flash', 'redirect', 'request', 'require_perm', 'url_for')))
+admin_user_edit = _rb_install_0550(_rb_bind(_rb_sys.modules[__name__], ('Role', 'User', '__name__', '_reporting_support_sys', 'app', 'audit', 'current_user', 'db', 'flash', 'redirect', 'request', 'require_perm', 'url_for')))
 
 # RB_BIND:0551
 from web.routes.identity import install_0551 as _rb_install_0551
@@ -4694,11 +4691,11 @@ admin_procedure_quality_rules = _rb_install_0708(_rb_bind(_rb_sys.modules[__name
 
 # RB_BIND:0709
 from web.routes.reporting import install_0709 as _rb_install_0709
-return_case_to_workflow = _rb_install_0709(_rb_bind(_rb_sys.modules[__name__], ('AssignmentOffer', 'CaseAssignment', 'CaseReturnReason', 'CaseWorkflowEvent', 'Order', '_reporting_support_sys', 'abort', 'app', 'audit', 'create_ris_notification', 'current_user', 'datetime', 'db', 'flash', 'has_perm', 'login_required', 'redirect', 'request', 'url_for')))
+return_case_to_workflow = _rb_install_0709(_rb_bind(_rb_sys.modules[__name__], ('AssignmentOffer', 'CaseAssignment', 'CaseReturnReason', 'CaseWorkflowEvent', 'Order', '__name__', '_reporting_support_sys', 'abort', 'app', 'audit', 'create_ris_notification', 'current_user', 'datetime', 'db', 'flash', 'has_perm', 'login_required', 'redirect', 'request', 'url_for')))
 
 # RB_BIND:0710
 from web.routes.reporting import install_0710 as _rb_install_0710
-return_case_form = _rb_install_0710(_rb_bind(_rb_sys.modules[__name__], ('CaseReturnReason', 'Order', '_reporting_support_sys', 'app', 'login_required', 'render_template')))
+return_case_form = _rb_install_0710(_rb_bind(_rb_sys.modules[__name__], ('CaseReturnReason', 'Order', '__name__', '_reporting_support_sys', 'app', 'login_required', 'render_template')))
 
 
 # RB_BIND:0711
@@ -4708,7 +4705,7 @@ returned_cases_queue = _rb_install_0711(_rb_bind(_rb_sys.modules[__name__], ('Ca
 
 # RB_BIND:0712
 from web.routes.shared import install_0712 as _rb_install_0712
-resolve_returned_case = _rb_install_0712(_rb_bind(_rb_sys.modules[__name__], ('AssignmentOffer', 'CaseAssignment', 'CaseWorkflowEvent', 'CorrectionRequest', 'Order', 'Report', 'User', '_reporting_support_sys', 'abort', 'app', 'assign_case_atomically', 'assignment_readiness_decision', 'audit', 'case_return_snapshot', 'coordinate_post_exam_assignment', 'create_ris_notification', 'current_ui_language', 'current_user', 'db', 'evaluate_case_readiness', 'flash', 'login_required', 'pacs_lookup_order', 'redirect', 'request', 'technician_completion_evidence', 'url_for')))
+resolve_returned_case = _rb_install_0712(_rb_bind(_rb_sys.modules[__name__], ('AssignmentOffer', 'CaseAssignment', 'CaseWorkflowEvent', 'CorrectionRequest', 'Order', 'Report', 'User', '__name__', '_reporting_support_sys', 'abort', 'app', 'assign_case_atomically', 'assignment_readiness_decision', 'audit', 'case_return_snapshot', 'coordinate_post_exam_assignment', 'create_ris_notification', 'current_ui_language', 'current_user', 'db', 'evaluate_case_readiness', 'flash', 'login_required', 'pacs_lookup_order', 'redirect', 'request', 'technician_completion_evidence', 'url_for')))
 
 
 # RB_BIND:0713
@@ -4819,7 +4816,7 @@ SAVED_VIEW_FILTER_KEYS = {
 
 # RB_BIND:0726
 from application.components.shared import install_0726 as _rb_install_0726
-_saved_view_page_or_404 = _rb_install_0726(_rb_bind(_rb_sys.modules[__name__], ('SAVED_VIEW_PAGES', '_reporting_support_sys', 'abort')))
+_saved_view_page_or_404 = _rb_install_0726(_rb_bind(_rb_sys.modules[__name__], ('SAVED_VIEW_PAGES', '__name__', '_reporting_support_sys', 'abort')))
 
 # RB_BIND:0727
 from application.components.shared import install_0727 as _rb_install_0727
@@ -5080,7 +5077,7 @@ discount_approval_decision = _rb_install_0783(_rb_bind(_rb_sys.modules[__name__]
 
 # RB_BIND:0784
 from web.routes.reporting import install_0784 as _rb_install_0784
-doctor_earnings_report = _rb_install_0784(_rb_bind(_rb_sys.modules[__name__], ('Order', '_reporting_support_sys', 'abort', 'app', 'effective_patient_due', 'has_perm', 'management_date_range', 'management_orders_query', 'performing_doctor_share_for_order', 'render_template', 'request', 'require_perm', 'total_order_discount')))
+doctor_earnings_report = _rb_install_0784(_rb_bind(_rb_sys.modules[__name__], ('Order', '__name__', '_reporting_support_sys', 'abort', 'app', 'effective_patient_due', 'has_perm', 'management_date_range', 'management_orders_query', 'performing_doctor_share_for_order', 'render_template', 'request', 'require_perm', 'total_order_discount')))
 
 
 
@@ -5543,7 +5540,7 @@ api_ohif_report_finalize = _rb_install_0874(_rb_bind(_rb_sys.modules[__name__], 
 
 # RB_BIND:0875
 from web.routes.reporting import install_0875 as _rb_install_0875
-api_ohif_report_return = _rb_install_0875(_rb_bind(_rb_sys.modules[__name__], ('CaseAssignment', 'CaseReturnReason', 'CaseWorkflowEvent', 'Order', '_ohif_json_body', '_reporting_support_sys', 'abort', 'app', 'audit_as_user', 'create_ris_notification', 'datetime', 'db', 'jsonify', 'require_ohif_doctor_user', 'require_ohif_token', 'require_valid_ohif_case_context')))
+api_ohif_report_return = _rb_install_0875(_rb_bind(_rb_sys.modules[__name__], ('CaseAssignment', 'CaseReturnReason', 'CaseWorkflowEvent', 'Order', '__name__', '_ohif_json_body', '_reporting_support_sys', 'abort', 'app', 'audit_as_user', 'create_ris_notification', 'datetime', 'db', 'jsonify', 'require_ohif_doctor_user', 'require_ohif_token', 'require_valid_ohif_case_context')))
 
 
 # RB_BIND:0876
@@ -5640,7 +5637,7 @@ api_ohif_onlyoffice_health = _rb_install_0887(_rb_bind(_rb_sys.modules[__name__]
 
 # RB_BIND:0888
 from web.routes.reporting import install_0888 as _rb_install_0888
-api_ohif_onlyoffice_config = _rb_install_0888(_rb_bind(_rb_sys.modules[__name__], ('ONLYOFFICE_KEY_REV', 'ONLYOFFICE_RIS_INTERNAL_URL', 'Order', 'ReportEditControlError', '_next_report_version', '_onlyoffice_jwt_encode', '_onlyoffice_link_token', '_rb_authoritative_docx_download', '_rb_latest_report_version', 'app', 'assert_lease_owner', 'assert_role_allowed', 'audit_as_user', 'build_report_filename', 'db', 'get_report', 'jsonify', 'os', 'quote', 'request', 'require_ohif_doctor_user', 'require_ohif_token', 'require_valid_ohif_case_context')))
+api_ohif_onlyoffice_config = _rb_install_0888(_rb_bind(_rb_sys.modules[__name__], ('ONLYOFFICE_KEY_REV', 'ONLYOFFICE_RIS_INTERNAL_URL', 'Order', 'ReportEditControlError', '__name__', '_next_report_version', '_onlyoffice_jwt_encode', '_onlyoffice_link_token', '_rb_authoritative_docx_download', '_rb_latest_report_version', 'app', 'assert_lease_owner', 'assert_role_allowed', 'audit_as_user', 'build_report_filename', 'db', 'get_report', 'jsonify', 'os', 'quote', 'request', 'require_ohif_doctor_user', 'require_ohif_token', 'require_valid_ohif_case_context')))
 
 
 

@@ -23,10 +23,17 @@ def violations():
             for name in imports:
                 if name.split(".")[0] in {"app", "web", "application", "requests", "flask"}:
                     issues.append(f"{path.relative_to(ROOT)}:{node.lineno}: schema imports {name}")
+    for package in ("application/components", "web/routes"):
+        for path in sorted((ROOT / package).rglob("*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8-sig"))
+            for node in ast.walk(tree):
+                imports = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ""] if isinstance(node, ast.ImportFrom) else []
+                if "app" in imports:
+                    issues.append(f"{path.relative_to(ROOT)}:{node.lineno}: component imports composition root")
     return issues
 
 
 if __name__ == "__main__":
     errors = violations()
-    print("\n".join(errors) if errors else "Domain and persistence import boundaries pass")
+    print("\n".join(errors) if errors else "Domain, persistence and component import boundaries pass")
     raise SystemExit(bool(errors))

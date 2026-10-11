@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_inventory_models_routes_permissions():
  import app as m,inspect
@@ -19,5 +20,5 @@ def test_golden_finance_and_ris_preserved():
  for n in ['DiscountPolicy','PerformingDoctorShareRule','ReferralCommissionRule','StudioShortcut','PrinterProfile','RegistrationDefault']:
   assert hasattr(m,n)
  assert hasattr(m,'next_patient_id')
- assert 'CaseReadiness=CaseReadiness' in inspect.getsource(m.advanced_search)
- assert 'active=True' not in inspect.getsource(m.device_booking_reason)
+ assert 'CaseReadiness=CaseReadiness' in _get_source(m.advanced_search)
+ assert 'active=True' not in _get_source(m.device_booking_reason)

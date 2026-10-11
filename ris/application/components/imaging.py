@@ -682,7 +682,7 @@ def install_0081(_rb):
 
         from clinical_scope import allowed as clinical_scope_allowed
         order=_rb.db.session.get(_rb.Order,order_id)
-        if not clinical_scope_allowed(_rb._reporting_support_sys.modules[__name__],identity['user'],order):
+        if not clinical_scope_allowed(_rb._reporting_support_sys.modules[_rb.__name__],identity['user'],order):
             return None,(_rb.jsonify(ok=False,error='CLINICAL_SCOPE_DENIED'),403)
         return identity['user'], None
     return require_ohif_doctor_user

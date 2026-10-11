@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_studio_shortcut_model_routes_and_golden():
  import app as m,inspect
@@ -9,8 +10,8 @@ def test_studio_shortcut_model_routes_and_golden():
            "/admin/printer-profiles","/my/registration-defaults","/orders/<int:order_id>/actions"]:
   assert r in rules
  assert hasattr(m,"next_patient_id")
- assert "CaseReadiness=CaseReadiness" in inspect.getsource(m.advanced_search)
- assert "active=True" not in inspect.getsource(m.device_booking_reason)
+ assert "CaseReadiness=CaseReadiness" in _get_source(m.advanced_search)
+ assert "active=True" not in _get_source(m.device_booking_reason)
 
 def test_shortcut_templates():
  from pathlib import Path

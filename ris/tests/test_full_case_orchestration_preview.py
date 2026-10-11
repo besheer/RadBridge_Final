@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 from werkzeug.security import generate_password_hash
 
 
@@ -107,7 +108,7 @@ def test_full_case_orchestration_blocks_non_cancelled_case(app_ctx):
 def test_full_case_orchestration_preview_source_is_non_destructive(app_ctx):
     import inspect
     m=app_ctx
-    source=inspect.getsource(m.granular_delete_full_case_orchestration_preview_snapshot)
+    source=_get_source(m.granular_delete_full_case_orchestration_preview_snapshot)
     for forbidden in (
         'requests.delete',
         'db.session.delete',

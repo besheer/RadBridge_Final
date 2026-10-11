@@ -121,9 +121,9 @@ def install_0181(_rb):
     def technician_case_consume(order_id):
         order = _rb.Order.query.get_or_404(order_id)
         from technician_queue import scoped_order, mutable_return
-        scoped_order(_rb._reporting_support_sys.modules[__name__],order)
-        mutable_return(_rb._reporting_support_sys.modules[__name__],order)
-        tasks_only=__import__('procedure_staff_workflow').policy(_rb._reporting_support_sys.modules[__name__],order)['mode']=='TASKS'
+        scoped_order(_rb._reporting_support_sys.modules[_rb.__name__],order)
+        mutable_return(_rb._reporting_support_sys.modules[_rb.__name__],order)
+        tasks_only=__import__('procedure_staff_workflow').policy(_rb._reporting_support_sys.modules[_rb.__name__],order)['mode']=='TASKS'
 
         exam_status = (order.exam_status or 'ORDERED').upper()
 

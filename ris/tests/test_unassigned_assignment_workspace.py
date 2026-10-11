@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 import inspect
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -39,7 +40,7 @@ def test_unassigned_queue_route_and_filter_contract(app_ctx):
     m = app_ctx
     rule = next(x for x in m.app.url_map.iter_rules() if x.endpoint == "unassigned_cases")
     assert rule.rule == "/assignment/unassigned"
-    source = inspect.getsource(m.unassigned_cases)
+    source = _get_source(m.unassigned_cases)
     for field in ("branch_id", "specialty", "modality", "priority", "readiness", "sla", "q"):
         assert f"request.args.get('{field}'" in source
     assert "unassigned_case_snapshot" in source
@@ -88,7 +89,7 @@ def test_queue_snapshot_maps_blocking_flags(app_ctx):
 
 
 def test_manual_and_auto_assignment_share_readiness_gate(app_ctx):
-    source = inspect.getsource(app_ctx.assign_case)
+    source = _get_source(app_ctx.assign_case)
     gate = source.index("assignment_readiness_decision(order)")
     mode = source.index("if mode=='auto'")
     assert gate < mode
