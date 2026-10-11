@@ -1,6 +1,7 @@
 # ADR 006: Canonical ownership for services, adapters, extensions and workers
 
 Status: implemented on development; runtime compatibility migration remains explicit.
+The one-clinical-instance limitation below is superseded by ADR 007 for supported settings.
 
 76 previously flat modules now live under `application.services`, `infrastructure.adapters`, `infrastructure.schema`, `web.extensions` and `workers`. `application/module_manifest.json` is the complete old-to-new map. Legacy module names alias the actual canonical module object, preserving exception identity, private helper imports and monkeypatches. Worker facades additionally retain direct script execution through `runpy`; workers are never started by importing the web composition root as part of this extraction.
 

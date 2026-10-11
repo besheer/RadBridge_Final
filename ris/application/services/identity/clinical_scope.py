@@ -1,7 +1,7 @@
 """Explicit clinical work scope, independent of role permissions and assignment."""
 import json
 import secrets
-from flask import abort, g, has_request_context, request, session
+from flask import abort, current_app, g, has_request_context, request, session
 from sqlalchemy import and_, event, false, func, or_, select
 from sqlalchemy.orm import Session, with_loader_criteria
 
@@ -209,7 +209,7 @@ def register(m):
 
     @event.listens_for(Session, 'do_orm_execute')
     def restrict_queries(state):
-        if not has_request_context() or not getattr(g, 'rb_clinical_scope', None) or not state.is_select or not state.is_orm_statement:
+        if not has_request_context() or current_app._get_current_object() is not m.app or not getattr(g, 'rb_clinical_scope', None) or not state.is_select or not state.is_orm_statement:
             return
         scope = g.rb_clinical_scope
         condition = predicate(m, scope)
@@ -233,4 +233,6 @@ def register(m):
                 # Patient-level information only for patients with an allowed case.
                 options.append(with_loader_criteria(model, model.patient_id.in_(patient_ids), include_aliases=True))
         state.statement = state.statement.options(*options)
+
+    m.app.extensions.setdefault('radbridge_orm_listeners', []).append((Session, 'do_orm_execute', restrict_queries))
 

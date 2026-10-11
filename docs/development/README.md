@@ -9,11 +9,11 @@ This branch implements a modular monolith on an isolated development branch. It 
 - Added dedicated `compose.dev.yaml`, a development Dockerfile/initializer and example environment settings. Existing historical deployment files are not used.
 - Captured exact resolved dependency versions in `development/constraints.txt`; install with the existing requirements plus those constraints.
 - CI defines a full SQLite suite and an isolated PostgreSQL RT/readiness contract suite. Neither job deploys or uses production credentials.
-- 151 ORM definitions moved into 11 canonical infrastructure model modules, with one shared unbound SQLAlchemy extension.
+- All 160 ORM definitions belong to 14 canonical infrastructure model modules, with one shared unbound SQLAlchemy extension.
 - Ten independent policy modules moved into the domain packages; legacy imports retain module/object identity.
 - 949 executable handlers moved into 24 web/application components with explicit compatibility dependencies.
 - 76 existing services, adapters, extensions and worker modules moved into owned packages. Legacy import and CLI facades preserve callers.
-- Web settings and shell construction are independent of clinical composition. The supported clinical WSGI entry remains `app:app`.
+- Web settings and clinical application construction are independent per supported instance settings. Development WSGI uses `web.factory:create_clinical_app()`; `app:app` remains compatible. See ADR 007 for configuration/lifecycle contracts.
 
 ## Start local RIS development (Ubuntu/Docker Compose v2)
 
@@ -43,4 +43,4 @@ The runner forces in-memory SQLite and temporary report/attachment/backup direct
 
 ## Next boundaries
 
-Ownership extraction is implemented across the listed areas. Continue replacing wide compatibility bindings with narrow use-case dependencies and isolated application assembly, preserving callable/route/data contracts. Synthetic unit/contract tests block real HTTP transport; external-service acceptance belongs in a separate reviewed integration environment. Do not introduce microservices before the validation gates in docs/blueprint/VALIDATION_PLAN.md. This branch does not make the repository a complete PACS/ONLYOFFICE deployment or disaster-recovery package.
+Ownership extraction is implemented across the listed areas. Continue replacing compatibility bindings with narrow use-case dependencies, preserving callable/route/data contracts. Synthetic unit/contract tests block real HTTP transport; external-service acceptance belongs in a separate reviewed integration environment. Do not introduce microservices before the validation gates in docs/blueprint/VALIDATION_PLAN.md. This branch does not make the repository a complete PACS/ONLYOFFICE deployment or disaster-recovery package.

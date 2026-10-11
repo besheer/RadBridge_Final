@@ -40,7 +40,7 @@ def main():
             content=content.replace(second,'SQLALCHEMY_DATABASE_URI=os.environ["RADBRIDGE_TEST_DATABASE_URL"]')
             fixture.write_text(content,encoding="utf-8")
             env.update(DATABASE_URL=dsn,RADBRIDGE_TEST_DATABASE_URL=dsn)
-            targets=["tests/test_radiotherapy.py","tests/test_case_readiness_service.py","tests/test_domain_readiness.py"]
+            targets=["tests/test_radiotherapy.py","tests/test_case_readiness_service.py","tests/test_domain_readiness.py","tests/test_clinical_app_factory.py"]
         else:
             source=ROOT/"ris";env["DATABASE_URL"]="sqlite:///:memory:"
             targets=args.targets

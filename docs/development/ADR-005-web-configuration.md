@@ -1,6 +1,7 @@
 # ADR 005: Explicit web configuration and shell construction
 
-Status: implemented on the development branch.
+Status: implemented on the development branch. The clinical-instance limitation
+below is superseded by ADR 007 for its explicitly supported settings.
 
 `infrastructure.settings.WebSettings` captures an environment mapping explicitly. `web.factory.create_web_app` constructs an independent Flask shell without database initialization, filesystem creation, bootstrap writes or workers. The legacy composition root supplies its own import name and original resource directory, so template/static lookup and SQLite instance-path behavior remain compatible.
 

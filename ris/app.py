@@ -23,9 +23,9 @@ BUILD_NAME = 'fresh-schema-runtime-hardening'
 from urllib.parse import quote, urlparse
 """RadBridge RIS/PACS main application.
 
-Developer note (v5.31.1): this file is the historical modular-monolith core and
-contains ORM models, Flask routes and business/integration logic. Before making
-structural changes, read AI_DEVELOPER_GUIDE.md and docs/ARCHITECTURE.md.
+This historical entry point composes owned models, policies, web components and
+integration services. Independent instances are constructed through web.factory.
+Before changing contracts, read AI_DEVELOPER_GUIDE.md and docs/ARCHITECTURE.md.
 
 Safety invariants: preserve patient/accession/DICOM identity, server-side
 permissions, branch scope, auditability, migration history and non-destructive
@@ -42,6 +42,8 @@ import zipfile
 from docx.shared import Inches
 
 import os, smtplib, secrets, io, json, re, csv, tempfile, hashlib
+from infrastructure.composition_environment import composition_os
+os = composition_os()
 from datetime import datetime, timedelta, date
 from functools import wraps
 from workflow_engine import (
@@ -113,6 +115,7 @@ app = create_web_app(
     root_path=os.path.dirname(os.path.abspath(__file__)),
     settings=WebSettings.from_environment(os.environ),
 )
+app.extensions['radbridge_runtime'] = _rb_sys.modules[__name__]
 
 REPORT_DIR = os.getenv('REPORT_DIR', '/app/report-files')
 ATTACHMENT_DIR = os.getenv('ATTACHMENT_DIR', '/app/attachments')

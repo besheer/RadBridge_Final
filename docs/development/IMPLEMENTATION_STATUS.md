@@ -30,8 +30,9 @@ Before/after captures compare the same 160 database tables and 546 route registr
 ## Explicit unfinished gates
 
 1. Replace `Bindings` and `legacy_runtime` with narrow use-case dependencies. Existing m-based extension interfaces remain compatibility APIs, not a completed dependency inversion.
-2. Build a fully composed, isolated clinical application factory; only the web shell and ORM extension support independent instances today. Keep one clinical application per process.
-3. Run provisioned synthetic ONLYOFFICE/PACS/viewer failure scenarios: callback delay/loss, reassignment, partial transfer, queue restart and destination storage confirmation. The local Compose stack contains RIS/PostgreSQL only.
-4. Run role-based browser UAT and review the architecture PR. Production upgrade, rollback rehearsal, merge and deployment require a separate release decision.
+2. Run provisioned synthetic ONLYOFFICE/PACS/viewer failure scenarios: callback delay/loss, reassignment, partial transfer, queue restart and destination storage confirmation. The local Compose stack contains RIS/PostgreSQL only.
+3. Run role-based browser UAT and review the architecture PR. Production upgrade, rollback rehearsal, merge and deployment require a separate release decision.
+
+Clinical factory isolation is implemented for supported database, secret, storage, cookie and runtime URL settings, with authenticated two-instance and scope-listener tests. Host/provider feature settings remain process-level; extending per-instance configuration requires explicit contracts and tests. All 160 models are registered in infrastructure before composition. See ADR 007.
 
 See ADRs 001–006 and the existing blueprint validation plan. Do not interpret a screen, a passing source assertion, or a module name as evidence of a complete external integration.
