@@ -110,6 +110,11 @@
       "module": "application.services.clinical.rt_support_workflow",
       "repository": "infrastructure.adapters.clinical.rt_support_repository",
       "composition": "web.extensions.radiotherapy"
+    },
+    {
+      "module": "application.services.clinical.rt_read_queries",
+      "repository": "infrastructure.adapters.clinical.rt_read_repository",
+      "composition": "web.extensions.radiotherapy"
     }
   ],
   "helpers": [

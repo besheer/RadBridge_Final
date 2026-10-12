@@ -9,6 +9,8 @@ from application.services.clinical import rt_course_workflow as _courses
 from application.services.clinical import rt_plan_workflow as _plans
 from application.services.clinical import rt_session_workflow as _sessions
 from application.services.clinical import rt_support_workflow as _support
+from application.services.clinical.rt_read_queries import RTReadQueries
+from infrastructure.adapters.clinical.rt_read_repository import SqlAlchemyRTReadRepository
 from infrastructure.adapters.clinical.rt_support_repository import SqlAlchemyRTSupportRepository
 from infrastructure.adapters.clinical.rt_session_repository import SqlAlchemyRTSessionRepository
 from infrastructure.adapters.clinical.rt_plan_repository import SqlAlchemyRTPlanRepository
@@ -33,6 +35,9 @@ def register(m):
     Course,Plan,Fraction,PetLink,Note,Consumable=RTCourse,RTPlanVersion,RTFraction,RTPetLink,RTNote,RTConsumable
     models=dict(Course=Course,Plan=Plan,Fraction=Fraction,PetLink=PetLink,Note=Note,Consumable=Consumable)
     m.rt_models=models
+    def read_queries():
+        return RTReadQueries(SqlAlchemyRTReadRepository(db.session,Course,Plan,Fraction,PetLink,Note,
+            Consumable,m.Order,m.Patient,m.Device,m.Branch))
     def repository():return SqlAlchemyRTCourseRepository(db.session,m.Order,Course,PetLink)
     def session_repository():return SqlAlchemyRTSessionRepository(db.session,Course,Plan,Fraction,m.Device)
     def support_repository():return SqlAlchemyRTSupportRepository(db.session,Course,Plan,Fraction,m.Device,Note,Consumable)
@@ -54,10 +59,6 @@ def register(m):
         clinical_order(c.order)
         if c.patient_id!=c.order.patient_id or c.branch_id!=c.order.branch_id:abort(409)
         return c
-    def course(cid,lock=False):
-        q=Course.query.filter_by(id=cid)
-        if lock:q=q.populate_existing().with_for_update()
-        return course_scope(q.first_or_404())
     def csrf():
         supplied=request.form.get('csrf_token','')
         if not session.get('rt_csrf') or not secrets.compare_digest(session['rt_csrf'],supplied):abort(403)
@@ -70,13 +71,8 @@ def register(m):
     def readonly_nurse():
         if actor().role and actor().role.code.upper()=='NURSING':abort(403)
     def device_scope(d):
-        from clinical_scope import predicate,read
-        from sqlalchemy import literal,select
-        scope=read(m,actor())
-        if scope:
-            cols=select(literal(d.modality).label('modality'),literal(d.id).label('device_id')).subquery().c
-            if not db.session.execute(select(cols.device_id).where(predicate(m,scope,cols))).first():abort(403)
-    def current_plan(c):return Plan.query.filter_by(course_id=c.id,status='ACTIVE').first()
+        from clinical_scope import read
+        if not read_queries().device_allowed(read(m,actor()),d):abort(403)
     def context():
         session.setdefault('rt_csrf',secrets.token_urlsafe(32))
         return {'rt_csrf':session['rt_csrf'],'rt_time':lambda value:value.replace(tzinfo=timezone.utc).astimezone(ZoneInfo('Africa/Cairo')).strftime('%Y-%m-%d %H:%M') if value else '—'}
@@ -115,14 +111,10 @@ def register(m):
     @m.app.get('/radiotherapy')
     @m.require_perm('rt.view')
     def rt_worklist():
-        q=Course.query
-        if not m.has_perm('*'):q=q.filter(Course.branch_id==actor().branch_id) if actor().branch_id else q.filter(db.false())
-        from clinical_scope import read,predicate
-        scope=read(m,actor())
-        if scope:q=q.filter(Course.primary_order_id.in_(db.session.query(m.Order.id).filter(predicate(m,scope))))
-        search=(request.args.get('q') or '').strip()
-        if search:q=q.join(m.Patient,Course.patient_id==m.Patient.id).filter(db.or_(Course.reference.ilike('%'+search+'%'),m.Patient.patient_id==search))
-        rows=q.order_by(Course.created_at.desc()).limit(100).all()
+        from clinical_scope import read
+        u=actor()
+        rows=read_queries().worklist(global_access=m.has_perm('*'),branch_id=u.branch_id,
+            scope=read(m,u),search=request.args.get('q'))
         return render_template('radiotherapy_list.html',courses=rows)
 
     @m.app.post('/radiotherapy/courses')
@@ -137,14 +129,12 @@ def register(m):
     @m.app.get('/radiotherapy/<int:course_id>')
     @m.require_perm('rt.view')
     def rt_course_detail(course_id):
-        c=course(course_id);p=current_plan(c)
-        devices=m.Device.query.filter_by(branch_id=c.branch_id).order_by(m.Device.name).all()
-        from clinical_scope import read,predicate
-        scope=read(m,actor())
-        if scope:
-            from sqlalchemy import literal,select
-            devices=[d for d in devices if db.session.execute(select(literal(d.id)).where(predicate(m,scope,select(literal(d.modality).label('modality'),literal(d.id).label('device_id')).subquery().c))).first()]
-        return render_template('radiotherapy_course.html',course=c,plan=p,plans=Plan.query.filter_by(course_id=c.id).order_by(Plan.revision.desc()).all(),fractions=Fraction.query.filter_by(course_id=c.id).filter(Fraction.device_id.in_([d.id for d in devices])).order_by(Fraction.number).all(),pet_links=PetLink.query.filter_by(course_id=c.id).all(),notes=Note.query.filter_by(course_id=c.id).filter(db.or_(Note.fraction_id.is_(None),Note.fraction_id.in_(db.session.query(Fraction.id).filter(Fraction.device_id.in_([d.id for d in devices]))))).order_by(Note.recorded_at.desc()).all(),consumables=Consumable.query.join(Fraction).filter(Fraction.course_id==c.id,Fraction.device_id.in_([d.id for d in devices])).all(),devices=devices,completion_token=secrets.token_urlsafe(24))
+        from clinical_scope import read
+        try:data=read_queries().detail(course_id=course_id,authorize_course=course_scope,scope_provider=lambda:read(m,actor()))
+        except RTWorkflowError as exc:
+            if exc.code=='COURSE_NOT_FOUND':abort(404)
+            raise
+        return render_template('radiotherapy_course.html',**data,completion_token=secrets.token_urlsafe(24))
 
     @m.app.post('/radiotherapy/<int:course_id>/plans')
     @m.require_perm('rt.plan.record')

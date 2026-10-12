@@ -738,6 +738,7 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.clinical.rt_plan_workflow](../application/services/clinical/rt_plan_workflow.py) | [infrastructure.adapters.clinical.rt_plan_repository](../infrastructure/adapters/clinical/rt_plan_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 | [application.services.clinical.rt_session_workflow](../application/services/clinical/rt_session_workflow.py) | [infrastructure.adapters.clinical.rt_session_repository](../infrastructure/adapters/clinical/rt_session_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 | [application.services.clinical.rt_support_workflow](../application/services/clinical/rt_support_workflow.py) | [infrastructure.adapters.clinical.rt_support_repository](../infrastructure/adapters/clinical/rt_support_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
+| [application.services.clinical.rt_read_queries](../application/services/clinical/rt_read_queries.py) | [infrastructure.adapters.clinical.rt_read_repository](../infrastructure/adapters/clinical/rt_read_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 
 ### Shared application context helpers
 
