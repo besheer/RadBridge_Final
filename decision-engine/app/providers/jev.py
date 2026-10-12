@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import math
 import os
 import httpx
+from app.providers.probabilities import normalize_probabilities
 
 ENDPOINT = 'https://api.typesafe.ai/v1/systemone'
 MODEL_DEFAULT = 'jev-latest'
@@ -32,11 +33,7 @@ def _validate_response(data: dict) -> JevSuggestion:
             raise ValueError
         if not math.isfinite(confidence) or not 0 <= confidence <= 1:
             raise ValueError
-        if not isinstance(probabilities, dict) or set(probabilities) != ALLOWED_CATEGORIES:
-            raise ValueError
-        probability_map = {name: float(value) for name, value in probabilities.items()}
-        if any(not math.isfinite(value) or not 0 <= value <= 1 for value in probability_map.values()):
-            raise ValueError
+        probability_map = normalize_probabilities(probabilities, ALLOWED_CATEGORIES)
         if not isinstance(model, str) or not model or len(model) > 80:
             raise ValueError
         input_tokens, output_tokens = int(usage['input_tokens']), int(usage['output_tokens'])

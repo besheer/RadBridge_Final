@@ -61,6 +61,13 @@ def test_openai_adapter_rejects_refusal_and_malformed_probability_sets():
     with pytest.raises(OpenAIUnavailable):
         suggest_category('C_STORE_FAILURE', 0, api_key='synthetic-test-key', transport=transport)
 
+    invalid_mass = response()
+    for item in invalid_mass['answers'][0]['probabilities']:
+        item['probability'] = 0.2
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json=invalid_mass))
+    with pytest.raises(OpenAIUnavailable):
+        suggest_category('C_STORE_FAILURE', 0, api_key='synthetic-test-key', transport=transport)
+
     malformed = {'model': 'gpt-6-luna', 'usage': {'input_tokens': 1, 'output_tokens': 0},
                  'answers': ['unexpected-shape']}
     transport = httpx.MockTransport(lambda request: httpx.Response(200, json=malformed))

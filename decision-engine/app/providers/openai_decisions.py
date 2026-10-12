@@ -4,6 +4,7 @@ import math
 import os
 
 import httpx
+from app.providers.probabilities import normalize_probabilities
 
 ENDPOINT = 'https://api.openai.com/v1/decisions'
 MODEL_DEFAULT = 'gpt-6-luna'
@@ -39,11 +40,8 @@ def _validate_response(data: dict) -> OpenAISuggestion:
             raise ValueError
         if not isinstance(probabilities, list) or len(probabilities) != len(ALLOWED_CATEGORIES):
             raise ValueError
-        probability_map = {item['value']: float(item['probability']) for item in probabilities}
-        if set(probability_map) != ALLOWED_CATEGORIES:
-            raise ValueError
-        if any(not math.isfinite(value) or not 0 <= value <= 1 for value in probability_map.values()):
-            raise ValueError
+        probability_map = normalize_probabilities(
+            {item['value']: item['probability'] for item in probabilities}, ALLOWED_CATEGORIES)
         model = data['model']
         usage = data['usage']
         input_tokens, output_tokens = int(usage['input_tokens']), int(usage['output_tokens'])

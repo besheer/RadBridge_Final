@@ -34,6 +34,19 @@ def test_jev_rejects_malformed_or_unexpected_categories():
     with pytest.raises(JevUnavailable):
         suggest_category('C_STORE_FAILURE',0,api_key='synthetic-test-key',transport=transport)
 
+def test_jev_normalizes_small_rounding_drift_and_rejects_invalid_distribution():
+    rounded=provider_payload()
+    rounded['answers']['category']['probabilities']['UNKNOWN']=0.019
+    transport=httpx.MockTransport(lambda request:httpx.Response(200,json=rounded))
+    result=suggest_category('C_STORE_FAILURE',0,api_key='synthetic-test-key',transport=transport)
+    assert sum(result.probabilities.values())==pytest.approx(1.0)
+
+    malformed=provider_payload()
+    malformed['answers']['category']['probabilities']={name:0.2 for name in malformed['answers']['category']['probabilities']}
+    transport=httpx.MockTransport(lambda request:httpx.Response(200,json=malformed))
+    with pytest.raises(JevUnavailable):
+        suggest_category('C_STORE_FAILURE',0,api_key='synthetic-test-key',transport=transport)
+
 def test_jev_transport_failure_fails_closed_without_retry():
     def fail(request):
         raise httpx.ReadTimeout('sensitive transport details')
