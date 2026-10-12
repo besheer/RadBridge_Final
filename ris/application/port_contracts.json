@@ -120,6 +120,26 @@
       "module": "application.services.identity.user_contacts",
       "repository": "infrastructure.adapters.identity.contact_repository",
       "composition": "web.compatibility.user_access_policy"
+    },
+    {
+      "module": "application.services.registration.demographic_corrections",
+      "repository": "infrastructure.adapters.registration.demographic_repository",
+      "composition": "web.compatibility.patient_correction_policy"
+    },
+    {
+      "module": "application.services.finance.delivery_readiness",
+      "repository": "infrastructure.adapters.finance.delivery_repository",
+      "composition": "web.compatibility.delivery_policy"
+    },
+    {
+      "module": "application.services.assignment.monitoring_queries",
+      "repository": "infrastructure.adapters.assignment.monitor_repository",
+      "composition": "web.compatibility.assignment_monitor"
+    },
+    {
+      "module": "application.services.registration.appointment_creation",
+      "repository": "infrastructure.adapters.registration.appointment_repository",
+      "composition": "web.compatibility.legacy_booking"
     }
   ],
   "helpers": [

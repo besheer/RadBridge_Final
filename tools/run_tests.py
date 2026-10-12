@@ -46,7 +46,8 @@ def main():
                      "tests/test_readiness_resolution_dependencies.py","tests/test_readiness_resolution_runtime.py","tests/test_readiness_search_dependencies.py","tests/test_readiness_search_runtime.py", "tests/test_readiness_scheduling_dependencies.py", "tests/test_readiness_scheduling_runtime.py", "tests/test_operations_snapshot_dependencies.py", "tests/test_operations_snapshot_runtime.py"]
             if args.postgres_suite == "assignment":
                 targets=["tests/test_assignment_transaction_dependencies.py", "tests/test_visit_service_dependencies.py", "tests/test_distribution_domain.py",
-                         "tests/test_assignment_visit_grouping.py", "tests/test_case_assignment_service.py"]
+                         "tests/test_assignment_visit_grouping.py", "tests/test_case_assignment_service.py",
+                         "tests/test_assignment_monitor_dependencies.py", "tests/test_assignment_monitor.py"]
             elif args.postgres_suite == "scope":
                 targets=["tests/test_scope_dependencies.py", "tests/test_clinical_scope.py", "tests/test_clinical_app_factory.py", "tests/test_user_contact_dependencies.py", "tests/test_user_contacts_access.py", "tests/test_user_csv_transfer.py"]
             elif args.postgres_suite == "reporting":
@@ -54,12 +55,15 @@ def main():
                          "tests/test_report_commit_runtime.py", "tests/test_report_revisions.py",
                          "tests/test_report_identity_renewal.py", "tests/test_onlyoffice_callback_internal_download_url.py"]
             elif args.postgres_suite == "finance":
-                targets=["tests/test_settlement_workflow_dependencies.py", "tests/test_replacement_settlements.py", "tests/test_finance_evidence_dependencies.py", "tests/test_daily_closing_governance.py", "tests/test_closing_workflow_dependencies.py"]
+                targets=["tests/test_settlement_workflow_dependencies.py", "tests/test_replacement_settlements.py", "tests/test_finance_evidence_dependencies.py", "tests/test_daily_closing_governance.py", "tests/test_closing_workflow_dependencies.py",
+                         "tests/test_delivery_readiness_dependencies.py", "tests/test_delivery_policy.py"]
             elif args.postgres_suite == "inventory":
                 targets=["tests/test_inventory_return_dependencies.py", "tests/test_inventory_safety.py"]
             elif args.postgres_suite == "registration":
                 targets=["tests/test_registration_dependencies.py", "tests/test_registration_policy.py",
-                         "tests/test_insurance_readiness_dependencies.py", "tests/test_insurance_work_order.py"]
+                         "tests/test_insurance_readiness_dependencies.py", "tests/test_insurance_work_order.py",
+                         "tests/test_demographic_correction_dependencies.py", "tests/test_structured_patient_corrections.py",
+                         "tests/test_appointment_creation_dependencies.py", "tests/test_legacy_booking_safety.py"]
         else:
             source=ROOT/"ris";env["DATABASE_URL"]="sqlite:///:memory:"
             targets=args.targets

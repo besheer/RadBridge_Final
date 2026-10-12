@@ -1,73 +1,74 @@
 # RadBridge architecture development
 
-This branch implements a modular monolith on an isolated development branch. It has not been deployed to production. The data and route contracts are preserved; see [implementation status](IMPLEMENTATION_STATUS.md) for the distinction between implemented ownership boundaries and remaining runtime coupling.
+Updated: 2026-10-12. This is an isolated modular-monolith development branch. It has not been merged/deployed to production. Clinical release metadata remains 5.46.9; local architecture commits are not a new deployed release.
 
-## What changed
+## Current source structure
 
-- Pure readiness policy moved to `ris/domain/readiness.py`. The old module re-exports the same functions for existing callers.
-- Added behavioral/purity contracts and a synthetic-only test runner.
-- Added dedicated `compose.dev.yaml`, a development Dockerfile/initializer and example environment settings. Existing historical deployment files are not used.
-- Captured exact resolved dependency versions in `development/constraints.txt`; install with the existing requirements plus those constraints.
-- CI defines a full SQLite suite and an isolated PostgreSQL RT/readiness contract suite. Neither job deploys or uses production credentials.
-- All 160 ORM definitions belong to 14 canonical infrastructure model modules, with one shared unbound SQLAlchemy extension.
-- Ten independent policy modules moved into the domain packages; legacy imports retain module/object identity.
-- 949 executable handlers belong to 32 web/application modules with explicit compatibility dependencies. HTTP helpers and request hooks belong to the web layer; application components do not receive HTTP framework dependencies.
-- 76 existing services, adapters, extensions and worker modules moved into owned packages. Legacy import and CLI facades preserve callers.
-- Web settings and clinical application construction are independent per supported instance settings. Development WSGI uses `web.factory:create_clinical_app()`; `app:app` remains compatible. See ADR 007 for configuration/lifecycle contracts.
-- Distribution policy, active-case and capacity queries execute through an explicitly injected service/repository pair. Remaining distribution orchestration is marked as web compatibility; see ADR 009.
-- Start-deadline and candidate-ordering decisions execute in `domain.assignment.distribution` over supplied facts, preserving the existing distribution keys; see ADR 010.
-- Assignment mutation and offer acceptance receive explicit repository and policy ports; PostgreSQL CI checks clinical and assignment suites separately. See ADR 011.
+- `ris/domain`: framework-free policies for assignment/readiness/identity/reporting/finance/inventory/registration/manual RT.
+- `ris/application/components`: existing executable orchestration owners; compatibility bindings still require further inversion.
+- `ris/application/services`: 28 registered narrow service boundaries, with application/repository/composition owners in the port registry.
+- `ris/infrastructure`: 160 models in 14 model modules, unbound SQLAlchemy extension, repositories/adapters/resources/settings.
+- `ris/web`: factory, routes/helpers/extensions and compatibility composition. Six former Flask service owners now live here with unchanged behavior (ADR 037).
+- Original entry-point ownership: 949 functions in 32 component/route/helper modules; 76 migrated modules retain canonical legacy aliases. Registered routes remain 546. These are inventories, not a whole-project completion percentage.
 
-## Start local RIS development (Ubuntu/Docker Compose v2)
+Explicit boundaries cover assignment queries/mutations/grouped visits/monitoring; clinical scope/contacts; report save/edit leases/correction review; replacement settlement; original-lot returns; registration visits/insurance/demographic requests/appointment creation; readiness resolution/search/refresh/operations snapshot; collection/closing evidence/mutations; manual RT course, external plan record, session commands, support and read projections.
 
-```sh
-cp development/.env.example development/.env.local
-# Edit development-only credentials before using the local login.
-docker compose --env-file development/.env.local -f compose.dev.yaml up --build -d
-docker compose --env-file development/.env.local -f compose.dev.yaml ps
-```
+The latest boundary (ADR 038) creates an appointment for an existing patient through persistence/device-routing/slot-lock/restriction/actor/audit ports. Web composition still authorizes the branch and owns savepoint/commit/rollback, form parsing, flashes and redirects. Other booking/rescheduling/check-in workflows remain unfinished.
 
-Open `http://127.0.0.1:18080/login`; the development seed creates the initial admin according to the existing seed function and the local password. The DB is not published to the host. The explicit initializer accepts only the Compose-local development database and never drops tables. It is not a migration/restore tool for existing production.
+## Validation evidence
 
-Only RIS/PostgreSQL are included in this first development stack. Real PACS, OHIF deployment, ONLYOFFICE, VPN/host collectors, omitted binary assets and external destinations are not provisioned by this Compose file. Image/editor clinical workflows require a separately reviewed synthetic integration setup. No external worker or delivery is started by default. The repository's conservative export omissions remain documented in CHECKPOINT_MANIFEST.json.
+Latest complete local suite: **2,077 passed, five skipped**, 43,278 warnings in 146.85 seconds. Appointment-focused group: 69 passed; HTTP relocation group: 135 passed; guard/helper group: six passed. Architecture and exact before/after schema/route captures passed.
 
-Stop with `docker compose --env-file development/.env.local -f compose.dev.yaml down`. Keep volumes for reuse. Do not use `down -v` against data you need to keep. Ignore `.env.local` and generated patient/report files in Git.
+An earlier complete run hit local cryptographic allocation errors; a subsequent security-only run hit disk/cache exhaustion. All 22 security tests and then the unchanged complete suite passed on fresh reruns. No hashing algorithm/assertions were weakened and no host cleanup/configuration change was made.
 
-## Tests
+Latest verified GitHub baseline remains commit `262484ed248312f1c8ec0ba9ea76d8f800500598`, run `38216929249`: all nine jobs successful, including 2,023 SQLite passed/five skipped, seven PostgreSQL suites and Docker smoke. New local additions require publication and their own PostgreSQL/Docker/remote CI. Do not attribute previous CI to newer source.
+
+The checker enforces domain/model/registered-port import rules and rejects direct Flask imports anywhere in application/services, including unregistered modules. Three direct SQLAlchemy imports remain outside the registry; indirect callback/runtime dependencies remain too. Passing guards does not certify every old service or integration.
+
+## Source checks (Python 3.12)
+
+From repository root on Ubuntu:
 
 ```sh
 python -m venv .venv
 . .venv/bin/activate
 python -m pip install -r ris/requirements.txt -c development/constraints.txt
+python tools/check_architecture.py
 python tools/run_tests.py
+python tools/audit_dependency_seams.py --output /tmp/radbridge-dependency-seams.json
 ```
 
-The runner forces in-memory SQLite and temporary report/attachment/backup directories. PostgreSQL mode requires an isolated `radbridge_dev_test` database owned by `radbridge_test` at localhost/127.0.0.1/postgres, with `postgresql+psycopg2` driver. Set RADBRIDGE_TEST_DATABASE_URL privately and run `python tools/run_tests.py --postgres`; the fixed suite resets only that synthetic database's schema. It copies/adapts fixtures in a temporary directory; production and repository fixtures are not modified.
+On Windows use the virtual environment's Python and an appropriate output path. The runner forces synthetic SQLite and temporary report/attachment/backup directories. Unit/contract tests block real provider HTTP. The census reads source/manifests only, without importing the app, reading environment values, querying databases or calling providers. Counts are static evidence locations, not executed calls, vulnerabilities or completion percentages.
 
-## Next boundaries
+PostgreSQL accepts only the dedicated `radbridge_dev_test` database/user `radbridge_test`, driver `postgresql+psycopg2` and localhost/127.0.0.1/`postgres`. Set `RADBRIDGE_TEST_DATABASE_URL` privately, then run `python tools/run_tests.py --postgres --postgres-suite registration`. Available suites: clinical, assignment, scope, reporting, finance, inventory, registration. This mode resets only the guarded synthetic schema and adapts fixtures in a temporary source copy. Never use operational data.
 
-Ownership extraction is implemented across the listed areas. Continue replacing compatibility bindings with narrow use-case dependencies, preserving callable/route/data contracts. Synthetic unit/contract tests block real HTTP transport; external-service acceptance belongs in a separate reviewed integration environment. Do not introduce microservices before the validation gates in docs/blueprint/VALIDATION_PLAN.md. This branch does not make the repository a complete PACS/ONLYOFFICE deployment or disaster-recovery package.
+Registration includes demographic/appointment creation dependencies and routes; finance includes delivery readiness; assignment includes monitoring. These additions still require new PostgreSQL runs.
 
-Clinical scope validation, access decisions and SQL queries have distinct owners (ADR 012); web registration retains CSRF, guards and listener lifecycle. PostgreSQL CI runs clinical, assignment and scope suites independently.
+## Fresh development deployment (Ubuntu / Docker Compose v2)
 
-Grouped visit workflows now execute through explicit evidence/repository/policy ports (ADR 013), preserving patient/branch/source identity, qualification, capacity and deadline behavior.
+```sh
+cp development/.env.example development/.env.local
+# Set independent development-only credentials locally.
+docker compose --env-file development/.env.local -f compose.dev.yaml up --build -d
+docker compose --env-file development/.env.local -f compose.dev.yaml ps
+```
 
-Report saving, editing leases, correction request/review, replacement entitlement settlement, original-lot inventory returns and visit registration now have explicit workflow/evidence/repository dependencies (ADRs 014–019). Insurance readiness uses latest-decision evidence (ADR 020); readiness resolution mutations use explicit repository and clock ports (ADR 021). Read-only RIS search has explicit query and ranking ownership (ADR 022). Readiness scheduling and refresh use explicit dependencies while HTTP ownership remains at the web edge (ADR 023). Read-only operations aggregation has explicit SQL, projection and clock ownership (ADR 024). Collection access and closing evidence have explicit repository and monetary policy dependencies (ADR 025). Daily closing saving/finalization receives explicit authorization, persistence, audit and clock dependencies (ADR 026). Twenty-four service boundaries are listed in `ris/application/port_contracts.json` and enforced by `python tools/check_architecture.py`; this does not claim all legacy use cases are migrated.
+Open `http://127.0.0.1:18080/login`. The initial admin follows the seed function and local password. The database is not published to the host. The explicit initializer accepts only the Compose-local development database; it is not a production migration/restore tool. Stop with `docker compose --env-file development/.env.local -f compose.dev.yaml down`; retain volumes when needed.
 
-PostgreSQL CI runs independent `clinical`, `assignment`, `scope`, `reporting`, `finance`, `inventory` and `registration` suites. Select one locally with `python tools/run_tests.py --postgres --postgres-suite registration` (or another listed suite), using only the guarded synthetic database. SQLite runs the whole suite. Docker smoke checks the separate RIS/PostgreSQL development stack; external PACS/editor/viewer acceptance remains required.
+The stack includes RIS/PostgreSQL only. PACS, OHIF deployment, ONLYOFFICE, external workers, host collectors/VPN, all omitted binary assets and external destinations are not provisioned. Orthanc loopback defaults refer to the RIS container, not the host. Image/editor workflows require a separately configured synthetic integration environment. Export omissions remain in checkpoint/completeness metadata.
 
-Regenerate `ris/docs/CODE_MAP.md` with `python ris/tools/generate_code_map.py` after ownership changes. It links models, composed routes, legacy module owners and the explicit port registry to executable code.
+Development WSGI uses `web.factory:create_clinical_app()`; `app:app` remains compatible. Supported per-instance database/secret/storage/cookie/runtime-URL settings are isolated; some provider/host flags remain process-level (ADR 007).
 
-Manual RT input validation is framework-free domain policy; its existing registration/routes now belong to the web extension (ADR 027). RT transaction use cases and external treatment-device integration remain unfinished.
+## Remaining gates and references
 
-Manual RT course creation and PET reference linking have explicit persistence, scope, actor and audit dependencies (ADR 028). Plans, session scheduling/delivery records, notes and consumables remain unfinished transaction boundaries.
+Continue replacing broad Bindings/runtime and mixed orchestration. Open work includes readiness evidence/coordinator previews/workers, editor callbacks/finalization/exports and DB-file recovery, broader cash/stock transactions, patient/new-booking/reschedule workflows, staff execution/CSV apply, auxiliary query visibility and provider/host lifecycle.
 
-Externally approved manual RT plan records have explicit locks, delivery/attachment evidence, actor/scope, audit and approval-date dependencies (ADR 029). See [progress measures](PROGRESS.md) for measured counts and the limits of percentage estimates.
+Provision external synthetic PACS/editor/viewer acceptance and browser role UAT; test delayed/lost callbacks, partial transfer/retries, restart/recovery, role/branch visibility and upgrade/rollback/backup restoration. Unit tests and ownership do not close these gates. Production merge/deployment needs a separate release decision.
 
-Manual RT session schedule/reschedule/start/complete/cancel commands have explicit repository and scope/actor/audit/clock dependencies (ADR 030); identical completion retry remains read-only. Course state, notes and consumables remain separate unfinished dependencies.
+- [Implementation status](IMPLEMENTATION_STATUS.md): boundaries and commit-specific evidence.
+- [Progress measures](PROGRESS.md): inventories and limits of percentage estimates.
+- [Server transfer readiness](SERVER_TRANSFER_READINESS.md): development versus full clinical transfer.
+- [Code map](../../ris/docs/CODE_MAP.md), [port registry](../../ris/application/port_contracts.json), component/module manifests.
+- ADRs 001–038: historical decisions and limitations; consolidated status above is current.
 
-Manual RT course state, notes and consumable records have explicit repositories and policies (ADR 031). Shared RT context helpers are declared separately and receive the same import checks; they do not inflate workflow counts. Read projections and external acceptance remain open.
-
-RT worklist/detail/device projections have explicit scoped read repositories (ADR 032). All manual RT queries and mutations now use application/adapter interfaces; HTTP roles/configuration and external acceptance remain separate review gates.
-
-Contact preference persistence and delegated user hierarchy have explicit repository/domain ownership (ADR 033). Existing route permission checks, CSV authorization and omitted preference preservation remain unchanged; broader lifecycle/import transactions remain unfinished.
+Regenerate the code map with `python ris/tools/generate_code_map.py` after ownership changes. Historical blueprint/handover documents describe earlier snapshots; compare them with the actual reviewed commit.

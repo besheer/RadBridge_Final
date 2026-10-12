@@ -3,6 +3,24 @@
 !development/.env.example
 node_modules/
 __pycache__/
+
+# Operational material and private signing/authentication keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.sqlite
+*.sqlite3
+*.db
+*.dcm
+*.dicom
+/attachments/
+/backups/
+/secrets/
+/ris/attachments/
+/ris/backups/
+/ris/secrets/
 .pytest_cache/
 .mypy_cache/
 .cache/

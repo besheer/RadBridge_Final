@@ -1,4 +1,4 @@
-"""Compatibility entry point for application.services.assignment.assignment_monitor."""
+"""Compatibility entry point for web.compatibility.assignment_monitor."""
 import importlib as _importlib
 import sys as _sys
-_sys.modules[__name__] = _importlib.import_module('application.services.assignment.assignment_monitor')
+_sys.modules[__name__] = _importlib.import_module('web.compatibility.assignment_monitor')

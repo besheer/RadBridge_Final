@@ -1,6 +1,6 @@
 # ADR 033: Contact storage and delegated management policy
 
-Status: implemented on the isolated development branch; new full CI required.
+Status: implemented on the isolated development branch. Its GitHub commit 262484ed248312f1c8ec0ba9ea76d8f800500598 subsequently passed all nine jobs in run 38216929249 (2,023 SQLite passed, five skipped). Later local changes require separate validation.
 
 Contact input validation, protected-role constants, access-review labels and delegated management hierarchy belong to pure identity policy modules. Contact read/write operations receive an explicit profile repository and settings reader. The repository preserves the original profile lookup/create/default department/add/flush behavior; caller commits remain unchanged.
 

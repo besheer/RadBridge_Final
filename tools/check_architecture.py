@@ -16,6 +16,13 @@ def violations():
             if not owner.is_file():
                 issues.append(f"port contract missing {key}: {entry[key]}")
     modules=[entry['module'] for entry in contracts['services']]+contracts.get('helpers',[])
+    for path in sorted((ROOT / 'application/services').rglob('*.py')):
+        tree=ast.parse(path.read_text(encoding='utf-8-sig'))
+        for node in ast.walk(tree):
+            imports=[alias.name for alias in node.names] if isinstance(node,ast.Import) else [node.module or ''] if isinstance(node,ast.ImportFrom) else []
+            for name in imports:
+                if name.split('.')[0]=='flask':
+                    issues.append(f"{path.relative_to(ROOT)}:{node.lineno}: application service imports HTTP framework {name}")
     for module in modules:
         path=ROOT / (module.replace('.','/')+'.py')
         if not path.is_file():

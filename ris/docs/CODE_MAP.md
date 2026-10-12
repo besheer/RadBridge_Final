@@ -638,7 +638,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `assignment_deadline_worker` | [workers.assignment_deadline_worker](../workers/assignment_deadline_worker.py) |
 | `assignment_distribution` | [web.compatibility.assignment_distribution](../web/compatibility/assignment_distribution.py) |
 | `assignment_maintenance` | [workers.assignment_maintenance](../workers/assignment_maintenance.py) |
-| `assignment_monitor` | [application.services.assignment.assignment_monitor](../application/services/assignment/assignment_monitor.py) |
+| `assignment_monitor` | [web.compatibility.assignment_monitor](../web/compatibility/assignment_monitor.py) |
 | `assignment_visit_grouping` | [web.compatibility.assignment_visit_grouping](../web/compatibility/assignment_visit_grouping.py) |
 | `backup_worker` | [workers.backup_worker](../workers/backup_worker.py) |
 | `bootstrap_db` | [workers.tools.bootstrap_db](../workers/tools/bootstrap_db.py) |
@@ -649,7 +649,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `collection_policy` | [web.compatibility.collection_policy](../web/compatibility/collection_policy.py) |
 | `coordinator_bulk_assignment` | [application.services.assignment.coordinator_bulk_assignment](../application/services/assignment/coordinator_bulk_assignment.py) |
 | `daily_closing_policy` | [web.extensions.daily_closing_policy](../web/extensions/daily_closing_policy.py) |
-| `delivery_policy` | [application.services.finance.delivery_policy](../application/services/finance/delivery_policy.py) |
+| `delivery_policy` | [web.compatibility.delivery_policy](../web/compatibility/delivery_policy.py) |
 | `dicom_connections` | [infrastructure.adapters.imaging.dicom_connections](../infrastructure/adapters/imaging/dicom_connections.py) |
 | `dicom_echo_worker` | [workers.dicom_echo_worker](../workers/dicom_echo_worker.py) |
 | `dicom_export_routes` | [web.extensions.dicom_export_routes](../web/extensions/dicom_export_routes.py) |
@@ -657,7 +657,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `dicom_reconciliation` | [application.services.imaging.dicom_reconciliation](../application/services/imaging/dicom_reconciliation.py) |
 | `insurance_policy` | [web.compatibility.insurance_policy](../web/compatibility/insurance_policy.py) |
 | `inventory_safety` | [web.compatibility.inventory_safety](../web/compatibility/inventory_safety.py) |
-| `legacy_booking` | [application.services.registration.legacy_booking](../application/services/registration/legacy_booking.py) |
+| `legacy_booking` | [web.compatibility.legacy_booking](../web/compatibility/legacy_booking.py) |
 | `live_self_test` | [workers.tools.live_self_test](../workers/tools/live_self_test.py) |
 | `ohif_identity` | [infrastructure.adapters.imaging.ohif_identity](../infrastructure/adapters/imaging/ohif_identity.py) |
 | `onlyoffice_report_bridge` | [infrastructure.adapters.reporting.onlyoffice_report_bridge](../infrastructure/adapters/reporting/onlyoffice_report_bridge.py) |
@@ -665,12 +665,12 @@ Additional extension routes and services are mapped by `application/module_manif
 | `pacs_resolution_service` | [application.services.imaging.pacs_resolution_service](../application/services/imaging/pacs_resolution_service.py) |
 | `pacs_thumbnail` | [infrastructure.adapters.imaging.pacs_thumbnail](../infrastructure/adapters/imaging/pacs_thumbnail.py) |
 | `pacs_worker` | [workers.pacs_worker](../workers/pacs_worker.py) |
-| `patient_correction_policy` | [application.services.registration.patient_correction_policy](../application/services/registration/patient_correction_policy.py) |
+| `patient_correction_policy` | [web.compatibility.patient_correction_policy](../web/compatibility/patient_correction_policy.py) |
 | `physician_final_counts` | [web.extensions.physician_final_counts](../web/extensions/physician_final_counts.py) |
 | `physician_report_workload` | [web.extensions.physician_report_workload](../web/extensions/physician_report_workload.py) |
 | `preflight` | [workers.tools.preflight](../workers/tools/preflight.py) |
 | `procedure_catalog` | [application.services.registration.procedure_catalog](../application/services/registration/procedure_catalog.py) |
-| `procedure_staff_workflow` | [application.services.clinical.procedure_staff_workflow](../application/services/clinical/procedure_staff_workflow.py) |
+| `procedure_staff_workflow` | [web.extensions.procedure_staff_workflow](../web/extensions/procedure_staff_workflow.py) |
 | `radbridge_ocr` | [infrastructure.adapters.registration.radbridge_ocr](../infrastructure/adapters/registration/radbridge_ocr.py) |
 | `radiotherapy` | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 | `radiotherapy_migration` | [infrastructure.schema.radiotherapy_migration](../infrastructure/schema/radiotherapy_migration.py) |
@@ -679,11 +679,11 @@ Additional extension routes and services are mapped by `application/module_manif
 | `registration_policy` | [web.compatibility.registration_policy](../web/compatibility/registration_policy.py) |
 | `replacement_settlements` | [web.extensions.replacement_settlements](../web/extensions/replacement_settlements.py) |
 | `report_commit_core` | [infrastructure.adapters.reporting.report_commit_core](../infrastructure/adapters/reporting/report_commit_core.py) |
-| `report_draft_warnings` | [application.services.reporting.report_draft_warnings](../application/services/reporting/report_draft_warnings.py) |
+| `report_draft_warnings` | [web.extensions.report_draft_warnings](../web/extensions/report_draft_warnings.py) |
 | `report_edit_control` | [web.compatibility.report_edit_control](../web/compatibility/report_edit_control.py) |
 | `report_exports` | [web.extensions.report_exports](../web/extensions/report_exports.py) |
 | `report_identity_routes` | [web.extensions.report_identity_routes](../web/extensions/report_identity_routes.py) |
-| `report_revision_editor` | [application.services.reporting.report_revision_editor](../application/services/reporting/report_revision_editor.py) |
+| `report_revision_editor` | [web.extensions.report_revision_editor](../web/extensions/report_revision_editor.py) |
 | `report_revisions` | [web.extensions.report_revisions](../web/extensions/report_revisions.py) |
 | `report_storage_safety` | [infrastructure.adapters.reporting.report_storage_safety](../infrastructure/adapters/reporting/report_storage_safety.py) |
 | `report_template_conversion` | [infrastructure.adapters.reporting.report_template_conversion](../infrastructure/adapters/reporting/report_template_conversion.py) |
@@ -699,13 +699,13 @@ Additional extension routes and services are mapped by `application/module_manif
 | `smoke_test_v533` | [workers.tools.smoke_test_v533](../workers/tools/smoke_test_v533.py) |
 | `stabilization_self_test` | [workers.tools.stabilization_self_test](../workers/tools/stabilization_self_test.py) |
 | `staff_communications_reference_routes` | [web.extensions.staff_communications_reference_routes](../web/extensions/staff_communications_reference_routes.py) |
-| `staff_worklist_filters` | [application.services.clinical.staff_worklist_filters](../application/services/clinical/staff_worklist_filters.py) |
+| `staff_worklist_filters` | [web.extensions.staff_worklist_filters](../web/extensions/staff_worklist_filters.py) |
 | `storage_routes` | [web.extensions.storage_routes](../web/extensions/storage_routes.py) |
 | `technician_queue` | [application.services.clinical.technician_queue](../application/services/clinical/technician_queue.py) |
 | `telephony_reference_routes` | [web.extensions.telephony_reference_routes](../web/extensions/telephony_reference_routes.py) |
 | `ui_localization` | [web.extensions.ui_localization](../web/extensions/ui_localization.py) |
 | `user_access_policy` | [web.compatibility.user_access_policy](../web/compatibility/user_access_policy.py) |
-| `user_csv_transfer` | [application.services.identity.user_csv_transfer](../application/services/identity/user_csv_transfer.py) |
+| `user_csv_transfer` | [web.extensions.user_csv_transfer](../web/extensions/user_csv_transfer.py) |
 | `viewer_choice` | [web.extensions.viewer_choice](../web/extensions/viewer_choice.py) |
 | `voice_ai` | [infrastructure.adapters.communications.voice_ai](../infrastructure/adapters/communications/voice_ai.py) |
 | `voice_scheduling_reference_routes` | [web.extensions.voice_scheduling_reference_routes](../web/extensions/voice_scheduling_reference_routes.py) |
@@ -740,6 +740,10 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.clinical.rt_support_workflow](../application/services/clinical/rt_support_workflow.py) | [infrastructure.adapters.clinical.rt_support_repository](../infrastructure/adapters/clinical/rt_support_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 | [application.services.clinical.rt_read_queries](../application/services/clinical/rt_read_queries.py) | [infrastructure.adapters.clinical.rt_read_repository](../infrastructure/adapters/clinical/rt_read_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 | [application.services.identity.user_contacts](../application/services/identity/user_contacts.py) | [infrastructure.adapters.identity.contact_repository](../infrastructure/adapters/identity/contact_repository.py) | [web.compatibility.user_access_policy](../web/compatibility/user_access_policy.py) |
+| [application.services.registration.demographic_corrections](../application/services/registration/demographic_corrections.py) | [infrastructure.adapters.registration.demographic_repository](../infrastructure/adapters/registration/demographic_repository.py) | [web.compatibility.patient_correction_policy](../web/compatibility/patient_correction_policy.py) |
+| [application.services.finance.delivery_readiness](../application/services/finance/delivery_readiness.py) | [infrastructure.adapters.finance.delivery_repository](../infrastructure/adapters/finance/delivery_repository.py) | [web.compatibility.delivery_policy](../web/compatibility/delivery_policy.py) |
+| [application.services.assignment.monitoring_queries](../application/services/assignment/monitoring_queries.py) | [infrastructure.adapters.assignment.monitor_repository](../infrastructure/adapters/assignment/monitor_repository.py) | [web.compatibility.assignment_monitor](../web/compatibility/assignment_monitor.py) |
+| [application.services.registration.appointment_creation](../application/services/registration/appointment_creation.py) | [infrastructure.adapters.registration.appointment_repository](../infrastructure/adapters/registration/appointment_repository.py) | [web.compatibility.legacy_booking](../web/compatibility/legacy_booking.py) |
 
 ### Shared application context helpers
 
