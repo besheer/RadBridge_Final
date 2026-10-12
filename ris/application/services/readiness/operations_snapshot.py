@@ -21,7 +21,7 @@ def _utc_now_naive():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def build_case_operations_snapshot(*, repository, readiness_view, clock, limit=300, now=None):
+def build_case_operations_snapshot(*, repository, readiness_view, clock, limit=300, now=None, branch_ids=None):
     """Return a unified, read-only operational snapshot.
 
     ``limit`` bounds all worklists.  The function never calls flush/commit and
@@ -32,7 +32,7 @@ def build_case_operations_snapshot(*, repository, readiness_view, clock, limit=3
     now = now or clock()
     limit = max(1, min(int(limit or 300), 1000))
 
-    orders = repository.orders(limit)
+    orders = repository.orders(limit, branch_ids=branch_ids)
     order_ids = [row.id for row in orders]
 
     reports = {row.order_id: row for row in repository.reports(order_ids)}
@@ -46,7 +46,7 @@ def build_case_operations_snapshot(*, repository, readiness_view, clock, limit=3
 
     current_leases = {}
     expired_lease_count = 0
-    lease_rows = repository.leases()
+    lease_rows = repository.leases(order_ids=order_ids)
     for lease in lease_rows:
         expires_at = lease["expires_at"]
         comparable = expires_at
@@ -115,13 +115,13 @@ def build_case_operations_snapshot(*, repository, readiness_view, clock, limit=3
         if reasons:
             attention.append(item)
 
-    review_required = repository.inbox("REVIEW_REQUIRED", limit)
-    quarantined = repository.inbox("QUARANTINED", limit)
-    active_exam_links = repository.active_links(limit)
-    enabled_strategies = repository.strategies()
+    review_required = repository.inbox("REVIEW_REQUIRED", limit, order_ids=order_ids)
+    quarantined = repository.inbox("QUARANTINED", limit, order_ids=order_ids)
+    active_exam_links = repository.active_links(limit, order_ids=order_ids)
+    enabled_strategies = repository.strategies(branch_ids=branch_ids)
 
-    recent_escalations = repository.recent_escalations()
-    recent_pacs_events = repository.recent_pacs_events()
+    recent_escalations = repository.recent_escalations(order_ids=order_ids)
+    recent_pacs_events = repository.recent_pacs_events(order_ids=order_ids)
 
     open_cases = [item for item in cases if not item["terminal"]]
     metrics = {
