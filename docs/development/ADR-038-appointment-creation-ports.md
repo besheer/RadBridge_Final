@@ -1,0 +1,11 @@
+# ADR 038: Existing-patient appointment creation
+
+Status: implemented locally on the isolated development branch; publication/CI is separate.
+
+The legacy appointments POST handler now composes AppointmentCreation from a repository plus procedure availability, default-device routing, slot locking, booking restriction, actor and audit dependencies. Domain parsing requires the existing naive local datetime. The repository owns active-branch/procedure reads, patient/device lookup and Appointment add/flush; no commit, rollback, patient mutation or order creation is supplied by it.
+
+HTTP composition retains typed form extraction, branch authorization before opening the savepoint, savepoint creation, success/validation-failure handling, outer commit, flash messages and redirect. Appointment creation preserves validation order: existing active branch/procedure/patient, availability, local datetime, branch/modality-compatible device, original duration/default, slot lock, restriction recheck, add/flush and audit. Source/notes defaults, BOOKED state and actor attribution remain unchanged.
+
+This boundary covers the old existing-patient appointments entry, not every scheduling operation. New-patient booking, booking v2, rescheduling/check-in/cancellation, permission/evidence helpers and operational recovery still require independent boundaries/review. Existing unexpected database/outer-commit failures remain caller concerns; this extraction does not add a new commit-recovery protocol or certify concurrent-booking behavior on a new host.
+
+Focused validation: 69 tests passed across standalone creation barriers/ordering, existing route overlap/device/time/block safety, registration scope/edit/check-in behavior, booking locking, facade/factory identity and HTTP import guards. New dependency tests prove no writes on missing/unavailable evidence, invalid/aware date and wrong device; lock precedes restriction/write; failed writes do not emit success audit. The PostgreSQL registration suite includes new creation tests and existing legacy booking routes, but a new PostgreSQL run remains required. Runtime schema/route captures are identical (160 tables, 546 registrations). Full local suite outcome is recorded in implementation status.

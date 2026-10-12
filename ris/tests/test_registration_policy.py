@@ -114,15 +114,15 @@ def test_visit_link_mismatch_fails_closed(monkeypatch, mismatch):
     with m.app.test_request_context('/'):
         vid = policy.select_visit(patient, branch, datetime(2037, 2, 3), [proc], MultiDict())
         visit = m.AssignmentVisit.query.filter_by(id=vid).one()
+        # Exercise mismatched registration input without corrupting saved FKs.
+        from types import SimpleNamespace
         if mismatch == 'patient':
-            visit.patient_id += 1
+            patient=SimpleNamespace(id=patient.id+100000)
         if mismatch == 'branch':
-            visit.branch_id += 1
-        if mismatch == 'date':
-            visit.visit_date = datetime(2037, 2, 4).date()
-        m.db.session.flush()
+            branch=SimpleNamespace(id=branch.id+100000)
+        scheduled=datetime(2037,2,4) if mismatch=='date' else datetime(2037,2,3)
         with pytest.raises(ValueError, match='same patient, branch and date'):
-            policy.select_visit(patient, branch, datetime(2037, 2, 3), [proc], MultiDict({'assignment_visit_id': vid}))
+            policy.select_visit(patient, branch, scheduled, [proc], MultiDict({'assignment_visit_id': vid}))
 
 def test_no_doctor_override_without_assignment_permission(monkeypatch):
     admin, branch, device, proc, patient = setup(monkeypatch)

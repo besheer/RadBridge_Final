@@ -135,7 +135,7 @@ def test_casefold_duplicates_and_existing_skip(actor):
 
 
 @pytest.mark.parametrize('raw', [b'', b'\xff', b'a,a\n1,2', b'username,password\nuser,secret',
-    b'\x00', b'a'*(t.MAX_BYTES+1)])
+    b'\x00', b'a'*(t.MAX_BYTES+1)], ids=['empty', 'invalid-encoding', 'duplicate-header', 'forbidden-password-column', 'nul', 'oversized'])
 def test_malformed_files(raw):
     with pytest.raises(ValueError):
         t.parse_csv(raw)

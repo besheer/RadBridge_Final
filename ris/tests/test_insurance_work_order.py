@@ -9,7 +9,7 @@ import pytest
 @pytest.fixture
 def insurance_case(app_ctx, monkeypatch):
     m = app_ctx
-    key = 'CODEX-UAT-' + uuid4().hex[:12]
+    key = 'CODEX-UAT-' + uuid4().hex[:8]
     branch = m.Branch(code=key, name=key, active=True)
     patient = m.Patient(patient_id=key, name='CODEX UAT INSURANCE', dob='19900101', sex='M')
     contract = m.Contract(code=key, name=key, approval_required=True)
@@ -22,7 +22,10 @@ def insurance_case(app_ctx, monkeypatch):
                     scheduled=datetime(2037, 2, 3, 10), status='REGISTERED',
                     patient_share=100, paid_amount=100, exam_status='BOOKED')
     m.db.session.add(order); m.db.session.flush()
-    user = SimpleNamespace(id=99100, username=key, active=True, branch_id=branch.id,
+    stored_user=m.User(username=key,full_name='Synthetic Insurance Reception',password_hash='disabled-test-account',
+                       active=True,branch_id=branch.id,role=m.Role.query.filter_by(code='RECEPTION').one())
+    m.db.session.add(stored_user);m.db.session.flush()
+    user = SimpleNamespace(id=stored_user.id, username=key, active=True, branch_id=branch.id,
          role=SimpleNamespace(code='RECEPTION', permissions=lambda: m.ROLE_PERMS['RECEPTION']))
     monkeypatch.setattr(m, 'current_user', lambda: user)
     monkeypatch.setattr(m, 'render_template', lambda *a, **k: 'CODEX UAT error')

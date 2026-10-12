@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 from workflow_engine import (
@@ -9,7 +10,7 @@ from workflow_engine import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-APP = (ROOT / "app.py").read_text(encoding="utf-8")
+APP = _read_source(ROOT / "app.py", encoding="utf-8")
 
 
 def block(start, end):
@@ -169,13 +170,13 @@ def test_report_source_route_enforces_final_only():
 
 
 def test_journey_template_has_no_manual_stage_buttons():
-    template = (ROOT / "templates" / "operations_journey.html").read_text(encoding="utf-8")
+    template = _read_source(ROOT / "templates" / "operations_journey.html", encoding="utf-8")
     assert "order_journey_stage" not in template
     assert "Derived from clinical state" in template
 
 
 def test_order_detail_separates_exam_and_report_domains():
-    template = (ROOT / "templates" / "order_detail.html").read_text(encoding="utf-8")
+    template = _read_source(ROOT / "templates" / "order_detail.html", encoding="utf-8")
     assert "ui_phrase('Report:')" in template
     assert "work_order_gate.allowed" in template
     assert "['BOOKED','ORDERED','IN_PROGRESS','EXAM_COMPLETED','REPORTING']" in template

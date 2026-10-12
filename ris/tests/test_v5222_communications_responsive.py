@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_communication_models():
     import app as m
@@ -31,7 +32,7 @@ def test_ai_and_priors_preserved():
 
 def test_booking_hotfixes_preserved():
     import app as m,inspect
-    src=inspect.getsource(m.device_booking_reason)
+    src=_get_source(m.device_booking_reason)
     assert "active=True" not in src
     sig=inspect.signature(m.device_booking_reason)
     assert sig.parameters["start_at"].default is None

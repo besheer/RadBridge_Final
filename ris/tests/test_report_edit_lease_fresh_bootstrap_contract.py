@@ -4,6 +4,7 @@ Fresh RadBridge schema creation uses db.create_all().  The lease table must
 therefore be present in SQLAlchemy metadata, while remaining schema-compatible
 with migration 20260901_001.
 """
+from web.source_contract import read_source as _read_source
 
 from sqlalchemy import UniqueConstraint
 
@@ -93,10 +94,8 @@ def test_report_edit_lease_registered_for_fresh_create_all(app_ctx):
 def test_fresh_bootstrap_still_uses_create_all(app_ctx):
     from pathlib import Path
 
-    bootstrap = (
-        Path(__file__).resolve().parents[1]
-        / "bootstrap_db.py"
-    ).read_text(encoding="utf-8")
+    bootstrap = _read_source(Path(__file__).resolve().parents[1]
+        / "bootstrap_db.py", encoding="utf-8")
 
     assert "db.create_all()" in bootstrap
 
@@ -104,10 +103,8 @@ def test_fresh_bootstrap_still_uses_create_all(app_ctx):
 def test_finalization_audit_contract_is_unchanged(app_ctx):
     from pathlib import Path
 
-    source = (
-        Path(__file__).resolve().parents[1]
-        / "app.py"
-    ).read_text(encoding="utf-8")
+    source = _read_source(Path(__file__).resolve().parents[1]
+        / "app.py", encoding="utf-8")
 
     assert "'REPORT_FINALIZED'" in source
     assert "def api_ohif_onlyoffice_finalize" in source

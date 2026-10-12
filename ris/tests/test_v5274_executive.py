@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_executive_analytics_route_permission():
  import app as m
@@ -8,6 +9,6 @@ def test_executive_analytics_route_permission():
 
 def test_stock_ledger_fix_preserved():
  import app as m,inspect
- src=inspect.getsource(m.inventory_ledger)
+ src=_get_source(m.inventory_ledger)
  assert 'WarehouseStockMovement.id.desc()' in src
  assert 'order_by(StockMovement.id.desc())' not in src

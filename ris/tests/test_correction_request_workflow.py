@@ -1,3 +1,5 @@
+from web.source_contract import read_source as _read_source
+from web.source_contract import get_source as _get_source
 from werkzeug.security import generate_password_hash
 
 
@@ -161,7 +163,7 @@ def test_approved_request_cannot_be_marked_complete_manually(app_ctx):
 
 def test_dashboard_contains_correction_entry():
     from pathlib import Path
-    text=Path('templates/dashboard.html').read_text()
+    text=_read_source(Path('templates/dashboard.html'))
     assert "url_for('correction_center')" in text
     assert 'Correction & Cancellation' in text
 
@@ -842,7 +844,7 @@ def test_phase2a_no_destructive_execution_route_added(
 
     m=app_ctx
 
-    source=inspect.getsource(m)
+    source=_get_source(m)
 
     assert (
         '@app.post("/correction-center/execute'
@@ -945,19 +947,19 @@ def test_phase2a_prepare_and_transition_use_row_locks(
 
     m=app_ctx
 
-    prepare_source=inspect.getsource(
+    prepare_source=_get_source(
         m.correction_execution_prepare
     )
 
-    transition_source=inspect.getsource(
+    transition_source=_get_source(
         m.correction_execution_transition
     )
 
-    request_lock_source=inspect.getsource(
+    request_lock_source=_get_source(
         m.correction_execution_request_lock
     )
 
-    execution_lock_source=inspect.getsource(
+    execution_lock_source=_get_source(
         m.correction_execution_row_lock
     )
 
@@ -1506,9 +1508,7 @@ def test_phase2a_execution_template_has_no_destructive_action(
         m.app.root_path
     ) / 'templates' / 'correction_execution_queue.html'
 
-    text=path.read_text(
-        encoding='utf-8'
-    )
+    text=_read_source(path, encoding='utf-8')
 
     assert 'Prepare Execution Ledger' in text
     assert '>Claim<' not in text or 'Claim' in text
@@ -2073,11 +2073,11 @@ def test_phase2b_adapter_adds_no_second_requests_delete(
 
     m=app_ctx
 
-    adapter=inspect.getsource(
+    adapter=_get_source(
         m.correction_wrong_images_execute
     )
 
-    helper=inspect.getsource(
+    helper=_get_source(
         m.granular_delete_images_only_execute
     )
 
@@ -2379,7 +2379,7 @@ def test_phase2b_execute_route_contains_no_direct_delete(
 
     m=app_ctx
 
-    source=inspect.getsource(
+    source=_get_source(
         m.correction_execution_execute_route
     )
 
@@ -2403,7 +2403,7 @@ def test_phase2b_adapter_must_not_bypass_execution_transition_helper(
 
     m=app_ctx
 
-    source=inspect.getsource(
+    source=_get_source(
         m.correction_wrong_images_execute
     )
 

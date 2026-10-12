@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_procedure_branch_model():
     import app as m
@@ -18,5 +19,5 @@ def test_booking_availability_routes():
 
 def test_booking_v2_submit_uses_central_restriction():
     import app as m, inspect
-    src=inspect.getsource(m.schedule_v2_book_submit)
+    src=_get_source(m.schedule_v2_book_submit)
     assert "booking_restriction_reason" in src

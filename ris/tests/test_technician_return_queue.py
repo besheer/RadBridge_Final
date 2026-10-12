@@ -201,3 +201,42 @@ def test_return_cannot_route_to_a_forged_role(queue_cases):
     f.m.db.session.add(f.m.CaseReturnReason(code=f.key,label='Missing images',route_to='TECHNICIAN',active=True));f.m.db.session.commit()
     response=f.client.post(f'/reports/{o.id}/return-case',data={'reason_code':f.key,'action_owner':'SUPER_ADMIN','note':'Forged destination'},base_url='https://localhost')
     assert response.status_code==400 and not f.m.case_return_is_open(o.id)
+
+
+@pytest.fixture
+def returned_document_rows(app_ctx):
+    # Read-only repository cases never commit users into the shared test DB.
+    m=app_ctx
+    key='DOC-'+uuid4().hex[:10].upper()
+    branch=m.Branch(code=key, name=key)
+    patient=m.Patient(patient_id=key, name=key)
+    user=m.User(username=key, full_name=key, password_hash='not-a-login-password',
+                role_id=m.Role.query.filter_by(code='TECHNICIAN').one().id)
+    m.db.session.add_all([branch, patient, user]);m.db.session.flush()
+    orders=[m.Order(accession=key+'-'+str(i), patient_id=patient.id, branch_id=branch.id,
+                    modality='DX', procedure=key, scheduled=datetime(2037,2,3,12)) for i in range(2)]
+    m.db.session.add_all(orders);m.db.session.flush()
+    yield SimpleNamespace(m=m, user=user, target=orders[0], other=orders[1])
+    m.db.session.rollback()
+
+
+@pytest.mark.parametrize('kind,text,expected', [
+    ('HISTORY', 'Synthetic history', True),
+    ('GENERAL', 'Synthetic history', True),
+    ('CLINICAL_HISTORY', 'Synthetic history', True),
+    ('NURSING_HISTORY', 'Synthetic history', True),
+    ('TECHNICAL', 'Synthetic technical note', False),
+    ('HISTORY', '', False),
+    ('HISTORY', '   ', False),
+])
+def test_returned_history_repository_preserves_note_and_order_scope(returned_document_rows, monkeypatch, kind, text, expected):
+    from technician_queue import correction_documents_ready
+    f=returned_document_rows
+    monkeypatch.setattr(f.m, 'quality_rule_for', lambda order: None)
+    # Valid history on another order must not satisfy the returned order.
+    f.m.db.session.add(f.m.ClinicalNote(order_id=f.other.id,
+        author_user_id=f.user.id, note_type='HISTORY', text='Other synthetic case'))
+    f.m.db.session.add(f.m.ClinicalNote(order_id=f.target.id,
+        author_user_id=f.user.id, note_type=kind, text=text))
+    f.m.db.session.flush()
+    assert correction_documents_ready(f.m, f.target, {'reason':'MISSING_HISTORY'}) is expected

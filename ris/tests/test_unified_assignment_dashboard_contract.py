@@ -1,9 +1,10 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-APP=(ROOT/'app.py').read_text()
-DASH=(ROOT/'templates'/'assignment_dashboard.html').read_text()
-REPORT=(ROOT/'templates'/'assignment_reports.html').read_text()
+APP=_read_source(ROOT/'app.py')
+DASH=_read_source(ROOT/'templates'/'assignment_dashboard.html')
+REPORT=_read_source(ROOT/'templates'/'assignment_reports.html')
 
 
 def test_assignment_rows_use_only_active_assignment():

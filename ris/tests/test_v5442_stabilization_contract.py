@@ -1,9 +1,10 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-APP = (ROOT / 'app.py').read_text(encoding='utf-8')
-ORDER_FORM = (ROOT / 'templates' / 'order_form.html').read_text(encoding='utf-8')
-DOCKERFILE = (ROOT / 'Dockerfile').read_text(encoding='utf-8')
+APP = _read_source(ROOT / 'app.py', encoding='utf-8')
+ORDER_FORM = _read_source(ROOT / 'templates' / 'order_form.html', encoding='utf-8')
+DOCKERFILE = _read_source(ROOT / 'Dockerfile', encoding='utf-8')
 
 
 def test_release_metadata_is_v5442():
@@ -85,15 +86,20 @@ def test_failed_registration_commit_cleans_saved_attachments():
     assert 'os.remove(saved_path)' in route
 
 
-def test_session_cookie_hardening_and_origin_guard_present():
-    assert "SESSION_COOKIE_HTTPONLY" in APP
-    assert "SESSION_COOKIE_SAMESITE" in APP
-    assert "SESSION_COOKIE_SECURE" in APP
-    assert 'def _same_origin_unsafe_request_guard()' in APP
+def test_session_cookie_hardening_and_origin_guard_present(app_ctx):
+    import os
+    from infrastructure.settings import WebSettings
+
+    expected = WebSettings.from_environment(os.environ).flask_config()
+    assert app_ctx.app.config['SESSION_COOKIE_HTTPONLY'] is True
+    for key in ('SESSION_COOKIE_SAMESITE', 'SESSION_COOKIE_SECURE'):
+        assert app_ctx.app.config[key] == expected[key]
+    assert any(handler.__name__ == '_same_origin_unsafe_request_guard'
+               for handler in app_ctx.app.before_request_funcs[None])
 
 
 def test_reporting_agent_v2_contract_replaces_legacy_package_gate():
-    contract = (ROOT / 'docs' / 'REPORTING_AGENT_V2_CONTRACT.md').read_text()
+    contract = _read_source(ROOT / 'docs' / 'REPORTING_AGENT_V2_CONTRACT.md')
     for marker in (
         'optional compatibility bridge',
         'X-RadBridge-Case-Token',

@@ -1,0 +1,1 @@
+"""Assignment persistence adapters."""

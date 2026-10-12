@@ -1,7 +1,8 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-APP=(ROOT/'app.py').read_text(encoding='utf-8')
-BASE=(ROOT/'templates'/'base.html').read_text(encoding='utf-8')
+APP=_read_source(ROOT/'app.py', encoding='utf-8')
+BASE=_read_source(ROOT/'templates'/'base.html', encoding='utf-8')
 
 def test_release_metadata():
     assert "APP_VERSION = '5.46.9'" in APP

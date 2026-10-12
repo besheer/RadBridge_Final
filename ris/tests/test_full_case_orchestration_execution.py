@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 from werkzeug.security import generate_password_hash
 
 
@@ -246,7 +247,7 @@ def test_full_case_execution_skips_completed_pacs_and_reports(app_ctx,monkeypatc
 def test_full_case_executor_contains_no_new_direct_destructive_implementation(app_ctx):
     import inspect
     m=app_ctx
-    source=inspect.getsource(m.granular_delete_full_case_orchestration_execute)
+    source=_get_source(m.granular_delete_full_case_orchestration_execute)
     assert 'requests.delete' not in source
     assert 'os.remove' not in source
     assert '.unlink(' not in source

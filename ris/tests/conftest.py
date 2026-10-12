@@ -8,6 +8,17 @@ os.environ["RADBRIDGE_BOOTSTRAP_ON_IMPORT"] = "0"
 import app as m
 
 
+@pytest.fixture(autouse=True)
+def block_real_http_requests(monkeypatch):
+    """Unit/contract tests must supply a fake transport for external services."""
+    import requests
+
+    def blocked(*args, **kwargs):
+        raise requests.ConnectionError("Real HTTP transport is disabled in synthetic tests")
+
+    monkeypatch.setattr(requests.sessions.Session, 'request', blocked)
+
+
 @pytest.fixture(scope="session")
 def app_ctx():
     m.app.config.update(

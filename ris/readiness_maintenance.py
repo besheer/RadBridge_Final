@@ -1,8 +1,8 @@
-"""Bounded child of the existing minute maintenance job; no new service."""
-import json
-import app as m
-from readiness_operations import run_due
-
-if __name__=='__main__':
-    with m.app.app_context():
-        print(json.dumps({'readiness_maintenance':run_due(m)}))
+"""Compatibility entry point for workers.readiness_maintenance."""
+import importlib as _importlib
+import sys as _sys
+if __name__ == "__main__":
+    import runpy as _runpy
+    _runpy.run_module('workers.readiness_maintenance', run_name="__main__")
+else:
+    _sys.modules[__name__] = _importlib.import_module('workers.readiness_maintenance')

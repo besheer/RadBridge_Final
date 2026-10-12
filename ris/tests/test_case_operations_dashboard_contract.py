@@ -1,17 +1,16 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-APP = (ROOT / "app.py").read_text(encoding="utf-8")
-SERVICE = (
-    ROOT / "case_operations_dashboard_service.py"
-).read_text(encoding="utf-8")
-BASE = (ROOT / "templates" / "base.html").read_text(
-    encoding="utf-8"
-)
-TEMPLATE = (
-    ROOT / "templates" / "case_operations_control_center.html"
-).read_text(encoding="utf-8")
+APP = _read_source(ROOT / "app.py", encoding="utf-8")
+ROUTE = _read_source(ROOT / "web" / "routes" / "shared.py", encoding="utf-8")
+SERVICE = "\n".join((ROOT / path).read_text(encoding="utf-8") for path in (
+    "web/compatibility/case_operations_dashboard_service.py",
+    "application/services/readiness/operations_snapshot.py",
+    "infrastructure/adapters/readiness/snapshot_repository.py"))
+BASE = _read_source(ROOT / "templates" / "base.html", encoding="utf-8")
+TEMPLATE = _read_source(ROOT / "templates" / "case_operations_control_center.html", encoding="utf-8")
 
 
 def test_control_center_route_is_read_only_get():
@@ -20,6 +19,8 @@ def test_control_center_route_is_read_only_get():
     ) == 1
     assert APP.count("def case_operations_control_center():") == 1
     assert "@require_perm('orders.view')\ndef case_operations_control_center" in APP
+    assert 'allowed_registration_branches()' in ROUTE
+    assert 'branch_ids=allowed_registration_branches()' in ROUTE
 
 
 def test_dashboard_service_contains_no_mutation_or_commit():
