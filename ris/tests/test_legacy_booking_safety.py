@@ -7,7 +7,7 @@ import pytest
 
 @pytest.fixture
 def booking_case(app_ctx,monkeypatch):
-    m=app_ctx;key='CODEX-UAT-'+uuid4().hex[:12]
+    m=app_ctx;key='CODEX-UAT-'+uuid4().hex[:10]
     branch=m.Branch(code=key,name=key,active=True)
     p=m.Patient(patient_id=key,name='CODEX UAT Booking',dob='19900101',sex='M')
     proc=m.Procedure(code=key,name=key,modality='DX',duration_min=30,active=True)
