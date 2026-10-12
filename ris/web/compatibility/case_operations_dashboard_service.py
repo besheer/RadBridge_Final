@@ -22,6 +22,7 @@ def build_case_operations_snapshot(
     PacsResolutionEvent,
     limit=300,
     now=None,
+    branch_ids=None,
 ):
     return _snapshot(repository=SqlAlchemyOperationsSnapshotRepository(db.session, Order, Report, CaseAssignment, AssignmentOffer, AssignmentStrategy, AssignmentEscalationEvent, CaseReadiness, PacsStudyInbox, PacsExamLink, PacsResolutionEvent),
-        readiness_view=view, clock=_utc_now_naive,limit=limit,now=now)
+        readiness_view=view, clock=_utc_now_naive,limit=limit,now=now,branch_ids=branch_ids)
