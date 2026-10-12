@@ -64,7 +64,9 @@ def test_device_and_time_constraints_prevent_creation(booking_case,boundary):
     if boundary=='disabled':c.d.booking_enabled=False
     if boundary=='maintenance':c.d.operational_status='MAINTENANCE'
     if boundary=='wrong_modality':c.d.modality='CT'
-    if boundary=='wrong_branch':c.d.branch_id=999999
+    if boundary=='wrong_branch':
+        other=c.m.Branch(code='OTHER-'+uuid4().hex[:12],name='CODEX UAT other branch',active=True)
+        c.m.db.session.add(other);c.m.db.session.flush();c.d.branch_id=other.id
     if boundary=='outside_hours':when='2037-02-03T07:00'
     if boundary=='bad_date':when='bad-date'
     assert book(c,when).status_code==302
