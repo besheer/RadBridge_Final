@@ -737,6 +737,13 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.clinical.rt_course_workflow](../application/services/clinical/rt_course_workflow.py) | [infrastructure.adapters.clinical.rt_course_repository](../infrastructure/adapters/clinical/rt_course_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 | [application.services.clinical.rt_plan_workflow](../application/services/clinical/rt_plan_workflow.py) | [infrastructure.adapters.clinical.rt_plan_repository](../infrastructure/adapters/clinical/rt_plan_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 | [application.services.clinical.rt_session_workflow](../application/services/clinical/rt_session_workflow.py) | [infrastructure.adapters.clinical.rt_session_repository](../infrastructure/adapters/clinical/rt_session_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
+| [application.services.clinical.rt_support_workflow](../application/services/clinical/rt_support_workflow.py) | [infrastructure.adapters.clinical.rt_support_repository](../infrastructure/adapters/clinical/rt_support_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
+
+### Shared application context helpers
+
+These helpers have the same enforced import isolation and do not count as additional workflow ports.
+
+- [application.services.clinical.rt_scope_context](../application/services/clinical/rt_scope_context.py)
 
 ## Key Worker / Module Files
 

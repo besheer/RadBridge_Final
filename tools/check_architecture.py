@@ -15,14 +15,18 @@ def violations():
             owner=ROOT / (entry[key].replace('.','/')+'.py')
             if not owner.is_file():
                 issues.append(f"port contract missing {key}: {entry[key]}")
-        path=ROOT / (entry['module'].replace('.','/')+'.py')
+    modules=[entry['module'] for entry in contracts['services']]+contracts.get('helpers',[])
+    for module in modules:
+        path=ROOT / (module.replace('.','/')+'.py')
+        if not path.is_file():
+            issues.append(f"explicit boundary missing module: {module}")
         if not path.is_file():continue
         tree=ast.parse(path.read_text(encoding='utf-8-sig'))
         for node in ast.walk(tree):
             imports=[a.name for a in node.names] if isinstance(node,ast.Import) else [node.module or ''] if isinstance(node,ast.ImportFrom) else []
             for name in imports:
                 if name.split('.')[0] in {'app','web','infrastructure','flask','sqlalchemy','requests'} or name=='application.legacy_runtime':
-                    issues.append(f"{path.relative_to(ROOT)}:{node.lineno}: port service imports {name}")
+                    issues.append(f"{path.relative_to(ROOT)}:{node.lineno}: explicit boundary imports {name}")
     for path in sorted((ROOT / "domain").rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8-sig"))
         for node in ast.walk(tree):

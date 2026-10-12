@@ -8,6 +8,7 @@ from typing import Callable
 from domain.clinical.rt_validation import amount,text,local_time
 from domain.clinical.rt_course_policy import RTWorkflowError,require_version
 from domain.clinical.rt_completion import fingerprint
+from application.services.clinical import rt_scope_context
 
 
 @dataclass(frozen=True)
@@ -21,23 +22,11 @@ class SessionPolicies:
 
 
 def _course(repository, policies, course_id):
-    course=repository.lock_course(course_id)
-    if course is None: raise RTWorkflowError('COURSE_NOT_FOUND')
-    policies.authorize_course(course)
-    return course
+    return rt_scope_context.course(repository,policies.authorize_course,course_id)
 
 
 def _fraction(repository, policies, fraction_id):
-    preview=repository.fraction(fraction_id)
-    if preview is None: raise RTWorkflowError('FRACTION_NOT_FOUND')
-    course=_course(repository,policies,preview.course_id)
-    row=repository.lock_fraction(fraction_id)
-    if row is None: raise RTWorkflowError('FRACTION_NOT_FOUND')
-    device=repository.device(row.device_id)
-    if not device or device.branch_id!=course.branch_id:
-        raise RTWorkflowError('FRACTION_DEVICE_MISMATCH')
-    policies.authorize_device(device)
-    return course,row,device
+    return rt_scope_context.fraction(repository,policies.authorize_course,policies.authorize_device,fraction_id)
 
 
 def _usable(repository, course, row, device, completing=False):

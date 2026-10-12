@@ -79,12 +79,19 @@ def main():
     lines += ['', '## Explicit Workflow Ports','',
               'These services are checked for database/web/runtime import isolation. Compatibility owners compose their supplied dependencies; broader use cases remain unfinished.', '',
               '| Application service | Persistence adapter | Composition edge |','|---|---|---|']
-    for entry in json.loads((ROOT / 'application/port_contracts.json').read_text(encoding='utf-8'))['services']:
+    port_contracts=json.loads((ROOT / 'application/port_contracts.json').read_text(encoding='utf-8'))
+    for entry in port_contracts['services']:
         cells=[]
         for key in ('module','repository','composition'):
             relative=entry[key].replace('.','/')+'.py'
             cells.append(f"[{entry[key]}](../{relative})")
         lines.append('| '+' | '.join(cells)+' |')
+    if port_contracts.get('helpers'):
+        lines += ['', '### Shared application context helpers','',
+                  'These helpers have the same enforced import isolation and do not count as additional workflow ports.','']
+        for module in port_contracts['helpers']:
+            relative=module.replace('.','/')+'.py'
+            lines.append(f'- [{module}](../{relative})')
     lines += ['', '## Key Worker / Module Files','',
               '- `workers/pacs_worker.py` — PACS intake and queued transfer worker.',
               '- `workers/backup_worker.py` — scheduled DB/files/cloud backup worker.',

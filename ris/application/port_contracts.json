@@ -105,6 +105,14 @@
       "module": "application.services.clinical.rt_session_workflow",
       "repository": "infrastructure.adapters.clinical.rt_session_repository",
       "composition": "web.extensions.radiotherapy"
+    },
+    {
+      "module": "application.services.clinical.rt_support_workflow",
+      "repository": "infrastructure.adapters.clinical.rt_support_repository",
+      "composition": "web.extensions.radiotherapy"
     }
+  ],
+  "helpers": [
+    "application.services.clinical.rt_scope_context"
   ]
 }

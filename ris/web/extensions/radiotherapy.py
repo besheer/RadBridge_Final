@@ -8,6 +8,8 @@ from domain.clinical.rt_course_policy import RTWorkflowError
 from application.services.clinical import rt_course_workflow as _courses
 from application.services.clinical import rt_plan_workflow as _plans
 from application.services.clinical import rt_session_workflow as _sessions
+from application.services.clinical import rt_support_workflow as _support
+from infrastructure.adapters.clinical.rt_support_repository import SqlAlchemyRTSupportRepository
 from infrastructure.adapters.clinical.rt_session_repository import SqlAlchemyRTSessionRepository
 from infrastructure.adapters.clinical.rt_plan_repository import SqlAlchemyRTPlanRepository
 from infrastructure.adapters.clinical.rt_course_repository import SqlAlchemyRTCourseRepository
@@ -33,6 +35,7 @@ def register(m):
     m.rt_models=models
     def repository():return SqlAlchemyRTCourseRepository(db.session,m.Order,Course,PetLink)
     def session_repository():return SqlAlchemyRTSessionRepository(db.session,Course,Plan,Fraction,m.Device)
+    def support_repository():return SqlAlchemyRTSupportRepository(db.session,Course,Plan,Fraction,m.Device,Note,Consumable)
     def session_policies():
         return _sessions.SessionPolicies(authorize_actor=readonly_nurse,authorize_course=course_scope,
             authorize_device=device_scope,actor_id=lambda:actor().id,audit=audited,clock=datetime.utcnow)
@@ -66,14 +69,6 @@ def register(m):
     def done(c):db.session.commit();return redirect(url_for('rt_course_detail',course_id=c.id))
     def readonly_nurse():
         if actor().role and actor().role.code.upper()=='NURSING':abort(403)
-    def fraction(fid):
-        preview=Fraction.query.get_or_404(fid)
-        c=course(preview.course_id,True)
-        row=Fraction.query.filter_by(id=fid).populate_existing().with_for_update().first_or_404()
-        d=row.device
-        if not d or d.branch_id!=c.branch_id:abort(409)
-        device_scope(d)
-        return c,row
     def device_scope(d):
         from clinical_scope import predicate,read
         from sqlalchemy import literal,select
@@ -109,7 +104,8 @@ def register(m):
                           'FRACTION_NOT_FOUND':404,'DEVICE_NOT_FOUND':404,'DEVICE_BRANCH_DENIED':403,
                           'FRACTION_DEVICE_MISMATCH':409,'SESSION_STATE_CONFLICT':409,
                           'INVALID_COMPLETION_INPUT':400,'COMPLETION_REPLAY_CONFLICT':409,
-                          'INVALID_SESSION_STATUS':400}
+                          'INVALID_SESSION_STATUS':400,'COURSE_STATE_CONFLICT':409,
+                          'INVALID_NOTE_KIND':400,'NOTE_FRACTION_MISMATCH':409,'CONSUMABLE_STATE_CONFLICT':409}
                 abort(statuses.get(exc.code,500))
             except ValueError as exc:return invalid(exc)
             except IntegrityError:
@@ -225,40 +221,25 @@ def register(m):
     @m.require_perm('rt.course.create')
     @safe
     def rt_course_state(course_id):
-        c=course(course_id,True);version(c);target=request.form.get('status');reason=text(request.form.get('reason'),5,1000)
-        allowed={'DRAFT':{'CANCELLED'},'ACTIVE':{'PAUSED','COMPLETED','CANCELLED'},'PAUSED':{'ACTIVE','CANCELLED'}}
-        if target not in allowed.get(c.status,set()):abort(409)
-        if target in ('CANCELLED','COMPLETED') and Fraction.query.filter_by(course_id=c.id,status='STARTED').first():abort(409)
-        if target=='COMPLETED':
-            p=current_plan(c)
-            complete=Fraction.query.filter_by(course_id=c.id,status='COMPLETED').count()
-            if not p or complete!=p.fractions:abort(409)
-        previous=c.status;c.status=target;c.version+=1;audited('COURSE_STATE','rt_course',c,{'from':previous,'to':target,'reason':reason})
+        c=_support.change_state(repository=support_repository(),policies=session_policies(),
+            course_id=course_id,expected_version=request.form.get('version',''),
+            target=request.form.get('status'),reason=request.form.get('reason'))
         return done(c)
 
     @m.app.post('/radiotherapy/<int:course_id>/notes')
     @m.require_perm('rt.notes')
     @safe
     def rt_add_note(course_id):
-        c=course(course_id,True)
-        if c.status in ('COMPLETED','CANCELLED'):abort(409)
-        kind=request.form.get('kind')
-        if kind not in ('PREPARATION','NURSING','TECHNICAL','CLINICAL'):abort(400)
-        fid=request.form.get('fraction_id',type=int)
-        if fid:
-            row=Fraction.query.get_or_404(fid)
-            if row.course_id!=c.id:abort(409)
-            fraction(fid)
-        n=Note(course_id=c.id,fraction_id=fid,kind=kind,body=text(request.form.get('body'),1,10000),recorded_by=actor().id)
-        db.session.add(n);db.session.flush();audited('NOTE_ADDED','rt_note',n,{'course_id':c.id,'fraction_id':fid,'kind':kind})
+        c,n=_support.add_note(repository=support_repository(),policies=session_policies(),
+            course_id=course_id,kind=request.form.get('kind'),body=request.form.get('body'),
+            fraction_id=request.form.get('fraction_id',type=int))
         return done(c)
 
     @m.app.post('/radiotherapy/fractions/<int:fraction_id>/consumables')
     @m.require_perm('rt.consumables')
     @safe
     def rt_add_consumable(fraction_id):
-        c,row=fraction(fraction_id)
-        if c.status in ('COMPLETED','CANCELLED') or row.status in ('CANCELLED','NOT_GIVEN'):abort(409)
-        item=Consumable(fraction_id=row.id,name=text(request.form.get('name'),1,150),quantity=amount(request.form.get('quantity')),unit=text(request.form.get('unit'),1,40),recorded_by=actor().id)
-        db.session.add(item);db.session.flush();audited('CONSUMABLE_RECORDED','rt_consumable',item,{'course_id':c.id,'fraction_id':row.id,'name':item.name,'quantity':item.quantity,'unit':item.unit,'stock_posted':False})
+        c,item=_support.add_consumable(repository=support_repository(),policies=session_policies(),
+            fraction_id=fraction_id,name=request.form.get('name'),quantity=request.form.get('quantity'),
+            unit=request.form.get('unit'))
         return done(c)
