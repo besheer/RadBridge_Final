@@ -40,6 +40,16 @@ The OpenAI adapter sends only the fixed machine codes `C_STORE_FAILURE` or `INVA
 
 Deterministic rules always run first. A conclusive rule result never calls an external provider. For an ambiguous allowlisted error, `DECISION_PROVIDER=jev` or `openai` pins one provider; `DECISION_PROVIDER=auto` checks the server-owned `DECISION_PROVIDER_ORDER` list and picks the first provider whose own enable flag and API key are both present. The default order is `jev,openai`, but the mode remains `rules` in `.env.example`. Invalid or duplicate provider names fail closed to rules. Provider selection is recorded in the audit log. A selected provider's timeout, refusal, or bad response does not trigger a second provider; no runtime failover, quality-based ranking, cost-based selection, or dynamic latency selection is implemented.
 
+### Offline evaluation before changing provider order
+
+Use the local evaluator only with synthetic or formally approved de-identified labels. It reads one JSON object per line with exactly these fields: `provider`, `expected_category`, `predicted_category` (or `null` for abstention), `probabilities` (complete category map or `null`), `latency_ms`, and `cost_usd`. It prints aggregate coverage, answered accuracy, macro precision/recall, Brier score, P50/P95 latency, cost per correct suggestion and a confusion matrix; it never prints example rows. Unknown fields are rejected. Do not place names, IDs, accessions, notes, DICOM data, credentials, or raw vendor payloads in the input file.
+
+```sh
+python tools/evaluate_provider_results.py ./approved-sanitized-results.jsonl
+```
+
+The report is evidence for a human review of provider ordering; it does not automatically change configuration or establish a confidence threshold. Use representative held-out labels and compare rules, Jev and OpenAI on the same cases before changing server-owned provider order.
+
 Enabling either hosted provider sends the allowlisted operational error code and retry count to that provider for processing. Use synthetic data for development and obtain the required privacy/security approval before sending real operational events. The adapter has no local API key and this repository has not been tested with a live provider credential.
 
 ## Authentication contract
