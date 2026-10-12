@@ -6,7 +6,7 @@ Updated: 2026-10-12. This is an isolated modular-monolith development branch. It
 
 - `ris/domain`: framework-free policies for assignment/readiness/identity/reporting/finance/inventory/registration/manual RT.
 - `ris/application/components`: existing executable orchestration owners; compatibility bindings still require further inversion.
-- `ris/application/services`: 28 registered narrow service boundaries, with application/repository/composition owners in the port registry.
+- `ris/application/services`: 29 registered narrow service boundaries, with application/repository/composition owners in the port registry.
 - `ris/infrastructure`: 160 models in 14 model modules, unbound SQLAlchemy extension, repositories/adapters/resources/settings.
 - `ris/web`: factory, routes/helpers/extensions and compatibility composition. Six former Flask service owners now live here with unchanged behavior (ADR 037).
 - Original entry-point ownership: 949 functions in 32 component/route/helper modules; 76 migrated modules retain canonical legacy aliases. Registered routes remain 546. These are inventories, not a whole-project completion percentage.
@@ -15,13 +15,13 @@ Explicit boundaries cover assignment queries/mutations/grouped visits/monitoring
 
 The latest boundary (ADR 038) creates an appointment for an existing patient through persistence/device-routing/slot-lock/restriction/actor/audit ports. Web composition still authorizes the branch and owns savepoint/commit/rollback, form parsing, flashes and redirects. Other booking/rescheduling/check-in workflows remain unfinished.
 
+The returned-document prerequisite service (ADR 039) reads required history through a repository and receives quality-rule and attachment-count dependencies. It grants no review approval, identity correction or image-completion authority. Legacy technician/assignment/return handlers retain their signatures, scope and transaction ownership.
+
 ## Validation evidence
 
-Latest complete local suite: **2,077 passed, five skipped**, 43,278 warnings in 146.85 seconds. Appointment-focused group: 69 passed; HTTP relocation group: 135 passed; guard/helper group: six passed. Architecture and exact before/after schema/route captures passed.
+Current returned-document extraction: 2109 SQLite passed, five skipped, 43315 warnings in 158.21 seconds; 109 focused tests passed. Architecture checks, source guard and exact before/after runtime comparison passed (160 tables, 546 URL registrations). The initial full run failed the CSV export roundtrip because new repository fixtures committed users into the shared synthetic database. Those read-only fixtures now flush and roll back without committing; CSV row limits, security assertions and application behavior were not weakened. This complete rerun passed. PostgreSQL/Docker results for this newer change require its own remote CI.
 
-An earlier complete run hit local cryptographic allocation errors; a subsequent security-only run hit disk/cache exhaustion. All 22 security tests and then the unchanged complete suite passed on fresh reruns. No hashing algorithm/assertions were weakened and no host cleanup/configuration change was made.
-
-Latest verified GitHub baseline remains commit `262484ed248312f1c8ec0ba9ea76d8f800500598`, run `38216929249`: all nine jobs successful, including 2,023 SQLite passed/five skipped, seven PostgreSQL suites and Docker smoke. New local additions require publication and their own PostgreSQL/Docker/remote CI. Do not attribute previous CI to newer source.
+Validated published source `eabe773cc91e6122bd9c5d3428c84230d2f298f8` passed all nine jobs in [run 38271477503](https://github.com/besheer/RadBridge_Final/actions/runs/38271477503): 2,094 SQLite passed, five skipped, 43,265 warnings; seven PostgreSQL suites and Docker smoke passed. Source guard scanned 3,319 tracked files and 3,552 history blobs with no findings. These results cover the 28-boundary source plus safety guards and corrected synthetic booking fixtures; they do not cover subsequent changes until their own CI completes.
 
 The checker enforces domain/model/registered-port import rules and rejects direct Flask imports anywhere in application/services, including unregistered modules. Three direct SQLAlchemy imports remain outside the registry; indirect callback/runtime dependencies remain too. Passing guards does not certify every old service or integration.
 
@@ -42,7 +42,7 @@ On Windows use the virtual environment's Python and an appropriate output path. 
 
 PostgreSQL accepts only the dedicated `radbridge_dev_test` database/user `radbridge_test`, driver `postgresql+psycopg2` and localhost/127.0.0.1/`postgres`. Set `RADBRIDGE_TEST_DATABASE_URL` privately, then run `python tools/run_tests.py --postgres --postgres-suite registration`. Available suites: clinical, assignment, scope, reporting, finance, inventory, registration. This mode resets only the guarded synthetic schema and adapts fixtures in a temporary source copy. Never use operational data.
 
-Registration includes demographic/appointment creation dependencies and routes; finance includes delivery readiness; assignment includes monitoring. These additions still require new PostgreSQL runs.
+Registration includes demographic/appointment creation dependencies and routes; finance includes delivery readiness; assignment includes monitoring. Those additions passed the published PostgreSQL suites. Returned-document evidence checks are now also included in the clinical PostgreSQL suite; this newer change requires its own CI.
 
 ## Fresh development deployment (Ubuntu / Docker Compose v2)
 
@@ -69,6 +69,6 @@ Provision external synthetic PACS/editor/viewer acceptance and browser role UAT;
 - [Progress measures](PROGRESS.md): inventories and limits of percentage estimates.
 - [Server transfer readiness](SERVER_TRANSFER_READINESS.md): development versus full clinical transfer.
 - [Code map](../../ris/docs/CODE_MAP.md), [port registry](../../ris/application/port_contracts.json), component/module manifests.
-- ADRs 001–038: historical decisions and limitations; consolidated status above is current.
+- ADRs 001–039: historical decisions and limitations; consolidated status above is current.
 
 Regenerate the code map with `python ris/tools/generate_code_map.py` after ownership changes. Historical blueprint/handover documents describe earlier snapshots; compare them with the actual reviewed commit.

@@ -140,6 +140,11 @@
       "module": "application.services.registration.appointment_creation",
       "repository": "infrastructure.adapters.registration.appointment_repository",
       "composition": "web.compatibility.legacy_booking"
+    },
+    {
+      "module": "application.services.clinical.returned_documents",
+      "repository": "infrastructure.adapters.clinical.returned_documents_repository",
+      "composition": "web.compatibility.returned_documents"
     }
   ],
   "helpers": [

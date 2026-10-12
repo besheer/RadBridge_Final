@@ -126,16 +126,8 @@ def render_worklist(m):
 
 
 def correction_documents_ready(m, order, state):
-    rule=m.quality_rule_for(order)
-    history_required=bool((rule and rule.require_history) or state['reason']=='MISSING_HISTORY')
-    if history_required:
-        present=m.ClinicalNote.query.filter(
-            m.ClinicalNote.order_id==order.id,
-            m.ClinicalNote.note_type.in_(('HISTORY','GENERAL','CLINICAL_HISTORY','NURSING_HISTORY')),
-            func.length(func.trim(m.ClinicalNote.text))>0).first()
-        if not present:
-            return False
-    return not (rule and rule.require_attachments and m._order_attachment_count(order)<1)
+    from web.compatibility.returned_documents import correction_documents_ready as check
+    return check(m, order, state)
 
 
 def register(m):

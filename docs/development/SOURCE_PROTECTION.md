@@ -26,6 +26,8 @@ A verified Git bundle and SHA-256 manifest may preserve this local history outsi
 
 ## Publication discipline
 
+The 28-boundary source publication was validated at remote commit `eabe773cc91e6122bd9c5d3428c84230d2f298f8` in nine-job CI run `38271477503`. The remote rollback branch `checkpoint/development-validated-2026-10-12` retains that commit. It is a mutable branch, not an immutable or signed release tag. New dependency work must preserve it and obtain CI on its own commit before claiming validation.
+
 Never force-push the independent local branch over the remote branch. Compare the local baseline/current source and apply only reviewed added/modified/deleted paths on top of the actual remote head. Preserve every other remote tree entry and parent history. Use an expected-head lease for the development ref; inspect concurrent changes on lease rejection. Leave main untouched and PR #1 in Draft until release gates are met.
 
 Before publication inspect path/content differences, source-safety results and whether any file is omitted unexpectedly. Record local and remote source identities separately. Subsequent CI must run on the resulting remote commit; previous local/remote results are not its results.

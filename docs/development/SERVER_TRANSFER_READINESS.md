@@ -11,7 +11,7 @@
 ## فصل التبعيات
 
 - ملكية 949 دالة مكتملة في الجرد، والجداول والمسارات محفوظة؛ لا يعني ذلك فصل جميع التبعيات.
-- أصبح سجل `application/port_contracts.json` يتضمن 28 خدمة، ويشمل الآن إنشاء حجز لمريض موجود، بجانب تصحيح البيانات وجاهزية التسليم ومتابعة التوزيع.
+- أصبح سجل `application/port_contracts.json` يتضمن 29 خدمة، ويشمل الآن إنشاء حجز لمريض موجود، بجانب تصحيح البيانات وجاهزية التسليم ومتابعة التوزيع.
 - خدمات السجل تخضع لفحص يمنع imports للبنية التحتية والويب والإطار وlegacy_runtime. وحدات domain مقيدة بالمكتبة القياسية وسياسات domain.
 - ما زال `app.py` يركب المكونات باستخدام Bindings. جرد ساكن بعد الفصل سجل 6545 مرجع تبعية معلنًا للدوال الأصلية، وأقصى دالة لها 46 اسم تبعية. هذه مراجع أسماء، وليست عدد خدمات أو عيوب.
 - الجرد الساكن سجل 32 موضع import لـ`application.legacy_runtime` في 15 ملفًا، و11 استدعاء `namespace()`. بعضها مشروع عند حافة التركيب/factory؛ كل موضع يحتاج تصنيفًا قبل تغييره. هذه الأعداد ليست نسبة إنجاز.
@@ -51,8 +51,11 @@
 
 ## حدود الأدلة
 
-آخر GitHub CI موثق قبل هذا التغيير: commit `262484ed248312f1c8ec0ba9ea76d8f800500598`، run `38216929249`، تسع وظائف ناجحة و2023 SQLite ناجحًا مع خمسة متخطاة. نتائج الفصل المحلي الجديد تسجل منفصلة في IMPLEMENTATION_STATUS؛ لا تنسب نتائج ذلك commit القديم للتغيير الجديد.
+آخر GitHub CI للنسخة المنشورة: commit `eabe773cc91e6122bd9c5d3428c84230d2f298f8`، [run 38271477503](https://github.com/besheer/RadBridge_Final/actions/runs/38271477503)، تسع وظائف ناجحة و2094 SQLite ناجحًا مع خمسة متخطاة. نجحت سبع مجموعات PostgreSQL وDocker smoke. فحص المصدر راجع 3319 ملفًا متتبعًا و3552 Git blob دون نتائج؛ الفحص استدلالي ولا يثبت خلو كل البيانات أو الأسرار. التغيير الأحدث لفصل مستندات المرتجعات يحتاج CI مستقلًا.
 
 آخر مجموعة محلية بعد إنشاء الحجز وتصحيح ملكية HTTP: 2077 ناجحًا، خمسة متخطاة، 43278 تحذيرًا؛ 69 اختبارًا مركزًا للحجز و135 لنقل HTTP. فحص المعمارية ومقارنة العقود نجحا. فشل تخصيص ذاكرة للتشفير وامتلاء قرص/كاش قطع محاولات سابقة؛ نجحت اختبارات الأمان الـ22 ثم المجموعة الكاملة في إعادة مستقلة دون تغيير خوارزميات أو assertions. هذه النتائج تخص البيئة المحلية فقط؛ التشغيل الحقيقي على Ubuntu وخدمات PostgreSQL/PACS/editor يحتاج أدلته المنفصلة.
 
 لم يُجر اختبار Docker أو PostgreSQL أو PACS/editor كامل جديد محليًا في هذه المراجعة؛ الأدوات والخدمات غير متاحة في البيئة المحلية الحالية. لا يوجد سيرفر هدف محدد أو نشر عليه. الوثيقة قائمة قبول للنقل، وليست شهادة أن هذه البوابات اجتازت.
+
+
+Current returned-document extraction: 2109 SQLite passed, five skipped, 43315 warnings in 158.21 seconds; 109 focused tests passed. Architecture checks, source guard and exact before/after runtime comparison passed (160 tables, 546 URL registrations). The initial full run failed the CSV export roundtrip because new repository fixtures committed users into the shared synthetic database. Those read-only fixtures now flush and roll back without committing; CSV row limits, security assertions and application behavior were not weakened. This complete rerun passed. PostgreSQL/Docker results for this newer change require its own remote CI.

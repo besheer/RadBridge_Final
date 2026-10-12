@@ -744,6 +744,7 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.finance.delivery_readiness](../application/services/finance/delivery_readiness.py) | [infrastructure.adapters.finance.delivery_repository](../infrastructure/adapters/finance/delivery_repository.py) | [web.compatibility.delivery_policy](../web/compatibility/delivery_policy.py) |
 | [application.services.assignment.monitoring_queries](../application/services/assignment/monitoring_queries.py) | [infrastructure.adapters.assignment.monitor_repository](../infrastructure/adapters/assignment/monitor_repository.py) | [web.compatibility.assignment_monitor](../web/compatibility/assignment_monitor.py) |
 | [application.services.registration.appointment_creation](../application/services/registration/appointment_creation.py) | [infrastructure.adapters.registration.appointment_repository](../infrastructure/adapters/registration/appointment_repository.py) | [web.compatibility.legacy_booking](../web/compatibility/legacy_booking.py) |
+| [application.services.clinical.returned_documents](../application/services/clinical/returned_documents.py) | [infrastructure.adapters.clinical.returned_documents_repository](../infrastructure/adapters/clinical/returned_documents_repository.py) | [web.compatibility.returned_documents](../web/compatibility/returned_documents.py) |
 
 ### Shared application context helpers
 

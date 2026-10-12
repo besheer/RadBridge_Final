@@ -43,7 +43,7 @@ def main():
             fixture.write_text(content,encoding="utf-8")
             env.update(DATABASE_URL=dsn,RADBRIDGE_TEST_DATABASE_URL=dsn)
             targets=["tests/test_radiotherapy.py","tests/test_rt_validation_domain.py","tests/test_rt_course_dependencies.py","tests/test_rt_plan_dependencies.py","tests/test_rt_session_dependencies.py","tests/test_rt_support_dependencies.py","tests/test_rt_read_dependencies.py","tests/test_rt_course_runtime.py","tests/test_case_readiness_service.py","tests/test_domain_readiness.py","tests/test_clinical_app_factory.py",
-                     "tests/test_readiness_resolution_dependencies.py","tests/test_readiness_resolution_runtime.py","tests/test_readiness_search_dependencies.py","tests/test_readiness_search_runtime.py", "tests/test_readiness_scheduling_dependencies.py", "tests/test_readiness_scheduling_runtime.py", "tests/test_operations_snapshot_dependencies.py", "tests/test_operations_snapshot_runtime.py"]
+                     "tests/test_readiness_resolution_dependencies.py","tests/test_readiness_resolution_runtime.py","tests/test_readiness_search_dependencies.py","tests/test_readiness_search_runtime.py", "tests/test_readiness_scheduling_dependencies.py", "tests/test_readiness_scheduling_runtime.py", "tests/test_operations_snapshot_dependencies.py", "tests/test_operations_snapshot_runtime.py", "tests/test_returned_documents_dependencies.py", "tests/test_technician_return_queue.py"]
             if args.postgres_suite == "assignment":
                 targets=["tests/test_assignment_transaction_dependencies.py", "tests/test_visit_service_dependencies.py", "tests/test_distribution_domain.py",
                          "tests/test_assignment_visit_grouping.py", "tests/test_case_assignment_service.py",
