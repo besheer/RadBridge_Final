@@ -37,7 +37,7 @@ Focused runtime suites retain branch/role scope, receiving assignment barriers, 
 
 Inventory returns preserve original lots, costs and expiry; prior disbursements are retained during replacement entitlement adjustments. Closing totals use receipt/refund accounting timestamps, original payment method buckets and finite decimal values. Daily closing authorizes before persistence, locks branch before closing, recomputes expected evidence under the locked context, rejects CLOSED mutations and audits flushed snapshots. Callers own commit/rollback except the explicitly documented per-case scheduler transaction boundary.
 
-Operations aggregation preserves existing auxiliary query scopes and window-based metrics. Global lease statistics and other aggregate visibility policies still require explicit branch/role review before release; existing broad queries are not certified as safe by an extraction test.
+The Case Operations Control Center now derives branch scope from the signed-in user's registration policy. Its cases, leases, PACS inbox items, exam links, escalations and PACS events are restricted to the scoped order IDs; branch-specific strategies include only global and permitted-branch entries. Synthetic SQL-backed tests cover a permitted branch and an empty scope. This closes that screen's direct cross-branch read path; it does not certify branch/role scope across the rest of the application or replace role-based browser UAT.
 
 ## CI evidence and current gate
 
