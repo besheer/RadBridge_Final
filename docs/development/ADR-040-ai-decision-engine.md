@@ -1,6 +1,6 @@
 # ADR 040: Guarded AI decision routing
 
-Status: isolated Decision Engine implemented in `decision-engine/`; Jev adapter is implemented but disabled by default, while OpenAI provider client and production integration remain proposed. The service has its own Compose project and PostgreSQL database. No production workflow or clinical database was changed.
+Status: isolated Decision Engine with deterministic rules and optional Jev/OpenAI Decisions adapters implemented in `decision-engine/`; both external adapters are disabled by default. Provider choice is a server-side configuration, with no automatic provider fallback. Production integration remains proposed. The service has its own Compose project and PostgreSQL database. No production workflow or clinical database was changed.
 
 ## Context and goal
 
@@ -26,24 +26,24 @@ decision-engine/app
   -> human review API (classification only; no action execution)
 ```
 
-The optional Jev provider is a narrowly scoped infrastructure adapter. It accepts only fixed DICOM error codes, stores the validated category/confidence/model and token usage, and keeps status at `NEEDS_REVIEW`. Its feature flag defaults to off. It never sends AE/branch/patient identifiers or arbitrary error text. Every external response remains a suggestion and cannot cause an action.
+The optional Jev and OpenAI Decisions providers are narrowly scoped infrastructure adapters. They accept only the fixed DICOM error codes `C_STORE_FAILURE` and `INVALID_DICOM_DATA` plus a bounded retry count, store validated category/confidence/model and token usage, and keep status at `NEEDS_REVIEW`. Each provider requires both explicit server-side selection and its own feature flag. Neither sends AE/branch/patient identifiers or arbitrary error text. Every external response remains a suggestion and cannot cause an action. Tests use mocked HTTP; no live vendor credential is needed.
 
-Future provider modules (not implemented):
+Future provider-neutral application service (not implemented):
 
 ```text
 web route / worker
   -> application.services.ai_decision_engine.DecisionEngine
        -> task registry + deterministic policy
-       -> eligibility and provider-selection policy
+       -> eligibility and approved provider-selection policy
        -> typed provider port
-            -> TypeSafe Jev adapter
-            -> OpenAI Decisions adapter
+            -> TypeSafe Jev adapter (implemented, disabled by default)
+            -> OpenAI Decisions adapter (implemented, disabled by default)
        -> decision validation + confidence policy
        -> human-review queue port
        -> audit / metrics ports
 ```
 
-The future application service should receive ports; it must not import vendor SDKs. Provider adapters belong in infrastructure. Phase 1 is an isolated acceptance service and does not alter the existing RadBridge service-port count. Production authentication gateway, UI and deployment wiring remain unimplemented.
+The future application service should receive ports; it must not import vendor SDKs. Provider adapters belong in infrastructure. Phase 1 is an isolated acceptance service and does not alter the existing RadBridge service-port count. Production authentication gateway, UI and deployment wiring remain unimplemented. Phase 1 chooses at most one provider using deployment configuration; the proposed policy-driven multi-provider selector is future work.
 
 Proposed request contract:
 
@@ -74,11 +74,11 @@ Provider input is built from a task-versioned schema and an explicit field allow
 2. Run the deterministic evaluator first. If it returns a conclusive result, return `RULE`; do not call a provider.
 3. If the rule returns `NEEDS_REVIEW`, check that this task explicitly permits model assistance, its data class is allowed by the organization’s approved provider configuration, and an adapter supports the input type. Otherwise enqueue `HUMAN_REVIEW`.
 4. Select among eligible providers using a server-side versioned policy: task evaluation quality first, then data eligibility, availability, latency budget and cost. A lower price or latency never overrides data restrictions or minimum quality.
-5. Send only the allowlisted normalized evidence. Apply a bounded timeout and at most one retry for a retryable transport failure, using an idempotency key. Do not fan out one request to multiple vendors.
+5. Send only the allowlisted normalized evidence. Phase 1 uses a bounded timeout, no retries, and a single explicitly configured provider. Do not fan out one request to multiple vendors.
 6. Validate the returned answer against the exact task schema, allowed values, finite probabilities, refusal state, threshold and policy version. Invalid, refused, stale, low-confidence or conflicting output becomes `HUMAN_REVIEW`; it is never coerced into a valid choice.
 7. Return a suggestion to the existing caller. A human with the existing branch-scoped permission reviews it. The human’s action goes through the existing workflow use case and its normal authorization/audit checks; the model cannot invoke tools or write records.
 
-Provider failover is opt-in per task and data class. It is disabled by default. A Jev timeout cannot silently send the evidence to OpenAI, or vice versa. An alternate provider may be tried only if the approved task policy names it, privacy review permits it, the original request is known not to have been accepted (or the provider supports idempotency), and the retry budget allows it. Otherwise return to human review.
+Provider failover is not implemented. A Jev timeout cannot silently send the evidence to OpenAI, or vice versa. The deterministic result remains in place and the case stays in human review.
 
 ## Confidence and review rules
 
@@ -100,7 +100,7 @@ The review item shows the sanitized evidence, model suggestion and confidence, r
 ## Rollout and acceptance gates
 
 1. Agree the first operational task, prohibited fields, and labeled ground-truth source. No task is enabled by this ADR alone.
-2. Build provider-neutral ports, a deterministic baseline, two adapters, schema validation, human queue and safe configuration. Unit tests must use fake adapters and synthetic inputs.
+2. The isolated Phase 1 service provides a deterministic baseline, two optional adapters, schema validation, human queue and safe configuration. Unit tests use mocked adapters and synthetic inputs.
 3. Run offline evaluation on a representative, de-identified holdout. Report per-class precision/recall, false-negative cost, calibration, refusal/abstention, P50/P95 latency, request failure rate, and cost per correct suggestion for both providers and the rules-only baseline.
 4. Run shadow mode in an isolated test environment. Store only approved minimized telemetry; never let suggestions change live case state. Test timeouts, duplicate calls, malformed answers, provider disagreement, circuit breaker, branch isolation and vendor outage.
 5. Obtain security/privacy and domain-owner approval, then limited user acceptance. Enable a task only with a reviewed versioned threshold and a documented rollback switch. The default for any missing setting is rules plus human review.

@@ -52,6 +52,7 @@ def test_jev_is_opt_in_and_any_suggestion_remains_human_review(api,monkeypatch):
     client,private,Session=api
     from app import main
     from app.providers.jev import JevSuggestion
+    monkeypatch.setenv('DECISION_PROVIDER','jev')
     monkeypatch.setenv('JEV_ENABLED','true')
     calls=[]
     def fake_suggest(code,retries):
@@ -75,6 +76,7 @@ def test_jev_failure_records_safe_audit_and_falls_back_to_rules(api,monkeypatch)
     client,private,Session=api
     from app import main
     from app.providers.jev import JevUnavailable
+    monkeypatch.setenv('DECISION_PROVIDER','jev')
     monkeypatch.setenv('JEV_ENABLED','true')
     monkeypatch.setattr(main,'suggest_category',lambda *_: (_ for _ in ()).throw(JevUnavailable('private details')))
     payload={**PAYLOAD,'request_id':'router-test-0003','error_code':'C_STORE_FAILURE'}
@@ -86,3 +88,53 @@ def test_jev_failure_records_safe_audit_and_falls_back_to_rules(api,monkeypatch)
         from app.models import DecisionAuditEvent
         event=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id'],event_type='JEV_UNAVAILABLE').one()
         assert event.details=={'provider':'JEV','reason_code':'PROVIDER_UNAVAILABLE'}
+
+def test_openai_requires_both_provider_selection_and_opt_in(api,monkeypatch):
+    client,private,_=api
+    from app import main
+    from app.providers.openai_decisions import OpenAISuggestion
+    monkeypatch.setenv('DECISION_PROVIDER','openai')
+    calls=[]
+    monkeypatch.setattr(main,'suggest_openai_category',lambda code,retries:(calls.append((code,retries)) or
+        OpenAISuggestion('TRANSFER',0.9,'gpt-6-luna',30,3)))
+    payload={**PAYLOAD,'request_id':'openai-disabled-0001','error_code':'C_STORE_FAILURE'}
+    response=client.post('/api/v1/decisions/evaluate',json=payload,headers=bearer(private))
+    assert response.status_code==200 and calls==[]
+    assert response.json()['provider']=='RULES'
+
+def test_openai_opt_in_is_suggestion_only_and_unknown_codes_never_leave_service(api,monkeypatch):
+    client,private,Session=api
+    from app import main
+    from app.providers.openai_decisions import OpenAISuggestion
+    monkeypatch.setenv('DECISION_PROVIDER','openai')
+    monkeypatch.setenv('OPENAI_DECISIONS_ENABLED','true')
+    calls=[]
+    monkeypatch.setattr(main,'suggest_openai_category',lambda code,retries:(calls.append((code,retries)) or
+        OpenAISuggestion('TRANSFER',0.9,'gpt-6-luna',30,3)))
+    unknown={**PAYLOAD,'request_id':'openai-unknown-0001'}
+    assert client.post('/api/v1/decisions/evaluate',json=unknown,headers=bearer(private)).status_code==200
+    assert calls==[]
+    payload={**PAYLOAD,'request_id':'openai-allowed-0001','error_code':'C_STORE_FAILURE'}
+    body=client.post('/api/v1/decisions/evaluate',json=payload,headers=bearer(private)).json()
+    assert calls==[('C_STORE_FAILURE',1)]
+    assert body['provider']=='OPENAI_DECISIONS' and body['model_suggestion']=='TRANSFER'
+    assert body['status']=='NEEDS_REVIEW' and body['review_required'] and body['execution_allowed'] is False
+    with Session() as db:
+        events=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id']).all()
+        assert {event.event_type for event in events}=={'DECISION_CLASSIFIED','OPENAI_DECISIONS_SUGGESTION'}
+
+def test_openai_failure_keeps_rule_result_and_records_safe_audit(api,monkeypatch):
+    client,private,Session=api
+    from app import main
+    from app.providers.openai_decisions import OpenAIUnavailable
+    monkeypatch.setenv('DECISION_PROVIDER','openai')
+    monkeypatch.setenv('OPENAI_DECISIONS_ENABLED','true')
+    monkeypatch.setattr(main,'suggest_openai_category',lambda *_:(_ for _ in ()).throw(OpenAIUnavailable('private detail')))
+    payload={**PAYLOAD,'request_id':'openai-failed-0001','error_code':'C_STORE_FAILURE'}
+    body=client.post('/api/v1/decisions/evaluate',json=payload,headers=bearer(private)).json()
+    assert body['provider']=='RULES' and body['model_suggestion'] is None
+    assert body['status']=='NEEDS_REVIEW' and body['execution_allowed'] is False
+    with Session() as db:
+        event=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id'],
+            event_type='OPENAI_DECISIONS_UNAVAILABLE').one()
+        assert event.details=={'provider':'OPENAI_DECISIONS','reason_code':'PROVIDER_UNAVAILABLE'}

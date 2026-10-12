@@ -1,6 +1,6 @@
 # RadBridge Decision Engine — Phase 1
 
-Independent DICOM Router error classification with a branch-scoped audit trail and human-review API. It has its own PostgreSQL database and Compose project. Jev support is opt-in and disabled by default. The service does not connect to the RadBridge clinical database, process DICOM pixels, or execute a suggested action.
+Independent DICOM Router error classification with a branch-scoped audit trail and human-review API. It has its own PostgreSQL database and Compose project. The local deterministic rules are the default. Jev and OpenAI Decisions are optional, mutually exclusive suggestion providers, each requiring an explicit provider selection and a separate disabled-by-default flag. The service does not connect to the RadBridge clinical database, process DICOM pixels, or execute a suggested action.
 
 ## Local setup
 
@@ -30,6 +30,14 @@ The adapter sends only the fixed machine codes `C_STORE_FAILURE` or `INVALID_DIC
 
 Jev's public API contract is documented at [TypeSafe API](https://api.typesafe.ai/docs) and [OpenAPI schema](https://api.typesafe.ai/openapi.json). The API key is not required for local rules-only or mock tests.
 
+## Optional OpenAI Decisions adapter
+
+The OpenAI adapter is disabled unless both `DECISION_PROVIDER=openai` and `OPENAI_DECISIONS_ENABLED=true` are set. The server-side `OPENAI_API_KEY` must be provided through an approved secret store; it must never be committed or exposed to a browser. `OPENAI_DECISIONS_MODEL` is currently restricted to `gpt-6-luna`. The adapter uses the documented `POST /v1/decisions` endpoint with one fixed choice question; the exact request/response contract and model support may change during the public beta, so verify the official [OpenAI Decisions guide](https://developers.openai.com/api/docs/guides/decisions) before enabling it.
+
+The OpenAI adapter sends only the fixed machine codes `C_STORE_FAILURE` or `INVALID_DICOM_DATA` and a retry count. It does not send branch, actor, source/destination AE identifiers, patient/order data, reports, image pixels, or arbitrary error text. The response must contain exactly one valid category answer and a complete probability set. Refusals, malformed results, timeouts, and unsuccessful responses fall back to the deterministic rule result and create a safe audit event. A validated category is only a suggestion; the case remains `NEEDS_REVIEW` with `execution_allowed=false`. The service does not automatically fail over to Jev or make a live API request in tests. Configure `DECISION_PROVIDER=rules` for rules-only behavior.
+
+Enabling either hosted provider sends the allowlisted operational error code and retry count to that provider for processing. Use synthetic data for development and obtain the required privacy/security approval before sending real operational events. The adapter has no local API key and this repository has not been tested with a live provider credential.
+
 ## Authentication contract
 
 The trusted gateway signs an RS256 JWT with its private key. This service checks `iss`, `aud`, `exp`, `sub`, `branch_id`, and `roles`. It grants access to the actor and branch in that signed assertion, never to identity or branch fields in the request body. `HELPDESK` may classify; `HELPDESK_SUPERVISOR` and `ADMIN` may review within their branch; `SUPER_ADMIN` may review across branches. A production proxy must authenticate the existing RadBridge session and issue these short-lived assertions. Do not expose this service directly to the Internet.
@@ -56,4 +64,4 @@ Keep the signing code and token local. Never paste the token or private key into
 
 ## Phase boundaries
 
-Phase 1 supplies deterministic rules, audit, idempotency, authentication and review APIs. The Jev adapter is available as an isolated optional suggestion provider but remains disabled by default; it is tested with a mock, not a live account. OpenAI adapter, visual Decision Center, existing RadBridge login integration, production deployment, a Redis worker and automated execution are not implemented. Jev activation for real operational data requires a separate privacy/security review, de-identified evaluation and explicit task approval. All Jev suggestions require human review.
+Phase 1 supplies deterministic rules, audit, idempotency, authentication and review APIs. Jev and OpenAI Decisions are isolated optional suggestion providers, both disabled by default and tested with mocks only. The visual Decision Center, existing RadBridge login integration, production deployment, a Redis worker and automated execution are not implemented. Enabling either provider for real operational data requires a separate privacy/security review, de-identified evaluation and explicit task approval. All provider suggestions require human review.

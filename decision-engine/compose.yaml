@@ -21,9 +21,13 @@ services:
       JWT_PUBLIC_KEY_FILE: /run/secrets/decision-jwt-public.pem
       JWT_ISSUER: ${JWT_ISSUER:?Set JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-radbridge-decision-engine}
+      DECISION_PROVIDER: ${DECISION_PROVIDER:-rules}
       JEV_ENABLED: ${JEV_ENABLED:-false}
       JEV_API_KEY: ${JEV_API_KEY:-}
       JEV_MODEL: ${JEV_MODEL:-jev-latest}
+      OPENAI_DECISIONS_ENABLED: ${OPENAI_DECISIONS_ENABLED:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_DECISIONS_MODEL: ${OPENAI_DECISIONS_MODEL:-gpt-6-luna}
     ports:
       - "127.0.0.1:${DECISION_ENGINE_PORT:-18081}:8000"
     volumes:

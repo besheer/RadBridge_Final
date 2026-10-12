@@ -13,6 +13,7 @@ from app.rules import POLICY_VERSION, classify
 from app.schemas import DecisionResponse, EvaluateRequest, ReviewRequest, ReviewResponse
 from app.security import Actor, require_roles
 from app.providers.jev import JevUnavailable, suggest_category
+from app.providers.openai_decisions import OpenAIUnavailable, suggest_category as suggest_openai_category
 
 app=FastAPI(title='RadBridge Decision Engine',version='0.1.0',docs_url='/api/docs',redoc_url=None)
 
@@ -68,22 +69,34 @@ def evaluate(request:EvaluateRequest,actor:Actor=Depends(require_roles('HELPDESK
     db.refresh(decision)
     # External inference is explicitly opt-in and restricted to fixed, non-PHI rule codes.
     # Commit the idempotency reservation first so duplicate HTTP retries cannot fan out calls.
-    if (decision.status=='NEEDS_REVIEW' and os.environ.get('JEV_ENABLED','false').lower()=='true'
+    provider=os.environ.get('DECISION_PROVIDER','rules').strip().lower()
+    provider_enabled = (
+        provider == 'jev' and os.environ.get('JEV_ENABLED','false').lower() == 'true'
+    ) or (
+        provider == 'openai' and os.environ.get('OPENAI_DECISIONS_ENABLED','false').lower() == 'true'
+    )
+    if (decision.status=='NEEDS_REVIEW' and provider_enabled
             and normalized['error_code'] in {'C_STORE_FAILURE','INVALID_DICOM_DATA'}):
         try:
-            suggestion=suggest_category(normalized['error_code'],request.retry_count)
-        except JevUnavailable:
+            if provider == 'jev':
+                suggestion=suggest_category(normalized['error_code'],request.retry_count)
+                provider_name='JEV'
+            else:
+                suggestion=suggest_openai_category(normalized['error_code'],request.retry_count)
+                provider_name='OPENAI_DECISIONS'
+        except (JevUnavailable, OpenAIUnavailable):
+            provider_name='JEV' if provider == 'jev' else 'OPENAI_DECISIONS'
             db.add(DecisionAuditEvent(decision_id=decision.id,branch_id=branch_id,actor_id=actor.user_id,
-                event_type='JEV_UNAVAILABLE',details={'provider':'JEV','reason_code':'PROVIDER_UNAVAILABLE'}))
+                event_type=f'{provider_name}_UNAVAILABLE',details={'provider':provider_name,'reason_code':'PROVIDER_UNAVAILABLE'}))
             db.commit()
             suggestion=None
         if suggestion:
-            decision.provider='JEV'
+            decision.provider=provider_name
             decision.model_suggestion=suggestion.category
             decision.model_confidence=suggestion.confidence
             decision.model_name=suggestion.model_name
             db.add(DecisionAuditEvent(decision_id=decision.id,branch_id=branch_id,actor_id=actor.user_id,
-                event_type='JEV_SUGGESTION',details={'provider':'JEV','model':suggestion.model_name,
+                event_type=f'{provider_name}_SUGGESTION',details={'provider':provider_name,'model':suggestion.model_name,
                 'category':suggestion.category,'confidence':suggestion.confidence,
                 'input_tokens':suggestion.input_tokens,'output_tokens':suggestion.output_tokens}))
             db.commit()
