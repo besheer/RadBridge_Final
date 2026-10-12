@@ -26,7 +26,7 @@ decision-engine/app
   -> human review API (classification only; no action execution)
 ```
 
-The optional Jev and OpenAI Decisions providers are narrowly scoped infrastructure adapters. They accept only the fixed DICOM error codes `C_STORE_FAILURE` and `INVALID_DICOM_DATA` plus a bounded retry count, store validated category/confidence/model and token usage, and keep status at `NEEDS_REVIEW`. Each provider requires both explicit server-side selection and its own feature flag. Neither sends AE/branch/patient identifiers or arbitrary error text. Every external response remains a suggestion and cannot cause an action. Tests use mocked HTTP; no live vendor credential is needed.
+The optional Jev and OpenAI Decisions providers are narrowly scoped infrastructure adapters. They accept only the fixed DICOM error codes `C_STORE_FAILURE` and `INVALID_DICOM_DATA` plus a bounded retry count, store validated category/confidence/model, normalized category probabilities and token usage, and keep status at `NEEDS_REVIEW`. Each provider requires both explicit server-side selection and its own feature flag. Neither sends AE/branch/patient identifiers or arbitrary error text. Every external response remains a suggestion and cannot cause an action. Tests use mocked HTTP; no live vendor credential is needed.
 
 Future provider-neutral application service (not implemented):
 

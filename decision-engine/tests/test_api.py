@@ -58,7 +58,8 @@ def test_jev_is_opt_in_and_any_suggestion_remains_human_review(api,monkeypatch):
     calls=[]
     def fake_suggest(code,retries):
         calls.append((code,retries))
-        return JevSuggestion('TRANSFER',0.99,'jev-test',10,2)
+        return JevSuggestion('TRANSFER',0.99,{'CONNECTION':0.0,'CONFIGURATION':0.0,'STORAGE':0.0,
+            'TRANSFER':0.99,'DATA_QUALITY':0.0,'UNKNOWN':0.01},'jev-test',10,2)
     monkeypatch.setattr(main,'suggest_category',fake_suggest)
     response=client.post('/api/v1/decisions/evaluate',json=PAYLOAD,headers=bearer(private))
     assert response.status_code==200 and calls==[]  # Unknown codes never leave the service.
@@ -67,6 +68,7 @@ def test_jev_is_opt_in_and_any_suggestion_remains_human_review(api,monkeypatch):
     body=response.json()
     assert calls==[('C_STORE_FAILURE',1)]
     assert body['provider']=='JEV' and body['model_suggestion']=='TRANSFER' and body['model_confidence']==0.99
+    assert body['model_probabilities']['TRANSFER']==0.99
     assert body['status']=='NEEDS_REVIEW' and body['review_required'] and body['execution_allowed'] is False
     with Session() as db:
         from app.models import DecisionAuditEvent
@@ -104,7 +106,8 @@ def test_openai_requires_both_provider_selection_and_opt_in(api,monkeypatch):
     monkeypatch.setenv('DECISION_PROVIDER','openai')
     calls=[]
     monkeypatch.setattr(main,'suggest_openai_category',lambda code,retries:(calls.append((code,retries)) or
-        OpenAISuggestion('TRANSFER',0.9,'gpt-6-luna',30,3)))
+        OpenAISuggestion('TRANSFER',0.9,{'CONNECTION':0.02,'CONFIGURATION':0.02,'STORAGE':0.02,
+            'TRANSFER':0.9,'DATA_QUALITY':0.02,'UNKNOWN':0.02},'gpt-6-luna',30,3)))
     payload={**PAYLOAD,'request_id':'openai-disabled-0001','error_code':'C_STORE_FAILURE'}
     response=client.post('/api/v1/decisions/evaluate',json=payload,headers=bearer(private))
     assert response.status_code==200 and calls==[]
@@ -119,7 +122,7 @@ def test_openai_opt_in_is_suggestion_only_and_unknown_codes_never_leave_service(
     monkeypatch.setenv('OPENAI_API_KEY','synthetic-test-key')
     calls=[]
     monkeypatch.setattr(main,'suggest_openai_category',lambda code,retries:(calls.append((code,retries)) or
-        OpenAISuggestion('TRANSFER',0.9,'gpt-6-luna',30,3)))
+        OpenAISuggestion('TRANSFER',0.9,{'CONNECTION':0.02,'CONFIGURATION':0.02,'STORAGE':0.02,'TRANSFER':0.9,'DATA_QUALITY':0.02,'UNKNOWN':0.02},'gpt-6-luna',30,3)))
     unknown={**PAYLOAD,'request_id':'openai-unknown-0001'}
     assert client.post('/api/v1/decisions/evaluate',json=unknown,headers=bearer(private)).status_code==200
     assert calls==[]
@@ -127,6 +130,7 @@ def test_openai_opt_in_is_suggestion_only_and_unknown_codes_never_leave_service(
     body=client.post('/api/v1/decisions/evaluate',json=payload,headers=bearer(private)).json()
     assert calls==[('C_STORE_FAILURE',1)]
     assert body['provider']=='OPENAI_DECISIONS' and body['model_suggestion']=='TRANSFER'
+    assert body['model_probabilities']['TRANSFER']==0.9
     assert body['status']=='NEEDS_REVIEW' and body['review_required'] and body['execution_allowed'] is False
     with Session() as db:
         events=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id']).all()
@@ -161,11 +165,13 @@ def test_auto_selects_first_enabled_credentialed_provider_and_audits_selection(a
     monkeypatch.setenv('OPENAI_API_KEY','synthetic-test-key')
     calls=[]
     monkeypatch.setattr(main,'suggest_openai_category',lambda code,retries:(calls.append((code,retries)) or
-        OpenAISuggestion('TRANSFER',0.9,'gpt-6-luna',30,3)))
+        OpenAISuggestion('TRANSFER',0.9,{'CONNECTION':0.02,'CONFIGURATION':0.02,'STORAGE':0.02,
+            'TRANSFER':0.9,'DATA_QUALITY':0.02,'UNKNOWN':0.02},'gpt-6-luna',30,3)))
     payload={**PAYLOAD,'request_id':'auto-router-0001','error_code':'C_STORE_FAILURE'}
     body=client.post('/api/v1/decisions/evaluate',json=payload,headers=bearer(private)).json()
     assert calls==[('C_STORE_FAILURE',1)]
     assert body['provider']=='OPENAI_DECISIONS' and body['model_suggestion']=='TRANSFER'
+    assert body['model_probabilities']['TRANSFER']==0.9
     with Session() as db:
         events=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id']).all()
         request_event=next(event for event in events if event.event_type=='PROVIDER_REQUESTED')

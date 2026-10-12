@@ -33,7 +33,7 @@ def render(decision:Decision):
         suggested_action=decision.suggested_action,reason_code=decision.reason_code,
         provider=decision.provider,policy_version=decision.policy_version,
         model_suggestion=decision.model_suggestion,model_confidence=decision.model_confidence,
-        model_name=decision.model_name,
+        model_name=decision.model_name,model_probabilities=decision.model_probabilities,
         review_required=decision.status=='NEEDS_REVIEW',evidence=decision.evidence,
         created_at=decision.created_at)
 
@@ -92,9 +92,11 @@ def evaluate(request:EvaluateRequest,actor:Actor=Depends(require_roles('HELPDESK
             decision.model_suggestion=suggestion.category
             decision.model_confidence=suggestion.confidence
             decision.model_name=suggestion.model_name
+            decision.model_probabilities=suggestion.probabilities
             db.add(DecisionAuditEvent(decision_id=decision.id,branch_id=branch_id,actor_id=actor.user_id,
                 event_type=f'{provider_name}_SUGGESTION',details={'provider':provider_name,'model':suggestion.model_name,
                 'category':suggestion.category,'confidence':suggestion.confidence,
+                'probabilities':suggestion.probabilities,
                 'input_tokens':suggestion.input_tokens,'output_tokens':suggestion.output_tokens}))
             db.commit()
             db.refresh(decision)

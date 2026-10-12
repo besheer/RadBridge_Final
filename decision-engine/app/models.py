@@ -25,6 +25,7 @@ class Decision(Base):
     model_suggestion: Mapped[str|None]=mapped_column(String(40))
     model_confidence: Mapped[float|None]=mapped_column()
     model_name: Mapped[str|None]=mapped_column(String(80))
+    model_probabilities: Mapped[dict|None]=mapped_column(JSON)
     policy_version: Mapped[str]=mapped_column(String(32),nullable=False)
     created_at: Mapped[datetime]=mapped_column(DateTime(timezone=True),default=lambda:datetime.now(timezone.utc),nullable=False)
     reviewed_by: Mapped[str|None]=mapped_column(String(80))

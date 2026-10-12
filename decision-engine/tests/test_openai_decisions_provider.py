@@ -28,6 +28,7 @@ def test_openai_adapter_posts_fixed_allowlisted_payload_and_validates_response()
     result = suggest_category('C_STORE_FAILURE', 2, api_key='synthetic-test-key',
                               transport=httpx.MockTransport(handler))
     assert result.category == 'TRANSFER' and result.confidence == 0.91
+    assert result.probabilities['TRANSFER'] == 0.91
     assert captured['url'] == 'https://api.openai.com/v1/decisions'
     assert captured['headers']['authorization'] == 'Bearer synthetic-test-key'
     assert captured['payload']['model'] == 'gpt-6-luna'

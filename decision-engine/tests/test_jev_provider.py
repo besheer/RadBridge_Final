@@ -18,6 +18,7 @@ def test_jev_adapter_sends_only_allowlisted_machine_evidence_and_validates_resul
     result=suggest_category('C_STORE_FAILURE',2,api_key='synthetic-test-key',
         transport=httpx.MockTransport(handler))
     assert result.category=='TRANSFER' and result.confidence==0.91
+    assert result.probabilities['TRANSFER']==0.91
     assert captured['url']=='https://api.typesafe.ai/v1/systemone'
     assert captured['headers']['authorization']=='Bearer synthetic-test-key'
     assert 'C_STORE_FAILURE' in captured['body'] and 'retry_count' in captured['body']

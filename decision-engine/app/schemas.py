@@ -27,6 +27,7 @@ class DecisionResponse(BaseModel):
     model_suggestion: str | None = None
     model_confidence: float | None = None
     model_name: str | None = None
+    model_probabilities: dict[str, float] | None = None
     policy_version: str
     review_required: bool
     execution_allowed: Literal[False] = False

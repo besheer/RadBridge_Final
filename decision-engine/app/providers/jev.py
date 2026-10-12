@@ -12,6 +12,7 @@ ALLOWED_CATEGORIES = frozenset({'CONNECTION','CONFIGURATION','STORAGE','TRANSFER
 class JevSuggestion:
     category: str
     confidence: float
+    probabilities: dict[str, float]
     model_name: str
     input_tokens: int
     output_tokens: int
@@ -33,14 +34,15 @@ def _validate_response(data: dict) -> JevSuggestion:
             raise ValueError
         if not isinstance(probabilities, dict) or set(probabilities) != ALLOWED_CATEGORIES:
             raise ValueError
-        if any(not math.isfinite(float(value)) or not 0 <= float(value) <= 1 for value in probabilities.values()):
+        probability_map = {name: float(value) for name, value in probabilities.items()}
+        if any(not math.isfinite(value) or not 0 <= value <= 1 for value in probability_map.values()):
             raise ValueError
         if not isinstance(model, str) or not model or len(model) > 80:
             raise ValueError
         input_tokens, output_tokens = int(usage['input_tokens']), int(usage['output_tokens'])
         if input_tokens < 0 or output_tokens < 0:
             raise ValueError
-        return JevSuggestion(category, confidence, model, input_tokens, output_tokens)
+        return JevSuggestion(category, confidence, probability_map, model, input_tokens, output_tokens)
     except (KeyError, TypeError, ValueError, OverflowError) as exc:
         raise JevUnavailable('Provider response failed validation') from exc
 

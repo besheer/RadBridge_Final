@@ -14,6 +14,7 @@ ALLOWED_CATEGORIES = frozenset({'CONNECTION', 'CONFIGURATION', 'STORAGE', 'TRANS
 class OpenAISuggestion:
     category: str
     confidence: float
+    probabilities: dict[str, float]
     model_name: str
     input_tokens: int
     output_tokens: int
@@ -48,7 +49,7 @@ def _validate_response(data: dict) -> OpenAISuggestion:
         input_tokens, output_tokens = int(usage['input_tokens']), int(usage['output_tokens'])
         if not isinstance(model, str) or not model or len(model) > 80 or min(input_tokens, output_tokens) < 0:
             raise ValueError
-        return OpenAISuggestion(category, confidence, model, input_tokens, output_tokens)
+        return OpenAISuggestion(category, confidence, probability_map, model, input_tokens, output_tokens)
     except (AttributeError, KeyError, TypeError, ValueError, OverflowError) as exc:
         raise OpenAIUnavailable('Provider response failed validation') from exc
 
