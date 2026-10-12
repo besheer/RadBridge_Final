@@ -47,3 +47,42 @@ def test_reviews_are_branch_scoped_and_cannot_run_actions(api):
     assert done.status_code==200 and done.json()['status']=='REVIEWED'
     assert done.json()['reason_code']=='CONFIRMED_CATEGORY'
     assert client.post(f"/api/v1/reviews/{created['decision_id']}",json={'outcome':'ACCEPTED','reason_code':'NOT_ACTIONABLE'},headers=review_headers).status_code==409
+
+def test_jev_is_opt_in_and_any_suggestion_remains_human_review(api,monkeypatch):
+    client,private,Session=api
+    from app import main
+    from app.providers.jev import JevSuggestion
+    monkeypatch.setenv('JEV_ENABLED','true')
+    calls=[]
+    def fake_suggest(code,retries):
+        calls.append((code,retries))
+        return JevSuggestion('TRANSFER',0.99,'jev-test',10,2)
+    monkeypatch.setattr(main,'suggest_category',fake_suggest)
+    response=client.post('/api/v1/decisions/evaluate',json=PAYLOAD,headers=bearer(private))
+    assert response.status_code==200 and calls==[]  # Unknown codes never leave the service.
+    restricted={**PAYLOAD,'request_id':'router-test-0002','error_code':'C_STORE_FAILURE'}
+    response=client.post('/api/v1/decisions/evaluate',json=restricted,headers=bearer(private))
+    body=response.json()
+    assert calls==[('C_STORE_FAILURE',1)]
+    assert body['provider']=='JEV' and body['model_suggestion']=='TRANSFER' and body['model_confidence']==0.99
+    assert body['status']=='NEEDS_REVIEW' and body['review_required'] and body['execution_allowed'] is False
+    with Session() as db:
+        from app.models import DecisionAuditEvent
+        events=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id']).all()
+        assert {event.event_type for event in events}=={'DECISION_CLASSIFIED','JEV_SUGGESTION'}
+
+def test_jev_failure_records_safe_audit_and_falls_back_to_rules(api,monkeypatch):
+    client,private,Session=api
+    from app import main
+    from app.providers.jev import JevUnavailable
+    monkeypatch.setenv('JEV_ENABLED','true')
+    monkeypatch.setattr(main,'suggest_category',lambda *_: (_ for _ in ()).throw(JevUnavailable('private details')))
+    payload={**PAYLOAD,'request_id':'router-test-0003','error_code':'C_STORE_FAILURE'}
+    response=client.post('/api/v1/decisions/evaluate',json=payload,headers=bearer(private))
+    body=response.json()
+    assert body['status']=='NEEDS_REVIEW' and body['provider']=='RULES'
+    assert body['model_suggestion'] is None and body['execution_allowed'] is False
+    with Session() as db:
+        from app.models import DecisionAuditEvent
+        event=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id'],event_type='JEV_UNAVAILABLE').one()
+        assert event.details=={'provider':'JEV','reason_code':'PROVIDER_UNAVAILABLE'}

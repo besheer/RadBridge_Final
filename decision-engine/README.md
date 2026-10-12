@@ -1,6 +1,6 @@
 # RadBridge Decision Engine — Phase 1
 
-Independent, rules-only DICOM Router error classification with a branch-scoped audit trail and human-review API. It has its own PostgreSQL database and Compose project. It does not connect to the RadBridge clinical database, call Jev/OpenAI, process DICOM pixels, or execute a suggested action.
+Independent DICOM Router error classification with a branch-scoped audit trail and human-review API. It has its own PostgreSQL database and Compose project. Jev support is opt-in and disabled by default. The service does not connect to the RadBridge clinical database, process DICOM pixels, or execute a suggested action.
 
 ## Local setup
 
@@ -20,7 +20,15 @@ docker compose --env-file .env.local -f compose.yaml up --build -d
 docker compose --env-file .env.local -f compose.yaml ps
 ```
 
-The API is bound to loopback at `http://127.0.0.1:18081`; PostgreSQL has no published port. The public-key mount is read-only. Database schema upgrades run from the versioned Alembic migration before the API starts. Stop with `docker compose --env-file .env.local -f compose.yaml down`; use `down --volumes` only when deliberately removing this isolated synthetic database.
+The API is bound to loopback at `http://127.0.0.1:18081`; PostgreSQL has no published port. The public-key mount is read-only. Database schema upgrades run from versioned Alembic migrations before the API starts. Stop with `docker compose --env-file .env.local -f compose.yaml down`; use `down --volumes` only when deliberately removing this isolated synthetic database.
+
+## Optional Jev adapter
+
+Jev calls are disabled unless `JEV_ENABLED=true`. Keep `JEV_API_KEY` in the deployment secret manager or protected server environment; never put it in Git, browser code, command history, this chat, or logs. The server code calls TypeSafe's fixed `https://api.typesafe.ai/v1/systemone` endpoint, with a four-second total timeout and redirects disabled. `JEV_MODEL` defaults to the documented `jev-latest` alias; confirm model availability for the account before enabling calls.
+
+The adapter sends only the fixed machine codes `C_STORE_FAILURE` or `INVALID_DICOM_DATA` and a retry count. It does not send branch, actor, source/destination AE identifiers, patient/order data, reports, image pixels, or arbitrary error text. Unknown codes never go to Jev. Invalid, low-confidence, timed-out, refused, or unexpected results do not change the case: a validated category is saved only as a suggestion and the case remains `NEEDS_REVIEW` with `execution_allowed=false`. No automatic retry or provider failover is performed. Test with synthetic fixtures/mocked HTTP only; this repository does not make a live Jev request.
+
+Jev's public API contract is documented at [TypeSafe API](https://api.typesafe.ai/docs) and [OpenAPI schema](https://api.typesafe.ai/openapi.json). The API key is not required for local rules-only or mock tests.
 
 ## Authentication contract
 
@@ -48,4 +56,4 @@ Keep the signing code and token local. Never paste the token or private key into
 
 ## Phase boundaries
 
-Phase 1 supplies deterministic rules, audit, idempotency, authentication and review APIs. It does not supply the proposed visual Decision Center, existing RadBridge login integration, production deployment, a Redis worker, Jev/OpenAI adapters or automated execution. Those need separate implementation and review. Later vendor calls remain disabled until de-identified evaluation, data-protection approval, shadow-mode acceptance and explicit per-task thresholds pass.
+Phase 1 supplies deterministic rules, audit, idempotency, authentication and review APIs. The Jev adapter is available as an isolated optional suggestion provider but remains disabled by default; it is tested with a mock, not a live account. OpenAI adapter, visual Decision Center, existing RadBridge login integration, production deployment, a Redis worker and automated execution are not implemented. Jev activation for real operational data requires a separate privacy/security review, de-identified evaluation and explicit task approval. All Jev suggestions require human review.

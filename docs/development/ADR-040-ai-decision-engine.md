@@ -1,6 +1,6 @@
 # ADR 040: Guarded AI decision routing
 
-Status: Phase 1 rules-only service implemented in `decision-engine/`; Jev/OpenAI provider clients and production integration remain proposed. The service has its own Compose project and PostgreSQL database. No production workflow or clinical database was changed.
+Status: isolated Decision Engine implemented in `decision-engine/`; Jev adapter is implemented but disabled by default, while OpenAI provider client and production integration remain proposed. The service has its own Compose project and PostgreSQL database. No production workflow or clinical database was changed.
 
 ## Context and goal
 
@@ -25,6 +25,8 @@ decision-engine/app
   -> branch-scoped decision + audit persistence
   -> human review API (classification only; no action execution)
 ```
+
+The optional Jev provider is a narrowly scoped infrastructure adapter. It accepts only fixed DICOM error codes, stores the validated category/confidence/model and token usage, and keeps status at `NEEDS_REVIEW`. Its feature flag defaults to off. It never sends AE/branch/patient identifiers or arbitrary error text. Every external response remains a suggestion and cannot cause an action.
 
 Future provider modules (not implemented):
 

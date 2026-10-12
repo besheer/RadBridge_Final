@@ -21,6 +21,9 @@ services:
       JWT_PUBLIC_KEY_FILE: /run/secrets/decision-jwt-public.pem
       JWT_ISSUER: ${JWT_ISSUER:?Set JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-radbridge-decision-engine}
+      JEV_ENABLED: ${JEV_ENABLED:-false}
+      JEV_API_KEY: ${JEV_API_KEY:-}
+      JEV_MODEL: ${JEV_MODEL:-jev-latest}
     ports:
       - "127.0.0.1:${DECISION_ENGINE_PORT:-18081}:8000"
     volumes:

@@ -24,6 +24,9 @@ class DecisionResponse(BaseModel):
     suggested_action: str
     reason_code: str
     provider: str
+    model_suggestion: str | None = None
+    model_confidence: float | None = None
+    model_name: str | None = None
     policy_version: str
     review_required: bool
     execution_allowed: Literal[False] = False

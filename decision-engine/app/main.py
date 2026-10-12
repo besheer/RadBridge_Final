@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from uuid import uuid4
 from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlalchemy import select, text
@@ -11,6 +12,7 @@ from app.models import Decision, DecisionAuditEvent
 from app.rules import POLICY_VERSION, classify
 from app.schemas import DecisionResponse, EvaluateRequest, ReviewRequest, ReviewResponse
 from app.security import Actor, require_roles
+from app.providers.jev import JevUnavailable, suggest_category
 
 app=FastAPI(title='RadBridge Decision Engine',version='0.1.0',docs_url='/api/docs',redoc_url=None)
 
@@ -28,6 +30,8 @@ def render(decision:Decision):
         task_code=decision.task_code,status=decision.status,category=decision.category,
         suggested_action=decision.suggested_action,reason_code=decision.reason_code,
         provider=decision.provider,policy_version=decision.policy_version,
+        model_suggestion=decision.model_suggestion,model_confidence=decision.model_confidence,
+        model_name=decision.model_name,
         review_required=decision.status=='NEEDS_REVIEW',evidence=decision.evidence,
         created_at=decision.created_at)
 
@@ -62,6 +66,28 @@ def evaluate(request:EvaluateRequest,actor:Actor=Depends(require_roles('HELPDESK
             return render(prior)
         raise HTTPException(status_code=409,detail='Request id conflict') from None
     db.refresh(decision)
+    # External inference is explicitly opt-in and restricted to fixed, non-PHI rule codes.
+    # Commit the idempotency reservation first so duplicate HTTP retries cannot fan out calls.
+    if (decision.status=='NEEDS_REVIEW' and os.environ.get('JEV_ENABLED','false').lower()=='true'
+            and normalized['error_code'] in {'C_STORE_FAILURE','INVALID_DICOM_DATA'}):
+        try:
+            suggestion=suggest_category(normalized['error_code'],request.retry_count)
+        except JevUnavailable:
+            db.add(DecisionAuditEvent(decision_id=decision.id,branch_id=branch_id,actor_id=actor.user_id,
+                event_type='JEV_UNAVAILABLE',details={'provider':'JEV','reason_code':'PROVIDER_UNAVAILABLE'}))
+            db.commit()
+            suggestion=None
+        if suggestion:
+            decision.provider='JEV'
+            decision.model_suggestion=suggestion.category
+            decision.model_confidence=suggestion.confidence
+            decision.model_name=suggestion.model_name
+            db.add(DecisionAuditEvent(decision_id=decision.id,branch_id=branch_id,actor_id=actor.user_id,
+                event_type='JEV_SUGGESTION',details={'provider':'JEV','model':suggestion.model_name,
+                'category':suggestion.category,'confidence':suggestion.confidence,
+                'input_tokens':suggestion.input_tokens,'output_tokens':suggestion.output_tokens}))
+            db.commit()
+            db.refresh(decision)
     return render(decision)
 
 @app.get('/api/v1/reviews',response_model=list[DecisionResponse])
