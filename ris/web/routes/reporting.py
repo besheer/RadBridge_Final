@@ -2121,6 +2121,8 @@ def install_0545(_rb):
     @_rb.app.route('/assignment/unassigned')
     @_rb.require_perm('reports.view')
     def unassigned_cases():
+        from registration_policy import allowed_registration_branches
+        allowed_branches=allowed_registration_branches()
         branch_id=_rb.request.args.get('branch_id',type=int)
         specialty=(_rb.request.args.get('specialty') or '').strip()
         modality=(_rb.request.args.get('modality') or '').strip().upper()
@@ -2129,7 +2131,14 @@ def install_0545(_rb):
         sla_filter=(_rb.request.args.get('sla') or '').strip().upper()
         search=(_rb.request.args.get('q') or '').strip()
 
-        query=_rb.Order.query.join(_rb.Patient).filter(
+        scoped_orders=_rb.Order.query
+        if allowed_branches is not None:
+            scoped_orders=(scoped_orders.filter(_rb.Order.branch_id.in_(allowed_branches))
+                           if allowed_branches else scoped_orders.filter(_rb.db.false()))
+        if branch_id and allowed_branches is not None and branch_id not in allowed_branches:
+            _rb.abort(403)
+
+        query=scoped_orders.join(_rb.Patient).filter(
             _rb.Order.assigned_doctor_id.is_(None),
             _rb.Order.status.notin_(['FINAL','CANCELLED'])
         )
@@ -2177,15 +2186,21 @@ def install_0545(_rb):
             rows.append(snapshot)
 
         doctors=_rb.assignable_doctors()
+        if allowed_branches is not None:
+            doctors=[doctor for doctor in doctors if doctor.branch_id in allowed_branches]
+        branches=_rb.Branch.query.filter_by(active=True)
+        if allowed_branches is not None:
+            branches=branches.filter(_rb.Branch.id.in_(allowed_branches))
+        specialties=(scoped_orders.join(_rb.Procedure,_rb.Order.procedure_id==_rb.Procedure.id)
+            .filter(_rb.Procedure.active.is_(True),_rb.Procedure.category!='')
+            .with_entities(_rb.Procedure.category).distinct().order_by(_rb.Procedure.category).all())
+        modalities=(scoped_orders.filter(_rb.Order.modality.isnot(None),_rb.Order.modality!='')
+            .with_entities(_rb.Order.modality).distinct().order_by(_rb.Order.modality).all())
         return _rb.render_template(
             'unassigned_cases.html',rows=rows,doctors=doctors,
-            branches=_rb.Branch.query.filter_by(active=True).order_by(_rb.Branch.name).all(),
-            specialties=[x[0] for x in _rb.db.session.query(_rb.Procedure.category).filter(
-                _rb.Procedure.active.is_(True),_rb.Procedure.category!=''
-            ).distinct().order_by(_rb.Procedure.category).all()],
-            modalities=[x[0] for x in _rb.db.session.query(_rb.Order.modality).filter(
-                _rb.Order.modality.isnot(None),_rb.Order.modality!=''
-            ).distinct().order_by(_rb.Order.modality).all()],
+            branches=branches.order_by(_rb.Branch.name).all(),
+            specialties=[x[0] for x in specialties],
+            modalities=[x[0] for x in modalities],
             filters={
                 'branch_id':branch_id,'specialty':specialty,'modality':modality,
                 'priority':priority,'readiness':readiness_filter,
