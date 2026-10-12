@@ -95,6 +95,11 @@
       "module": "application.services.clinical.rt_course_workflow",
       "repository": "infrastructure.adapters.clinical.rt_course_repository",
       "composition": "web.extensions.radiotherapy"
+    },
+    {
+      "module": "application.services.clinical.rt_plan_workflow",
+      "repository": "infrastructure.adapters.clinical.rt_plan_repository",
+      "composition": "web.extensions.radiotherapy"
     }
   ]
 }

@@ -6,6 +6,8 @@ from decimal import Decimal,InvalidOperation
 from domain.clinical.rt_validation import amount, text, local_time
 from domain.clinical.rt_course_policy import RTWorkflowError
 from application.services.clinical import rt_course_workflow as _courses
+from application.services.clinical import rt_plan_workflow as _plans
+from infrastructure.adapters.clinical.rt_plan_repository import SqlAlchemyRTPlanRepository
 from infrastructure.adapters.clinical.rt_course_repository import SqlAlchemyRTCourseRepository
 from zoneinfo import ZoneInfo
 from flask import abort,request,session,redirect,url_for,render_template,flash
@@ -99,9 +101,10 @@ def register(m):
             try:return fn(*args,**kwargs)
             except RTWorkflowError as exc:
                 statuses={'INVALID_COURSE_VERSION':400,'INVALID_PET_PURPOSE':400,
-                          'ORDER_NOT_FOUND':404,'COURSE_NOT_FOUND':404,
+                          'ORDER_NOT_FOUND':404,'COURSE_NOT_FOUND':404,'ATTACHMENT_NOT_FOUND':404,
                           'STALE_COURSE_VERSION':409,'PET_LINK_IDENTITY_MISMATCH':409,
-                          'ORDER_CANCELLED':409,'COURSE_TERMINAL':409}
+                          'ORDER_CANCELLED':409,'COURSE_TERMINAL':409,
+                          'PLAN_EDIT_BLOCKED':409,'PLAN_ATTACHMENT_MISMATCH':409}
                 abort(statuses.get(exc.code,500))
             except ValueError as exc:return invalid(exc)
             except IntegrityError:
@@ -146,25 +149,12 @@ def register(m):
     @m.require_perm('rt.plan.record')
     @safe
     def rt_record_plan(course_id):
-        readonly_nurse();c=course(course_id,True);version(c)
-        if c.status in ('COMPLETED','CANCELLED') or Fraction.query.filter_by(course_id=c.id,status='STARTED').first():abort(409)
-        try:count=int(request.form.get('fractions',''));approved=date.fromisoformat(request.form.get('approved_on',''))
-        except ValueError:raise ValueError('Invalid approval date or session count / تاريخ اعتماد أو عدد جلسات غير صحيح')
-        if approved>datetime.now(ZoneInfo('Africa/Cairo')).date():raise ValueError('Approval date cannot be in the future / تاريخ الاعتماد لا يكون في المستقبل')
-        if not 1<=count<=1000:raise ValueError('Invalid session count / عدد جلسات غير صحيح')
-        last=Fraction.query.filter_by(course_id=c.id).filter(Fraction.status.in_(['STARTED','COMPLETED'])).order_by(Fraction.number.desc()).first()
-        if last and count<last.number:abort(409)
-        attachment_id=request.form.get('attachment_id',type=int)
-        if attachment_id:
-            a=m.Attachment.query.get_or_404(attachment_id)
-            if a.patient_id!=c.patient_id or a.order_id!=c.primary_order_id:abort(409)
-        prior=current_plan(c)
-        next_revision=(db.session.query(db.func.max(Plan.revision)).filter_by(course_id=c.id).scalar() or 0)+1
-        p=Plan(course_id=c.id,revision=next_revision,external_reference=text(request.form.get('external_reference'),1,150),approved_by=text(request.form.get('approved_by'),1,150),approved_on=approved,attachment_id=attachment_id,target=text(request.form.get('target'),1,1000),total_gy=amount(request.form.get('total_gy')),fraction_gy=amount(request.form.get('fraction_gy')),fractions=count,reason=text(request.form.get('reason'),5,1000),recorded_by=actor().id)
-        if prior:prior.status='SUPERSEDED'
-        db.session.add(p);db.session.flush();c.version+=1
-        if c.status=='DRAFT':c.status='ACTIVE'
-        audited('EXTERNAL_PLAN_RECORDED','rt_plan',p,{'source':'MANUAL','course_id':c.id,'prior_plan_id':prior.id if prior else None,'reference':p.external_reference,'approved_by':p.approved_by,'approved_on':p.approved_on,'total_gy':p.total_gy,'fraction_gy':p.fraction_gy,'fractions':p.fractions,'reason':p.reason})
+        fields=('fractions','approved_on','external_reference','approved_by','target','total_gy','fraction_gy','reason')
+        c,p=_plans.record_plan(repository=SqlAlchemyRTPlanRepository(db.session,Course,Plan,Fraction,m.Attachment),
+            authorize_actor=readonly_nurse,authorize_course=course_scope,actor_id=lambda:actor().id,
+            audit=audited,today=lambda:datetime.now(ZoneInfo('Africa/Cairo')).date(),course_id=course_id,
+            expected_version=request.form.get('version',''),values={key:request.form.get(key,'') for key in fields},
+            attachment_id=request.form.get('attachment_id',type=int))
         return done(c)
 
     @m.app.post('/radiotherapy/<int:course_id>/pet-links')
