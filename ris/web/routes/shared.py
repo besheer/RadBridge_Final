@@ -2834,6 +2834,7 @@ def install_0696(_rb):
         from case_operations_dashboard_service import (
             build_case_operations_snapshot,
         )
+        from registration_policy import allowed_registration_branches
 
         snapshot=build_case_operations_snapshot(
             db=_rb.db,
@@ -2848,6 +2849,7 @@ def install_0696(_rb):
             PacsExamLink=_rb.PacsExamLink,
             PacsResolutionEvent=_rb.PacsResolutionEvent,
             limit=_rb.request.args.get('limit',300,type=int),
+            branch_ids=allowed_registration_branches(),
         )
 
         return _rb.render_template(
