@@ -736,6 +736,7 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.finance.closing_workflow](../application/services/finance/closing_workflow.py) | [infrastructure.adapters.finance.closing_repository](../infrastructure/adapters/finance/closing_repository.py) | [web.extensions.daily_closing_policy](../web/extensions/daily_closing_policy.py) |
 | [application.services.clinical.rt_course_workflow](../application/services/clinical/rt_course_workflow.py) | [infrastructure.adapters.clinical.rt_course_repository](../infrastructure/adapters/clinical/rt_course_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 | [application.services.clinical.rt_plan_workflow](../application/services/clinical/rt_plan_workflow.py) | [infrastructure.adapters.clinical.rt_plan_repository](../infrastructure/adapters/clinical/rt_plan_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
+| [application.services.clinical.rt_session_workflow](../application/services/clinical/rt_session_workflow.py) | [infrastructure.adapters.clinical.rt_session_repository](../infrastructure/adapters/clinical/rt_session_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 
 ## Key Worker / Module Files
 

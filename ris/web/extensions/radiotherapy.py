@@ -7,6 +7,8 @@ from domain.clinical.rt_validation import amount, text, local_time
 from domain.clinical.rt_course_policy import RTWorkflowError
 from application.services.clinical import rt_course_workflow as _courses
 from application.services.clinical import rt_plan_workflow as _plans
+from application.services.clinical import rt_session_workflow as _sessions
+from infrastructure.adapters.clinical.rt_session_repository import SqlAlchemyRTSessionRepository
 from infrastructure.adapters.clinical.rt_plan_repository import SqlAlchemyRTPlanRepository
 from infrastructure.adapters.clinical.rt_course_repository import SqlAlchemyRTCourseRepository
 from zoneinfo import ZoneInfo
@@ -30,6 +32,10 @@ def register(m):
     models=dict(Course=Course,Plan=Plan,Fraction=Fraction,PetLink=PetLink,Note=Note,Consumable=Consumable)
     m.rt_models=models
     def repository():return SqlAlchemyRTCourseRepository(db.session,m.Order,Course,PetLink)
+    def session_repository():return SqlAlchemyRTSessionRepository(db.session,Course,Plan,Fraction,m.Device)
+    def session_policies():
+        return _sessions.SessionPolicies(authorize_actor=readonly_nurse,authorize_course=course_scope,
+            authorize_device=device_scope,actor_id=lambda:actor().id,audit=audited,clock=datetime.utcnow)
 
     def actor():
         u=m.current_user()
@@ -76,11 +82,6 @@ def register(m):
             cols=select(literal(d.modality).label('modality'),literal(d.id).label('device_id')).subquery().c
             if not db.session.execute(select(cols.device_id).where(predicate(m,scope,cols))).first():abort(403)
     def current_plan(c):return Plan.query.filter_by(course_id=c.id,status='ACTIVE').first()
-    def usable(c,row,completing=False):
-        p=current_plan(c)
-        if c.status not in (('ACTIVE','PAUSED') if completing else ('ACTIVE',)) or not p or p.id!=row.plan_id or row.number>p.fractions:abort(409)
-        if str(row.device.operational_status or '').upper() not in ('ACTIVE',''):abort(409)
-        return p
     def context():
         session.setdefault('rt_csrf',secrets.token_urlsafe(32))
         return {'rt_csrf':session['rt_csrf'],'rt_time':lambda value:value.replace(tzinfo=timezone.utc).astimezone(ZoneInfo('Africa/Cairo')).strftime('%Y-%m-%d %H:%M') if value else '—'}
@@ -104,7 +105,11 @@ def register(m):
                           'ORDER_NOT_FOUND':404,'COURSE_NOT_FOUND':404,'ATTACHMENT_NOT_FOUND':404,
                           'STALE_COURSE_VERSION':409,'PET_LINK_IDENTITY_MISMATCH':409,
                           'ORDER_CANCELLED':409,'COURSE_TERMINAL':409,
-                          'PLAN_EDIT_BLOCKED':409,'PLAN_ATTACHMENT_MISMATCH':409}
+                          'PLAN_EDIT_BLOCKED':409,'PLAN_ATTACHMENT_MISMATCH':409,
+                          'FRACTION_NOT_FOUND':404,'DEVICE_NOT_FOUND':404,'DEVICE_BRANCH_DENIED':403,
+                          'FRACTION_DEVICE_MISMATCH':409,'SESSION_STATE_CONFLICT':409,
+                          'INVALID_COMPLETION_INPUT':400,'COMPLETION_REPLAY_CONFLICT':409,
+                          'INVALID_SESSION_STATUS':400}
                 abort(statuses.get(exc.code,500))
             except ValueError as exc:return invalid(exc)
             except IntegrityError:
@@ -172,77 +177,48 @@ def register(m):
     @m.require_perm('rt.schedule')
     @safe
     def rt_schedule_fraction(course_id):
-        c=course(course_id,True);version(c);p=current_plan(c)
-        if c.status!='ACTIVE' or not p:abort(409)
-        try:number=int(request.form.get('number',''))
-        except ValueError:raise ValueError('Invalid session number / رقم جلسة غير صحيح')
-        if not 1<=number<=p.fractions:abort(409)
-        d=m.Device.query.get_or_404(request.form.get('device_id',type=int))
-        if d.branch_id!=c.branch_id:abort(403)
-        device_scope(d)
-        if amount(request.form.get('planned_gy'))!=p.fraction_gy:abort(409)
-        previous=Fraction.query.filter_by(course_id=c.id,number=number).order_by(Fraction.attempt.desc()).first()
-        if previous and previous.status not in ('CANCELLED','NOT_GIVEN'):abort(409)
-        retry_reason=text(request.form.get('reason'),5,1000) if previous else ''
-        row=Fraction(course_id=c.id,plan_id=p.id,number=number,attempt=previous.attempt+1 if previous else 1,device_id=d.id,planned_gy=p.fraction_gy,scheduled_at=local_time(request.form.get('scheduled_at')))
-        db.session.add(row);db.session.flush();c.version+=1;audited('FRACTION_SCHEDULED','rt_fraction',row,{'course_id':c.id,'plan_id':p.id,'number':number,'attempt':row.attempt,'previous_attempt_id':previous.id if previous else None,'retry_reason':retry_reason,'planned_gy':row.planned_gy,'device_id':d.id})
+        fields=('number','planned_gy','reason','scheduled_at')
+        c,row=_sessions.schedule(repository=session_repository(),policies=session_policies(),
+            course_id=course_id,expected_version=request.form.get('version',''),
+            values={key:request.form.get(key,'') for key in fields},device_id=request.form.get('device_id',type=int))
         return done(c)
 
     @m.app.post('/radiotherapy/fractions/<int:fraction_id>/reschedule')
     @m.require_perm('rt.schedule')
     @safe
     def rt_reschedule_fraction(fraction_id):
-        c,row=fraction(fraction_id);version(row);p=current_plan(c)
-        if c.status!='ACTIVE' or not p or row.status!='SCHEDULED' or row.number>p.fractions:abort(409)
-        old={'plan_id':row.plan_id,'planned_gy':row.planned_gy,'scheduled_at':row.scheduled_at}
-        reason=text(request.form.get('reason'),5,1000)
-        if amount(request.form.get('planned_gy'))!=p.fraction_gy:abort(409)
-        row.plan_id=p.id;row.planned_gy=p.fraction_gy;row.scheduled_at=local_time(request.form.get('scheduled_at'));row.version+=1
-        audited('FRACTION_RESCHEDULED','rt_fraction',row,{'before':old,'after':{'plan_id':p.id,'planned_gy':row.planned_gy,'scheduled_at':row.scheduled_at},'reason':reason})
+        fields=('planned_gy','reason','scheduled_at')
+        c,row=_sessions.reschedule(repository=session_repository(),policies=session_policies(),
+            fraction_id=fraction_id,expected_version=request.form.get('version',''),
+            values={key:request.form.get(key,'') for key in fields})
         return done(c)
 
     @m.app.post('/radiotherapy/fractions/<int:fraction_id>/start')
     @m.require_perm('rt.session.start')
     @safe
     def rt_start_fraction(fraction_id):
-        readonly_nurse();c,row=fraction(fraction_id);version(row);usable(c,row)
-        if row.status!='SCHEDULED':abort(409)
-        row.status='STARTED';row.started_at=datetime.utcnow();row.operator_id=actor().id;row.version+=1
-        audited('FRACTION_STARTED','rt_fraction',row,{'course_id':c.id,'plan_id':row.plan_id,'source':'MANUAL'})
+        c,row=_sessions.start(repository=session_repository(),policies=session_policies(),
+            fraction_id=fraction_id,expected_version=request.form.get('version',''))
         return done(c)
 
     @m.app.post('/radiotherapy/fractions/<int:fraction_id>/complete')
     @m.require_perm('rt.session.record')
     @safe
     def rt_complete_fraction(fraction_id):
-        readonly_nurse();c,row=fraction(fraction_id)
-        actual=amount(request.form.get('actual_gy'));reference=str(request.form.get('delivery_reference') or '').strip()
-        if len(reference)>150:abort(400)
-        key=text(request.form.get('idempotency_key'),16,80)
-        variance_reason=str(request.form.get('dose_variance_reason') or '').strip()
-        if len(variance_reason)>1000:abort(400)
-        payload=hashlib.sha256(json.dumps([format(actual.normalize(),'f'),reference,variance_reason]).encode()).hexdigest()
-        if row.status=='COMPLETED':
-            if row.completion_key==key and row.completion_hash==payload:return redirect(url_for('rt_course_detail',course_id=c.id))
-            abort(409)
-        version(row);usable(c,row,True)
-        if row.status!='STARTED':abort(409)
-        if actual!=row.planned_gy:variance_reason=text(variance_reason,5,1000)
-        row.reason=variance_reason
-        row.actual_gy=actual;row.ended_at=datetime.utcnow();row.status='COMPLETED';row.operator_id=actor().id;row.delivery_reference=reference;row.completion_key=key;row.completion_hash=payload;row.version+=1
-        audited('FRACTION_COMPLETED','rt_fraction',row,{'course_id':c.id,'plan_id':row.plan_id,'planned_gy':row.planned_gy,'actual_gy':actual,'dose_variance_reason':variance_reason,'source':'MANUAL','delivery_reference':reference})
+        fields=('actual_gy','delivery_reference','idempotency_key','dose_variance_reason')
+        c,row,accepted=_sessions.complete(repository=session_repository(),policies=session_policies(),
+            fraction_id=fraction_id,expected_version=request.form.get('version',''),
+            values={key:request.form.get(key,'') for key in fields})
+        if not accepted:return redirect(url_for('rt_course_detail',course_id=c.id))
         return done(c)
 
     @m.app.post('/radiotherapy/fractions/<int:fraction_id>/cancel')
     @m.require_perm('rt.schedule')
     @safe
     def rt_cancel_fraction(fraction_id):
-        c,row=fraction(fraction_id);version(row)
-        if row.status!='SCHEDULED':abort(409)
-        status=request.form.get('status')
-        if status not in ('CANCELLED','NOT_GIVEN'):abort(400)
-        row.reason=text(request.form.get('reason'),5,1000);row.status=status;row.version+=1
-        audited('FRACTION_NOT_DELIVERED','rt_fraction',row,{'status':status,'reason':row.reason})
+        c,row=_sessions.cancel(repository=session_repository(),policies=session_policies(),
+            fraction_id=fraction_id,expected_version=request.form.get('version',''),
+            status=request.form.get('status'),reason=request.form.get('reason'))
         return done(c)
 
     @m.app.post('/radiotherapy/<int:course_id>/state')
