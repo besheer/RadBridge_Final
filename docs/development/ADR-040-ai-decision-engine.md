@@ -1,6 +1,6 @@
 # ADR 040: Guarded AI decision routing
 
-Status: isolated Decision Engine with deterministic rules and optional Jev/OpenAI Decisions adapters implemented in `decision-engine/`; both external adapters are disabled by default. Provider choice is a server-side configuration, with no automatic provider fallback. Production integration remains proposed. The service has its own Compose project and PostgreSQL database. No production workflow or clinical database was changed.
+Status: isolated Decision Engine with deterministic rules and optional Jev/OpenAI Decisions adapters implemented in `decision-engine/`; both external adapters are disabled by default. Provider choice is server-side: pin one provider or use `auto` with an ordered list of enabled, credentialed providers. A provider request never fails over at runtime. Production integration remains proposed. The service has its own Compose project and PostgreSQL database. No production workflow or clinical database was changed.
 
 ## Context and goal
 
@@ -43,7 +43,7 @@ web route / worker
        -> audit / metrics ports
 ```
 
-The future application service should receive ports; it must not import vendor SDKs. Provider adapters belong in infrastructure. Phase 1 is an isolated acceptance service and does not alter the existing RadBridge service-port count. Production authentication gateway, UI and deployment wiring remain unimplemented. Phase 1 chooses at most one provider using deployment configuration; the proposed policy-driven multi-provider selector is future work.
+The future application service should receive ports; it must not import vendor SDKs. Provider adapters belong in infrastructure. Phase 1 is an isolated acceptance service and does not alter the existing RadBridge service-port count. Production authentication gateway, UI and deployment wiring remain unimplemented. Phase 1 may choose the first enabled and credentialed provider from a server-configured order; quality, cost and runtime-availability ranking remains future work.
 
 Proposed request contract:
 
@@ -74,7 +74,7 @@ Provider input is built from a task-versioned schema and an explicit field allow
 2. Run the deterministic evaluator first. If it returns a conclusive result, return `RULE`; do not call a provider.
 3. If the rule returns `NEEDS_REVIEW`, check that this task explicitly permits model assistance, its data class is allowed by the organization’s approved provider configuration, and an adapter supports the input type. Otherwise enqueue `HUMAN_REVIEW`.
 4. Select among eligible providers using a server-side versioned policy: task evaluation quality first, then data eligibility, availability, latency budget and cost. A lower price or latency never overrides data restrictions or minimum quality.
-5. Send only the allowlisted normalized evidence. Phase 1 uses a bounded timeout, no retries, and a single explicitly configured provider. Do not fan out one request to multiple vendors.
+5. Send only the allowlisted normalized evidence. Phase 1 uses a bounded timeout, no retries, and at most one provider selected from server-owned configuration. Do not fan out one request to multiple vendors.
 6. Validate the returned answer against the exact task schema, allowed values, finite probabilities, refusal state, threshold and policy version. Invalid, refused, stale, low-confidence or conflicting output becomes `HUMAN_REVIEW`; it is never coerced into a valid choice.
 7. Return a suggestion to the existing caller. A human with the existing branch-scoped permission reviews it. The human’s action goes through the existing workflow use case and its normal authorization/audit checks; the model cannot invoke tools or write records.
 

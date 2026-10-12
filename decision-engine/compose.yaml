@@ -22,6 +22,7 @@ services:
       JWT_ISSUER: ${JWT_ISSUER:?Set JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-radbridge-decision-engine}
       DECISION_PROVIDER: ${DECISION_PROVIDER:-rules}
+      DECISION_PROVIDER_ORDER: ${DECISION_PROVIDER_ORDER:-jev,openai}
       JEV_ENABLED: ${JEV_ENABLED:-false}
       JEV_API_KEY: ${JEV_API_KEY:-}
       JEV_MODEL: ${JEV_MODEL:-jev-latest}

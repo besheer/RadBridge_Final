@@ -14,6 +14,7 @@ from app.schemas import DecisionResponse, EvaluateRequest, ReviewRequest, Review
 from app.security import Actor, require_roles
 from app.providers.jev import JevUnavailable, suggest_category
 from app.providers.openai_decisions import OpenAIUnavailable, suggest_category as suggest_openai_category
+from app.providers.selection import select_provider
 
 app=FastAPI(title='RadBridge Decision Engine',version='0.1.0',docs_url='/api/docs',redoc_url=None)
 
@@ -69,23 +70,19 @@ def evaluate(request:EvaluateRequest,actor:Actor=Depends(require_roles('HELPDESK
     db.refresh(decision)
     # External inference is explicitly opt-in and restricted to fixed, non-PHI rule codes.
     # Commit the idempotency reservation first so duplicate HTTP retries cannot fan out calls.
-    provider=os.environ.get('DECISION_PROVIDER','rules').strip().lower()
-    provider_enabled = (
-        provider == 'jev' and os.environ.get('JEV_ENABLED','false').lower() == 'true'
-    ) or (
-        provider == 'openai' and os.environ.get('OPENAI_DECISIONS_ENABLED','false').lower() == 'true'
-    )
-    if (decision.status=='NEEDS_REVIEW' and provider_enabled
+    provider=select_provider()
+    if (decision.status=='NEEDS_REVIEW' and provider
             and normalized['error_code'] in {'C_STORE_FAILURE','INVALID_DICOM_DATA'}):
+        provider_name='JEV' if provider == 'jev' else 'OPENAI_DECISIONS'
+        db.add(DecisionAuditEvent(decision_id=decision.id,branch_id=branch_id,actor_id=actor.user_id,
+            event_type='PROVIDER_REQUESTED',details={'provider':provider_name,'policy_mode':os.environ.get('DECISION_PROVIDER','rules').strip().lower()}))
+        db.commit()
         try:
             if provider == 'jev':
                 suggestion=suggest_category(normalized['error_code'],request.retry_count)
-                provider_name='JEV'
             else:
                 suggestion=suggest_openai_category(normalized['error_code'],request.retry_count)
-                provider_name='OPENAI_DECISIONS'
         except (JevUnavailable, OpenAIUnavailable):
-            provider_name='JEV' if provider == 'jev' else 'OPENAI_DECISIONS'
             db.add(DecisionAuditEvent(decision_id=decision.id,branch_id=branch_id,actor_id=actor.user_id,
                 event_type=f'{provider_name}_UNAVAILABLE',details={'provider':provider_name,'reason_code':'PROVIDER_UNAVAILABLE'}))
             db.commit()

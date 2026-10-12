@@ -54,6 +54,7 @@ def test_jev_is_opt_in_and_any_suggestion_remains_human_review(api,monkeypatch):
     from app.providers.jev import JevSuggestion
     monkeypatch.setenv('DECISION_PROVIDER','jev')
     monkeypatch.setenv('JEV_ENABLED','true')
+    monkeypatch.setenv('JEV_API_KEY','synthetic-test-key')
     calls=[]
     def fake_suggest(code,retries):
         calls.append((code,retries))
@@ -70,7 +71,7 @@ def test_jev_is_opt_in_and_any_suggestion_remains_human_review(api,monkeypatch):
     with Session() as db:
         from app.models import DecisionAuditEvent
         events=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id']).all()
-        assert {event.event_type for event in events}=={'DECISION_CLASSIFIED','JEV_SUGGESTION'}
+        assert {event.event_type for event in events}=={'DECISION_CLASSIFIED','PROVIDER_REQUESTED','JEV_SUGGESTION'}
 
 def test_jev_failure_records_safe_audit_and_falls_back_to_rules(api,monkeypatch):
     client,private,Session=api
@@ -78,12 +79,19 @@ def test_jev_failure_records_safe_audit_and_falls_back_to_rules(api,monkeypatch)
     from app.providers.jev import JevUnavailable
     monkeypatch.setenv('DECISION_PROVIDER','jev')
     monkeypatch.setenv('JEV_ENABLED','true')
+    monkeypatch.setenv('JEV_API_KEY','synthetic-test-key')
+    monkeypatch.setenv('OPENAI_DECISIONS_ENABLED','true')
+    monkeypatch.setenv('OPENAI_API_KEY','synthetic-openai-key')
+    monkeypatch.setenv('DECISION_PROVIDER_ORDER','jev,openai')
+    openai_calls=[]
+    monkeypatch.setattr(main,'suggest_openai_category',lambda *args:openai_calls.append(args))
     monkeypatch.setattr(main,'suggest_category',lambda *_: (_ for _ in ()).throw(JevUnavailable('private details')))
     payload={**PAYLOAD,'request_id':'router-test-0003','error_code':'C_STORE_FAILURE'}
     response=client.post('/api/v1/decisions/evaluate',json=payload,headers=bearer(private))
     body=response.json()
     assert body['status']=='NEEDS_REVIEW' and body['provider']=='RULES'
     assert body['model_suggestion'] is None and body['execution_allowed'] is False
+    assert openai_calls==[]  # Auto selection does not fail over after the chosen provider fails.
     with Session() as db:
         from app.models import DecisionAuditEvent
         event=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id'],event_type='JEV_UNAVAILABLE').one()
@@ -108,6 +116,7 @@ def test_openai_opt_in_is_suggestion_only_and_unknown_codes_never_leave_service(
     from app.providers.openai_decisions import OpenAISuggestion
     monkeypatch.setenv('DECISION_PROVIDER','openai')
     monkeypatch.setenv('OPENAI_DECISIONS_ENABLED','true')
+    monkeypatch.setenv('OPENAI_API_KEY','synthetic-test-key')
     calls=[]
     monkeypatch.setattr(main,'suggest_openai_category',lambda code,retries:(calls.append((code,retries)) or
         OpenAISuggestion('TRANSFER',0.9,'gpt-6-luna',30,3)))
@@ -121,7 +130,7 @@ def test_openai_opt_in_is_suggestion_only_and_unknown_codes_never_leave_service(
     assert body['status']=='NEEDS_REVIEW' and body['review_required'] and body['execution_allowed'] is False
     with Session() as db:
         events=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id']).all()
-        assert {event.event_type for event in events}=={'DECISION_CLASSIFIED','OPENAI_DECISIONS_SUGGESTION'}
+        assert {event.event_type for event in events}=={'DECISION_CLASSIFIED','PROVIDER_REQUESTED','OPENAI_DECISIONS_SUGGESTION'}
 
 def test_openai_failure_keeps_rule_result_and_records_safe_audit(api,monkeypatch):
     client,private,Session=api
@@ -129,6 +138,7 @@ def test_openai_failure_keeps_rule_result_and_records_safe_audit(api,monkeypatch
     from app.providers.openai_decisions import OpenAIUnavailable
     monkeypatch.setenv('DECISION_PROVIDER','openai')
     monkeypatch.setenv('OPENAI_DECISIONS_ENABLED','true')
+    monkeypatch.setenv('OPENAI_API_KEY','synthetic-test-key')
     monkeypatch.setattr(main,'suggest_openai_category',lambda *_:(_ for _ in ()).throw(OpenAIUnavailable('private detail')))
     payload={**PAYLOAD,'request_id':'openai-failed-0001','error_code':'C_STORE_FAILURE'}
     body=client.post('/api/v1/decisions/evaluate',json=payload,headers=bearer(private)).json()
@@ -138,3 +148,39 @@ def test_openai_failure_keeps_rule_result_and_records_safe_audit(api,monkeypatch
         event=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id'],
             event_type='OPENAI_DECISIONS_UNAVAILABLE').one()
         assert event.details=={'provider':'OPENAI_DECISIONS','reason_code':'PROVIDER_UNAVAILABLE'}
+
+def test_auto_selects_first_enabled_credentialed_provider_and_audits_selection(api,monkeypatch):
+    client,private,Session=api
+    from app import main
+    from app.providers.openai_decisions import OpenAISuggestion
+    monkeypatch.setenv('DECISION_PROVIDER','auto')
+    monkeypatch.setenv('DECISION_PROVIDER_ORDER','jev,openai')
+    monkeypatch.setenv('JEV_ENABLED','true')
+    monkeypatch.setenv('JEV_API_KEY','')
+    monkeypatch.setenv('OPENAI_DECISIONS_ENABLED','true')
+    monkeypatch.setenv('OPENAI_API_KEY','synthetic-test-key')
+    calls=[]
+    monkeypatch.setattr(main,'suggest_openai_category',lambda code,retries:(calls.append((code,retries)) or
+        OpenAISuggestion('TRANSFER',0.9,'gpt-6-luna',30,3)))
+    payload={**PAYLOAD,'request_id':'auto-router-0001','error_code':'C_STORE_FAILURE'}
+    body=client.post('/api/v1/decisions/evaluate',json=payload,headers=bearer(private)).json()
+    assert calls==[('C_STORE_FAILURE',1)]
+    assert body['provider']=='OPENAI_DECISIONS' and body['model_suggestion']=='TRANSFER'
+    with Session() as db:
+        events=db.query(DecisionAuditEvent).filter_by(decision_id=body['decision_id']).all()
+        request_event=next(event for event in events if event.event_type=='PROVIDER_REQUESTED')
+        assert request_event.details=={'provider':'OPENAI_DECISIONS','policy_mode':'auto'}
+
+def test_auto_rejects_invalid_provider_order_and_remains_rules_only(api,monkeypatch):
+    client,private,_=api
+    from app import main
+    monkeypatch.setenv('DECISION_PROVIDER','auto')
+    monkeypatch.setenv('DECISION_PROVIDER_ORDER','jev,unknown')
+    monkeypatch.setenv('JEV_ENABLED','true')
+    monkeypatch.setenv('JEV_API_KEY','synthetic-test-key')
+    calls=[]
+    monkeypatch.setattr(main,'suggest_category',lambda *args:calls.append(args))
+    payload={**PAYLOAD,'request_id':'auto-invalid-order-0001','error_code':'C_STORE_FAILURE'}
+    body=client.post('/api/v1/decisions/evaluate',json=payload,headers=bearer(private)).json()
+    assert body['provider']=='RULES' and body['model_suggestion'] is None
+    assert calls==[]
