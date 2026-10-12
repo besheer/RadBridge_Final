@@ -504,7 +504,7 @@
   },
   {
     "legacy": "user_access_policy",
-    "canonical": "application.services.identity.user_access_policy",
+    "canonical": "web.compatibility.user_access_policy",
     "original_sha256": "38af6753f12cfad4f4240bba7306b345f81d7caa7e6e32a3a8f7f23594545de5",
     "compatibility_runtime": true,
     "resources_from_ris_root": false

@@ -115,6 +115,11 @@
       "module": "application.services.clinical.rt_read_queries",
       "repository": "infrastructure.adapters.clinical.rt_read_repository",
       "composition": "web.extensions.radiotherapy"
+    },
+    {
+      "module": "application.services.identity.user_contacts",
+      "repository": "infrastructure.adapters.identity.contact_repository",
+      "composition": "web.compatibility.user_access_policy"
     }
   ],
   "helpers": [

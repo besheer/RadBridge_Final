@@ -704,7 +704,7 @@ Additional extension routes and services are mapped by `application/module_manif
 | `technician_queue` | [application.services.clinical.technician_queue](../application/services/clinical/technician_queue.py) |
 | `telephony_reference_routes` | [web.extensions.telephony_reference_routes](../web/extensions/telephony_reference_routes.py) |
 | `ui_localization` | [web.extensions.ui_localization](../web/extensions/ui_localization.py) |
-| `user_access_policy` | [application.services.identity.user_access_policy](../application/services/identity/user_access_policy.py) |
+| `user_access_policy` | [web.compatibility.user_access_policy](../web/compatibility/user_access_policy.py) |
 | `user_csv_transfer` | [application.services.identity.user_csv_transfer](../application/services/identity/user_csv_transfer.py) |
 | `viewer_choice` | [web.extensions.viewer_choice](../web/extensions/viewer_choice.py) |
 | `voice_ai` | [infrastructure.adapters.communications.voice_ai](../infrastructure/adapters/communications/voice_ai.py) |
@@ -739,6 +739,7 @@ These services are checked for database/web/runtime import isolation. Compatibil
 | [application.services.clinical.rt_session_workflow](../application/services/clinical/rt_session_workflow.py) | [infrastructure.adapters.clinical.rt_session_repository](../infrastructure/adapters/clinical/rt_session_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 | [application.services.clinical.rt_support_workflow](../application/services/clinical/rt_support_workflow.py) | [infrastructure.adapters.clinical.rt_support_repository](../infrastructure/adapters/clinical/rt_support_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
 | [application.services.clinical.rt_read_queries](../application/services/clinical/rt_read_queries.py) | [infrastructure.adapters.clinical.rt_read_repository](../infrastructure/adapters/clinical/rt_read_repository.py) | [web.extensions.radiotherapy](../web/extensions/radiotherapy.py) |
+| [application.services.identity.user_contacts](../application/services/identity/user_contacts.py) | [infrastructure.adapters.identity.contact_repository](../infrastructure/adapters/identity/contact_repository.py) | [web.compatibility.user_access_policy](../web/compatibility/user_access_policy.py) |
 
 ### Shared application context helpers
 
