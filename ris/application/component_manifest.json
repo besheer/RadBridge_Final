@@ -7939,7 +7939,7 @@
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "83bfb565ed293b4cac40dfb6f30ab20965d423c3c4e609eadf37462a4bf8a0a6"
+    "original_sha256": "d4c9b43d9b200e7f40ec63c6997dc12d364831e4446ec05cd46b6128975271fe"
   },
   {
     "id": "0544",
@@ -7973,6 +7973,7 @@
       "Patient",
       "Procedure",
       "TATPolicy",
+      "abort",
       "app",
       "assignable_doctors",
       "datetime",
@@ -7983,7 +7984,7 @@
       "require_perm",
       "unassigned_case_snapshot"
     ],
-    "original_sha256": "35d670892f3a6a0d50bba3486d219e155d55d43f49b518102a711d76c372adee"
+    "original_sha256": "163b4d693abdc261b1ff5cdf9c8df6cf6b4635ca0be6a6c6bde38fd3db01ed30"
   },
   {
     "id": "0546",
