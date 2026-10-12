@@ -3747,7 +3747,7 @@ take_case = _rb_install_0544(_rb_bind(_rb_sys.modules[__name__], ('Order', 'app'
 
 # RB_BIND:0545
 from web.routes.reporting import install_0545 as _rb_install_0545
-unassigned_cases = _rb_install_0545(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'CaseReadiness', 'Order', 'Patient', 'Procedure', 'TATPolicy', 'app', 'assignable_doctors', 'datetime', 'db', 'or_', 'render_template', 'request', 'require_perm', 'unassigned_case_snapshot')))
+unassigned_cases = _rb_install_0545(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'CaseReadiness', 'Order', 'Patient', 'Procedure', 'TATPolicy', 'abort', 'app', 'assignable_doctors', 'datetime', 'db', 'or_', 'render_template', 'request', 'require_perm', 'unassigned_case_snapshot')))
 
 
 # RB_BIND:0546
