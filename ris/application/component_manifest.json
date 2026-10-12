@@ -10588,11 +10588,12 @@
       "app",
       "db",
       "has_perm",
+      "registration_policy",
       "render_template",
       "request",
       "require_perm"
     ],
-    "original_sha256": "db1975b50702cca089c7eddcffe60cbb490ee477bac753a9d3065980cdc9a924"
+    "original_sha256": "4b5e763084faf75ceba605474286c0cd60a220f407def8e849bcac317aa9e8b4"
   },
   {
     "id": "0697",
