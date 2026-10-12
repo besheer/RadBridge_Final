@@ -45,6 +45,8 @@ def test_unassigned_queue_route_and_filter_contract(app_ctx):
     for field in ("branch_id", "specialty", "modality", "priority", "readiness", "sla", "q"):
         assert f"request.args.get('{field}'" in source
     assert "unassigned_case_snapshot" in source
+    assert "allowed_registration_branches()" in source
+    assert "branch_id not in allowed_branches" in source
 
 
 def test_queue_snapshot_exposes_waiting_sla_and_ready_state(app_ctx):
@@ -114,3 +116,41 @@ def test_unassigned_workspace_is_compact_responsive_and_theme_safe():
     assert "var(--rb-card" in css
     assert "var(--rb-text-main" in css
     assert "@media(max-width:720px)" in css
+
+
+def test_branch_user_cannot_read_or_manually_assign_another_branch_case(app_ctx):
+    import json
+    from uuid import uuid4
+
+    m=app_ctx
+    suffix=uuid4().hex[:8].upper()
+    own, _=_queue_order(m,suffix+'A')
+    other, _=_queue_order(m,suffix+'B')
+    own_branch=m.Branch.query.get(own.branch_id)
+    role=m.Role(code='TEST_SCOPE_'+suffix,name='Synthetic branch scope',
+                permissions_json=json.dumps(['reports.view','assignment.manage']))
+    user=m.User(username='scope-'+suffix,full_name='Synthetic scoped user',
+                password_hash='DISABLED-SYNTHETIC',role=role,branch_id=own.branch_id,active=True)
+    m.db.session.add_all([role,user]);m.db.session.commit()
+    client=m.app.test_client()
+    with client.session_transaction() as state:state['uid']=user.id
+    try:
+        response=client.get('/assignment/unassigned')
+        assert response.status_code==200
+        assert own.accession.encode() in response.data
+        assert other.accession.encode() not in response.data
+        assert own_branch.name.encode() in response.data
+        assert m.Branch.query.get(other.branch_id).name.encode() not in response.data
+        assert client.get('/assignment/unassigned?branch_id=%s' % other.branch_id).status_code==403
+        assert client.post('/orders/%s/assign' % other.id,data={'mode':'manual'}).status_code==403
+    finally:
+        m.db.session.rollback()
+        for order in (own,other):
+            m.CaseReadiness.query.filter_by(order_id=order.id).delete()
+            m.Order.query.filter_by(id=order.id).delete()
+            m.Patient.query.filter_by(id=order.patient_id).delete()
+            m.Procedure.query.filter_by(id=order.procedure_id).delete()
+            m.Branch.query.filter_by(id=order.branch_id).delete()
+        m.User.query.filter_by(id=user.id).delete()
+        m.Role.query.filter_by(id=role.id).delete()
+        m.db.session.commit()
