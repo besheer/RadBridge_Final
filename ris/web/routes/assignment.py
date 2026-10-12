@@ -959,14 +959,14 @@ def install_0543(_rb):
     @_rb.require_perm('assignment.manage')
     def assign_case(order_id):
         order=_rb.Order.query.get_or_404(order_id)
+        import sys
+        from coordinator_bulk_assignment import actor, in_scope
+        module=sys.modules[_rb.__name__]
+        user=actor(module)
+        if not in_scope(module,user,order):
+            _rb.abort(403)
         if _rb.request.method == 'GET':
             # Review links must never perform assignment; use the scoped preview workflow.
-            import sys
-            from coordinator_bulk_assignment import actor, in_scope
-            module = sys.modules[_rb.__name__]
-            user = actor(module)
-            if not in_scope(module, user, order):
-                _rb.abort(403)
             return _rb.redirect(_rb.url_for('coordinator_manual_assignment', view='all', q=order.accession))
         doctor_user_id=_rb.request.form.get('doctor_user_id',type=int)
         mode=_rb.request.form.get('mode','manual')
