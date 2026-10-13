@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from datetime import date
 from pathlib import Path
 import importlib.util
@@ -126,7 +127,7 @@ def test_registration_helper_persists_estimated_marker(app_ctx, monkeypatch):
 
 
 def test_active_registration_templates_offer_writable_age_and_units():
-    partial = (ROOT / "templates" / "_patient_age_dob_fields.html").read_text()
+    partial = _read_source(ROOT / "templates" / "_patient_age_dob_fields.html")
     assert 'name="{{age_prefix}}age_value"' in partial
     assert "readonly" not in partial
     assert 'value="YEARS"' in partial
@@ -138,27 +139,25 @@ def test_active_registration_templates_offer_writable_age_and_units():
         "templates/schedule_calendar.html",
         "templates/patient_form.html",
     ):
-        assert "_patient_age_dob_fields.html" in (ROOT / relative).read_text()
+        assert "_patient_age_dob_fields.html" in _read_source(ROOT / relative)
 
 
 def test_browser_sync_and_estimated_notice_are_present():
-    source = (ROOT / "static" / "patient-age-dob.js").read_text()
+    source = _read_source(ROOT / "static" / "patient-age-dob.js")
     assert "ageToDob" in source
     assert "dobToAge" in source
     assert "estimated.checked = true" in source
-    base = (ROOT / "templates" / "base.html").read_text()
+    base = _read_source(ROOT / "templates" / "base.html")
     assert "patient-age-dob.js" in base
 
 
 def test_patient_model_and_migration_track_estimated_dob(app_ctx):
     m = app_ctx
     assert hasattr(m.Patient, "dob_estimated")
-    migration = (
-        ROOT
+    migration = _read_source(ROOT
         / "migrations"
         / "versions"
-        / "20260908_001_patient_estimated_dob.py"
-    ).read_text()
+        / "20260908_001_patient_estimated_dob.py")
     assert 'down_revision = "20260904_001"' in migration
     assert '"dob_estimated"' in migration
     assert "server_default=sa.false()" in migration

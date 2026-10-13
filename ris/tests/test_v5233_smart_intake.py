@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_models():
     import app as m
@@ -20,4 +21,4 @@ def test_previous_features_preserved():
               "/operations/case-readiness","/reports/<int:order_id>/imaging-ai",
               "/assignment/offers","/studio","/admin/communications"]:
         assert r in rules
-    assert "active=True" not in inspect.getsource(m.device_booking_reason)
+    assert "active=True" not in _get_source(m.device_booking_reason)

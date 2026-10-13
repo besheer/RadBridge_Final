@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -7,7 +8,7 @@ from jinja2 import Environment
 
 def render(perms, role='CASE_COORDINATOR', branch=42, lang='en'):
     source = Path(__file__).parents[1] / 'templates' / '_coordinator_dashboard.html'
-    return Environment(autoescape=True).from_string(source.read_text()).render(
+    return Environment(autoescape=True).from_string(_read_source(source)).render(
         has_perm=lambda p: '*' in perms or p in perms,
         me=SimpleNamespace(role=SimpleNamespace(code=role), branch_id=branch),
         ui_lang=lang,

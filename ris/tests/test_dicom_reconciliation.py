@@ -115,7 +115,9 @@ def test_branch_scope_and_final_report_protected(monkeypatch):
     u.role=m.Role(code='UAT_SCOPE_CORRECT',name='Scoped',permissions_json='["pacs.reconcile","correction.review"]');u.branch_id=999
     m.db.session.flush()
     assert c.get(f'/pacs/reconciliation/{SOURCE}/preview?order_id={o.id}').status_code==403
-    u.role.permissions_json='["*"]';o.status='FINAL'
+    # Only a canonical unrestricted role escapes registration branch scope;
+    # a wildcard permission on an ordinary branch role does not.
+    u.role.code='CALL_CENTER';u.role.permissions_json='["*"]';o.status='FINAL'
     assert c.get(f'/pacs/reconciliation/{SOURCE}/preview?order_id={o.id}').status_code==409
 
 def test_retained_original_skipped_by_automatic_intake_and_safe_match(monkeypatch):

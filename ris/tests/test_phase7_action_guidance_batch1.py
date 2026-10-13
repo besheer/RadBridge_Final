@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 
@@ -6,7 +7,7 @@ TEMPLATES = ROOT / "templates"
 
 
 def text(name):
-    return (TEMPLATES / name).read_text(encoding="utf-8")
+    return _read_source(TEMPLATES / name, encoding="utf-8")
 
 
 def test_guidance_macro_is_bilingual_and_backward_compatible():

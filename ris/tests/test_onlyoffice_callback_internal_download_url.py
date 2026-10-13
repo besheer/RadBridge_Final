@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 import importlib.util
 from pathlib import Path
 
@@ -6,7 +7,7 @@ APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
 
 
 def _source():
-    return APP_PATH.read_text(encoding="utf-8")
+    return _read_source(APP_PATH, encoding="utf-8")
 
 
 def test_onlyoffice_callback_never_fetches_callback_supplied_host():

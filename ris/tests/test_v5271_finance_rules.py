@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_finance_permissions_models_routes():
  import app as m,inspect
@@ -8,7 +9,7 @@ def test_finance_permissions_models_routes():
  rules={r.rule for r in m.app.url_map.iter_rules()}
  for r in ['/admin/doctor-share-rules','/admin/discount-policies','/finance/discount-approvals','/finance/doctor-earnings','/orders/<int:order_id>/performing-doctor']:
   assert r in rules
- assert 'effective_patient_due' in inspect.getsource(m.order_balance)
+ assert 'effective_patient_due' in _get_source(m.order_balance)
 
 def test_golden_regressions_preserved():
  import app as m,inspect
@@ -17,5 +18,5 @@ def test_golden_regressions_preserved():
  assert hasattr(m,'PrinterProfile')
  assert hasattr(m,'RegistrationDefault')
  assert hasattr(m,'ReferralCommissionRule')
- assert 'CaseReadiness=CaseReadiness' in inspect.getsource(m.advanced_search)
- assert 'active=True' not in inspect.getsource(m.device_booking_reason)
+ assert 'CaseReadiness=CaseReadiness' in _get_source(m.advanced_search)
+ assert 'active=True' not in _get_source(m.device_booking_reason)

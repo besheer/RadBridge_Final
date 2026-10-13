@@ -1,15 +1,13 @@
+from web.source_contract import get_source as _get_source
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 import ast
 
 
 def source_text():
 
-    return (
-        Path(__file__).resolve().parents[1]
-        / "app.py"
-    ).read_text(
-        encoding="utf-8"
-    )
+    return _read_source(Path(__file__).resolve().parents[1]
+        / "app.py", encoding="utf-8")
 
 
 def tree():
@@ -153,7 +151,7 @@ def test_source_never_deletes_ris_objects(app_ctx):
 
     m=app_ctx
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_images_only_execute
     )
 
@@ -175,11 +173,11 @@ def test_delete_route_is_thin_wrapper_over_shared_primitive(app_ctx):
 
     m=app_ctx
 
-    helper_source=inspect.getsource(
+    helper_source=_get_source(
         m.granular_delete_images_only_execute
     )
 
-    route_source=inspect.getsource(
+    route_source=_get_source(
         m.granular_delete_order_images_only
     )
 
@@ -231,7 +229,7 @@ def test_shared_delete_primitive_retains_ris_objects(app_ctx):
 
     m=app_ctx
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_images_only_execute
     )
 

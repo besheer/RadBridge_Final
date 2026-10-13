@@ -1,7 +1,8 @@
+from web.source_contract import get_source as _get_source
 
 def test_multi_attachment_registration_backend():
     import app as m,inspect
-    src=inspect.getsource(m.new_order)
+    src=_get_source(m.new_order)
     assert "request.files.getlist('attachment_files')" in src
     assert "request.form.getlist('attachment_categories')" in src
     assert "request.form.getlist('attachment_notes')" in src
@@ -21,5 +22,5 @@ def test_previous_stable_features_preserved():
               "/operations/case-readiness","/reports/<int:order_id>/imaging-ai",
               "/assignment/offers","/studio","/admin/communications"]:
         assert r in rules
-    assert "CaseReadiness=CaseReadiness" in inspect.getsource(m.advanced_search)
-    assert "active=True" not in inspect.getsource(m.device_booking_reason)
+    assert "CaseReadiness=CaseReadiness" in _get_source(m.advanced_search)
+    assert "active=True" not in _get_source(m.device_booking_reason)

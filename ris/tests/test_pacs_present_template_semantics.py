@@ -1,15 +1,14 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 from types import SimpleNamespace
 from jinja2 import Environment
 
 
-TEMPLATE_PATH=Path(
-    "/app/templates/admin_cancellation_preview.html"
-)
+TEMPLATE_PATH=Path(__file__).resolve().parents[1] / "templates/admin_cancellation_preview.html"
 
 
 def _source():
-    return TEMPLATE_PATH.read_text()
+    return _read_source(TEMPLATE_PATH, encoding="utf-8")
 
 
 def _pacs_row_template():

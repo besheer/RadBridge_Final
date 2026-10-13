@@ -1,11 +1,10 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-APP_SOURCE = (ROOT / "app.py").read_text(encoding="utf-8")
-BLUEPRINT_SOURCE = (ROOT / "scheduling_reference_routes.py").read_text(
-    encoding="utf-8"
-)
+APP_SOURCE = _read_source(ROOT / "app.py", encoding="utf-8")
+BLUEPRINT_SOURCE = _read_source(ROOT / "scheduling_reference_routes.py", encoding="utf-8")
 
 ROUTES = {
     "/api/registration/procedures",

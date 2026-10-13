@@ -1,3 +1,5 @@
+from web.source_contract import read_source as _read_source
+from web.source_contract import get_source as _get_source
 from datetime import datetime, timedelta
 import inspect
 
@@ -130,16 +132,14 @@ def test_booking_block_scope_and_time_validation_contract(app_ctx):
 def test_atomic_booking_lock_contract(app_ctx):
     m = app_ctx
     assert callable(m.acquire_booking_slot_lock)
-    assert "acquire_booking_slot_lock" in inspect.getsource(m.schedule_book)
-    assert "acquire_booking_slot_lock" in inspect.getsource(m.appointment_reschedule)
+    assert "acquire_booking_slot_lock" in _get_source(m.schedule_book)
+    assert "acquire_booking_slot_lock" in _get_source(m.appointment_reschedule)
 
 
 def test_booking_control_template_has_safe_management_contract():
     from pathlib import Path
-    template = (
-        Path(__file__).resolve().parents[1]
-        / "templates" / "admin_booking_control.html"
-    ).read_text(encoding="utf-8")
+    template = _read_source(Path(__file__).resolve().parents[1]
+        / "templates" / "admin_booking_control.html", encoding="utf-8")
     for expected in (
         'name="block_type"', 'name="start_at"', 'name="end_at"',
         'name="reason_text"', "Create Block",

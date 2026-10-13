@@ -1,3 +1,5 @@
+from web.source_contract import read_source as _read_source
+from web.source_contract import get_source as _get_source
 from werkzeug.security import generate_password_hash
 
 
@@ -107,7 +109,7 @@ def test_full_case_orchestration_blocks_non_cancelled_case(app_ctx):
 def test_full_case_orchestration_preview_source_is_non_destructive(app_ctx):
     import inspect
     m=app_ctx
-    source=inspect.getsource(m.granular_delete_full_case_orchestration_preview_snapshot)
+    source=_get_source(m.granular_delete_full_case_orchestration_preview_snapshot)
     for forbidden in (
         'requests.delete',
         'db.session.delete',
@@ -123,7 +125,7 @@ def test_full_case_orchestration_preview_source_is_non_destructive(app_ctx):
 def test_full_case_orchestration_ui_is_readonly(app_ctx):
     from pathlib import Path
     template=Path(app_ctx.app.template_folder)/'admin_cancellation_preview.html'
-    source=template.read_text()
+    source=_read_source(template)
     assert 'RB_FULL_CASE_ORCHESTRATION_PREVIEW_UI_V1' in source
     assert 'preview.full_case_orchestration.execution_enabled' in source
     assert 'granular_delete_order_full_case' in source

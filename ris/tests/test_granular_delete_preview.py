@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 def _make_admin(m):
     from werkzeug.security import generate_password_hash
 
@@ -176,7 +177,7 @@ def test_preview_source_has_no_destructive_calls(app_ctx):
     )
 
     source='\n'.join(
-        inspect.getsource(getattr(m,name))
+        _get_source(getattr(m,name))
         for name in names
     )
 
@@ -196,7 +197,7 @@ def test_ris_case_only_preflight_is_readonly_and_unknown_dependencies_fail_close
     import inspect
     m=app_ctx
 
-    source=inspect.getsource(m.granular_delete_ris_case_only_preview_snapshot)
+    source=_get_source(m.granular_delete_ris_case_only_preview_snapshot)
     forbidden=(
         'requests.delete',
         'db.session.delete',

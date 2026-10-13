@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 from werkzeug.security import generate_password_hash
 
 
@@ -118,7 +119,7 @@ def test_ris_case_delete_second_execution_is_not_found(app_ctx):
 def test_ris_case_delete_source_never_calls_pacs_or_filesystem_delete(app_ctx):
     import inspect
     m=app_ctx
-    source=inspect.getsource(m.granular_delete_ris_case_only_execute)
+    source=_get_source(m.granular_delete_ris_case_only_execute)
     assert 'requests.delete' not in source
     assert 'PACS_ORTHANC_URL' not in source
     assert 'os.remove' not in source

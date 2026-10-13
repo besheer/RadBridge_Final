@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 import inspect
 from pathlib import Path
 from types import SimpleNamespace
@@ -74,7 +75,7 @@ def test_write_routes_reject_users_missing_action_permission(
 
 
 def test_resolver_passes_separate_capabilities_to_template(app_ctx):
-    source = inspect.getsource(app_ctx.case_exception_resolver)
+    source = _get_source(app_ctx.case_exception_resolver)
     for marker in (
         "can_reconcile=can_reconcile",
         "can_map_series=can_reconcile and bool(rule) and bool(series)",

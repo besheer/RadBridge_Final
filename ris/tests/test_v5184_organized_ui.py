@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_critical_routes_preserved():
     import app as m
@@ -14,7 +15,7 @@ def test_critical_routes_preserved():
 
 def test_language_is_unified():
     import app as m, inspect
-    src=inspect.getsource(m.set_language)
+    src=_get_source(m.set_language)
     assert "ui_language" in src
     assert "session['ui_lang']" in src
 

@@ -20,3 +20,6 @@ pydicom>=2.4,<4
 cryptography==45.0.6
 
 pynetdicom==3.0.4
+
+# Explicit IANA time-zone data for Windows and minimal container runtimes.
+tzdata==2026.5

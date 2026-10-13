@@ -1,0 +1,218 @@
+"""Persisted schema definitions; no web/application initialization."""
+from datetime import datetime, date
+import json
+from infrastructure.extensions import db
+
+class Warehouse(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    code=db.Column(db.String(60),nullable=False,unique=True,index=True)
+    name=db.Column(db.String(180),nullable=False)
+    warehouse_type=db.Column(db.String(30),default='BRANCH',index=True) # MAIN/BRANCH/SUBSTORE
+    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
+    parent_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),index=True)
+    active=db.Column(db.Boolean,default=True,index=True)
+    created_at=db.Column(db.DateTime,default=datetime.utcnow)
+    branch=db.relationship('Branch')
+    parent=db.relationship('Warehouse',remote_side=[id])
+
+class InventoryItem(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    code=db.Column(db.String(80),nullable=False,unique=True,index=True)
+    name=db.Column(db.String(220),nullable=False,index=True)
+    category=db.Column(db.String(100),default='GENERAL',index=True)
+    unit=db.Column(db.String(40),default='EA')
+    track_lot=db.Column(db.Boolean,default=False)
+    track_expiry=db.Column(db.Boolean,default=False)
+    default_cost=db.Column(db.Float,default=0)
+    active=db.Column(db.Boolean,default=True,index=True)
+    created_at=db.Column(db.DateTime,default=datetime.utcnow)
+
+class InventoryLot(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
+    warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
+    lot_no=db.Column(db.String(120),default='',index=True)
+    expiry_date=db.Column(db.Date,index=True)
+    unit_cost=db.Column(db.Float,default=0)
+    qty_on_hand=db.Column(db.Float,default=0)
+    qty_reserved=db.Column(db.Float,default=0)
+    item=db.relationship('InventoryItem')
+    warehouse=db.relationship('Warehouse')
+    __table_args__=(db.UniqueConstraint('item_id','warehouse_id','lot_no',name='uq_inventory_lot_item_wh_lot'),)
+
+class WarehouseStockPolicy(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
+    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
+    min_level=db.Column(db.Float,default=0)
+    reorder_level=db.Column(db.Float,default=0)
+    target_level=db.Column(db.Float,default=0)
+    active=db.Column(db.Boolean,default=True,index=True)
+    warehouse=db.relationship('Warehouse')
+    item=db.relationship('InventoryItem')
+    __table_args__=(db.UniqueConstraint('warehouse_id','item_id',name='uq_wh_stock_policy'),)
+
+class ProcedureConsumableDefault(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    procedure_id=db.Column(db.Integer,db.ForeignKey('procedure.id'),nullable=False,index=True)
+    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
+    qty=db.Column(db.Float,default=1)
+    required=db.Column(db.Boolean,default=True)
+    active=db.Column(db.Boolean,default=True,index=True)
+    procedure=db.relationship('Procedure')
+    item=db.relationship('InventoryItem')
+    __table_args__=(db.UniqueConstraint('procedure_id','item_id',name='uq_proc_consumable_default'),)
+
+class OrderConsumableUsage(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
+    warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
+    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
+    lot_id=db.Column(db.Integer,db.ForeignKey('inventory_lot.id'),index=True)
+    qty=db.Column(db.Float,default=1)
+    usage_type=db.Column(db.String(30),default='USED',index=True) # USED/EXTRA/WASTE/RETURN
+    source=db.Column(db.String(30),default='DEFAULT') # DEFAULT/MANUAL
+    reason=db.Column(db.String(500),default='')
+    unit_cost=db.Column(db.Float,default=0)
+    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
+    order=db.relationship('Order')
+    warehouse=db.relationship('Warehouse')
+    item=db.relationship('InventoryItem')
+    lot=db.relationship('InventoryLot')
+
+class WarehouseStockMovement(db.Model):
+    __tablename__='warehouse_stock_movement'
+    id=db.Column(db.Integer,primary_key=True)
+    warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
+    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
+    lot_id=db.Column(db.Integer,db.ForeignKey('inventory_lot.id'),index=True)
+    movement_type=db.Column(db.String(40),nullable=False,index=True) # RECEIPT/TRANSFER_OUT/TRANSFER_IN/CONSUMPTION/WASTE/RETURN/ADJUSTMENT
+    qty=db.Column(db.Float,nullable=False)
+    unit_cost=db.Column(db.Float,default=0)
+    reference_type=db.Column(db.String(40),default='')
+    reference_id=db.Column(db.Integer)
+    notes=db.Column(db.String(500),default='')
+    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
+    warehouse=db.relationship('Warehouse')
+    item=db.relationship('InventoryItem')
+    lot=db.relationship('InventoryLot')
+
+class StockTransfer(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    transfer_no=db.Column(db.String(80),nullable=False,unique=True,index=True)
+    source_warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
+    target_warehouse_id=db.Column(db.Integer,db.ForeignKey('warehouse.id'),nullable=False,index=True)
+    status=db.Column(db.String(30),default='REQUESTED',index=True) # REQUESTED/APPROVED/DISPATCHED/RECEIVED/REJECTED
+    requested_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    approved_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    dispatched_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    received_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    requested_at=db.Column(db.DateTime,default=datetime.utcnow)
+    approved_at=db.Column(db.DateTime)
+    dispatched_at=db.Column(db.DateTime)
+    received_at=db.Column(db.DateTime)
+    notes=db.Column(db.Text,default='')
+    source_warehouse=db.relationship('Warehouse',foreign_keys=[source_warehouse_id])
+    target_warehouse=db.relationship('Warehouse',foreign_keys=[target_warehouse_id])
+
+class StockTransferLine(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    transfer_id=db.Column(db.Integer,db.ForeignKey('stock_transfer.id'),nullable=False,index=True)
+    item_id=db.Column(db.Integer,db.ForeignKey('inventory_item.id'),nullable=False,index=True)
+    lot_id=db.Column(db.Integer,db.ForeignKey('inventory_lot.id'),index=True)
+    qty_requested=db.Column(db.Float,default=0)
+    qty_dispatched=db.Column(db.Float,default=0)
+    qty_received=db.Column(db.Float,default=0)
+    transfer=db.relationship('StockTransfer')
+    item=db.relationship('InventoryItem')
+    lot=db.relationship('InventoryLot')
+
+class Consumable(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(40), unique=True, nullable=False)
+    name = db.Column(db.String(160), nullable=False)
+    name_en = db.Column(db.String(160), default='')
+    name_ar = db.Column(db.String(160), default='')
+    barcode = db.Column(db.String(80), default='', index=True)
+    category = db.Column(db.String(100), default='')
+    unit = db.Column(db.String(40), default='unit')
+    stock_qty = db.Column(db.Float, default=0)
+    reorder_level = db.Column(db.Float, default=0)
+    unit_cost = db.Column(db.Float, default=0)
+    selling_price = db.Column(db.Float, default=0)
+    expiry_tracking = db.Column(db.Boolean, default=False)
+    active = db.Column(db.Boolean, default=True)
+
+class ProcedureConsumable(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    procedure_id = db.Column(db.Integer, db.ForeignKey('procedure.id'), nullable=False)
+    consumable_id = db.Column(db.Integer, db.ForeignKey('consumable.id'), nullable=False)
+    qty = db.Column(db.Float, default=1)
+    procedure = db.relationship('Procedure')
+    consumable = db.relationship('Consumable')
+    __table_args__ = (db.UniqueConstraint('procedure_id','consumable_id', name='uq_proc_cons'),)
+
+class InventoryBatch(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    consumable_id=db.Column(db.Integer,db.ForeignKey('consumable.id'),nullable=False,index=True)
+    batch_no=db.Column(db.String(120),nullable=False,default='')
+    expiry_date=db.Column(db.Date)
+    qty=db.Column(db.Float,default=0)
+    unit_cost=db.Column(db.Float,default=0)
+    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'))
+    active=db.Column(db.Boolean,default=True)
+    created_at=db.Column(db.DateTime,default=datetime.utcnow)
+    consumable=db.relationship('Consumable',foreign_keys=[consumable_id])
+    branch=db.relationship('Branch',foreign_keys=[branch_id])
+    __table_args__=(db.UniqueConstraint('consumable_id','batch_no','branch_id',name='uq_inventory_batch'),)
+
+class StockMovement(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    movement_date=db.Column(db.DateTime,default=datetime.utcnow,index=True)
+    consumable_id=db.Column(db.Integer,db.ForeignKey('consumable.id'),nullable=False,index=True)
+    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'))
+    movement_type=db.Column(db.String(40),nullable=False,index=True)
+    qty=db.Column(db.Float,nullable=False,default=0)
+    before_qty=db.Column(db.Float,default=0)
+    after_qty=db.Column(db.Float,default=0)
+    reference_type=db.Column(db.String(60),default='')
+    reference_id=db.Column(db.String(120),default='')
+    reason=db.Column(db.String(500),default='')
+    created_by=db.Column(db.Integer)
+    created_at=db.Column(db.DateTime,default=datetime.utcnow)
+    consumable=db.relationship('Consumable',foreign_keys=[consumable_id])
+    branch=db.relationship('Branch',foreign_keys=[branch_id])
+
+class ERPItemMapping(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    consumable_id=db.Column(db.Integer,db.ForeignKey('consumable.id'),nullable=False,unique=True,index=True)
+    erp_item_code=db.Column(db.String(120),nullable=False,index=True)
+    erp_warehouse_code=db.Column(db.String(120),default='')
+    active=db.Column(db.Boolean,default=True)
+    created_at=db.Column(db.DateTime,default=datetime.utcnow)
+    consumable=db.relationship('Consumable',foreign_keys=[consumable_id])
+
+class ERPSyncQueue(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    event_type=db.Column(db.String(80),nullable=False,index=True)
+    reference_type=db.Column(db.String(80),default='')
+    reference_id=db.Column(db.String(120),default='')
+    payload_json=db.Column(db.Text,default='{}')
+    status=db.Column(db.String(30),default='PENDING',index=True)
+    attempts=db.Column(db.Integer,default=0)
+    last_error=db.Column(db.Text,default='')
+    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
+    sent_at=db.Column(db.DateTime)
+
+class OrderConsumable(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    consumable_id = db.Column(db.Integer, db.ForeignKey('consumable.id'), nullable=False)
+    qty = db.Column(db.Float, nullable=False)
+    source = db.Column(db.String(30), default='DEFAULT')
+    created_by = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    order = db.relationship('Order')
+    consumable = db.relationship('Consumable')

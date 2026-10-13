@@ -221,10 +221,16 @@ def test_preview_is_read_only(settlement_case):
     assert c.m.ReplacementSettlement.query.count()==0
 
 
-def test_get_renders_and_post_requires_csrf(settlement_case):
+def test_get_renders_and_post_requires_csrf(settlement_case,monkeypatch):
     c=settlement_case
     assert c.client.get('/finance/replacement-settlements',base_url='https://localhost').status_code==200
-    response=c.client.post('/finance/replacement-settlements',base_url='https://localhost',data={'action':'preview','revision_id':c.revision.id})
+    # This fixture seeds uncommitted users. The expected request rollback must
+    # roll back request work without erasing its synthetic authenticated actor.
+    # In production that actor exists in an earlier committed transaction.
+    savepoint=c.m.db.session.begin_nested()
+    with monkeypatch.context() as patch:
+        patch.setattr(c.m.db.session,'rollback',savepoint.rollback)
+        response=c.client.post('/finance/replacement-settlements',base_url='https://localhost',data={'action':'preview','revision_id':c.revision.id})
     assert response.status_code==200 and c.m.ReplacementSettlement.query.count()==0
 
 
