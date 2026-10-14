@@ -1700,12 +1700,12 @@ complete_visit_registration = _rb_install_0208(_rb_bind(_rb_sys.modules[__name__
 
 # RB_BIND:0209
 from web.routes.assignment import install_0209 as _rb_install_0209
-admin_assignment_monitor = _rb_install_0209(_rb_bind(_rb_sys.modules[__name__], ('app', 'render_template', 'require_perm')))
+admin_assignment_monitor = _rb_install_0209(_rb_bind(_rb_sys.modules[__name__], ('AssignmentDistributionPolicy', 'AssignmentOffer', 'CaseAssignment', 'DoctorAssignmentProfile', 'DoctorAvailabilityState', 'Order', 'Report', 'app', 'assignable_doctors', 'db', 'render_template', 'require_perm')))
 
 
 # RB_BIND:0210
 from web.routes.assignment import install_0210 as _rb_install_0210
-coordinator_assignments = _rb_install_0210(_rb_bind(_rb_sys.modules[__name__], ('abort', 'app', 'current_user', 'has_perm', 'redirect', 'render_template', 'request', 'url_for')))
+coordinator_assignments = _rb_install_0210(_rb_bind(_rb_sys.modules[__name__], ('AssignmentDistributionPolicy', 'AssignmentOffer', 'CaseAssignment', 'DoctorAssignmentProfile', 'DoctorAvailabilityState', 'Order', 'Report', 'abort', 'app', 'assignable_doctors', 'current_user', 'db', 'has_perm', 'redirect', 'render_template', 'request', 'url_for')))
 
 
 

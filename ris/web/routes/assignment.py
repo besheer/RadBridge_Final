@@ -98,7 +98,7 @@ def install_0209(_rb):
     @_rb.require_perm('assignment.manage')
     def admin_assignment_monitor():
         from assignment_monitor import snapshot
-        return _rb.render_template('assignment_monitor.html', coordinator=False, can_manage=True, **snapshot())
+        return _rb.render_template('assignment_monitor.html', coordinator=False, can_manage=True, **snapshot(runtime=_rb))
     return admin_assignment_monitor
 
 
@@ -110,7 +110,7 @@ def install_0210(_rb):
         if not (_rb.has_perm('assignment.manage') or _rb.has_perm('reports.coordinate')):
             _rb.abort(403)
         from assignment_monitor import snapshot
-        return _rb.render_template('assignment_monitor.html', coordinator=True, can_manage=_rb.has_perm('assignment.manage'), **snapshot())
+        return _rb.render_template('assignment_monitor.html', coordinator=True, can_manage=_rb.has_perm('assignment.manage'), **snapshot(runtime=_rb))
     return coordinator_assignments
 
 

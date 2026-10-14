@@ -16,8 +16,8 @@ DEFAULT_RULES = [
 ]
 
 
-def policy_snapshot():
-    return _queries().policy_snapshot()
+def policy_snapshot(*, runtime=None):
+    return _queries(runtime=runtime).policy_snapshot()
 
 
 
@@ -26,8 +26,8 @@ def active_case_count(doctor_id):
     return _queries().active_case_count(doctor_id)
 
 
-def case_capacity(doctor_id, policy=None):
-    return _queries().case_capacity(doctor_id, policy)
+def case_capacity(doctor_id, policy=None, *, runtime=None):
+    return _queries(runtime=runtime).case_capacity(doctor_id, policy)
 
 
 def special_doctor_pool(order,policy=None):
@@ -126,14 +126,15 @@ def expire_unstarted_assignments(now=None,limit=100):
     return run(now=now,limit=limit)
 
 
-def _queries():
+def _queries(*, runtime=None):
     # Only this compatibility edge resolves the current clinical runtime.
-    from application.legacy_runtime import resolve_runtime
+    if runtime is None:
+        from application.legacy_runtime import resolve_runtime
+        runtime = resolve_runtime()
     from application.services.assignment.assignment_queries import AssignmentQueries
     from infrastructure.adapters.assignment.query_repository import SqlAlchemyAssignmentQueryRepository
-    m = resolve_runtime()
     repository = SqlAlchemyAssignmentQueryRepository(
-        session=m.db.session, Policy=m.AssignmentDistributionPolicy,
-        Profile=m.DoctorAssignmentProfile, Assignment=m.CaseAssignment,
-        Order=m.Order, Report=m.Report)
+        session=runtime.db.session, Policy=runtime.AssignmentDistributionPolicy,
+        Profile=runtime.DoctorAssignmentProfile, Assignment=runtime.CaseAssignment,
+        Order=runtime.Order, Report=runtime.Report)
     return AssignmentQueries(repository, DEFAULT_RULES)

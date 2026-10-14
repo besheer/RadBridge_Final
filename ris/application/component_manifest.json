@@ -2991,11 +2991,20 @@
     "module": "web.routes.assignment",
     "installer": "install_0209",
     "dependencies": [
+      "AssignmentDistributionPolicy",
+      "AssignmentOffer",
+      "CaseAssignment",
+      "DoctorAssignmentProfile",
+      "DoctorAvailabilityState",
+      "Order",
+      "Report",
       "app",
+      "assignable_doctors",
+      "db",
       "render_template",
       "require_perm"
     ],
-    "original_sha256": "5f0e13ecc98bb1edf3376ce2f14d9a5525bd7f49f567e1126103c0686f087652"
+    "original_sha256": "894981812df16926c8d6239d7f359b5e2b29a4d7954cb0a72404094d08fc3fe1"
   },
   {
     "id": "0210",
@@ -3003,16 +3012,25 @@
     "module": "web.routes.assignment",
     "installer": "install_0210",
     "dependencies": [
+      "AssignmentDistributionPolicy",
+      "AssignmentOffer",
+      "CaseAssignment",
+      "DoctorAssignmentProfile",
+      "DoctorAvailabilityState",
+      "Order",
+      "Report",
       "abort",
       "app",
+      "assignable_doctors",
       "current_user",
+      "db",
       "has_perm",
       "redirect",
       "render_template",
       "request",
       "url_for"
     ],
-    "original_sha256": "b510ad073a4195a70196c8909633479c7879640bc101b5226f92f2a407fd9ff6"
+    "original_sha256": "83244f2a136253c7d55302a66bef64960af678df95c5d52c1af85a7f592f243d"
   },
   {
     "id": "0211",

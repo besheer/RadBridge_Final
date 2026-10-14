@@ -55,8 +55,10 @@ def test_monitor_requires_assignment_permission(path):
 
 
 @pytest.mark.parametrize('path', ['/admin/assignment-monitor', '/coordinator/assignments'])
-def test_monitor_renders_for_authorized_admin(path):
+def test_monitor_renders_for_authorized_admin(path, monkeypatch):
     u = doctor('monitor-admin', 'SUPER_ADMIN')
+    monkeypatch.setattr('application.legacy_runtime.resolve_runtime',
+                        lambda: pytest.fail('monitor route resolved the global runtime'))
     client = m.app.test_client()
     with client.session_transaction() as s: s['uid'] = u.id
     response = client.get(path)
