@@ -467,7 +467,7 @@ def install_0162(_rb):
             insurance_approval=insurance_approval,
             approval_attachment=approval_attachment,
             work_order_gate=work_order_decision,
-            delivery_readiness=__import__('delivery_policy').snapshot(order))
+            delivery_readiness=__import__('delivery_policy').snapshot(order,runtime=_rb))
     return order_detail
 
 
@@ -2377,7 +2377,7 @@ def install_0523(_rb):
             _rb.flash('This item has already been recorded as delivered. / تم تسجيل تسليم هذا العنصر بالفعل.','warning')
             return _rb.redirect(_rb.url_for('order_detail',order_id=o.id)),303
         _rb.Report.query.filter_by(order_id=o.id).with_for_update().all()
-        allowed,reason=delivery_readiness(o,item,live=True)
+        allowed,reason=delivery_readiness(o,item,live=True,runtime=_rb)
         if not allowed:
             _rb.flash(reason,'danger')
             return _rb.redirect(_rb.url_for('order_detail',order_id=o.id)),303

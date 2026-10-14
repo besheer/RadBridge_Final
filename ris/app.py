@@ -1461,7 +1461,7 @@ insurance_approvals_dashboard = _rb_install_0161(_rb_bind(_rb_sys.modules[__name
 
 # RB_BIND:0162
 from web.routes.registration import install_0162 as _rb_install_0162
-order_detail = _rb_install_0162(_rb_bind(_rb_sys.modules[__name__], ('Attachment', 'DeliveryEvent', 'InsuranceApprovalRequest', 'Order', 'OrderConsumable', 'Payment', 'Receipt', 'User', 'app', 'approved_order_discounts', 'default_warehouse_for_order', 'discount_policy_for', 'effective_patient_due', 'order_balance', 'order_consumable_cost', 'performing_doctor_for_order', 'performing_doctor_share_for_order', 'render_template', 'require_perm', 'work_order_gate')))
+order_detail = _rb_install_0162(_rb_bind(_rb_sys.modules[__name__], ('Attachment', 'DeliveryEvent', 'InsuranceApprovalRequest', 'Order', 'OrderConsumable', 'PACS_ORTHANC_URL', 'REPORT_DIR', 'PacsStudyMatch', 'Payment', 'Receipt', 'User', '_orthanc_auth', 'app', 'approved_order_discounts', 'default_warehouse_for_order', 'discount_policy_for', 'effective_patient_due', 'order_balance', 'order_consumable_cost', 'pacs_demographic_gate', 'performing_doctor_for_order', 'performing_doctor_share_for_order', 'render_template', 'requests', 'require_perm', 'validate_report_patient_file', 'work_order_gate', 'db')))
 
 
 # RB_BIND:0163
@@ -3637,7 +3637,7 @@ receipt_view = _rb_install_0522(_rb_bind(_rb_sys.modules[__name__], ('Receipt', 
 
 # RB_BIND:0523
 from web.routes.registration import install_0523 as _rb_install_0523
-mark_delivery = _rb_install_0523(_rb_bind(_rb_sys.modules[__name__], ('DeliveryEvent', 'Order', 'Report', 'abort', 'app', 'audit', 'current_user', 'datetime', 'db', 'flash', 'redirect', 'request', 'require_perm', 'url_for')))
+mark_delivery = _rb_install_0523(_rb_bind(_rb_sys.modules[__name__], ('DeliveryEvent', 'Order', 'PACS_ORTHANC_URL', 'PacsStudyMatch', 'REPORT_DIR', 'Report', '_orthanc_auth', 'abort', 'app', 'audit', 'current_user', 'datetime', 'db', 'flash', 'pacs_demographic_gate', 'redirect', 'request', 'requests', 'require_perm', 'url_for', 'validate_report_patient_file')))
 
 
 # RB_BIND:0524
