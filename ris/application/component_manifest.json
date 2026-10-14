@@ -2092,23 +2092,31 @@
       "InsuranceApprovalRequest",
       "Order",
       "OrderConsumable",
+      "PACS_ORTHANC_URL",
+      "PacsStudyMatch",
       "Payment",
+      "REPORT_DIR",
       "Receipt",
       "User",
+      "_orthanc_auth",
       "app",
       "approved_order_discounts",
+      "db",
       "default_warehouse_for_order",
       "discount_policy_for",
       "effective_patient_due",
       "order_balance",
       "order_consumable_cost",
+      "pacs_demographic_gate",
       "performing_doctor_for_order",
       "performing_doctor_share_for_order",
       "render_template",
+      "requests",
       "require_perm",
+      "validate_report_patient_file",
       "work_order_gate"
     ],
-    "original_sha256": "e986dacab0436ba36e78be0de0aa56e9d80b5fc562069474ced76eedb8b4ca31"
+    "original_sha256": "d79ed7048386ed179a945b2e0699bac8383e6e777caf8b40bfe6c2eabcf8dbea"
   },
   {
     "id": "0163",
@@ -4335,8 +4343,13 @@
     "symbol": "daily_payment_totals",
     "module": "application.components.finance",
     "installer": "install_0313",
-    "dependencies": [],
-    "original_sha256": "93ad534f16871b270a35a697f3d1d6fd552b41742d5c7f7fa25a13effb401882"
+    "dependencies": [
+      "Order",
+      "Payment",
+      "PaymentRefund",
+      "db"
+    ],
+    "original_sha256": "301a6717f68dabcc776feac046ed1128fbd61eebb0dc775a9838d508705d6ee1"
   },
   {
     "id": "0314",
@@ -7566,7 +7579,11 @@
     "dependencies": [
       "DeliveryEvent",
       "Order",
+      "PACS_ORTHANC_URL",
+      "PacsStudyMatch",
+      "REPORT_DIR",
       "Report",
+      "_orthanc_auth",
       "abort",
       "app",
       "audit",
@@ -7574,12 +7591,15 @@
       "datetime",
       "db",
       "flash",
+      "pacs_demographic_gate",
       "redirect",
       "request",
+      "requests",
       "require_perm",
-      "url_for"
+      "url_for",
+      "validate_report_patient_file"
     ],
-    "original_sha256": "c681f471bcde3f49809d576ae09c78b0493302c005a6648bf6873fee2ed6629b"
+    "original_sha256": "3f791bb11da7e9fe4b190be6dd7f837ad943dd27d8a7b483f2a2fb1bc38cee72"
   },
   {
     "id": "0524",
@@ -12072,10 +12092,27 @@
     "module": "web.routes.finance",
     "installer": "install_0776",
     "dependencies": [
+      "Branch",
+      "DailyClosing",
+      "Order",
+      "Payment",
+      "PaymentRefund",
+      "abort",
       "app",
-      "login_required"
+      "audit",
+      "current_user",
+      "date",
+      "datetime",
+      "db",
+      "flash",
+      "has_perm",
+      "login_required",
+      "redirect",
+      "render_template",
+      "request",
+      "url_for"
     ],
-    "original_sha256": "2878dc66679881a89708c2a8d3a7b96420739a65a2a05d09b9b0b313b329d3ee"
+    "original_sha256": "a77d8ff3311d9c62904c7c3c1f0baa77174a1cd291bb47b2464d72b423c4feb3"
   },
   {
     "id": "0777",
