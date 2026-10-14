@@ -24,9 +24,14 @@ def test_bindings_keep_live_overrides_and_reject_undeclared_dependencies():
 
 
 def test_dynamic_reset_model_is_an_explicit_binding():
+    import app as runtime
     entries = json.loads(_read_source(ROOT / "application/component_manifest.json"))
     reset = next(entry for entry in entries if entry["symbol"] == "admin_reset_module")
-    assert "Notification" in reset["dependencies"]
+    assert "NotificationEvent" in reset["dependencies"]
+    bindings = Bindings(runtime, reset["dependencies"])
+    assert bindings.NotificationEvent is runtime.NotificationEvent
+    assert bindings.namespace()["NotificationEvent"] is runtime.NotificationEvent
+    assert "User" not in bindings.namespace()
 
 
 def test_every_original_handler_is_present_once_and_preserves_its_source():

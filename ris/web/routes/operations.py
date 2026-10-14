@@ -1031,7 +1031,7 @@ def install_0809(_rb):
     def admin_reset_module():
         # Intentionally allow-list only non-clinical operational queues in v5.27.3.
         module=(_rb.request.form.get('module') or '').upper()
-        allowed={'NOTIFICATIONS':'Notification'}
+        allowed={'NOTIFICATIONS':'NotificationEvent'}
         if module not in allowed:
             _rb.abort(400,'This module is not approved for direct reset.')
         model=_rb.namespace().get(allowed[module])

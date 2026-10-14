@@ -12733,13 +12733,13 @@
       "db",
       "destructive_confirmation_token",
       "flash",
-      "Notification",
+      "NotificationEvent",
       "redirect",
       "request",
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "84ff260e9e2ba5613d8e8375fde9b114470fa02f456c7d6db83d388015e26be3"
+    "original_sha256": "e07f15ff697e75724ef4042159bae28281f95500f753c8eeb9ef35cb3998a488"
   },
   {
     "id": "0810",

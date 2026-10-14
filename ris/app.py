@@ -5189,7 +5189,7 @@ admin_delete_patient = _rb_install_0808(_rb_bind(_rb_sys.modules[__name__], ('Or
 
 # RB_BIND:0809
 from web.routes.operations import install_0809 as _rb_install_0809
-admin_reset_module = _rb_install_0809(_rb_bind(_rb_sys.modules[__name__], ('abort', 'app', 'audit', 'db', 'destructive_confirmation_token', 'flash', 'Notification', 'redirect', 'request', 'require_perm', 'url_for')))
+admin_reset_module = _rb_install_0809(_rb_bind(_rb_sys.modules[__name__], ('abort', 'app', 'audit', 'db', 'destructive_confirmation_token', 'flash', 'NotificationEvent', 'redirect', 'request', 'require_perm', 'url_for')))
 
 
 
