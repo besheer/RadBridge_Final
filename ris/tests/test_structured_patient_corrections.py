@@ -22,7 +22,7 @@ def setup(monkeypatch):
     return c,u,reviewer,o
 
 def submit(c,o,field='name',value='CODEX UAT Corrected'):
-    return c.post('/correction-center/orders/'+str(o.id)+'/demographics',data={'field_name':field,'proposed_value':value,'reason':'CODEX UAT correction reason','snapshot_hash':policy.snapshot(o.patient)})
+    return c.post('/correction-center/orders/'+str(o.id)+'/demographics',data={'field_name':field,'proposed_value':value,'reason':'CODEX UAT correction reason','snapshot_hash':policy.snapshot(o.patient,runtime=m)})
 
 def test_structured_request_stores_values_and_impact_without_patient_change(monkeypatch):
     c,u,reviewer,o=setup(monkeypatch);original=o.patient.name
@@ -37,20 +37,20 @@ def test_structured_request_stores_values_and_impact_without_patient_change(monk
 def test_invalid_or_system_fields_rejected(monkeypatch,field,value):
     setup(monkeypatch)
     with m.app.test_request_context('/'):
-        with pytest.raises(ValueError):policy.normalize(field,value)
+        with pytest.raises(ValueError):policy.normalize(field,value,runtime=m)
 
 def test_registration_required_rule_applies_to_correction(monkeypatch):
     c,u,reviewer,o=setup(monkeypatch)
     rule=m.FieldRule(field_key='patient.phone',label_en='Phone',required=True,visible=True)
     m.db.session.add(rule);m.db.session.flush()
     with m.app.test_request_context('/'):
-        with pytest.raises(ValueError):policy.normalize('phone','')
+        with pytest.raises(ValueError):policy.normalize('phone','',runtime=m)
 
 def test_stale_preview_blocks_request(monkeypatch):
     c,u,reviewer,o=setup(monkeypatch)
-    before=policy.snapshot(o.patient);o.patient.phone='01000000000';m.db.session.flush()
+    before=policy.snapshot(o.patient,runtime=m);o.patient.phone='01000000000';m.db.session.flush()
     with m.app.test_request_context('/'):
-        with pytest.raises(ValueError):policy.submit(o,'name','CODEX UAT Corrected','Valid reason',before)
+        with pytest.raises(ValueError):policy.submit(o,'name','CODEX UAT Corrected','Valid reason',before,runtime=m)
     assert m.CorrectionRequest.query.filter_by(order_id=o.id).count()==0
 
 def test_requester_cannot_approve_own_request(monkeypatch):
@@ -91,5 +91,5 @@ def test_legacy_unstructured_request_cannot_be_approved(monkeypatch):
 def test_duplicate_open_request_rejected(monkeypatch):
     c,u,reviewer,o=setup(monkeypatch);submit(c,o)
     with m.app.test_request_context('/'):
-        with pytest.raises(ValueError):policy.submit(o,'sex','F','Valid reason',policy.snapshot(o.patient))
+        with pytest.raises(ValueError):policy.submit(o,'sex','F','Valid reason',policy.snapshot(o.patient,runtime=m),runtime=m)
     assert m.CorrectionRequest.query.filter_by(order_id=o.id).count()==1

@@ -2622,13 +2622,13 @@ def install_0622(_rb):
         field=(_rb.request.form.get('field_name') if _rb.request.method=='POST' else _rb.request.args.get('field_name')) or 'name'
         if field not in FIELDS:_rb.abort(400)
         if _rb.request.method=='POST':
-            try:row=submit(order,field,_rb.request.form.get('proposed_value',''),_rb.request.form.get('reason',''),_rb.request.form.get('snapshot_hash',''))
+            try:row=submit(order,field,_rb.request.form.get('proposed_value',''),_rb.request.form.get('reason',''),_rb.request.form.get('snapshot_hash',''),runtime=_rb)
             except ValueError as exc:
                 _rb.db.session.rollback();_rb.flash(str(exc),'danger')
                 return _rb.redirect(_rb.url_for('patient_demographics_correction',order_id=order_id,field_name=field))
             _rb.db.session.commit();_rb.flash('Structured correction request submitted. / تم إرسال طلب التصحيح.','success')
             return _rb.redirect(_rb.url_for('patient_demographics_correction_view',request_id=row.id))
-        return _rb.render_template('patient_demographics_correction.html',order=order,fields=FIELDS,field=field,current=current_value(patient,field),snapshot_hash=snapshot(patient),impact=impact(patient,field))
+        return _rb.render_template('patient_demographics_correction.html',order=order,fields=FIELDS,field=field,current=current_value(patient,field,runtime=_rb),snapshot_hash=snapshot(patient,runtime=_rb),impact=impact(patient,field,runtime=_rb))
     return patient_demographics_correction
 
 
@@ -2644,7 +2644,7 @@ def install_0623(_rb):
         detail=row.demographic_detail
         if not detail:_rb.abort(404)
         patient=_rb.Patient.query.get_or_404(detail.patient_id)
-        return _rb.render_template('patient_demographics_correction_view.html',row=row,detail=detail,fields=FIELDS,impact=_rb.json.loads(detail.impact_json),current_impact=impact(patient,detail.field_name),stale=snapshot(patient)!=detail.snapshot_hash)
+        return _rb.render_template('patient_demographics_correction_view.html',row=row,detail=detail,fields=FIELDS,impact=_rb.json.loads(detail.impact_json),current_impact=impact(patient,detail.field_name,runtime=_rb),stale=snapshot(patient,runtime=_rb)!=detail.snapshot_hash)
     return patient_demographics_correction_view
 
 

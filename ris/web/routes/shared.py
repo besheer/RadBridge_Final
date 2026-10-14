@@ -2670,7 +2670,7 @@ def install_0635(_rb):
             _rb.abort(403)
         if action=='APPROVE' and row.request_type=='WRONG_DEMOGRAPHICS':
             from patient_correction_policy import assert_approvable
-            assert_approvable(row)
+            assert_approvable(row,runtime=_rb)
         if action=='CLAIM':
             if row.status not in ('NEW','NEED_INFO','UNDER_REVIEW'):
                 _rb.abort(409,'This request cannot be claimed in its current state.')

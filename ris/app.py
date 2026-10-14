@@ -4287,11 +4287,11 @@ correction_center = _rb_install_0621(_rb_bind(_rb_sys.modules[__name__], ('CORRE
 
 # RB_BIND:0622
 from web.routes.registration import install_0622 as _rb_install_0622
-patient_demographics_correction = _rb_install_0622(_rb_bind(_rb_sys.modules[__name__], ('Order', 'Patient', 'abort', 'app', 'correction_branch_allowed', 'db', 'flash', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
+patient_demographics_correction = _rb_install_0622(_rb_bind(_rb_sys.modules[__name__], ('Appointment', 'AssignmentVisit', 'CORRECTION_OPEN_STATUSES', 'CorrectionRequest', 'Order', 'Patient', 'PatientDemographicsCorrection', 'PatientDemographicsExtra', 'ReportVersion', 'abort', 'app', 'audit', 'correction_branch_allowed', 'current_user', 'db', 'flash', 'redirect', 'registration_rule_map', 'render_template', 'request', 'require_perm', 'url_for', 'validate_registration_value')))
 
 # RB_BIND:0623
 from web.routes.registration import install_0623 as _rb_install_0623
-patient_demographics_correction_view = _rb_install_0623(_rb_bind(_rb_sys.modules[__name__], ('CorrectionRequest', 'Patient', 'abort', 'app', 'correction_branch_allowed', 'correction_can_request', 'correction_can_review', 'current_user', 'json', 'login_required', 'render_template')))
+patient_demographics_correction_view = _rb_install_0623(_rb_bind(_rb_sys.modules[__name__], ('Appointment', 'AssignmentVisit', 'CORRECTION_OPEN_STATUSES', 'CorrectionRequest', 'Order', 'Patient', 'PatientDemographicsCorrection', 'PatientDemographicsExtra', 'ReportVersion', 'abort', 'app', 'audit', 'correction_branch_allowed', 'correction_can_request', 'correction_can_review', 'current_user', 'db', 'json', 'login_required', 'render_template', 'registration_rule_map', 'validate_registration_value')))
 
 # RB_BIND:0624
 from web.routes.shared import install_0624 as _rb_install_0624
@@ -4359,7 +4359,7 @@ correction_request_queue = _rb_install_0634(_rb_bind(_rb_sys.modules[__name__], 
 
 # RB_BIND:0635
 from web.routes.shared import install_0635 as _rb_install_0635
-correction_request_action = _rb_install_0635(_rb_bind(_rb_sys.modules[__name__], ('CorrectionRequest', 'abort', 'app', 'audit', 'correction_branch_allowed', 'current_user', 'datetime', 'db', 'flash', 'redirect', 'request', 'require_perm', 'url_for')))
+correction_request_action = _rb_install_0635(_rb_bind(_rb_sys.modules[__name__], ('Appointment', 'AssignmentVisit', 'CORRECTION_OPEN_STATUSES', 'CorrectionRequest', 'Order', 'Patient', 'PatientDemographicsCorrection', 'PatientDemographicsExtra', 'ReportVersion', 'abort', 'app', 'audit', 'correction_branch_allowed', 'current_user', 'datetime', 'db', 'flash', 'redirect', 'registration_rule_map', 'request', 'require_perm', 'url_for', 'validate_registration_value')))
 
 
 # RB_BIND:0636

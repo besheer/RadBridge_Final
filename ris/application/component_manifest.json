@@ -9197,20 +9197,31 @@
     "module": "web.routes.registration",
     "installer": "install_0622",
     "dependencies": [
+      "Appointment",
+      "AssignmentVisit",
+      "CORRECTION_OPEN_STATUSES",
+      "CorrectionRequest",
       "Order",
       "Patient",
+      "PatientDemographicsCorrection",
+      "PatientDemographicsExtra",
+      "ReportVersion",
       "abort",
       "app",
+      "audit",
       "correction_branch_allowed",
+      "current_user",
       "db",
       "flash",
       "redirect",
+      "registration_rule_map",
       "render_template",
       "request",
       "require_perm",
-      "url_for"
+      "url_for",
+      "validate_registration_value"
     ],
-    "original_sha256": "c0aab02350efdb92cfea1419e26a7bf26b05dbe7ff227084b451228d6f2725b2"
+    "original_sha256": "85a6767b674e653c223181adc2bce43a058ddf67d3d0fa8c5136b974efe2531c"
   },
   {
     "id": "0623",
@@ -9218,19 +9229,30 @@
     "module": "web.routes.registration",
     "installer": "install_0623",
     "dependencies": [
+      "Appointment",
+      "AssignmentVisit",
+      "CORRECTION_OPEN_STATUSES",
       "CorrectionRequest",
+      "Order",
       "Patient",
+      "PatientDemographicsCorrection",
+      "PatientDemographicsExtra",
+      "ReportVersion",
       "abort",
       "app",
+      "audit",
       "correction_branch_allowed",
       "correction_can_request",
       "correction_can_review",
       "current_user",
+      "db",
       "json",
       "login_required",
-      "render_template"
+      "registration_rule_map",
+      "render_template",
+      "validate_registration_value"
     ],
-    "original_sha256": "ddb3c5f7867e1d3bb6677c910de609e38bcc82d88432f8c60c4caeea40ea5feb"
+    "original_sha256": "ce5b7bb5fe5fdbffac54d1f6073a6862a9a212edb193f5ab9bde0636bab424f4"
   },
   {
     "id": "0624",
@@ -9442,7 +9464,15 @@
     "module": "web.routes.shared",
     "installer": "install_0635",
     "dependencies": [
+      "Appointment",
+      "AssignmentVisit",
+      "CORRECTION_OPEN_STATUSES",
       "CorrectionRequest",
+      "Order",
+      "Patient",
+      "PatientDemographicsCorrection",
+      "PatientDemographicsExtra",
+      "ReportVersion",
       "abort",
       "app",
       "audit",
@@ -9452,11 +9482,13 @@
       "db",
       "flash",
       "redirect",
+      "registration_rule_map",
       "request",
       "require_perm",
-      "url_for"
+      "url_for",
+      "validate_registration_value"
     ],
-    "original_sha256": "4e3c02854496adb15b0674b811a319065ae1bb3c3b22ad3b99346a441fbdabbb"
+    "original_sha256": "72e191e083b2546c5034bd0811280ee73afa8fecca55bbfddbbbec5bfcbb958e"
   },
   {
     "id": "0636",
