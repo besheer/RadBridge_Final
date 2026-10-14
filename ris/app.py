@@ -6173,6 +6173,9 @@ _rb_sys.modules[__name__].returned_documents_ready = _rb_returned_documents_read
 from infrastructure.adapters.clinical.technician_queue_queries import SqlAlchemyTechnicianQueueQueries
 _rb_sys.modules[__name__].technician_queue_queries = SqlAlchemyTechnicianQueueQueries(
     Order=Order, Patient=Patient, CaseWorkflowEvent=CaseWorkflowEvent)
+from infrastructure.adapters.assignment.coordinator_case_search import SqlAlchemyCoordinatorCaseSearch
+_rb_sys.modules[__name__].coordinator_case_search = SqlAlchemyCoordinatorCaseSearch(
+    Patient=Patient, Order=Order)
 
 from technician_queue import register as register_technician_queue
 register_technician_queue(_reporting_support_sys.modules[__name__])

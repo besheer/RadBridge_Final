@@ -6,7 +6,6 @@ import secrets
 import hmac
 from datetime import datetime, timedelta
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-from sqlalchemy import or_
 
 LIMIT=50
 
@@ -259,7 +258,7 @@ def register(m):
         elif view!='all':view='unassigned';query=query.filter(m.Order.assigned_doctor_id.is_(None))
         search=(m.request.args.get('q') or '').strip()
         if search:
-            like='%'+search+'%';query=query.filter(or_(m.Patient.name.ilike(like),m.Patient.patient_id.ilike(like),m.Order.accession.ilike(like)))
+            query=m.coordinator_case_search.apply(query,search)
         modality=(m.request.args.get('modality') or '').strip().upper()
         if modality:query=query.filter(m.Order.modality==modality)
         page=max(1,min(m.request.args.get('page',1,type=int),10000));total=query.count()

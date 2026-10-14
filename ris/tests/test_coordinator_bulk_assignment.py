@@ -64,6 +64,14 @@ def test_preview_is_read_only_and_confirm_assigns_all_with_audit(bulk_cases):
     assert confirm(f,token).status_code==409
 
 
+def test_queue_search_uses_accession_injected_query_adapter(bulk_cases):
+    f=bulk_cases
+    response=f.client.get('/coordinator/manual-assignment?q='+f.orders[1].accession,
+        base_url='https://localhost')
+    assert response.status_code==200
+    assert [order.id for order in f.captured['orders']]==[f.orders[1].id]
+
+
 def test_confirm_rejects_changed_case_without_any_partial_assignment(bulk_cases):
     f=bulk_cases;preview(f);token=f.captured['preview_token']
     f.orders[1].pacs_image_count=4;f.m.db.session.commit()
