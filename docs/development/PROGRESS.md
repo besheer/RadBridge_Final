@@ -12,9 +12,9 @@ Date: 2026-10-14. These measures describe the isolated `codex/radbridge-architec
 | Explicit service dependency boundaries | 29 | Registered service modules with enforced import boundaries; one module can implement several operations/routes |
 | Latest complete local SQLite suite | 2,122 passed / 5 skipped / 4 Windows memory errors | Commit d3ee384; affected paths then passed 65 tests on isolated rerun |
 | Focused transfer-policy regression | 1 passed | Candidate branch; synthetic route and authorization cases in one suite |
-| Last completed GitHub CI suite | 9 / 9 jobs successful | Commit d3ee384, run 38537336102; SQLite, seven PostgreSQL suites and Docker development smoke |
-| Direct framework/infrastructure imports inside application services | 1 | Static seam inventory; remaining import is SQLAlchemy in coordinator bulk-assignment route/query logic |
-| Technician queue SQL adapter | Added | Worklist return-status, queue predicates and search construction now live in infrastructure adapter |
+| Last completed GitHub CI suite | 9 / 9 jobs successful | Commit c3c67f9, run 38538100029; SQLite, seven PostgreSQL suites and Docker development smoke |
+| Direct framework/web/database-client imports inside application services | 0 | Static import inventory; ORM operations through the legacy runtime still remain |
+| Technician and coordinator query adapters | Added | Worklist return-state/filter/search and bulk-assignment search construction now live in infrastructure adapters |
 
 ## What a percentage means
 
