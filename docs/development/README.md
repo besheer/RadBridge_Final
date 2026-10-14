@@ -19,7 +19,7 @@ The returned-document prerequisite service (ADR 039) reads required history thro
 
 ## Validation evidence
 
-Current candidate `3de47b12d75cc92b578f71d41d1da99ae8e9ee95`: 2,125 SQLite tests passed, five skipped; architecture and source-safety checks passed locally. All nine GitHub Actions jobs passed in [run 38474163026](https://github.com/besheer/RadBridge_Final/actions/runs/38474163026), including seven PostgreSQL suites and Docker Compose build/start/login smoke. Runtime contract comparison retained 160 tables and 546 URL registrations. These checks do not certify external PACS/editor/viewer behavior, browser role UAT, disaster recovery or production readiness.
+Current candidate `0d7b3b699e1ef6dfbf5bbbb300dcf3003ec49301`: 2,126 SQLite tests passed, five skipped; architecture and source-safety checks passed locally. All nine GitHub Actions jobs passed in [run 38533097682](https://github.com/besheer/RadBridge_Final/actions/runs/38533097682), including seven PostgreSQL suites and Docker Compose build/start/login smoke. Runtime contract comparison retained 160 tables and 546 URL registrations. These checks do not certify external PACS/editor/viewer behavior, browser role UAT, disaster recovery or production readiness.
 
 The checker enforces domain/model/registered-port import rules and rejects direct Flask imports anywhere in application/services, including unregistered modules. Three direct SQLAlchemy imports remain outside the registry; indirect callback/runtime dependencies remain too. Passing guards does not certify every old service or integration.
 

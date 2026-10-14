@@ -10,10 +10,10 @@ Date: 2026-10-14. These measures describe the isolated `codex/radbridge-architec
 | Component/route/helper owner modules | 32 | 12 application components, 12 route modules, eight web helper modules |
 | Migrated legacy modules | 76 / 76 | 100% canonical-owner/alias inventory; mixed workflow dependencies remain |
 | Explicit service dependency boundaries | 29 | Registered service modules with enforced import boundaries; one module can implement several operations/routes |
-| Latest complete local SQLite suite | 2,125 passed / 5 skipped | Candidate branch test suite; synthetic fixtures only |
-| Focused branch-scope acceptance | 26 passed | Readiness, exceptions, search/reports, assignments, dashboard, patient/order/appointment listings, operations and management aggregates |
-| Last completed GitHub SQLite suite | 2,125 passed / 5 skipped | Commit 3de47b1, run 38474163026; all nine jobs successful |
-| Independent CI jobs per code head | 9 | SQLite, seven PostgreSQL suites and Docker development smoke passed for commit 3de47b1 |
+| Latest complete local SQLite suite | 2,126 passed / 5 skipped | Commit 0d7b3b6; synthetic fixtures only |
+| Focused transfer-policy regression | 1 passed | Candidate branch; synthetic route and authorization cases in one suite |
+| Last completed GitHub SQLite suite | 2,126 passed / 5 skipped | Commit 0d7b3b6, run 38533097682; all nine jobs successful |
+| Independent CI jobs per code head | 9 | SQLite, seven PostgreSQL suites and Docker development smoke passed for commit 0d7b3b6 |
 
 ## What a percentage means
 
@@ -29,6 +29,6 @@ The explicit boundaries cover assignment queries/mutations/visits; clinical scop
 
 Remaining boundaries include broad runtime bindings, readiness evidence acquisition, coordinator previews/workers, report editor callbacks/finalization/exports, cash receipt/refund/disbursement workflows, inventory consumption/general stock movement, patient creation/booking, broader user lifecycle/import transactions, staff execution, RT permission/configuration lifecycle and external acceptance, and provider/worker lifecycles. These still require a detailed per-use-case census before a total can be stated.
 
-External synthetic integration, browser role UAT, aggregate branch/role visibility and upgrade/rollback acceptance remain open. Neither source ownership nor mocked/local tests close those gates. Production merge/deployment is outside the current authorized implementation scope.
+External synthetic integration, browser role UAT, aggregate branch/role visibility and upgrade/rollback acceptance remain open. Neither source ownership nor mocked/local tests close those gates. The user has asked to continue through production readiness; the PR remains a draft and no production merge/deployment has occurred.
 
 The previous conversational 60% was a rough estimate, not a code coverage or completion measurement. This document supersedes that estimate with concrete inventories and explicit limitations. [Implementation status](IMPLEMENTATION_STATUS.md) records commit-specific validation.

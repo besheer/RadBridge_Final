@@ -26,7 +26,7 @@ A verified Git bundle and SHA-256 manifest may preserve this local history outsi
 
 ## Publication discipline
 
-The current main-based architecture port is commit `3de47b12d75cc92b578f71d41d1da99ae8e9ee95`; all nine jobs passed in CI run `38474163026`. The earlier remote rollback branch `checkpoint/development-validated-2026-10-12` remains a separate, historical checkpoint at `eabe773cc91e6122bd9c5d3428c84230d2f298f8`. It is a mutable branch, not an immutable or signed release tag. Any subsequent code change must obtain CI on its own commit before claiming validation.
+The current main-based architecture port is commit `0d7b3b699e1ef6dfbf5bbbb300dcf3003ec49301`; all nine jobs passed in CI run `38533097682`. The earlier remote rollback branch `checkpoint/development-validated-2026-10-12` remains a separate, historical checkpoint at `eabe773cc91e6122bd9c5d3428c84230d2f298f8`. It is a mutable branch, not an immutable or signed release tag. Any subsequent code change must obtain CI on its own commit before claiming validation.
 
 Never force-push the independent local branch over a GitHub branch. The architecture port was applied selectively on top of actual `main` in a separate branch, preserving the original development branch and the main-only blueprint/handover/viewer files. Keep `main`, production and the existing PR #1 untouched. PR #2 remains Draft until its scope and remaining release gates have been reviewed; this source-only work does not authorize merge or deployment.
 
