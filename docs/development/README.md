@@ -1,6 +1,6 @@
 # RadBridge architecture development
 
-Updated: 2026-10-14. This is an isolated modular-monolith architecture port on `codex/radbridge-architecture-port`, proposed by draft PR #2 against GitHub `main`; current PR head is `934321ec3ba7894c50fdd8e461f29d5820607258`. It has not been merged/deployed to production. Clinical release metadata remains 5.46.9; architecture commits are not a new deployed release.
+Updated: 2026-10-14. This is an isolated modular-monolith architecture port on `codex/radbridge-architecture-port`, proposed by draft PR #2 against GitHub `main`. The latest changes are held in that draft PR; they have not been merged/deployed to production. Clinical release metadata remains 5.46.9; architecture commits are not a new deployed release.
 
 ## Current source structure
 
@@ -13,13 +13,13 @@ Updated: 2026-10-14. This is an isolated modular-monolith architecture port on `
 
 Explicit boundaries cover assignment queries/mutations/grouped visits/monitoring; clinical scope/contacts; report save/edit leases/correction review; replacement settlement; original-lot returns; registration visits/insurance/demographic requests/appointment creation; readiness resolution/search/refresh/operations snapshot; collection/closing evidence/mutations; manual RT course, external plan record, session commands, support and read projections.
 
-The latest boundaries (ADR 041) pass inventory runtime bindings explicitly for stock locking and original-lot returns. ADR 038 creates an appointment for an existing patient through persistence/device-routing/slot-lock/restriction/actor/audit ports. Web composition still authorizes the branch and owns savepoint/commit/rollback, form parsing, flashes and redirects. Other booking/rescheduling/check-in workflows remain unfinished.
+The latest boundaries (ADR 042) inject runtime explicitly for insurance authorization and the outbound Worklist gate; ADR 041 does the same for stock locking and original-lot returns. ADR 038 creates an appointment for an existing patient through persistence/device-routing/slot-lock/restriction/actor/audit ports. Web composition still authorizes the branch and owns savepoint/commit/rollback, form parsing, flashes and redirects. Other booking/rescheduling/check-in workflows remain unfinished.
 
 The returned-document prerequisite service (ADR 039) reads required history through a repository and receives quality-rule and attachment-count dependencies. It grants no review approval, identity correction or image-completion authority. Legacy technician/assignment/return handlers retain their signatures, scope and transaction ownership.
 
 ## Validation evidence
 
-The code candidate `b1bcbb163b8949fec3acd8b8921aa4103e061ace` passed all nine GitHub Actions jobs in [run 38605276107](https://github.com/besheer/RadBridge_Final/actions/runs/38605276107), including seven PostgreSQL suites and Docker Compose build/start/login smoke. Its documentation-only successor `934321ec3ba7894c50fdd8e461f29d5820607258` passed CI run [38606806509](https://github.com/besheer/RadBridge_Final/actions/runs/38606806509). The current inventory-runtime change passed 32 focused tests, architecture checks and the source-safety scan locally; new PR CI is required before calling it green. These checks do not certify external PACS/editor/viewer behavior, browser role UAT, disaster recovery or production readiness.
+Code candidate `8241d8a0689fcc14a1aa3fa7d1106e21b08529a1` passed all nine GitHub Actions jobs in [run 38630526844](https://github.com/besheer/RadBridge_Final/actions/runs/38630526844), including seven PostgreSQL suites and Docker Compose build/start/login smoke. The current insurance-runtime change passed 46 focused tests, architecture checks and the source-safety scan locally; new PR CI is required before calling it green. These checks do not certify external PACS/editor/viewer behavior, browser role UAT, disaster recovery or production readiness.
 
 The checker enforces domain/model/registered-port import rules and rejects direct Flask imports anywhere in application/services, including unregistered modules. Three direct SQLAlchemy imports remain outside the registry; indirect callback/runtime dependencies remain too. Passing guards does not certify every old service or integration.
 
@@ -67,6 +67,6 @@ Provision external synthetic PACS/editor/viewer acceptance and browser role UAT;
 - [Progress measures](PROGRESS.md): inventories and limits of percentage estimates.
 - [Server transfer readiness](SERVER_TRANSFER_READINESS.md): development versus full clinical transfer.
 - [Code map](../../ris/docs/CODE_MAP.md), [port registry](../../ris/application/port_contracts.json), component/module manifests.
-- ADRs 001–041 document decisions and limitations. Consolidated status above is current.
+- ADRs 001–042 document decisions and limitations. Consolidated status above is current.
 
 Regenerate the code map with `python ris/tools/generate_code_map.py` after ownership changes. Historical blueprint/handover documents describe earlier snapshots; compare them with the actual reviewed commit.

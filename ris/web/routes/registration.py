@@ -477,7 +477,7 @@ def install_0163(_rb):
     def insurance_approval_start(order_id):
         order=_rb.Order.query.filter_by(id=order_id).with_for_update().first_or_404()
         from insurance_policy import require_actor
-        require_actor(order)
+        require_actor(order,runtime=_rb)
 
         method=(_rb.request.form.get('method') or 'MANUAL').strip().upper()
 
@@ -539,7 +539,7 @@ def install_0164(_rb):
     def insurance_approval_update(order_id):
         order=_rb.Order.query.filter_by(id=order_id).with_for_update().first_or_404()
         from insurance_policy import require_actor
-        require_actor(order)
+        require_actor(order,runtime=_rb)
 
         row=_rb.InsuranceApprovalRequest.query.filter_by(
             order_id=order.id
@@ -611,7 +611,7 @@ def install_0165(_rb):
         _rb.Patient.query.filter_by(id=order.patient_id).with_for_update().first_or_404()
 
         from insurance_policy import approval_blocker
-        insurance_blocker=approval_blocker(order)
+        insurance_blocker=approval_blocker(order,runtime=_rb)
         if insurance_blocker:
             _rb.audit('WORK_ORDER_BLOCKED','order',order.id,insurance_blocker)
             _rb.db.session.commit()

@@ -1293,7 +1293,7 @@ price_order = _rb_install_0125(_rb_bind(_rb_sys.modules[__name__], ('ContractPri
 
 # RB_BIND:0126
 from application.components.imaging import install_0126 as _rb_install_0126
-send_mwl = _rb_install_0126(_rb_bind(_rb_sys.modules[__name__], ('AUTH', 'ORTHANC', 'dicom_worklist_patient_name', 'requests')))
+send_mwl = _rb_install_0126(_rb_bind(_rb_sys.modules[__name__], ('AUTH', 'InsuranceApprovalRequest', 'ORTHANC', 'db', 'dicom_worklist_patient_name', 'requests')))
 
 
 # RB_BIND:0127
@@ -1466,18 +1466,18 @@ order_detail = _rb_install_0162(_rb_bind(_rb_sys.modules[__name__], ('Attachment
 
 # RB_BIND:0163
 from web.routes.registration import install_0163 as _rb_install_0163
-insurance_approval_start = _rb_install_0163(_rb_bind(_rb_sys.modules[__name__], ('InsuranceApprovalEvent', 'InsuranceApprovalRequest', 'Order', 'app', 'audit', 'current_user', 'datetime', 'db', 'flash', 'redirect', 'request', 'require_perm', 'url_for')))
+insurance_approval_start = _rb_install_0163(_rb_bind(_rb_sys.modules[__name__], ('InsuranceApprovalEvent', 'InsuranceApprovalRequest', 'Order', 'app', 'audit', 'current_user', 'datetime', 'db', 'flash', 'has_perm', 'redirect', 'request', 'require_perm', 'url_for')))
 
 
 # RB_BIND:0164
 from web.routes.registration import install_0164 as _rb_install_0164
-insurance_approval_update = _rb_install_0164(_rb_bind(_rb_sys.modules[__name__], ('InsuranceApprovalEvent', 'InsuranceApprovalRequest', 'Order', 'app', 'audit', 'current_user', 'datetime', 'db', 'flash', 'redirect', 'request', 'require_perm', 'url_for')))
+insurance_approval_update = _rb_install_0164(_rb_bind(_rb_sys.modules[__name__], ('InsuranceApprovalEvent', 'InsuranceApprovalRequest', 'Order', 'app', 'audit', 'current_user', 'datetime', 'db', 'flash', 'has_perm', 'redirect', 'request', 'require_perm', 'url_for')))
 
 
 # RB_WORK_ORDER_GATE_V5_CANONICAL
 # RB_BIND:0165
 from web.routes.registration import install_0165 as _rb_install_0165
-convert_to_work_order = _rb_install_0165(_rb_bind(_rb_sys.modules[__name__], ('EventOutbox', 'Order', 'Patient', 'app', 'audit', 'blockers_text', 'datetime', 'db', 'enqueue_event', 'flash', 'order_balance', 'redirect', 'require_perm', 'send_mwl', 'url_for', 'work_order_gate')))
+convert_to_work_order = _rb_install_0165(_rb_bind(_rb_sys.modules[__name__], ('EventOutbox', 'InsuranceApprovalRequest', 'Order', 'Patient', 'app', 'audit', 'blockers_text', 'datetime', 'db', 'enqueue_event', 'flash', 'order_balance', 'redirect', 'require_perm', 'send_mwl', 'url_for', 'work_order_gate')))
 
 
 # RB_BIND:0166

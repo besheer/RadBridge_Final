@@ -115,10 +115,23 @@ def test_ready_order_keeps_existing_conversion_flow(insurance_case,insured):
 
 def test_latest_decision_and_actual_outbound_gate(insurance_case,monkeypatch):
     import insurance_policy
+    import application.legacy_runtime as legacy_runtime
     c=insurance_case
     approval(c,'APPROVED','CODEX-UAT');approval(c,'PENDING')
-    assert insurance_policy.approval_blocker(c.order)
+    assert insurance_policy.approval_blocker(c.order,runtime=c.m)
+    monkeypatch.setattr(legacy_runtime,'resolve_runtime',lambda: (_ for _ in ()).throw(
+        AssertionError('insurance gate must use explicitly supplied runtime')))
     network=Mock(side_effect=AssertionError('Incomplete approval must not leave RIS'))
     monkeypatch.setattr(c.m.requests,'post',network)
     with pytest.raises(ValueError): c.real_sender(c.order)
     network.assert_not_called()
+
+
+def test_insurance_route_authorization_uses_composed_runtime(insurance_case,monkeypatch):
+    import application.legacy_runtime as legacy_runtime
+    c=insurance_case
+    monkeypatch.setattr(legacy_runtime,'resolve_runtime',lambda: (_ for _ in ()).throw(
+        AssertionError('insurance route must use explicitly supplied runtime')))
+    response=post(c,'insurance-approval/start',{'method':'MANUAL'})
+    assert response.status_code==302
+    assert c.m.InsuranceApprovalRequest.query.filter_by(order_id=c.order.id).count()==1

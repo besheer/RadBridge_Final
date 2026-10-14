@@ -743,7 +743,7 @@ def install_0123(_rb):
 def install_0126(_rb):
     def send_mwl(order):
         from insurance_policy import assert_approval_ready
-        assert_approval_ready(order)
+        assert_approval_ready(order,runtime=_rb)
         p=order.patient
         patient_name=_rb.dicom_worklist_patient_name(p)
         tags={

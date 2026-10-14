@@ -1530,11 +1530,13 @@
     "installer": "install_0126",
     "dependencies": [
       "AUTH",
+      "InsuranceApprovalRequest",
       "ORTHANC",
+      "db",
       "dicom_worklist_patient_name",
       "requests"
     ],
-    "original_sha256": "c60dca0b33382124f4c81b9d065e9f07cee3b8748b2455d8a7c3022b8eb8ed66"
+    "original_sha256": "9eae6b1fbb92f2080d573db680f5ad5246c97311f1441fb68188c0c2008fc25b"
   },
   {
     "id": "0127",
@@ -2133,12 +2135,13 @@
       "datetime",
       "db",
       "flash",
+      "has_perm",
       "redirect",
       "request",
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "bb1c98012e7d490b61e17dc1c4f388c481c69d41dd75df89584e7c2e4e486d58"
+    "original_sha256": "63842c091b49ea1d595647251ef9b33e676f87770961ae1168371857f38c3a55"
   },
   {
     "id": "0164",
@@ -2155,12 +2158,13 @@
       "datetime",
       "db",
       "flash",
+      "has_perm",
       "redirect",
       "request",
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "3827cf984961c0fe810f065f77f17e6f3ab048a3576933bd9701ac65a99e9800"
+    "original_sha256": "237eec6482e68319a140bcda30c8375c521d5262bc941be887a58252b213dd03"
   },
   {
     "id": "0165",
@@ -2169,6 +2173,7 @@
     "installer": "install_0165",
     "dependencies": [
       "EventOutbox",
+      "InsuranceApprovalRequest",
       "Order",
       "Patient",
       "app",
@@ -2185,7 +2190,7 @@
       "url_for",
       "work_order_gate"
     ],
-    "original_sha256": "a940c463c2e33ea94e891885afd4e09ef14e2535fc7104504a384b3a94cc8d52"
+    "original_sha256": "3c8c8ff9f262155437d0e443055d0a71bb82f28aedf0c78fc246c354df7ee349"
   },
   {
     "id": "0166",
