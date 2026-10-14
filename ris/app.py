@@ -6170,6 +6170,9 @@ register_branch_scoped_reads(_reporting_support_sys.modules[__name__])
 
 from web.compatibility.returned_documents import correction_documents_ready as _rb_returned_documents_ready
 _rb_sys.modules[__name__].returned_documents_ready = _rb_returned_documents_ready
+from infrastructure.adapters.clinical.technician_queue_queries import SqlAlchemyTechnicianQueueQueries
+_rb_sys.modules[__name__].technician_queue_queries = SqlAlchemyTechnicianQueueQueries(
+    Order=Order, Patient=Patient, CaseWorkflowEvent=CaseWorkflowEvent)
 
 from technician_queue import register as register_technician_queue
 register_technician_queue(_reporting_support_sys.modules[__name__])

@@ -1,7 +1,5 @@
 """Technician queues and audited requests for returned cases; never delete images."""
 from datetime import datetime, timedelta
-from sqlalchemy import select, exists, and_, or_, func
-from sqlalchemy.orm import aliased
 
 
 ACTIVE_CORRECTIONS = ('NEW', 'UNDER_REVIEW', 'NEED_INFO', 'APPROVED')
@@ -52,24 +50,8 @@ def returned_technician_case(m, order):
 
 
 def open_tech_return(m):
-    """Same timestamp/id ordering as case_return_snapshot, evaluated in SQL."""
-    returned = aliased(m.CaseWorkflowEvent)
-    newer = aliased(m.CaseWorkflowEvent)
-    resolved = aliased(m.CaseWorkflowEvent)
-    def later(row):
-        return or_(row.created_at > returned.created_at,
-                   and_(row.created_at == returned.created_at, row.id > returned.id))
-    newer_return = exists(select(newer.id).where(
-        newer.order_id == returned.order_id, newer.event_type == 'RETURNED', later(newer)
-    ).correlate(returned))
-    resolution = exists(select(resolved.id).where(
-        resolved.order_id == returned.order_id,
-        resolved.event_type.in_(('RESOLVED', 'READY_FOR_REREVIEW')), later(resolved)
-    ).correlate(returned))
-    return exists(select(returned.id).where(
-        returned.order_id == m.Order.id, returned.event_type == 'RETURNED',
-        returned.owner_role == 'TECHNICIAN', ~newer_return, ~resolution
-    ).correlate(m.Order))
+    """Use the persistence adapter to build the SQL-backed return predicate."""
+    return m.technician_queue_queries.open_technician_return()
 
 
 def render_worklist(m):
@@ -94,25 +76,14 @@ def render_worklist(m):
         q = q.filter(m.Order.priority == priority)
     q=apply(m,q,'TECHNICIAN',staff_context)
     returned = open_tech_return(m)
-    status = func.upper(func.coalesce(m.Order.exam_status, 'ORDERED'))
-    work_order = m.Order.status.in_(('SCHEDULED','ARRIVED','IN_PROGRESS','COMPLETED','IMAGES_RECEIVED','REPORTING','MWL_ERROR'))
-    filters = {
-        'waiting': and_(status.in_(('BOOKED', 'ORDERED')), ~returned, work_order),
-        'in_progress': and_(status == 'IN_PROGRESS', ~returned, work_order),
-        'returned': and_(returned, m.Order.status != 'FINAL'),
-    }
+    filters = m.technician_queue_queries.queue_filters(returned)
     counts = {key: q.filter(condition).count() for key, condition in filters.items()}
     view = m.request.args.get('view', 'waiting')
     if view not in filters:
         view = 'waiting'
     search = (m.request.args.get('q') or '').strip()
     if search:
-        like = '%' + search + '%'
-        q = q.join(m.Patient).filter(or_(
-            m.Patient.name.ilike(like), m.Patient.patient_id.ilike(like),
-            m.Patient.phone.ilike(like), m.Patient.national_id.ilike(like),
-            m.Order.accession.ilike(like), m.Order.procedure.ilike(like),
-            m.Order.modality.ilike(like)))
+        q = m.technician_queue_queries.apply_search(q, search)
     elif not (m.request.args.get('patient_id') or m.request.args.get('accession') or m.request.args.get('exam_status')):
         q = q.filter(filters[view])
     rows = q.order_by(m.Order.scheduled.desc(), m.Order.id.desc()).limit(300).all()
