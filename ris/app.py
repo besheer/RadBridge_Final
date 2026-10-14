@@ -1219,7 +1219,7 @@ current_user = _rb_install_0108(_rb_bind(_rb_sys.modules[__name__], ('User', 'se
 
 # RB_BIND:0109
 from application.components.identity import install_0109 as _rb_install_0109
-has_perm = _rb_install_0109(_rb_bind(_rb_sys.modules[__name__], ('current_user',)))
+has_perm = _rb_install_0109(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'current_user', 'db')))
 
 # RB_BIND:0110
 from web.components.identity import install_0110 as _rb_install_0110
@@ -3086,7 +3086,7 @@ _rb_v5462_notes = _rb_install_0414(_rb_bind(_rb_sys.modules[__name__], ('Clinica
 
 # RB_BIND:0415
 from web.components.finance import install_0415 as _rb_install_0415
-_rb_v5462_payment = _rb_install_0415(_rb_bind(_rb_sys.modules[__name__], ('Payment', 'Receipt', 'abort', 'audit', 'current_user', 'db', 'has_perm', 'next_receipt_no')))
+_rb_v5462_payment = _rb_install_0415(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Payment', 'Receipt', 'abort', 'audit', 'current_user', 'db', 'has_perm', 'next_receipt_no')))
 
 # RB_BIND:0416
 from web.routes.registration import install_0416 as _rb_install_0416
@@ -3629,11 +3629,11 @@ receivables_csv = _rb_install_0520(_rb_bind(_rb_sys.modules[__name__], ('Order',
 
 # RB_BIND:0521
 from web.routes.finance import install_0521 as _rb_install_0521
-receive_payment = _rb_install_0521(_rb_bind(_rb_sys.modules[__name__], ('Order', 'Payment', 'Receipt', 'abort', 'app', 'apply_or_request_discount', 'audit', 'current_user', 'db', 'flash', 'next_receipt_no', 'order_balance', 'redirect', 'request', 'require_perm', 'url_for')))
+receive_payment = _rb_install_0521(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Order', 'Payment', 'Receipt', 'abort', 'app', 'apply_or_request_discount', 'audit', 'current_user', 'db', 'flash', 'next_receipt_no', 'order_balance', 'redirect', 'request', 'require_perm', 'url_for')))
 
 # RB_BIND:0522
 from web.routes.finance import install_0522 as _rb_install_0522
-receipt_view = _rb_install_0522(_rb_bind(_rb_sys.modules[__name__], ('Receipt', 'abort', 'app', 'has_perm', 'login_required', 'render_template')))
+receipt_view = _rb_install_0522(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Receipt', 'abort', 'app', 'current_user', 'db', 'has_perm', 'login_required', 'render_template')))
 
 # RB_BIND:0523
 from web.routes.registration import install_0523 as _rb_install_0523
@@ -3646,7 +3646,7 @@ cashier_workstation = _rb_install_0524(_rb_bind(_rb_sys.modules[__name__], ('Ord
 
 # RB_BIND:0525
 from web.routes.finance import install_0525 as _rb_install_0525
-refund_payment = _rb_install_0525(_rb_bind(_rb_sys.modules[__name__], ('Payment', 'PaymentRefund', 'app', 'audit', 'current_user', 'db', 'flash', 'redirect', 'request', 'require_perm', 'url_for')))
+refund_payment = _rb_install_0525(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Payment', 'PaymentRefund', 'abort', 'app', 'audit', 'current_user', 'db', 'flash', 'redirect', 'request', 'require_perm', 'url_for')))
 
 # RB_BIND:0526
 from web.routes.reporting import install_0526 as _rb_install_0526
@@ -4449,7 +4449,7 @@ doctor_templates = _rb_install_0655(_rb_bind(_rb_sys.modules[__name__], ('Doctor
 
 # RB_BIND:0656
 from web.routes.finance import install_0656 as _rb_install_0656
-receipt_studio_print = _rb_install_0656(_rb_bind(_rb_sys.modules[__name__], ('Receipt', 'app', 'company_legal_for_order', 'json', 'login_required', 'receipt_studio_template', 'render_template')))
+receipt_studio_print = _rb_install_0656(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'Receipt', 'abort', 'app', 'company_legal_for_order', 'current_user', 'db', 'json', 'login_required', 'receipt_studio_template', 'render_template')))
 
 # RB_BIND:0657
 from web.routes.shared import install_0657 as _rb_install_0657

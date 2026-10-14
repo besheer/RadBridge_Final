@@ -17,7 +17,7 @@ def install_0109(_rb):
         perms = u.role.permissions() if u.role else []
         if u.role and u.role.code == 'RECEPTION' and perm in ('payments.create','cashier.workstation'):
             from collection_policy import reception_collection_allowed
-            return ('*' in perms or 'payments.create' in perms) and reception_collection_allowed(u)
+            return ('*' in perms or 'payments.create' in perms) and reception_collection_allowed(u,runtime=_rb)
         return '*' in perms or perm in perms
     return has_perm
 

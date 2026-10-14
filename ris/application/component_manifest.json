@@ -1330,9 +1330,11 @@
     "module": "application.components.identity",
     "installer": "install_0109",
     "dependencies": [
-      "current_user"
+      "Branch",
+      "current_user",
+      "db"
     ],
-    "original_sha256": "871f89ebb174031aea7d023ae47b5d5aaceb4b4f921a017fc541123c545db440"
+    "original_sha256": "b7a3320b759216a87875e07122acef6b682ec98d08fe5c1a8f667faaf53dd471"
   },
   {
     "id": "0110",
@@ -5578,6 +5580,7 @@
     "module": "web.components.finance",
     "installer": "install_0415",
     "dependencies": [
+      "Branch",
       "Payment",
       "Receipt",
       "abort",
@@ -5587,7 +5590,7 @@
       "has_perm",
       "next_receipt_no"
     ],
-    "original_sha256": "12142daf7d3b8bd4264261f8b1aaa688a926e89c835a784d460a3fd8b6a1d8bd"
+    "original_sha256": "080627878df02cbc230605a63b219a5a0306cb09fbcbf4482c5cc42d81fcc85f"
   },
   {
     "id": "0416",
@@ -7552,6 +7555,7 @@
     "module": "web.routes.finance",
     "installer": "install_0521",
     "dependencies": [
+      "Branch",
       "Order",
       "Payment",
       "Receipt",
@@ -7569,7 +7573,7 @@
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "34c3e3399bdcad1b7b0946a29ba7ca57bfb454686b6ba7147b57e6449a43a417"
+    "original_sha256": "a4f275e95dfdd56fc785e331d35207a8dee01de17b3a75502431d1be762bd403"
   },
   {
     "id": "0522",
@@ -7577,14 +7581,17 @@
     "module": "web.routes.finance",
     "installer": "install_0522",
     "dependencies": [
+      "Branch",
       "Receipt",
       "abort",
       "app",
+      "current_user",
+      "db",
       "has_perm",
       "login_required",
       "render_template"
     ],
-    "original_sha256": "7ba851781224de36ce5489e2bcf17185d7a6556ebb5e5961680b43fb5de4dd84"
+    "original_sha256": "bcfb4c8b6c93b2ab16ec4e45397a21b1925e6fa6e11827c0b483303e0429ce8e"
   },
   {
     "id": "0523",
@@ -7645,8 +7652,10 @@
     "module": "web.routes.finance",
     "installer": "install_0525",
     "dependencies": [
+      "Branch",
       "Payment",
       "PaymentRefund",
+      "abort",
       "app",
       "audit",
       "current_user",
@@ -7657,7 +7666,7 @@
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "9ce36838cf31e0b4fab439c1428bdbf910379407d4f77efbe993b7fcca8beef2"
+    "original_sha256": "ff863f090e50bf8f8036d60107563251faa401e8009ddc4817f427953d0e4216"
   },
   {
     "id": "0526",
@@ -9884,15 +9893,19 @@
     "module": "web.routes.finance",
     "installer": "install_0656",
     "dependencies": [
+      "Branch",
       "Receipt",
+      "abort",
       "app",
       "company_legal_for_order",
+      "current_user",
+      "db",
       "json",
       "login_required",
       "receipt_studio_template",
       "render_template"
     ],
-    "original_sha256": "896aca0a68d082869d09174a99ea6fdd65965cb7cf0eb6944684453f56ec2bdc"
+    "original_sha256": "03776f16a88204b834b8aaafad6564ae8fd359b27c832cedd1d2e623900f9c4b"
   },
   {
     "id": "0657",

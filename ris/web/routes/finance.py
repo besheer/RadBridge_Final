@@ -86,7 +86,7 @@ def install_0521(_rb):
     def receive_payment(order_id):
         from collection_policy import require_collection_branch
         o=_rb.Order.query.filter_by(id=order_id).with_for_update().first_or_404()
-        require_collection_branch(o.branch_id)
+        require_collection_branch(o.branch_id,runtime=_rb)
         discount_percent=float(_rb.request.form.get('discount_percent') or 0)
         import math
         if not math.isfinite(discount_percent) or discount_percent<0 or discount_percent>100:
@@ -129,7 +129,7 @@ def install_0522(_rb):
     def receipt_view(receipt_id):
         r=_rb.Receipt.query.get_or_404(receipt_id)
         from collection_policy import require_collection_branch
-        require_collection_branch(r.order.branch_id)
+        require_collection_branch(r.order.branch_id,runtime=_rb)
         if not (_rb.has_perm('receipts.print') or _rb.has_perm('payments.create') or _rb.has_perm('financial.view') or _rb.has_perm('*')): _rb.abort(403)
         return _rb.render_template('receipt.html',receipt=r,order=r.order)
     return receipt_view
@@ -169,7 +169,7 @@ def install_0525(_rb):
         p=_rb.Payment.query.get_or_404(payment_id)
         o=p.order
         from collection_policy import require_collection_branch
-        require_collection_branch(o.branch_id)
+        require_collection_branch(o.branch_id,runtime=_rb)
         amount=float(_rb.request.form.get('amount') or 0)
         reason=(_rb.request.form.get('reason') or '').strip()
         reference=(_rb.request.form.get('reference') or '').strip()
@@ -211,7 +211,7 @@ def install_0656(_rb):
         receipt=_rb.Receipt.query.get_or_404(receipt_id)
         order=receipt.order
         from collection_policy import require_collection_branch
-        require_collection_branch(order.branch_id)
+        require_collection_branch(order.branch_id,runtime=_rb)
         template=_rb.receipt_studio_template(order)
         legal=_rb.company_legal_for_order(order)
         layout={}

@@ -13,13 +13,13 @@ Updated: 2026-10-14. This is an isolated modular-monolith architecture port on `
 
 Explicit boundaries cover assignment queries/mutations/grouped visits/monitoring; clinical scope/contacts; report save/edit leases/correction review; replacement settlement; original-lot returns; registration visits/insurance/demographic requests/appointment creation; readiness resolution/search/refresh/operations snapshot; collection/closing evidence/mutations; manual RT course, external plan record, session commands, support and read projections.
 
-The latest boundaries (ADR 042) inject runtime explicitly for insurance authorization and the outbound Worklist gate; ADR 041 does the same for stock locking and original-lot returns. ADR 038 creates an appointment for an existing patient through persistence/device-routing/slot-lock/restriction/actor/audit ports. Web composition still authorizes the branch and owns savepoint/commit/rollback, form parsing, flashes and redirects. Other booking/rescheduling/check-in workflows remain unfinished.
+The latest boundary (ADR 043) injects runtime explicitly into branch collection authorization; ADR 042 does the same for insurance authorization and the outbound Worklist gate, and ADR 041 for stock locking and original-lot returns. ADR 038 creates an appointment for an existing patient through persistence/device-routing/slot-lock/restriction/actor/audit ports. Web composition still authorizes the branch and owns savepoint/commit/rollback, form parsing, flashes and redirects. Other booking/rescheduling/check-in workflows remain unfinished.
 
 The returned-document prerequisite service (ADR 039) reads required history through a repository and receives quality-rule and attachment-count dependencies. It grants no review approval, identity correction or image-completion authority. Legacy technician/assignment/return handlers retain their signatures, scope and transaction ownership.
 
 ## Validation evidence
 
-Code candidate `60e890da26942f0f28a1b3a1ef2b73f34cb5398c` passed all nine GitHub Actions jobs in [run 38631757734](https://github.com/besheer/RadBridge_Final/actions/runs/38631757734), including seven PostgreSQL suites and Docker Compose build/start/login smoke. This head includes the inventory and insurance runtime seams. These checks do not certify external PACS/editor/viewer behavior, browser role UAT, disaster recovery or production readiness.
+Code candidate `60e890da26942f0f28a1b3a1ef2b73f34cb5398c` passed all nine GitHub Actions jobs in [run 38631757734](https://github.com/besheer/RadBridge_Final/actions/runs/38631757734), including seven PostgreSQL suites and Docker Compose build/start/login smoke. This head includes the inventory and insurance runtime seams. The collection-runtime change passed 34 focused local tests and awaits CI on its next PR commit. These checks do not certify external PACS/editor/viewer behavior, browser role UAT, disaster recovery or production readiness.
 
 The checker enforces domain/model/registered-port import rules and rejects direct Flask imports anywhere in application/services, including unregistered modules. Three direct SQLAlchemy imports remain outside the registry; indirect callback/runtime dependencies remain too. Passing guards does not certify every old service or integration.
 
@@ -67,6 +67,6 @@ Provision external synthetic PACS/editor/viewer acceptance and browser role UAT;
 - [Progress measures](PROGRESS.md): inventories and limits of percentage estimates.
 - [Server transfer readiness](SERVER_TRANSFER_READINESS.md): development versus full clinical transfer.
 - [Code map](../../ris/docs/CODE_MAP.md), [port registry](../../ris/application/port_contracts.json), component/module manifests.
-- ADRs 001–042 document decisions and limitations. Consolidated status above is current.
+- ADRs 001–043 document decisions and limitations. Consolidated status above is current.
 
 Regenerate the code map with `python ris/tools/generate_code_map.py` after ownership changes. Historical blueprint/handover documents describe earlier snapshots; compare them with the actual reviewed commit.

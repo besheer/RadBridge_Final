@@ -48,6 +48,20 @@ def test_disabled_branch_blocks_reception_ui_and_direct_post(monkeypatch):
     with m.app.test_request_context('/'):
         assert not m.has_perm('payments.create') and not m.has_perm('cashier.workstation')
 
+
+def test_collection_permissions_and_payment_route_use_explicit_runtime(monkeypatch):
+    c,u,b,o,x=setup(monkeypatch)
+    import application.legacy_runtime as legacy_runtime
+
+    def forbidden_runtime_lookup():
+        raise AssertionError('collection policy must use runtime supplied by composition')
+
+    monkeypatch.setattr(legacy_runtime,'resolve_runtime',forbidden_runtime_lookup)
+    with m.app.test_request_context('/'):
+        assert m.has_perm('payments.create')
+    response=c.post('/orders/'+str(o.id)+'/payment',data={'amount':'10'})
+    assert response.status_code==302 and o.paid_amount==10
+
 @pytest.mark.parametrize('role',['RECEPTION','CASHIER'])
 def test_cashier_list_is_scoped_to_staff_branch(monkeypatch,role):
     c,u,b,o,x=setup(monkeypatch,role)

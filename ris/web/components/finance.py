@@ -28,7 +28,7 @@ def install_0415(_rb):
         if not math.isfinite(amount):raise ValueError('Invalid payment amount.')
         if amount<=0: return
         if not _rb.has_perm('payments.create'): _rb.abort(403)
-        for o in orders:require_collection_branch(o.branch_id)
+        for o in orders:require_collection_branch(o.branch_id,runtime=_rb)
         method=(form.get('payment_method') or '').strip().upper()
         if method not in ('CASH','VISA','MASTERCARD','WALLET','BANK_TRANSFER'):raise ValueError('Select payment method.')
         total_due=sum(max(0,float(o.patient_share or 0)) for o in orders)
