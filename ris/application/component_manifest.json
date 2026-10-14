@@ -8152,13 +8152,14 @@
       "ORTHANC",
       "abort",
       "app",
+      "current_user",
       "has_perm",
       "render_template",
       "request",
       "requests",
       "require_perm"
     ],
-    "original_sha256": "6d53a5114af6bf02c97078845f2e154679a7b9a599fb48a994f08aeb79a69889"
+    "original_sha256": "b183b0b1feaa4ec6d234f77a9d5e17e0e8e1476c2242d51526fd31a8ce45e660"
   },
   {
     "id": "0555",
@@ -8171,15 +8172,17 @@
       "abort",
       "app",
       "audit",
+      "current_user",
       "db",
       "flash",
+      "has_perm",
       "redirect",
       "render_template",
       "request",
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "ba219df8617ae79ff01b42116d11cfd6cc5204b1da8fb0df2e8476e6e0190229"
+    "original_sha256": "5fdb8ada8571f0d67092e98482b249e401e26e018cdf1ed8966e22e61aeefeda"
   },
   {
     "id": "0556",
@@ -8191,14 +8194,16 @@
       "abort",
       "app",
       "audit",
+      "current_user",
       "datetime",
       "db",
       "flash",
+      "has_perm",
       "redirect",
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "7badb7ebd3595e16612a43d81a0067947ca1222d0f8c701416b5d566126476e4"
+    "original_sha256": "3a50c5f84255d3d518bb23f1c1911a4fea0226b0467fa7b57cab820272ae07ef"
   },
   {
     "id": "0557",

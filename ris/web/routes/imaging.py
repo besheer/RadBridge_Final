@@ -673,10 +673,11 @@ def install_0554(_rb):
     @_rb.require_perm('devices.manage')
     def dicom_connections_page():
         from dicom_connections import branch_allowed,KINDS
-        branches=[b for b in _rb.Branch.query.order_by(_rb.Branch.code).all() if branch_allowed(b.id)]
-        if not branches and not _rb.has_perm('*'):_rb.abort(403)
+        actor=_rb.current_user();global_access=_rb.has_perm('*')
+        branches=[b for b in _rb.Branch.query.order_by(_rb.Branch.code).all() if branch_allowed(b.id,actor,global_access=global_access)]
+        if not branches and not global_access:_rb.abort(403)
         branch_id=_rb.request.args.get('branch_id',type=int)
-        if branch_id and not branch_allowed(branch_id):_rb.abort(403)
+        if branch_id and not branch_allowed(branch_id,actor,global_access=global_access):_rb.abort(403)
         if branch_id:branches=[b for b in branches if b.id==branch_id]
         ids=[b.id for b in branches]
         endpoints=_rb.DicomEndpoint.query.filter(_rb.DicomEndpoint.branch_id.in_(ids)).order_by(_rb.DicomEndpoint.branch_id,_rb.DicomEndpoint.kind).all()
@@ -695,7 +696,7 @@ def install_0555(_rb):
     @_rb.require_perm('devices.manage')
     def dicom_connection_edit(branch_id):
         from dicom_connections import branch_allowed,KINDS,ae_title,host,port
-        if not branch_allowed(branch_id):_rb.abort(403)
+        if not branch_allowed(branch_id,_rb.current_user(),global_access=_rb.has_perm('*')):_rb.abort(403)
         branch=_rb.Branch.query.get_or_404(branch_id)
         if _rb.request.method=='POST':
             kind=_rb.request.form.get('kind')
@@ -723,7 +724,7 @@ def install_0556(_rb):
     def dicom_connection_echo(endpoint_id):
         from dicom_connections import branch_allowed,echo
         row=_rb.DicomEndpoint.query.filter_by(id=endpoint_id).with_for_update().first_or_404()
-        if not branch_allowed(row.branch_id):_rb.abort(403)
+        if not branch_allowed(row.branch_id,_rb.current_user(),global_access=_rb.has_perm('*')):_rb.abort(403)
         if not row.active or not row.branch.active or not row.host:_rb.abort(409,'Configure and activate the connection first.')
         result=echo(row.host,row.port,row.ae_title,row.calling_ae)
         row.echo_result=result['result'];row.echo_message=result['message'];row.echo_elapsed_ms=result['elapsed_ms'];row.echo_checked_at=_rb.datetime.utcnow()

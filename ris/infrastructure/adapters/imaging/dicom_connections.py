@@ -23,10 +23,9 @@ def port(value):
     if not 1<=value<=65535:raise ValueError('Port must be from 1 to 65535.')
     return value
 
-def branch_allowed(branch_id):
-    from application.legacy_runtime import resolve_runtime as _rb_runtime; m = _rb_runtime()
-    user=m.current_user()
-    return bool(user and (m.has_perm('*') or (user.branch_id and user.branch_id==branch_id)))
+def branch_allowed(branch_id, user, *, global_access=False):
+    """Check branch visibility from explicitly supplied request identity evidence."""
+    return bool(user and (global_access or (user.branch_id and user.branch_id==branch_id)))
 
 def echo(target_host,target_port,called_ae,calling_ae='RADBRIDGERIS'):
     target_host=host(target_host)

@@ -3787,15 +3787,15 @@ admin_device_blocks = _rb_install_0553(_rb_bind(_rb_sys.modules[__name__], ('Dev
 
 # RB_BIND:0554
 from web.routes.imaging import install_0554 as _rb_install_0554
-dicom_connections_page = _rb_install_0554(_rb_bind(_rb_sys.modules[__name__], ('AUTH', 'Branch', 'Device', 'DicomEndpoint', 'ORTHANC', 'abort', 'app', 'has_perm', 'render_template', 'request', 'requests', 'require_perm')))
+dicom_connections_page = _rb_install_0554(_rb_bind(_rb_sys.modules[__name__], ('AUTH', 'Branch', 'Device', 'DicomEndpoint', 'ORTHANC', 'abort', 'app', 'current_user', 'has_perm', 'render_template', 'request', 'requests', 'require_perm')))
 
 # RB_BIND:0555
 from web.routes.imaging import install_0555 as _rb_install_0555
-dicom_connection_edit = _rb_install_0555(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'DicomEndpoint', 'abort', 'app', 'audit', 'db', 'flash', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
+dicom_connection_edit = _rb_install_0555(_rb_bind(_rb_sys.modules[__name__], ('Branch', 'DicomEndpoint', 'abort', 'app', 'audit', 'current_user', 'db', 'flash', 'has_perm', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
 
 # RB_BIND:0556
 from web.routes.imaging import install_0556 as _rb_install_0556
-dicom_connection_echo = _rb_install_0556(_rb_bind(_rb_sys.modules[__name__], ('DicomEndpoint', 'abort', 'app', 'audit', 'datetime', 'db', 'flash', 'redirect', 'require_perm', 'url_for')))
+dicom_connection_echo = _rb_install_0556(_rb_bind(_rb_sys.modules[__name__], ('DicomEndpoint', 'abort', 'app', 'audit', 'current_user', 'datetime', 'db', 'flash', 'has_perm', 'redirect', 'require_perm', 'url_for')))
 
 # RB_BIND:0557
 from web.routes.operations import install_0557 as _rb_install_0557
