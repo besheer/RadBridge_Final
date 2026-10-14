@@ -97,8 +97,7 @@ def member_blocker(m,o):
     if not row or not row.checked_at or (datetime.utcnow()-row.checked_at).total_seconds()>300:
         return 'READINESS'
     if row.incomplete_images or row.missing_series or row.missing_pacs:return 'IMAGES'
-    from technician_queue import correction_documents_ready
-    if not correction_documents_ready(m,o,{'reason':''}):return 'READINESS'
+    if not m.returned_documents_ready(m,o,{'reason':''}):return 'READINESS'
     if not m.assignment_readiness_decision(o,refresh_stale=False)['allowed']:return 'READINESS'
     return None
 

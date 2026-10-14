@@ -126,8 +126,7 @@ def render_worklist(m):
 
 
 def correction_documents_ready(m, order, state):
-    from web.compatibility.returned_documents import correction_documents_ready as check
-    return check(m, order, state)
+    return m.returned_documents_ready(m, order, state)
 
 
 def register(m):
