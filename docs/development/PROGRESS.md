@@ -16,7 +16,7 @@ Date: 2026-10-14. These measures describe the isolated `codex/radbridge-architec
 | Focused collection/runtime composition checks | 34 passed | Reception permission, same-branch payment route and component ownership/hash contracts |
 | Latest complete local SQLite suite | 2,122 passed / 5 skipped / 4 Windows memory errors | Commit d3ee384; affected paths then passed 65 tests on isolated rerun |
 | Focused transfer-policy regression | 1 passed | Candidate branch; synthetic route and authorization cases in one suite |
-| Last completed GitHub CI suite | 9 / 9 jobs successful | Commit 60e890d, run 38631757734; SQLite, seven PostgreSQL suites and Docker development smoke |
+| Last completed GitHub CI suite | 9 / 9 jobs successful | Commit f0a4e9f, run 38632744270; SQLite, seven PostgreSQL suites and Docker development smoke |
 | Direct framework/web/database-client imports inside application services | 0 | Static import inventory; ORM operations through the legacy runtime still remain |
 | Technician and coordinator query adapters | Added | Worklist return-state/filter/search and bulk-assignment search construction now live in infrastructure adapters |
 

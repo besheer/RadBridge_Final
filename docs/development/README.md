@@ -19,7 +19,7 @@ The returned-document prerequisite service (ADR 039) reads required history thro
 
 ## Validation evidence
 
-Code candidate `60e890da26942f0f28a1b3a1ef2b73f34cb5398c` passed all nine GitHub Actions jobs in [run 38631757734](https://github.com/besheer/RadBridge_Final/actions/runs/38631757734), including seven PostgreSQL suites and Docker Compose build/start/login smoke. This head includes the inventory and insurance runtime seams. The collection-runtime change passed 34 focused local tests and awaits CI on its next PR commit. These checks do not certify external PACS/editor/viewer behavior, browser role UAT, disaster recovery or production readiness.
+Code candidate `f0a4e9ffa612bcc3e2a4db96494a12cfe38aedd8` passed all nine GitHub Actions jobs in [run 38632744270](https://github.com/besheer/RadBridge_Final/actions/runs/38632744270), including seven PostgreSQL suites and Docker Compose build/start/login smoke. This head includes the inventory, insurance and collection runtime seams. These checks do not certify external PACS/editor/viewer behavior, browser role UAT, disaster recovery or production readiness.
 
 The checker enforces domain/model/registered-port import rules and rejects direct Flask imports anywhere in application/services, including unregistered modules. Three direct SQLAlchemy imports remain outside the registry; indirect callback/runtime dependencies remain too. Passing guards does not certify every old service or integration.
 
