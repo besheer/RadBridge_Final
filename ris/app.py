@@ -6206,6 +6206,9 @@ register_user_csv_transfer(_reporting_support_sys.modules[__name__])
 from clinical_scope import register as register_clinical_scope
 register_clinical_scope(_reporting_support_sys.modules[__name__])
 
+from inventory_transfer_policy import register as register_inventory_transfer_policy
+register_inventory_transfer_policy(_reporting_support_sys.modules[__name__])
+
 from security_dashboard import register as register_security_dashboard
 register_security_dashboard(_reporting_support_sys.modules[__name__])
 
