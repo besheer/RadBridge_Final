@@ -18,5 +18,6 @@ class Bindings:
         return getattr(self._target, name)
 
     def namespace(self):
-        """Compatibility for legacy dynamic model existence/lookup checks."""
-        return vars(self._target)
+        """Expose only declared bindings to legacy dynamic existence checks."""
+        target = vars(self._target)
+        return {name: target[name] for name in self._allowed if name in target}

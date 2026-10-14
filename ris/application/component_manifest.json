@@ -12733,6 +12733,7 @@
       "db",
       "destructive_confirmation_token",
       "flash",
+      "Notification",
       "redirect",
       "request",
       "require_perm",

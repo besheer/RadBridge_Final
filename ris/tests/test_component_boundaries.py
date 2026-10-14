@@ -18,8 +18,15 @@ def test_bindings_keep_live_overrides_and_reject_undeclared_dependencies():
     assert port.callback() == "first"
     target.callback = lambda: "second"
     assert port.callback() == "second"
+    assert port.namespace() == {"callback": target.callback}
     with pytest.raises(AttributeError, match="Undeclared"):
         _ = port.secret
+
+
+def test_dynamic_reset_model_is_an_explicit_binding():
+    entries = json.loads(_read_source(ROOT / "application/component_manifest.json"))
+    reset = next(entry for entry in entries if entry["symbol"] == "admin_reset_module")
+    assert "Notification" in reset["dependencies"]
 
 
 def test_every_original_handler_is_present_once_and_preserves_its_source():

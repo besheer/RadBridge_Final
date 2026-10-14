@@ -9,6 +9,7 @@ Date: 2026-10-14. Scope: isolated architecture port on `codex/radbridge-architec
 - All 76 migrated modules have one canonical owner and legacy aliases preserving module/exception/patch identity.
 - The clinical application factory supports independently supplied database, secret, storage, cookie and runtime URL configuration. Two-instance authorization/scope tests cover supported isolation; provider and host flags remain process-level.
 - Twenty-nine explicit workflow dependency boundaries are registered in `ris/application/port_contracts.json`. The architecture checker rejects infrastructure, web, framework and runtime imports in those services. Direct Flask imports are now rejected in the entire application/services package, including unregistered modules. This does not certify transitive dependencies or all old orchestration as clean.
+- The legacy `Bindings.namespace()` compatibility view now exposes only names declared for that component; the dynamic notification-reset model is declared explicitly. This narrows old dynamic lookup, but the remaining `namespace()` call sites and broad compatibility bindings still need gradual replacement.
 
 `ris/docs/CODE_MAP.md` links executable models, composed routes, canonical legacy owners and explicit port boundaries. Regenerate it using `python ris/tools/generate_code_map.py` after ownership changes. `application/component_manifest.json` and `application/module_manifest.json` remain the ownership inventories.
 
