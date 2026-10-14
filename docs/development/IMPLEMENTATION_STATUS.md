@@ -1,6 +1,6 @@
 # Architecture implementation and remaining gates
 
-Date: 2026-10-13. Scope: isolated development source on `refactor/development-foundation`, draft PR #1. Main and production have not been modified. Clinical release metadata remains 5.46.9; these changes are not a deployed clinical release.
+Date: 2026-10-14. Scope: isolated architecture port on `codex/radbridge-architecture-port`, draft PR #2, based on current GitHub `main`. The prior `refactor/development-foundation` branch remains unchanged. Production has not been modified. Clinical release metadata remains 5.46.9; these changes are not a deployed clinical release.
 
 ## Implemented ownership
 
@@ -57,11 +57,7 @@ Patient data-management counts and single-patient preview/export/anonymize/delet
 
 GitHub Actions runs nine jobs: the complete SQLite suite, seven independent PostgreSQL suites (`clinical`, `assignment`, `scope`, `reporting`, `finance`, `inventory`, `registration`) and a separate Docker Compose build/start/login smoke check.
 
-Validated published source `eabe773cc91e6122bd9c5d3428c84230d2f298f8` passed all nine jobs in [run 38271477503](https://github.com/besheer/RadBridge_Final/actions/runs/38271477503): 2,094 SQLite passed, five skipped, 43,265 warnings; seven PostgreSQL suites and Docker smoke passed. Source guard scanned 3,319 tracked files and 3,552 history blobs with no findings. These results cover the 28-boundary source plus safety guards and corrected synthetic booking fixtures; they do not cover subsequent changes until their own CI completes.
-
-Earlier local extraction test results are historical evidence for their individual steps, not the latest cloud baseline.
-
-Main-based architecture-port candidate: 2,125 SQLite tests passed, five skipped, and 57,305 warnings in 263.04 seconds after PACS action/destination scope and branch-limited user-management scope coverage. Focused PACS, DICOM correction, source-integrity, branch-scope and user-management tests pass; synthetic cases verify cross-branch reads and mutations are denied. Architecture boundaries pass. PostgreSQL and Docker Compose validation remain outstanding: Docker is unavailable on the local host, and PostgreSQL suites were not run from this candidate worktree. No claim is made for external integration on this head. On Windows, run pytest with `PYTHONUTF8=1` because three source-contract collectors read UTF-8 templates and JavaScript files.
+Main-based architecture-port candidate `3de47b12d75cc92b578f71d41d1da99ae8e9ee95` passed all nine jobs in [run 38474163026](https://github.com/besheer/RadBridge_Final/actions/runs/38474163026): 2,125 SQLite tests passed, five skipped, seven PostgreSQL contract suites passed, and Docker Compose build/start/login smoke passed. The local architecture boundary check and source safety check also passed. These checks validate this code head's automated contracts; they do not certify external PACS/OHIF/ONLYOFFICE behavior, browser role UAT, disaster recovery or production readiness. On Windows, run pytest with `PYTHONUTF8=1` because three source-contract collectors read UTF-8 templates and JavaScript files.
 
 The local runner forces synthetic SQLite and temporary artifact directories. PostgreSQL runs require the guarded isolated development database. Real provider HTTP is blocked in unit/contract tests. The Docker stack contains RIS/PostgreSQL only, not a complete PACS/ONLYOFFICE or host disaster-recovery package.
 

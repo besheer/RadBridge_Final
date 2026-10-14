@@ -1,6 +1,6 @@
 # Progress measures / قياس الإنجاز
 
-Date: 2026-10-13. These measures describe the isolated development branch; they do not certify production readiness.
+Date: 2026-10-14. These measures describe the isolated `codex/radbridge-architecture-port` branch and current PR #2 head; they do not certify production readiness.
 
 | Unit | Measured inventory | What it establishes |
 |---|---:|---|
@@ -10,10 +10,10 @@ Date: 2026-10-13. These measures describe the isolated development branch; they 
 | Component/route/helper owner modules | 32 | 12 application components, 12 route modules, eight web helper modules |
 | Migrated legacy modules | 76 / 76 | 100% canonical-owner/alias inventory; mixed workflow dependencies remain |
 | Explicit service dependency boundaries | 29 | Registered service modules with enforced import boundaries; one module can implement several operations/routes |
-| Latest complete local SQLite suite | 2118 passed / 5 skipped | Returned-document evidence, branch-scoped operational/search/report/receivables/analytics/command-center workspaces; synthetic SQL fixtures; this newer source requires its own remote CI |
+| Latest complete local SQLite suite | 2,125 passed / 5 skipped | Candidate branch test suite; synthetic fixtures only |
 | Focused branch-scope acceptance | 26 passed | Readiness, exceptions, search/reports, assignments, dashboard, patient/order/appointment listings, operations and management aggregates |
-| Last completed GitHub SQLite suite | 2,094 passed / 5 skipped | Commit eabe773c, run 38271477503, all nine jobs successful; newer returned-document change is separate |
-| Independent CI jobs per code head | 9 | SQLite, seven PostgreSQL suites and Docker development smoke; inspect the result for the exact commit |
+| Last completed GitHub SQLite suite | 2,125 passed / 5 skipped | Commit 3de47b1, run 38474163026; all nine jobs successful |
+| Independent CI jobs per code head | 9 | SQLite, seven PostgreSQL suites and Docker development smoke passed for commit 3de47b1 |
 
 ## What a percentage means
 

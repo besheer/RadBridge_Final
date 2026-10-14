@@ -1,6 +1,6 @@
 # Source rollback and publication safeguards
 
-Date: 2026-10-12. Scope: code on the isolated development branch. No deployment, production database/volume change, purchase or visibility change is authorized by these safeguards.
+Date: 2026-10-14. Scope: architecture port on `codex/radbridge-architecture-port` and draft PR #2. No deployment, production database/volume change, purchase or visibility change is authorized by these safeguards.
 
 ## Verified remote rollback points
 
@@ -26,9 +26,9 @@ A verified Git bundle and SHA-256 manifest may preserve this local history outsi
 
 ## Publication discipline
 
-The 28-boundary source publication was validated at remote commit `eabe773cc91e6122bd9c5d3428c84230d2f298f8` in nine-job CI run `38271477503`. The remote rollback branch `checkpoint/development-validated-2026-10-12` retains that commit. It is a mutable branch, not an immutable or signed release tag. New dependency work must preserve it and obtain CI on its own commit before claiming validation.
+The current main-based architecture port is commit `3de47b12d75cc92b578f71d41d1da99ae8e9ee95`; all nine jobs passed in CI run `38474163026`. The earlier remote rollback branch `checkpoint/development-validated-2026-10-12` remains a separate, historical checkpoint at `eabe773cc91e6122bd9c5d3428c84230d2f298f8`. It is a mutable branch, not an immutable or signed release tag. Any subsequent code change must obtain CI on its own commit before claiming validation.
 
-Never force-push the independent local branch over the remote branch. Compare the local baseline/current source and apply only reviewed added/modified/deleted paths on top of the actual remote head. Preserve every other remote tree entry and parent history. Use an expected-head lease for the development ref; inspect concurrent changes on lease rejection. Leave main untouched and PR #1 in Draft until release gates are met.
+Never force-push the independent local branch over a GitHub branch. The architecture port was applied selectively on top of actual `main` in a separate branch, preserving the original development branch and the main-only blueprint/handover/viewer files. Keep `main`, production and the existing PR #1 untouched. PR #2 remains Draft until its scope and remaining release gates have been reviewed; this source-only work does not authorize merge or deployment.
 
 Before publication inspect path/content differences, source-safety results and whether any file is omitted unexpectedly. Record local and remote source identities separately. Subsequent CI must run on the resulting remote commit; previous local/remote results are not its results.
 

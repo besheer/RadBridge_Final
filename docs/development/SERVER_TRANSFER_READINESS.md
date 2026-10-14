@@ -1,6 +1,6 @@
 # جاهزية الفصل والنقل إلى سيرفر آخر
 
-تاريخ المراجعة: 2026-10-12. النطاق: فرع التطوير المعزول فقط. لا يتضمن هذا المستند نقلًا أو نشرًا أو تعديلًا للإنتاج.
+تاريخ المراجعة: 2026-10-14. النطاق: فرع `codex/radbridge-architecture-port` وPR #2 فقط. لا يتضمن هذا المستند نقلًا أو نشرًا أو تعديلًا للإنتاج.
 
 ## الحكم الحالي
 
@@ -24,9 +24,9 @@
 
 | العنصر | الحالة والأثر على النقل |
 |---|---|
-| كود RIS والتبعيات المقيدة | موجود؛ يلزم تشغيل CI للـcommit الذي سيُنقل |
+| كود RIS والتبعيات المقيدة | موجود؛ CI للـcommit `3de47b1` نجح، لكن يلزم CI جديد لأي تغييرات لاحقة قبل اعتمادها |
 | إنشاء تطبيق بإعدادات مستقلة | موجود ومختبر بقاعدتين وإعدادات جلسات وتخزين منفصلة؛ بعض إعدادات providers/host ما زالت process-level |
-| RIS/PostgreSQL development Compose | موجود؛ آخر CI مثبت سابقًا نجح على Ubuntu، وليس اختبار نشر إنتاج |
+| RIS/PostgreSQL development Compose | موجود؛ Docker smoke نجح على Ubuntu في CI للـcommit الحالي، وليس اختبار نشر إنتاج |
 | PACS/Orthanc وبيانات الصور | غير ضمن Compose التطوير؛ يحتاج وجهة/خدمة وشبكة وتخزين وسياسة نقل منفصلة |
 | ONLYOFFICE | غير ضمن Compose التطوير؛ يلزم إعداد عناوين داخلية/عامة وJWT ومسارات callback واختبار حفظ فعلي |
 | OHIF وWeasis | ملفات التكامل ليست وحدها حزمة قبول؛ يلزم الأصول/الخدمة الملائمة وعميل Weasis واختبار المتصفح |
@@ -51,11 +51,4 @@
 
 ## حدود الأدلة
 
-آخر GitHub CI للنسخة المنشورة: commit `eabe773cc91e6122bd9c5d3428c84230d2f298f8`، [run 38271477503](https://github.com/besheer/RadBridge_Final/actions/runs/38271477503)، تسع وظائف ناجحة و2094 SQLite ناجحًا مع خمسة متخطاة. نجحت سبع مجموعات PostgreSQL وDocker smoke. فحص المصدر راجع 3319 ملفًا متتبعًا و3552 Git blob دون نتائج؛ الفحص استدلالي ولا يثبت خلو كل البيانات أو الأسرار. التغيير الأحدث لفصل مستندات المرتجعات يحتاج CI مستقلًا.
-
-آخر مجموعة محلية بعد إنشاء الحجز وتصحيح ملكية HTTP: 2077 ناجحًا، خمسة متخطاة، 43278 تحذيرًا؛ 69 اختبارًا مركزًا للحجز و135 لنقل HTTP. فحص المعمارية ومقارنة العقود نجحا. فشل تخصيص ذاكرة للتشفير وامتلاء قرص/كاش قطع محاولات سابقة؛ نجحت اختبارات الأمان الـ22 ثم المجموعة الكاملة في إعادة مستقلة دون تغيير خوارزميات أو assertions. هذه النتائج تخص البيئة المحلية فقط؛ التشغيل الحقيقي على Ubuntu وخدمات PostgreSQL/PACS/editor يحتاج أدلته المنفصلة.
-
-لم يُجر اختبار Docker أو PostgreSQL أو PACS/editor كامل جديد محليًا في هذه المراجعة؛ الأدوات والخدمات غير متاحة في البيئة المحلية الحالية. لا يوجد سيرفر هدف محدد أو نشر عليه. الوثيقة قائمة قبول للنقل، وليست شهادة أن هذه البوابات اجتازت.
-
-
-Current returned-document extraction: 2109 SQLite passed, five skipped, 43315 warnings in 158.21 seconds; 109 focused tests passed. Architecture checks, source guard and exact before/after runtime comparison passed (160 tables, 546 URL registrations). The initial full run failed the CSV export roundtrip because new repository fixtures committed users into the shared synthetic database. Those read-only fixtures now flush and roll back without committing; CSV row limits, security assertions and application behavior were not weakened. This complete rerun passed. PostgreSQL/Docker results for this newer change require its own remote CI.
+الـcommit الحالي `3de47b12d75cc92b578f71d41d1da99ae8e9ee95` اجتاز الوظائف التسع في [GitHub Actions run 38474163026](https://github.com/besheer/RadBridge_Final/actions/runs/38474163026): 2125 اختبار SQLite ناجحًا وخمسة متخطاة، وسبع مجموعات PostgreSQL، وDocker Compose smoke. فحص المعمارية وحماية المصدر ومقارنة عقود التشغيل اجتازت محليًا؛ المقارنة أكدت 160 جدولًا و546 تسجيل URL. هذه الأدلة لا تثبت قبول PACS/OHIF/ONLYOFFICE أو اختبار الأدوار بالمتصفح أو الاستعادة الكاملة. لا يوجد سيرفر هدف محدد أو نشر عليه. الوثيقة قائمة قبول للنقل وليست شهادة جاهزية إنتاج.

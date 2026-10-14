@@ -1,6 +1,6 @@
 # RadBridge architecture development
 
-Updated: 2026-10-12. This is an isolated modular-monolith development branch. It has not been merged/deployed to production. Clinical release metadata remains 5.46.9; local architecture commits are not a new deployed release.
+Updated: 2026-10-14. This is an isolated modular-monolith architecture port on `codex/radbridge-architecture-port`, proposed by draft PR #2 against GitHub `main`. It has not been merged/deployed to production. Clinical release metadata remains 5.46.9; local architecture commits are not a new deployed release.
 
 ## Current source structure
 
@@ -19,9 +19,7 @@ The returned-document prerequisite service (ADR 039) reads required history thro
 
 ## Validation evidence
 
-Current returned-document extraction: 2109 SQLite passed, five skipped, 43315 warnings in 158.21 seconds; 109 focused tests passed. Architecture checks, source guard and exact before/after runtime comparison passed (160 tables, 546 URL registrations). The initial full run failed the CSV export roundtrip because new repository fixtures committed users into the shared synthetic database. Those read-only fixtures now flush and roll back without committing; CSV row limits, security assertions and application behavior were not weakened. This complete rerun passed. PostgreSQL/Docker results for this newer change require its own remote CI.
-
-Validated published source `eabe773cc91e6122bd9c5d3428c84230d2f298f8` passed all nine jobs in [run 38271477503](https://github.com/besheer/RadBridge_Final/actions/runs/38271477503): 2,094 SQLite passed, five skipped, 43,265 warnings; seven PostgreSQL suites and Docker smoke passed. Source guard scanned 3,319 tracked files and 3,552 history blobs with no findings. These results cover the 28-boundary source plus safety guards and corrected synthetic booking fixtures; they do not cover subsequent changes until their own CI completes.
+Current candidate `3de47b12d75cc92b578f71d41d1da99ae8e9ee95`: 2,125 SQLite tests passed, five skipped; architecture and source-safety checks passed locally. All nine GitHub Actions jobs passed in [run 38474163026](https://github.com/besheer/RadBridge_Final/actions/runs/38474163026), including seven PostgreSQL suites and Docker Compose build/start/login smoke. Runtime contract comparison retained 160 tables and 546 URL registrations. These checks do not certify external PACS/editor/viewer behavior, browser role UAT, disaster recovery or production readiness.
 
 The checker enforces domain/model/registered-port import rules and rejects direct Flask imports anywhere in application/services, including unregistered modules. Three direct SQLAlchemy imports remain outside the registry; indirect callback/runtime dependencies remain too. Passing guards does not certify every old service or integration.
 
@@ -69,6 +67,6 @@ Provision external synthetic PACS/editor/viewer acceptance and browser role UAT;
 - [Progress measures](PROGRESS.md): inventories and limits of percentage estimates.
 - [Server transfer readiness](SERVER_TRANSFER_READINESS.md): development versus full clinical transfer.
 - [Code map](../../ris/docs/CODE_MAP.md), [port registry](../../ris/application/port_contracts.json), component/module manifests.
-- ADRs 001–039 and the branch-scoped stock-transfer policy document decisions and limitations. Consolidated status above is current.
+- ADRs 001–040 and the branch-scoped stock-transfer policy document decisions and limitations. Consolidated status above is current.
 
 Regenerate the code map with `python ris/tools/generate_code_map.py` after ownership changes. Historical blueprint/handover documents describe earlier snapshots; compare them with the actual reviewed commit.
