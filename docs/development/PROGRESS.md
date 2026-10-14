@@ -10,6 +10,8 @@ Date: 2026-10-14. These measures describe the isolated `codex/radbridge-architec
 | Component/route/helper owner modules | 32 | 12 application components, 12 route modules, eight web helper modules |
 | Migrated legacy modules | 76 / 76 | 100% canonical-owner/alias inventory; mixed workflow dependencies remain |
 | Explicit service dependency boundaries | 29 | Registered service modules with enforced import boundaries; one module can implement several operations/routes |
+| Legacy runtime imports / files | 25 / 10 | Static import inventory; compared with 27 / 11 before inventory adapter injection |
+| Focused inventory/runtime composition checks | 32 passed | Inventory safety, return service and component ownership/hash contracts |
 | Latest complete local SQLite suite | 2,122 passed / 5 skipped / 4 Windows memory errors | Commit d3ee384; affected paths then passed 65 tests on isolated rerun |
 | Focused transfer-policy regression | 1 passed | Candidate branch; synthetic route and authorization cases in one suite |
 | Last completed GitHub CI suite | 9 / 9 jobs successful | Commit b1bcbb1, run 38605276107; SQLite, seven PostgreSQL suites and Docker development smoke |

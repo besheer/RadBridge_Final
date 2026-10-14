@@ -71,6 +71,18 @@ def test_return_cannot_exceed_net_issued_or_be_repeated(stock_case):
     assert a.qty_on_hand==10 and c.m.order_consumable_cost(c.order)==0
 
 
+def test_inventory_use_and_return_receive_runtime_from_component_bindings(stock_case,monkeypatch):
+    import application.legacy_runtime as legacy_runtime
+
+    def forbidden_runtime_lookup():
+        raise AssertionError('inventory compatibility adapter must use injected runtime')
+
+    monkeypatch.setattr(legacy_runtime,'resolve_runtime',forbidden_runtime_lookup)
+    c=stock_case;a=lot(c)
+    consume(c,2);give_back(c,2);c.m.db.session.flush()
+    assert a.qty_on_hand==10
+
+
 def test_multiple_original_lots_and_costs_are_preserved(stock_case):
     c=stock_case;a=lot(c,qty=2,expires=date.today()+timedelta(days=1),cost=5)
     b=lot(c,qty=3,expires=date.today()+timedelta(days=2),cost=7)

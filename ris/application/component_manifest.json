@@ -4109,6 +4109,8 @@
     "module": "application.components.inventory",
     "installer": "install_0292",
     "dependencies": [
+      "InventoryLot",
+      "Order",
       "OrderConsumableUsage",
       "current_user",
       "db",
@@ -4116,15 +4118,23 @@
       "inventory_move",
       "stock_lots"
     ],
-    "original_sha256": "28c3f8ed5e90a26cc0d664bfe89d3b95b576abc78f64358081d53cdc69eb6d4d"
+    "original_sha256": "1f926731fe8cba3069f4b3ba8349893c90def4456fa9348447484673addd6ecc"
   },
   {
     "id": "0293",
     "symbol": "return_inventory",
     "module": "application.components.inventory",
     "installer": "install_0293",
-    "dependencies": [],
-    "original_sha256": "00f4699537934d39a002df194ef2923fff543f3a8edb4bf52206e3cb5ae2a05b"
+    "dependencies": [
+      "InventoryLot",
+      "Order",
+      "OrderConsumableUsage",
+      "current_user",
+      "db",
+      "default_warehouse_for_order",
+      "inventory_move"
+    ],
+    "original_sha256": "05bdc2b11be6501da4be856e796bbad75d5bcfa27b2773617b87f8f2b3a09f98"
   },
   {
     "id": "0294",

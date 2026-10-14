@@ -241,7 +241,7 @@ def install_0292(_rb):
         if not warehouse:raise ValueError('No active warehouse is configured for this branch.')
         from inventory_safety import quantity,lock_order
         qty=quantity(qty)
-        lock_order(order)
+        lock_order(order,runtime=_rb)
         user=user or _rb.current_user()
         lots=_rb.stock_lots(warehouse.id,item.id)
         available_total=sum(max(0,float(lot.qty_on_hand or 0)-float(lot.qty_reserved or 0)) for lot in lots)
@@ -266,7 +266,7 @@ def install_0292(_rb):
 def install_0293(_rb):
     def return_inventory(order,item,qty,warehouse=None,reason='',user=None):
         from inventory_safety import return_to_original_lots
-        return return_to_original_lots(order,item,qty,warehouse=warehouse,reason=reason,user=user)
+        return return_to_original_lots(order,item,qty,warehouse=warehouse,reason=reason,user=user,runtime=_rb)
     return return_inventory
 
 

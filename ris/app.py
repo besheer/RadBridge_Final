@@ -2420,11 +2420,11 @@ inventory_move = _rb_install_0291(_rb_bind(_rb_sys.modules[__name__], ('Inventor
 
 # RB_BIND:0292
 from application.components.inventory import install_0292 as _rb_install_0292
-consume_inventory = _rb_install_0292(_rb_bind(_rb_sys.modules[__name__], ('OrderConsumableUsage', 'current_user', 'db', 'default_warehouse_for_order', 'inventory_move', 'stock_lots')))
+consume_inventory = _rb_install_0292(_rb_bind(_rb_sys.modules[__name__], ('InventoryLot', 'Order', 'OrderConsumableUsage', 'current_user', 'db', 'default_warehouse_for_order', 'inventory_move', 'stock_lots')))
 
 # RB_BIND:0293
 from application.components.inventory import install_0293 as _rb_install_0293
-return_inventory = _rb_install_0293(_rb_bind(_rb_sys.modules[__name__], ()))
+return_inventory = _rb_install_0293(_rb_bind(_rb_sys.modules[__name__], ('InventoryLot', 'Order', 'OrderConsumableUsage', 'current_user', 'db', 'default_warehouse_for_order', 'inventory_move')))
 
 # RB_BIND:0294
 from application.components.inventory import install_0294 as _rb_install_0294
