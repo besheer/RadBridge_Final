@@ -4,6 +4,7 @@ import pytest
 from application.services.finance.collection_access import CollectionAccess
 from application.services.finance.closing_totals import payment_totals
 from domain.finance.closing_policy import money
+from web.extensions import daily_closing_policy
 
 
 class BranchRepository:
@@ -41,6 +42,15 @@ class PaymentRepository:
     def __init__(self, receipts, refunds):self.receipt_rows=receipts;self.refund_rows=refunds;self.calls=[]
     def receipts(self,*args):self.calls.append(('receipts',args));return self.receipt_rows
     def refunds(self,*args):self.calls.append(('refunds',args));return self.refund_rows
+
+
+def test_daily_closing_policy_uses_explicit_runtime_for_repository(monkeypatch):
+    runtime=Row(db=Row(session=object()),Order=object(),Payment=object(),PaymentRefund=object())
+    repository=object()
+    monkeypatch.setattr(daily_closing_policy,'SqlAlchemyClosingRepository',lambda *args: repository)
+    monkeypatch.setattr(daily_closing_policy._closing_totals,'payment_totals',lambda **kwargs: kwargs)
+    result=daily_closing_policy.payment_totals(7,date(2026,1,1),runtime=runtime)
+    assert result=={'repository':repository,'branch_id':7,'closing_date':date(2026,1,1)}
 
 
 def test_totals_use_accounting_window_original_refund_method_and_decimal_arithmetic():

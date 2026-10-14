@@ -2505,7 +2505,7 @@ referral_commission_for_order = _rb_install_0312(_rb_bind(_rb_sys.modules[__name
 
 # RB_BIND:0313
 from application.components.finance import install_0313 as _rb_install_0313
-daily_payment_totals = _rb_install_0313(_rb_bind(_rb_sys.modules[__name__], ()))
+daily_payment_totals = _rb_install_0313(_rb_bind(_rb_sys.modules[__name__], ('db', 'Order', 'Payment', 'PaymentRefund')))
 
 # RB_BIND:0314
 from application.components.shared import install_0314 as _rb_install_0314
@@ -5047,7 +5047,11 @@ admin_referral_commissions = _rb_install_0775(_rb_bind(_rb_sys.modules[__name__]
 
 # RB_BIND:0776
 from web.routes.finance import install_0776 as _rb_install_0776
-daily_closing = _rb_install_0776(_rb_bind(_rb_sys.modules[__name__], ('app', 'login_required')))
+daily_closing = _rb_install_0776(_rb_bind(_rb_sys.modules[__name__], (
+    'app', 'login_required', 'current_user', 'has_perm', 'request', 'abort', 'flash',
+    'redirect', 'url_for', 'datetime', 'date', 'Branch', 'DailyClosing', 'Order',
+    'Payment', 'PaymentRefund', 'db', 'audit', 'render_template',
+)))
 
 
 # RB_BIND:0777

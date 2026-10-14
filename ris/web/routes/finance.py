@@ -249,7 +249,7 @@ def install_0776(_rb):
     @_rb.login_required
     def daily_closing():
         from daily_closing_policy import closing_page
-        return closing_page()
+        return closing_page(runtime=_rb)
     return daily_closing
 
 

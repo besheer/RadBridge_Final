@@ -231,7 +231,7 @@ def install_0312(_rb):
 def install_0313(_rb):
     def daily_payment_totals(branch_id,closing_date):
         from daily_closing_policy import payment_totals
-        return payment_totals(branch_id,closing_date)
+        return payment_totals(branch_id,closing_date,runtime=_rb)
     return daily_payment_totals
 
 

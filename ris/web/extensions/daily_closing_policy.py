@@ -10,15 +10,14 @@ from flask import abort, flash, redirect, request, url_for
 
 
 
-def payment_totals(branch_id, closing_date):
-    from application.legacy_runtime import resolve_runtime
-    m = resolve_runtime()
+def payment_totals(branch_id, closing_date, *, runtime):
+    m = runtime
     return _closing_totals.payment_totals(repository=SqlAlchemyClosingRepository(
         m.db.session,m.Order,m.Payment,m.PaymentRefund),branch_id=branch_id,closing_date=closing_date)
 
 
-def closing_page():
-    from application.legacy_runtime import resolve_runtime as _rb_runtime; m = _rb_runtime()
+def closing_page(*, runtime):
+    m = runtime
     user = m.current_user()
     if not user or not user.active:
         abort(403)
@@ -64,7 +63,7 @@ def closing_page():
         flash('This day is closed and cannot be edited. / اليوم مُقفل ولا يمكن تعديله.', 'warning')
         return redirect(url_for('daily_closing', branch_id=branch_id, date=closing_date.isoformat()))
     totals = ({'CASH': row.expected_cash, 'CARD': row.expected_card, 'OTHER': row.expected_other}
-              if closed else payment_totals(branch_id, closing_date) if branch_id else
+              if closed else payment_totals(branch_id, closing_date, runtime=m) if branch_id else
               {'CASH': 0, 'CARD': 0, 'OTHER': 0})
     if request.method == 'POST':
         action = (values.get('action') or '').upper()
