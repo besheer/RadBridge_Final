@@ -135,9 +135,9 @@ def register(m):
         endpoint = request.endpoint or ""
         if endpoint not in BRANCH_SCOPED_ENDPOINTS:
             return
-        from registration_policy import allowed_registration_branches
+        from domain.registration.patient_validation import allowed_registration_branches
 
-        allowed = allowed_registration_branches()
+        allowed = allowed_registration_branches(m.current_user())
         if allowed is None:
             return
         allowed = tuple(int(branch_id) for branch_id in allowed)
