@@ -19,7 +19,7 @@ Date: 2026-10-15. These measures describe the isolated review branch prepared fo
 | Component boundary regression on review branch | 5 passed | Manifest and ownership boundary contracts |
 | Previous complete local SQLite suite | 2,122 passed / 5 skipped / 4 Windows memory errors | Commit d3ee384; affected paths then passed 65 tests on isolated rerun |
 | Focused transfer-policy regression | 1 passed | Candidate branch; synthetic route and authorization cases in one suite |
-| Last completed GitHub CI suite | 9 / 9 jobs successful | Documentation head c056581, run 38633240715; latest code head f0a4e9f also passed 9 / 9 |
+| Latest complete GitHub CI suite | 9 / 9 jobs successful; 2,148 passed / 5 skipped | Review head 45bb4ef, run 38697011444; SQLite, seven PostgreSQL suites and Docker smoke passed |
 | Direct framework/web/database-client imports inside application services | 0 | Static import inventory; ORM operations through the legacy runtime still remain |
 | Technician and coordinator query adapters | Added | Worklist return-state/filter/search and bulk-assignment search construction now live in infrastructure adapters |
 
