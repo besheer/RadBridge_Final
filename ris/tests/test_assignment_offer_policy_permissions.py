@@ -3,12 +3,14 @@ import json
 import pytest
 import app as m
 from test_assignment_distribution import doctor
-from test_report_template_routes import isolated
 
 
 @pytest.fixture(autouse=True)
-def rollback_after_test(isolated):
+def isolated(app_ctx, monkeypatch):
+    monkeypatch.setattr(m.db.session, 'commit', m.db.session.flush)
     yield
+    m.db.session.rollback()
+    m.db.session.remove()
 
 
 def signed_in_with_permissions(permissions):

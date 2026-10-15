@@ -1,6 +1,17 @@
 from datetime import datetime, timedelta
 from uuid import uuid4
 
+import pytest
+import app as m
+
+
+@pytest.fixture(autouse=True)
+def isolated(app_ctx, monkeypatch):
+    monkeypatch.setattr(m.db.session, 'commit', m.db.session.flush)
+    yield
+    m.db.session.rollback()
+    m.db.session.remove()
+
 
 def fixture(m):
     suffix=uuid4().hex[:8].upper()
