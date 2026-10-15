@@ -58,7 +58,12 @@ def main():
                 targets=["tests/test_settlement_workflow_dependencies.py", "tests/test_replacement_settlements.py", "tests/test_finance_evidence_dependencies.py", "tests/test_daily_closing_governance.py", "tests/test_closing_workflow_dependencies.py",
                          "tests/test_delivery_readiness_dependencies.py", "tests/test_delivery_policy.py"]
             elif args.postgres_suite == "inventory":
-                targets=["tests/test_inventory_return_dependencies.py", "tests/test_inventory_safety.py"]
+                targets=[
+                    "tests/test_inventory_return_dependencies.py",
+                    "tests/test_inventory_safety.py",
+                    "tests/test_inventory_transfer_policy.py",
+                    "tests/test_inventory_transfer_branch_scope.py",
+                ]
             elif args.postgres_suite == "registration":
                 targets=["tests/test_registration_dependencies.py", "tests/test_registration_policy.py",
                          "tests/test_insurance_readiness_dependencies.py", "tests/test_insurance_work_order.py",
