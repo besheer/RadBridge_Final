@@ -10,6 +10,7 @@ from flask import Blueprint, Response, abort, flash, redirect, render_template, 
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 from clinical_scope import SCOPE_COLUMNS
+from domain.registration.patient_validation import allowed_registration_branches
 
 COLUMNS = ('username', 'full_name', 'role_code', 'branch_code', 'active',
            'department', 'specialty', 'phone', 'email', 'whatsapp', 'telegram', 'other_contact') + SCOPE_COLUMNS
@@ -97,8 +98,16 @@ def register(m):
     def context(**kw):
         if not session.get('user_csv_csrf'):
             session['user_csv_csrf'] = secrets.token_urlsafe(32)
-        return dict(roles=m.Role.query.order_by(m.Role.code).all(),
-                    branches=m.Branch.query.order_by(m.Branch.code).all(), columns=COLUMNS,
+        from domain.identity.user_management import can_manage_target
+        actor = m.current_user()
+        allowed = allowed_registration_branches(actor)
+        branch_query = m.Branch.query
+        if allowed is not None:
+            branch_query = branch_query.filter(m.Branch.id.in_(allowed))
+        roles = [role for role in m.Role.query.order_by(m.Role.code).all()
+                 if can_manage_target(actor, role=role)]
+        return dict(roles=roles,
+                    branches=branch_query.order_by(m.Branch.code).all(), columns=COLUMNS,
                     csrf_token=session['user_csv_csrf'], **kw)
 
     def fingerprint(role, branch):
@@ -107,8 +116,14 @@ def register(m):
 
     def validate(rows):
         roles = {r.code.casefold(): r for r in m.Role.query.all()}
-        branches = {b.code.casefold(): b for b in m.Branch.query.all()}
-        existing = {u.username.casefold() for u in m.User.query.all()}
+        allowed = allowed_registration_branches(m.current_user())
+        branch_query = m.Branch.query
+        existing_query = m.User.query
+        if allowed is not None:
+            branch_query = branch_query.filter(m.Branch.id.in_(allowed))
+            existing_query = existing_query.filter(m.User.branch_id.in_(allowed))
+        branches = {b.code.casefold(): b for b in branch_query.all()}
+        existing = {u.username.casefold() for u in existing_query.all()}
         seen = set()
         results = []
         for line, data in rows:
@@ -134,8 +149,10 @@ def register(m):
             else:
                 # Enforce authorization even for skipped rows; never silently accept escalation.
                 require_manage_target(role=role)
+            if allowed is not None and not data['branch_code']:
+                errors.append('branch_code: required for branch-scoped managers / كود الفرع مطلوب')
             if data['branch_code'] and not branch:
-                errors.append('Unknown branch_code / كود فرع غير موجود')
+                errors.append('Unknown or unauthorized branch_code / كود فرع غير موجود أو غير مصرح به')
             if data['active'].lower() not in ('true', 'false', '1', '0', 'yes', 'no'):
                 errors.append('active: use true or false / استخدم true أو false')
             try:
@@ -172,9 +189,17 @@ def register(m):
     @bp.get('/admin/users/export.csv')
     @m.require_perm('users.view')
     def export():
-        profiles = {p.user_id: p for p in m.UserProfile.query.all()}
+        allowed = allowed_registration_branches(m.current_user())
+        users_query = m.User.query
+        if allowed is not None:
+            users_query = users_query.filter(m.User.branch_id.in_(allowed))
+        users = users_query.order_by(m.User.username).all()
+        visible_user_ids = [user.id for user in users]
+        profiles = {p.user_id: p for p in m.UserProfile.query.filter(
+            m.UserProfile.user_id.in_(visible_user_ids)
+        ).all()} if visible_user_ids else {}
         rows = []
-        for user in m.User.query.order_by(m.User.username):
+        for user in users:
             profile = profiles.get(user.id)
             rows.append(dict(username=user.username, full_name=user.full_name,
                              role_code=user.role.code, branch_code=user.branch.code if user.branch else '',
