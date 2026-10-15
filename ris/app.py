@@ -4580,7 +4580,7 @@ api_qa_callback = _rb_install_0684(_rb_bind(_rb_sys.modules[__name__], ('QARun',
 
 # RB_BIND:0685
 from web.routes.assignment import install_0685 as _rb_install_0685
-admin_assignment_offers = _rb_install_0685(_rb_bind(_rb_sys.modules[__name__], ('AssignmentOfferPolicy', 'app', 'assignment_offer_policy', 'current_user', 'db', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
+admin_assignment_offers = _rb_install_0685(_rb_bind(_rb_sys.modules[__name__], ('AssignmentOfferPolicy', 'abort', 'app', 'assignment_offer_policy', 'current_user', 'db', 'has_perm', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
 
 
 # RB_BIND:0686

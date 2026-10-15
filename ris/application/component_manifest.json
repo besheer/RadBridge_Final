@@ -10478,15 +10478,17 @@
       "AssignmentOfferPolicy",
       "app",
       "assignment_offer_policy",
+      "abort",
       "current_user",
       "db",
+      "has_perm",
       "redirect",
       "render_template",
       "request",
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "c27dddeb58d8579692ff67e5e4037dfb345238356434f3f9e01dc12b5f1f9794"
+    "original_sha256": "b73b71e946ff73f880496f17891cf16c6eda7902975e152b9eb43713e80c4dfb"
   },
   {
     "id": "0686",

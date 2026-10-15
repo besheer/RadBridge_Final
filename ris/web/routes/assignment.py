@@ -1023,6 +1023,8 @@ def install_0685(_rb):
     def admin_assignment_offers():
         row=_rb.assignment_offer_policy()
         if _rb.request.method=='POST':
+            if not (_rb.has_perm('users.manage') or _rb.has_perm('*')):
+                _rb.abort(403)
             if not row:
                 row=_rb.AssignmentOfferPolicy();_rb.db.session.add(row)
             row.enabled=_rb.request.form.get('enabled')=='1'
