@@ -68,9 +68,12 @@ def test_monitor_renders_for_authorized_admin(path, monkeypatch):
 
 def test_report_coordinator_can_monitor_but_cannot_assign():
     import json
+    branch = m.Branch(code='MONITOR-COORD', name='Monitor coordinator branch')
+    m.db.session.add(branch); m.db.session.flush()
     u=doctor('monitor-readonly-coordinator','COORDINATOR')
     u.role.permissions_json=json.dumps(['reports.coordinate'])
-    waiting=order('MONITOR-READONLY');m.db.session.flush()
+    u.branch_id=branch.id
+    waiting=order('MONITOR-READONLY');waiting.branch_id=branch.id;m.db.session.flush()
     client=m.app.test_client()
     with client.session_transaction() as s:s['uid']=u.id
     response=client.get('/coordinator/assignments')
@@ -78,3 +81,52 @@ def test_report_coordinator_can_monitor_but_cannot_assign():
     assert b'MONITOR-READONLY' in response.data
     assert ('/orders/%s/assign' % waiting.id).encode() not in response.data
     assert client.get('/admin/assignment-monitor').status_code==403
+
+
+@pytest.mark.parametrize(
+    'path,permission',
+    [('/admin/assignment-monitor', 'assignment.manage'),
+     ('/coordinator/assignments', 'reports.coordinate')],
+)
+def test_branch_monitor_only_exposes_its_cases_and_doctors(path, permission):
+    import json
+    from uuid import uuid4
+
+    suffix = uuid4().hex[:8]
+    branch_a = m.Branch(code=f'MA{suffix}', name=f'Monitor branch A {suffix}')
+    branch_b = m.Branch(code=f'MB{suffix}', name=f'Monitor branch B {suffix}')
+    role = m.Role(
+        code=f'MONITOR-{suffix}', name='Branch monitor',
+        permissions_json=json.dumps([permission]),
+    )
+    m.db.session.add_all([branch_a, branch_b, role]); m.db.session.flush()
+    coordinator = m.User(
+        username=f'monitor-coordinator-{suffix}', full_name='Branch coordinator',
+        password_hash='test', role=role, branch_id=branch_a.id, active=True,
+    )
+    doctor_a = doctor(f'monitor-doctor-a-{suffix}')
+    doctor_b = doctor(f'monitor-doctor-b-{suffix}')
+    doctor_a.branch_id = branch_a.id
+    doctor_b.branch_id = branch_b.id
+    m.db.session.add(coordinator)
+    m.db.session.add_all([
+        m.DoctorAssignmentProfile(user_id=doctor_a.id),
+        m.DoctorAssignmentProfile(user_id=doctor_b.id),
+        m.DoctorAvailabilityState(user_id=doctor_a.id, state='AVAILABLE'),
+        m.DoctorAvailabilityState(user_id=doctor_b.id, state='AVAILABLE'),
+    ])
+    order_a = order(f'MONITOR-A-{suffix}'); order_a.branch_id = branch_a.id
+    order_b = order(f'MONITOR-B-{suffix}'); order_b.branch_id = branch_b.id
+    m.db.session.flush()
+    assign(order_a, doctor_a)
+    assign(order_b, doctor_b)
+
+    client = m.app.test_client()
+    with client.session_transaction() as state:
+        state['uid'] = coordinator.id
+    response = client.get(path)
+    assert response.status_code == 200
+    assert order_a.accession.encode() in response.data
+    assert order_b.accession.encode() not in response.data
+    assert doctor_a.username.encode() in response.data
+    assert doctor_b.username.encode() not in response.data

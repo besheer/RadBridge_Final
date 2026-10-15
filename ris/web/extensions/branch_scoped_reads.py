@@ -58,6 +58,8 @@ BRANCH_SCOPED_ENDPOINTS = frozenset({
     "inventory_consumption_report",
     "admin_inventory_batches",
     "admin_inventory_movements",
+    "admin_assignment_monitor",
+    "coordinator_assignments",
     "admin_users",
     "admin_user_toggle",
     "admin_user_edit",
@@ -336,14 +338,31 @@ def register(m):
                 include_aliases=True,
             ),
         ]
+        assignment_monitor_endpoints = {
+            "admin_assignment_monitor", "coordinator_assignments",
+        }
         if request.endpoint in (
             "executive_analytics", "advanced_search", "financial_entries"
-        ):
+        ) or request.endpoint in assignment_monitor_endpoints:
             options.append(
                 with_loader_criteria(
                     m.User, m.User.branch_id.in_(allowed), include_aliases=True
                 )
             )
+        if request.endpoint in assignment_monitor_endpoints:
+            visible_users = select(m.User.id).where(m.User.branch_id.in_(allowed))
+            options.extend((
+                with_loader_criteria(
+                    m.DoctorAssignmentProfile,
+                    m.DoctorAssignmentProfile.user_id.in_(visible_users),
+                    include_aliases=True,
+                ),
+                with_loader_criteria(
+                    m.DoctorAvailabilityState,
+                    m.DoctorAvailabilityState.user_id.in_(visible_users),
+                    include_aliases=True,
+                ),
+            ))
         if request.endpoint in {
             "admin_users", "admin_user_toggle", "admin_user_edit",
             "admin_user_reset_password", "user_clinical_scope",
