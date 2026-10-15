@@ -10183,17 +10183,19 @@
     "dependencies": [
       "CommunicationChannelSetting",
       "CommunicationTemplate",
+      "abort",
       "app",
       "current_user",
       "db",
       "flash",
+      "has_perm",
       "redirect",
       "render_template",
       "request",
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "0c8219e2f8ecf37ecbdf78eff6cb32d30aca499714db3feafdae6fa8d992eb20"
+    "original_sha256": "07583cb34c90724bdfd495914a83cee977047cbf9116d61fbc1bab1e9acb7061"
   },
   {
     "id": "0671",
@@ -10202,15 +10204,17 @@
     "installer": "install_0671",
     "dependencies": [
       "CommunicationTemplate",
+      "abort",
       "app",
       "current_user",
       "db",
+      "has_perm",
       "redirect",
       "request",
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "d22ea7470e41a6e4800e8456691f8f4052f99001339b8220a84d6172b5d6a41d"
+    "original_sha256": "4e19d2e671a75fb08158d85f86e97d1180850c8c266d0588b8f62328eec45c50"
   },
   {
     "id": "0672",

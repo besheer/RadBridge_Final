@@ -4510,11 +4510,11 @@ universal_search = _rb_install_0669(_rb_bind(_rb_sys.modules[__name__], ('Branch
 
 # RB_BIND:0670
 from web.routes.communications import install_0670 as _rb_install_0670
-admin_communications = _rb_install_0670(_rb_bind(_rb_sys.modules[__name__], ('CommunicationChannelSetting', 'CommunicationTemplate', 'app', 'current_user', 'db', 'flash', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
+admin_communications = _rb_install_0670(_rb_bind(_rb_sys.modules[__name__], ('CommunicationChannelSetting', 'CommunicationTemplate', 'abort', 'app', 'current_user', 'db', 'flash', 'has_perm', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
 
 # RB_BIND:0671
 from web.routes.communications import install_0671 as _rb_install_0671
-admin_communication_template_save = _rb_install_0671(_rb_bind(_rb_sys.modules[__name__], ('CommunicationTemplate', 'app', 'current_user', 'db', 'redirect', 'request', 'require_perm', 'url_for')))
+admin_communication_template_save = _rb_install_0671(_rb_bind(_rb_sys.modules[__name__], ('CommunicationTemplate', 'abort', 'app', 'current_user', 'db', 'has_perm', 'redirect', 'request', 'require_perm', 'url_for')))
 
 # RB_BIND:0672
 from web.routes.communications import install_0672 as _rb_install_0672

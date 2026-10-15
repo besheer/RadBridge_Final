@@ -157,6 +157,8 @@ def install_0670(_rb):
     @_rb.require_perm('users.view')
     def admin_communications():
         if _rb.request.method=='POST':
+            if not (_rb.has_perm('users.manage') or _rb.has_perm('*')):
+                _rb.abort(403)
             ch=(_rb.request.form.get('channel') or '').upper()
             row=_rb.CommunicationChannelSetting.query.filter_by(channel=ch).first_or_404()
             row.enabled=_rb.request.form.get('enabled')=='1'
@@ -182,6 +184,8 @@ def install_0671(_rb):
     @_rb.app.route('/admin/communication-templates',methods=['POST'])
     @_rb.require_perm('users.view')
     def admin_communication_template_save():
+        if not (_rb.has_perm('users.manage') or _rb.has_perm('*')):
+            _rb.abort(403)
         tid=_rb.request.form.get('template_id',type=int)
         row=_rb.CommunicationTemplate.query.get(tid) if tid else None
         if not row:
