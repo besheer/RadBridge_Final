@@ -13,6 +13,7 @@ BRANCH_SCOPED_ENDPOINTS = frozenset({
     "case_exception_image_minimum",
     "case_exception_image_minimum_deactivate",
     "case_exception_refresh",
+    "tat_dashboard",
     "reports_portal",
     "reports_portal_csv",
     "universal_search",

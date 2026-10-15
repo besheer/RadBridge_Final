@@ -54,6 +54,11 @@ def test_readiness_queues_and_exception_actions_are_branch_scoped(app_ctx):
         assert own.accession.encode() in dashboard.data
         assert other.accession.encode() not in dashboard.data
 
+        tat_dashboard = client.get("/operations/tat")
+        assert tat_dashboard.status_code == 200
+        assert own.accession.encode() in tat_dashboard.data
+        assert other.accession.encode() not in tat_dashboard.data
+
         resolver = client.get(f"/operations/case-exceptions?q=RB{suffix}")
         assert resolver.status_code == 200
         assert own.accession.encode() in resolver.data
