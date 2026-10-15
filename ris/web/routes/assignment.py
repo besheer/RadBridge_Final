@@ -207,7 +207,13 @@ def install_0531(_rb):
         doctors=_rb.assignable_doctors()
 
         if _rb.request.method=='POST':
-            user_id=int(_rb.request.form['user_id'])
+            if not (_rb.has_perm('assignment.manage') or _rb.has_perm('*')):
+                _rb.abort(403)
+            user_id=_rb.request.form.get('user_id',type=int)
+            if not user_id:
+                _rb.abort(400)
+            if not _rb.User.query.filter_by(id=user_id).first():
+                _rb.abort(403)
             p=_rb.DoctorAssignmentProfile.query.filter_by(user_id=user_id).first()
             if not p:
                 p=_rb.DoctorAssignmentProfile(user_id=user_id)

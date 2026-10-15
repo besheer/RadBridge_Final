@@ -60,6 +60,7 @@ BRANCH_SCOPED_ENDPOINTS = frozenset({
     "admin_inventory_batches",
     "admin_inventory_movements",
     "admin_assignment_monitor",
+    "admin_assignment",
     "coordinator_assignments",
     "coordinator_manual_assignment",
     "assignment_offer_start",
@@ -343,7 +344,7 @@ def register(m):
             ),
         ]
         assignment_monitor_endpoints = {
-            "admin_assignment_monitor", "coordinator_assignments",
+            "admin_assignment_monitor", "admin_assignment", "coordinator_assignments",
             "coordinator_manual_assignment",
             "assignment_offer_start", "assignment_offers_expire_now",
         }

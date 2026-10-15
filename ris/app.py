@@ -3674,7 +3674,7 @@ admin_reporting_demo = _rb_install_0530(_rb_bind(_rb_sys.modules[__name__], ('ap
 
 # RB_BIND:0531
 from web.routes.assignment import install_0531 as _rb_install_0531
-admin_assignment = _rb_install_0531(_rb_bind(_rb_sys.modules[__name__], ('DoctorAssignmentProfile', 'app', 'assignable_doctors', 'db', 'flash', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
+admin_assignment = _rb_install_0531(_rb_bind(_rb_sys.modules[__name__], ('DoctorAssignmentProfile', 'User', 'abort', 'app', 'assignable_doctors', 'db', 'flash', 'has_perm', 'redirect', 'render_template', 'request', 'require_perm', 'url_for')))
 
 
 # RB_BIND:0532

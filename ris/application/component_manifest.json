@@ -7784,17 +7784,20 @@
     "installer": "install_0531",
     "dependencies": [
       "DoctorAssignmentProfile",
+      "User",
+      "abort",
       "app",
       "assignable_doctors",
       "db",
       "flash",
+      "has_perm",
       "redirect",
       "render_template",
       "request",
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "239418a26ae3c84c904485b638752286f6540a556732bc4976439cc89391c650"
+    "original_sha256": "e01dd03ac6abd1efcecd8d611c3a3170206cfa1f901ea721bcc420ccace9c3d7"
   },
   {
     "id": "0532",

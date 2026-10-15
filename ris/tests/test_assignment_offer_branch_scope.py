@@ -6,13 +6,17 @@ def fixture(m):
     suffix=uuid4().hex[:8].upper()
     own=m.Branch(code='OFFER'+suffix,name='Offer branch '+suffix)
     other=m.Branch(code='OTHER'+suffix,name='Other branch '+suffix)
-    role=m.Role(code='OFFER-'+suffix,name='Branch assignment manager',permissions_json='["assignment.manage"]')
+    role=m.Role(code='OFFER-'+suffix,name='Branch assignment manager',permissions_json='["assignment.manage","users.view"]')
     m.db.session.add_all([own,other,role]);m.db.session.flush()
     actor=m.User(username='offer-manager-'+suffix,full_name='Offer manager',password_hash='test',role=role,branch_id=own.id,active=True)
     doctor=m.User(username='offer-doctor-'+suffix,full_name='Own branch doctor',password_hash='test',role_id=m.Role.query.filter_by(code='RADIOLOGIST').one().id,branch_id=own.id,active=True)
     foreign=m.User(username='foreign-doctor-'+suffix,full_name='Other branch doctor',password_hash='test',role_id=doctor.role_id,branch_id=other.id,active=True)
     patient=m.Patient(patient_id='OFFER-PATIENT-'+suffix,name='Synthetic offer patient')
     m.db.session.add_all([actor,doctor,foreign,patient]);m.db.session.flush()
+    m.db.session.add_all([
+        m.DoctorAssignmentProfile(user_id=doctor.id,modalities='CT',branches=str(own.id),available=True),
+        m.DoctorAssignmentProfile(user_id=foreign.id,modalities='MR',branches=str(other.id),available=True),
+    ])
     order=m.Order(accession='OFFER-'+suffix,patient_id=patient.id,branch_id=own.id,modality='CT',procedure='Synthetic',scheduled=datetime.utcnow(),status='COMPLETED')
     foreign_order=m.Order(accession='OTHER-OFFER-'+suffix,patient_id=patient.id,branch_id=other.id,modality='CT',procedure='Synthetic',scheduled=datetime.utcnow(),status='COMPLETED')
     m.db.session.add_all([order,foreign_order]);m.db.session.commit()
@@ -69,3 +73,27 @@ def test_branch_offer_expiry_only_sees_its_branch(app_ctx,monkeypatch):
 
     assert response.status_code==302
     assert seen['ids']=={order.id}
+
+
+def test_assignment_profile_page_only_lists_permitted_branch_doctors(app_ctx):
+    m=app_ctx
+    _,doctor,foreign,_,_,client=fixture(m)
+
+    response=client.get('/admin/assignment',base_url='https://localhost')
+
+    assert response.status_code==200
+    assert doctor.username.encode() in response.data
+    assert foreign.username.encode() not in response.data
+
+
+def test_assignment_profile_edit_requires_manager_and_rejects_foreign_doctor(app_ctx):
+    m=app_ctx
+    actor,doctor,foreign,_,_,client=fixture(m)
+    actor.role.permissions_json='["users.view"]';m.db.session.flush()
+    denied=client.post('/admin/assignment',base_url='https://localhost',data={'user_id':doctor.id,'modalities':'DX'})
+    assert denied.status_code==403
+
+    actor.role.permissions_json='["users.view","assignment.manage"]';m.db.session.flush()
+    denied=client.post('/admin/assignment',base_url='https://localhost',data={'user_id':foreign.id,'modalities':'DX'})
+    assert denied.status_code==403
+    assert m.DoctorAssignmentProfile.query.filter_by(user_id=foreign.id).one().modalities=='MR'
