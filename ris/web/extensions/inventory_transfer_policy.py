@@ -86,9 +86,7 @@ def register(m):
         if not user or not user.active:
             abort(403)
         allowed = allowed_registration_branches()
-        central = not user.branch_id and (
-            allowed is None or m.has_perm("inventory.transfer.approve")
-        )
+        central = not user.branch_id and m.has_perm("inventory.transfer.approve")
         g.rb_inventory_transfer_central = central
         g.rb_inventory_transfer_branch_ids = None if central else tuple(allowed or ())
 
