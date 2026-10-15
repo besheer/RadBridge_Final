@@ -165,6 +165,9 @@ def test_branch_transfer_scope_and_central_approval(app_ctx):
         m.StockTransfer.query.filter(m.StockTransfer.id.in_(transfer_ids)).delete(
             synchronize_session=False
         )
+        m.UserProfile.query.filter(
+            m.UserProfile.user_id.in_([branch_user.id, central_user.id])
+        ).delete(synchronize_session=False)
         m.User.query.filter(m.User.id.in_([branch_user.id, central_user.id])).delete(
             synchronize_session=False
         )
