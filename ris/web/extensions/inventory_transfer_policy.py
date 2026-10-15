@@ -73,9 +73,15 @@ def register(m):
         return query
 
     def valid_transfer_ids(branch_ids=None):
+        target_parent_id = select(m.Warehouse.parent_id).where(
+            m.Warehouse.id == m.StockTransfer.target_warehouse_id,
+            m.Warehouse.warehouse_type == "BRANCH",
+            m.Warehouse.active.is_(True),
+        ).scalar_subquery()
         return select(m.StockTransfer.id).where(
             m.StockTransfer.source_warehouse_id.in_(linked_central_ids(branch_ids)),
             m.StockTransfer.target_warehouse_id.in_(target_ids(branch_ids)),
+            m.StockTransfer.source_warehouse_id == target_parent_id,
         )
 
     def guard():
@@ -104,6 +110,7 @@ def register(m):
                 m.Warehouse.warehouse_type == "BRANCH",
                 m.Warehouse.branch_id.in_(allowed),
                 m.Warehouse.active.is_(True),
+                m.Warehouse.parent_id == source_id,
             ).first() if target_id else None
             if not permitted_source or not permitted_target:
                 abort(403)

@@ -58,6 +58,41 @@ def test_branch_can_request_only_from_linked_central_and_authorized_branch(monke
             with pytest.raises(Forbidden):
                 guard()
 
+    # Both warehouses may be individually authorized for a multi-branch user,
+    # but the source must serve the selected target branch.
+    monkeypatch.setattr(
+        registration_policy, "allowed_registration_branches", lambda: [branch.id, other_branch.id]
+    )
+    with m.app.test_request_context("/inventory/transfers", method="POST", data={
+        "source_warehouse_id": str(central.id), "target_warehouse_id": str(other_target.id),
+    }):
+        with pytest.raises(Forbidden):
+            guard()
+
+
+def test_transfer_visibility_rejects_central_source_mismatched_to_target_branch(monkeypatch):
+    _branch, central, _target, _other_central, other_target = _branch_warehouses()
+    transfer = m.StockTransfer(
+        transfer_no="CODEX-UAT-TRANSFER-MISMATCH",
+        source_warehouse_id=central.id,
+        target_warehouse_id=other_target.id,
+        status="REQUESTED",
+    )
+    m.db.session.add(transfer)
+    m.db.session.flush()
+    operator = doctor("inventory-transfer-central-mismatch", "MANAGEMENT")
+    operator.branch_id = None
+    monkeypatch.setattr(m, "current_user", lambda: operator)
+    monkeypatch.setattr(m, "has_perm", lambda permission: permission == "inventory.transfer.approve")
+    monkeypatch.setattr(registration_policy, "allowed_registration_branches", lambda: None)
+    guard = _guard()
+    route = next(rule for rule in m.app.url_map.iter_rules() if rule.endpoint == "inventory_transfer_detail")
+    path = route.rule.replace("<int:transfer_id>", str(transfer.id))
+
+    with m.app.test_request_context(path, method="GET"):
+        with pytest.raises(Forbidden):
+            guard()
+
 
 def test_global_user_needs_explicit_transfer_approval_permission(monkeypatch):
     branch, central, target, _other_central, _other_target = _branch_warehouses()
