@@ -1,6 +1,6 @@
-# ADR-044: Branch-scope the TAT dashboard
+# ADR-048: Branch-scope the TAT dashboard
 
-Status: implemented locally on `refactor/development-foundation`, 2026-10-15.
+Status: ported to the isolated draft PR #2 review branch, 2026-10-15; CI pending.
 
 ## Context
 
@@ -12,4 +12,5 @@ Add the TAT dashboard endpoint to the shared branch-scoped read guard. Existing 
 
 ## Validation and limits
 
-The synthetic readiness branch-scope test now also verifies the TAT page contains the user's case and omits a foreign-branch case. This does not certify every operational metrics route or replace role-based browser acceptance.
+The synthetic readiness branch-scope test also verifies the TAT page contains the user's case and omits a foreign-branch case. `ris/tests/test_readiness_branch_scope.py` passed 14 tests on the review branch. This does not certify every operational metrics route or replace role-based browser acceptance.
+

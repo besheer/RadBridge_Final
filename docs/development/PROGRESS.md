@@ -1,6 +1,6 @@
 # Progress measures / قياس الإنجاز
 
-Date: 2026-10-14. These measures describe the isolated `codex/radbridge-architecture-port` branch and current PR #2 head; they do not certify production readiness.
+Date: 2026-10-15. These measures describe the isolated review branch prepared for draft PR #2; they do not certify production readiness.
 
 | Unit | Measured inventory | What it establishes |
 |---|---:|---|
@@ -15,7 +15,9 @@ Date: 2026-10-14. These measures describe the isolated `codex/radbridge-architec
 | Focused insurance/runtime composition checks | 46 passed | Insurance routes, outbound Worklist gate and component ownership/hash contracts |
 | Focused collection/runtime composition checks | 34 passed | Reception permission, same-branch payment route and component ownership/hash contracts |
 | Focused assignment-monitor runtime composition checks | 52 passed | Monitor/distribution routes, explicit-runtime regression and component ownership/hash contracts |
-| Latest complete local SQLite suite | 2,122 passed / 5 skipped / 4 Windows memory errors | Commit d3ee384; affected paths then passed 65 tests on isolated rerun |
+| Focused branch/access suites on review branch | 63 passed | Assignment monitor 10, coordinator assignment 30, offer scope 5, readiness/TAT 14, offer-policy permissions 2, communications permissions 2; run separately |
+| Component boundary regression on review branch | 5 passed | Manifest and ownership boundary contracts |
+| Previous complete local SQLite suite | 2,122 passed / 5 skipped / 4 Windows memory errors | Commit d3ee384; affected paths then passed 65 tests on isolated rerun |
 | Focused transfer-policy regression | 1 passed | Candidate branch; synthetic route and authorization cases in one suite |
 | Last completed GitHub CI suite | 9 / 9 jobs successful | Documentation head c056581, run 38633240715; latest code head f0a4e9f also passed 9 / 9 |
 | Direct framework/web/database-client imports inside application services | 0 | Static import inventory; ORM operations through the legacy runtime still remain |

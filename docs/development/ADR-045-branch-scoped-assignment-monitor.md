@@ -1,6 +1,6 @@
-# ADR 041: Branch-scope assignment monitoring
+# ADR 045: Branch-scope assignment monitoring
 
-Status: implemented locally on `refactor/development-foundation`, 2026-10-15.
+Status: ported to the isolated draft PR #2 review branch, 2026-10-15; CI pending.
 
 ## Context
 
@@ -12,4 +12,5 @@ Apply the existing registration-branch scope to both monitor endpoints. Restrict
 
 ## Validation and limits
 
-Synthetic route tests verify both assignment-managed and report-coordinator views show an assigned case and doctor in the user's branch while hiding the foreign branch's case and doctor. Assignment monitoring, readiness branch-scope and inventory-transfer branch-scope suites passed locally (25 tests). This does not certify branch scope across unreviewed endpoints or replace role-based browser UAT.
+The synthetic route regression covers both monitor endpoints; `ris/tests/test_assignment_monitor.py` passed 10 tests on the review branch. This does not certify branch scope across unreviewed endpoints or replace role-based browser UAT.
+

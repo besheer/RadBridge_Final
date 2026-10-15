@@ -1,6 +1,6 @@
-# ADR-047: Require management permission for communication settings
+# ADR-051: Require management permission for communication settings
 
-Status: implemented locally on `refactor/development-foundation`, 2026-10-15.
+Status: ported to the isolated draft PR #2 review branch, 2026-10-15; CI pending.
 
 ## Context
 
@@ -12,4 +12,5 @@ Preserve the read permission but require `users.manage` or global permission for
 
 ## Validation and limits
 
-Synthetic HTTP tests confirm view-only users are denied and users with management permission can save both settings and templates. Other legacy administrative settings were identified by static scanning but still need endpoint-by-endpoint review.
+Synthetic HTTP tests confirm view-only users are denied and users with management permission can save both settings and templates. `ris/tests/test_admin_communications_permissions.py` passed 2 tests on the review branch. Other legacy administrative settings still need endpoint-by-endpoint review.
+

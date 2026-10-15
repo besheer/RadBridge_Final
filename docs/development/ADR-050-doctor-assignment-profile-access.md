@@ -1,6 +1,6 @@
-# ADR-046: Scope doctor assignment profile management
+# ADR-050: Scope doctor assignment profile management
 
-Status: implemented locally on `refactor/development-foundation`, 2026-10-15.
+Status: ported to the isolated draft PR #2 review branch, 2026-10-15; CI pending.
 
 ## Context
 
@@ -12,4 +12,5 @@ Keep page read access under `users.view`, require `assignment.manage` or global 
 
 ## Validation and limits
 
-Synthetic HTTP tests verify that a branch manager cannot see or edit a foreign-branch doctor's profile and that a read-only user cannot edit a profile. Component-boundary tests pass. This does not define per-doctor delegation within a branch or cover non-HTTP background assignment changes.
+Synthetic HTTP tests verify that a branch manager cannot see or edit a foreign-branch doctor's profile and that a read-only user cannot edit a profile. `ris/tests/test_assignment_offer_branch_scope.py` passed 5 tests on the review branch. This does not define per-doctor delegation within a branch or cover non-HTTP background assignment changes.
+

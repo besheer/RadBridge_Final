@@ -1,6 +1,6 @@
 # ADR-042: Branch-scope the coordinator manual doctor picker
 
-Status: implemented locally on `refactor/development-foundation`, 2026-10-15.
+Status: ported to the isolated draft PR #2 review branch, 2026-10-15; CI pending.
 
 ## Context
 
@@ -12,4 +12,5 @@ Add the manual-assignment endpoint to the existing request-level branch scope. R
 
 ## Validation and limits
 
-Synthetic route coverage verifies that a branch coordinator sees only same-branch doctors and that a forged preview request selecting a foreign-branch doctor is rejected without creating assignments. The focused manual-assignment and assignment-monitor suites pass locally. This is a targeted endpoint guard, not a complete authorization audit or browser acceptance result.
+Synthetic route coverage verifies that a branch coordinator sees only same-branch doctors and that a forged preview request selecting a foreign-branch doctor is rejected without creating assignments. `ris/tests/test_coordinator_bulk_assignment.py` passed 30 tests on the review branch. This is a targeted endpoint guard, not a complete authorization audit or browser acceptance result.
+

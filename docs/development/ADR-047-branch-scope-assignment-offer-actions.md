@@ -1,6 +1,6 @@
 # ADR-043: Branch-scope assignment offer actions
 
-Status: implemented locally on `refactor/development-foundation`, 2026-10-15.
+Status: ported to the isolated draft PR #2 review branch, 2026-10-15; CI pending.
 
 ## Context
 
@@ -12,4 +12,5 @@ Apply the branch-scoped request guard to offer start and manual expiry. Scope or
 
 ## Validation and limits
 
-Synthetic HTTP tests verify that a foreign-branch order is denied, candidate lookup excludes foreign-branch doctors, and the expiry route sees only offers linked to the manager's branch. The actual scheduled background worker has no request context and requires a separate scheduler authorization/scope review.
+Synthetic HTTP tests verify that a foreign-branch order is denied, candidate lookup excludes foreign-branch doctors, and the expiry route sees only offers linked to the manager's branch. `ris/tests/test_assignment_offer_branch_scope.py` passed 5 tests on the review branch. The actual scheduled background worker has no request context and requires a separate scheduler authorization/scope review.
+

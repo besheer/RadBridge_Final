@@ -1,6 +1,6 @@
-# ADR-045: Require management permission for offer policy changes
+# ADR-049: Require management permission for offer policy changes
 
-Status: implemented locally on `refactor/development-foundation`, 2026-10-15.
+Status: ported to the isolated draft PR #2 review branch, 2026-10-15; CI pending.
 
 ## Context
 
@@ -12,4 +12,5 @@ Keep GET access under `users.view`; require `users.manage` or global permission 
 
 ## Validation and limits
 
-Synthetic HTTP tests confirm read-only users can view but not modify the settings, while managers can save. Component-boundary tests pass. The policy remains global; this change does not introduce branch-specific offer configuration.
+Synthetic HTTP tests confirm read-only users can view but not modify the settings, while managers can save. `ris/tests/test_assignment_offer_policy_permissions.py` passed 2 tests on the review branch. The policy remains global; this change does not introduce branch-specific offer configuration.
+
