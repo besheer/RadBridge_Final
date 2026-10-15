@@ -12512,7 +12512,7 @@
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "64109e6418ea8d46c832826ace5c1aae3e0b3d4e73a8e4cc9c226ceba2f0d354"
+    "original_sha256": "264e3e71ba147f64b6959f35650615f39429b4f0d7f15c379b6bb0f7a6c4e344"
   },
   {
     "id": "0792",
@@ -12545,7 +12545,7 @@
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "6a706bf0b767d23bbc3345c7366c1397546712b9ff33cee78393381f4b0134ea"
+    "original_sha256": "a95afd45bffaa8a8932e4dc35ade63d896616be170d9a16320bd41ac58dcd697"
   },
   {
     "id": "0794",
@@ -12565,7 +12565,7 @@
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "a28f1b26fc2244fa005933b45ad281ba6173e7a53ea4b941376fad3f03176969"
+    "original_sha256": "dd30aadc578b601dda1ba9d3ee1b5ca3143ea54613d67fa837bca9981298a865"
   },
   {
     "id": "0795",
@@ -12588,7 +12588,7 @@
       "stock_lots",
       "url_for"
     ],
-    "original_sha256": "9e9d6c0db1899dd749d85a7fa774f9720f1b7002452fde0c9d782f41dc77b78d"
+    "original_sha256": "b4c695db99c903b6aef1f587b01de093900403b9a32a24c05acb1c9f445b4296"
   },
   {
     "id": "0796",
@@ -12610,7 +12610,7 @@
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "31427ee75c9a6741a9e8af620aedcaccd7bf4dfff7ed7030623783653086dfaf"
+    "original_sha256": "51bcb9abe6d6dd74ee2c9fac73dc587e1c2ce4b2c776f1a7fe14211dece8f148"
   },
   {
     "id": "0797",
