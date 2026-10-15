@@ -350,6 +350,16 @@ def test_branch_user_management_is_limited_to_assigned_branch(app_ctx):
             "/admin/users",
             data={"username": f"unscoped-{suffix}", "full_name": "Unscoped", "password": "synthetic-password-123", "role_id": role.id},
         ).status_code == 403
+        assert client.post(
+            "/admin/users",
+            data={"username": f"zero-branch-{suffix}", "full_name": "Zero branch", "password": "synthetic-password-123", "role_id": role.id, "branch_id": "0"},
+        ).status_code == 403
+        assert client.post(
+            f"/admin/users/{own_user.id}/edit",
+            data={"full_name": "Moved to global", "role_id": role.id, "branch_id": "0", "active": "1"},
+        ).status_code == 403
+        assert m.User.query.filter_by(username=f"zero-branch-{suffix}").first() is None
+        assert own_user.branch_id == branch.id
         assert m.User.query.filter_by(id=foreign_user.id).first().full_name == "Foreign branch secret"
         assert m.User.query.filter_by(id=unassigned_user.id).first() is not None
     finally:

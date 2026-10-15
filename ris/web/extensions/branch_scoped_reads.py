@@ -151,7 +151,7 @@ def register(m):
                 branch_filter = int(branch_filter)
             except (TypeError, ValueError):
                 abort(400)
-        if branch_filter and branch_filter not in allowed:
+        if branch_filter is not None and branch_filter not in allowed:
             abort(403)
         if endpoint in (
             "inventory_warehouses_auto_create", "inventory_create_for_branch",
