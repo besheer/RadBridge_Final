@@ -584,7 +584,7 @@ def install_0791(_rb):
                 _rb.db.session.add(_rb.StockTransferLine(transfer_id=tr.id,item_id=item_id,qty_requested=qty));count+=1
             if not count:
                 _rb.db.session.rollback();_rb.flash('Add at least one transfer item.','danger');return _rb.redirect(_rb.url_for('inventory_transfers'))
-            _rb.db.session.commit();_rb.audit('STOCK_TRANSFER_REQUEST','stock_transfer',tr.id,tr.transfer_no)
+            _rb.audit('STOCK_TRANSFER_REQUEST','stock_transfer',tr.id,tr.transfer_no);_rb.db.session.commit()
             return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=tr.id))
         return _rb.render_template('inventory_transfers.html',
             rows=_rb.StockTransfer.query.order_by(_rb.StockTransfer.id.desc()).limit(300).all(),
@@ -611,7 +611,7 @@ def install_0793(_rb):
         if row.status!='REQUESTED':
             _rb.flash('Only requested transfers can be approved.','warning');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
         row.status='APPROVED';row.approved_by=_rb.current_user().id;row.approved_at=_rb.datetime.utcnow()
-        _rb.db.session.commit();_rb.audit('STOCK_TRANSFER_APPROVED','stock_transfer',row.id,row.transfer_no)
+        _rb.audit('STOCK_TRANSFER_APPROVED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
         return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
     return inventory_transfer_approve
 
@@ -625,7 +625,7 @@ def install_0794(_rb):
             _rb.flash('Transfer cannot be rejected at this stage.','warning');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
         row.status='REJECTED';row.approved_by=_rb.current_user().id;row.approved_at=_rb.datetime.utcnow()
         row.notes=((row.notes or '')+'\nREJECT: '+(_rb.request.form.get('reason') or '')).strip()
-        _rb.db.session.commit();_rb.audit('STOCK_TRANSFER_REJECTED','stock_transfer',row.id,row.transfer_no)
+        _rb.audit('STOCK_TRANSFER_REJECTED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
         return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
     return inventory_transfer_reject
 
@@ -653,7 +653,7 @@ def install_0795(_rb):
                     if remaining<=1e-9:break
                 line.qty_dispatched=dispatched
             row.status='DISPATCHED';row.dispatched_by=_rb.current_user().id;row.dispatched_at=_rb.datetime.utcnow()
-            _rb.db.session.commit();_rb.audit('STOCK_TRANSFER_DISPATCHED','stock_transfer',row.id,row.transfer_no)
+            _rb.audit('STOCK_TRANSFER_DISPATCHED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
         except Exception as e:
             _rb.db.session.rollback();_rb.flash(str(e),'danger')
         return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
@@ -675,7 +675,7 @@ def install_0796(_rb):
             _rb.inventory_move(target,line.item,qty,'TRANSFER_IN',lot=lot,reference_type='TRANSFER',reference_id=row.id,notes=row.transfer_no)
             line.qty_received=qty
         row.status='RECEIVED';row.received_by=_rb.current_user().id;row.received_at=_rb.datetime.utcnow()
-        _rb.db.session.commit();_rb.audit('STOCK_TRANSFER_RECEIVED','stock_transfer',row.id,row.transfer_no)
+        _rb.audit('STOCK_TRANSFER_RECEIVED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
         return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
     return inventory_transfer_receive
 

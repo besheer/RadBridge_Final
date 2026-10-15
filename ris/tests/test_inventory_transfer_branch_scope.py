@@ -141,12 +141,24 @@ def test_branch_transfer_scope_and_central_approval(app_ctx):
         assert approved.status_code == 302
         m.db.session.expire_all()
         assert m.StockTransfer.query.filter_by(id=own_transfer.id).one().status == "APPROVED"
+        assert m.AuditLog.query.filter_by(
+            action="STOCK_TRANSFER_APPROVED", entity="stock_transfer",
+            entity_id=str(own_transfer.id),
+        ).count() == 1
+        assert m.AuditLog.query.filter_by(
+            action="STOCK_TRANSFER_REQUEST", entity="stock_transfer",
+            entity_id=str(created_transfer.id),
+        ).count() == 1
     finally:
         m.db.session.rollback()
         transfer_ids = [own_transfer.id, foreign_transfer.id]
         created_transfer = locals().get("created_transfer")
         if created_transfer is not None:
             transfer_ids.append(created_transfer.id)
+        m.AuditLog.query.filter(
+            m.AuditLog.entity == "stock_transfer",
+            m.AuditLog.entity_id.in_([str(transfer_id) for transfer_id in transfer_ids]),
+        ).delete(synchronize_session=False)
         m.StockTransferLine.query.filter(
             m.StockTransferLine.transfer_id.in_(transfer_ids)
         ).delete(synchronize_session=False)
