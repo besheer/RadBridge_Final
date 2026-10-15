@@ -19,7 +19,7 @@ The returned-document prerequisite service (ADR 039) reads required history thro
 
 ## Validation evidence
 
-Review head `45bb4eff3df9bcc6c8cdcc69cd16be38eaf668e9` passed all nine GitHub Actions jobs in [run 38697011444](https://github.com/besheer/RadBridge_Final/actions/runs/38697011444): 2,148 SQLite tests passed, five skipped, all seven PostgreSQL suites passed, and the isolated development Docker smoke passed. Earlier code head `f0a4e9ffa612bcc3e2a4db96494a12cfe38aedd8` also passed all nine jobs in [run 38632744270](https://github.com/besheer/RadBridge_Final/actions/runs/38632744270). These checks do not certify external PACS/editor/viewer behavior, browser role UAT, disaster recovery or production readiness.
+Code/test head `45bb4eff3df9bcc6c8cdcc69cd16be38eaf668e9` passed all nine GitHub Actions jobs in [run 38697011444](https://github.com/besheer/RadBridge_Final/actions/runs/38697011444): 2,148 SQLite tests passed, five skipped, all seven PostgreSQL suites passed, and the isolated development Docker smoke passed. Documentation head `ec508c9ae12c6f4480bee916d9c9b892e6fd73d8` also passed all nine jobs in [run 38697342102](https://github.com/besheer/RadBridge_Final/actions/runs/38697342102). These checks do not certify external PACS/editor/viewer behavior, browser role UAT, disaster recovery or production readiness.
 
 The checker enforces domain/model/registered-port import rules and rejects direct Flask imports anywhere in application/services, including unregistered modules. Three direct SQLAlchemy imports remain outside the registry; indirect callback/runtime dependencies remain too. Passing guards does not certify every old service or integration.
 
