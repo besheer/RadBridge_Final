@@ -34,11 +34,11 @@ def _branch_warehouses():
     other_target = m.Warehouse(code="CODEX-UAT-BRANCH-B", name="CODEX UAT Branch B", warehouse_type="BRANCH", branch_id=other_branch.id, parent_id=other_central.id, active=True)
     m.db.session.add_all([target, other_target])
     m.db.session.flush()
-    return branch, central, target, other_central, other_target
+    return branch, other_branch, central, target, other_central, other_target
 
 
 def test_branch_can_request_only_from_linked_central_and_authorized_branch(monkeypatch):
-    branch, central, target, other_central, other_target = _branch_warehouses()
+    branch, other_branch, central, target, other_central, other_target = _branch_warehouses()
     requester = doctor("inventory-transfer-branch", "RECEPTION")
     requester.branch_id = branch.id
     monkeypatch.setattr(m, "current_user", lambda: requester)
@@ -71,7 +71,7 @@ def test_branch_can_request_only_from_linked_central_and_authorized_branch(monke
 
 
 def test_transfer_visibility_rejects_central_source_mismatched_to_target_branch(monkeypatch):
-    _branch, central, _target, _other_central, other_target = _branch_warehouses()
+    _branch, _other_branch, central, _target, _other_central, other_target = _branch_warehouses()
     transfer = m.StockTransfer(
         transfer_no="CODEX-UAT-TRANSFER-MISMATCH",
         source_warehouse_id=central.id,
@@ -95,7 +95,7 @@ def test_transfer_visibility_rejects_central_source_mismatched_to_target_branch(
 
 
 def test_global_user_needs_explicit_transfer_approval_permission(monkeypatch):
-    branch, central, target, _other_central, _other_target = _branch_warehouses()
+    branch, _other_branch, central, target, _other_central, _other_target = _branch_warehouses()
     transfer = m.StockTransfer(
         transfer_no="CODEX-UAT-TRANSFER-APPROVAL",
         source_warehouse_id=central.id,
