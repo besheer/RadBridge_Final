@@ -23,12 +23,12 @@ Date: 2026-10-16. Scope: isolated architecture port on `codex/radbridge-architec
 | Identity | Pure scope policy, explicit qualification/scope evidence and request/ORM guard ownership | Broader user lifecycle/import transactions, permission catalogue lifecycle and host security/VPN integration |
 | Reporting | Immutable report saving with repository/artifact ports, edit leases, correction request/review; correction center routes audited with order-based branch checks on search, submit, review and execution | Reference resolution, correction/editor finalization, callbacks, exports and external editor failure acceptance |
 | Finance | FINAL replacement entitlement settlement, branch collection checks, net receipt/refund evidence, authorized daily closing SAVE/CLOSE, manual report/image delivery readiness | Broader receipts/disbursements/refunds, delivery event write transactions, finance unit-of-work/error presentation and external accounting integration |
-| Inventory | Original-lot return policy, repository and movement dependencies | Consumption, general stock movement, warehouse lifecycle and stock transport interfaces |
+| Inventory | Original-lot return policy, repository and movement dependencies; stock-transfer authorization decisions isolated as pure domain rules (ADR-053) | Transfer route/query/transaction composition remains in the web compatibility layer; consumption, general stock movement, warehouse lifecycle and stock transport interfaces |
 | Clinical staff/RT | Owned models, pure RT input validation, manual course/PET-link/external-plan/session/support/read ports and returned-document prerequisite read ports; components and web routes | staff mutation/worklist transactions, RT permissions/configuration and external acceptance; no treatment-device integration or controller is supplied |
 | Imaging/viewers | Owned identity/matching policies, imaging adapters/routes and viewer extension; DICOM connection branch authorization receives the request user and global-access decision explicitly | Provisioned synthetic PACS/viewer acceptance, partial transport/retry/recovery contracts |
 | Communications/operations | Owned adapter/extension/component modules | Narrow external-provider dependencies, operational recovery and storage/worker lifecycle |
 
-Detailed decisions are in ADRs 001–051. Canonical ownership, explicit use-case inversion and real external integration are separate claims. A screen, a source assertion or a renamed module alone does not establish working integration.
+Detailed decisions are in ADRs 001–053. Canonical ownership, explicit use-case inversion and real external integration are separate claims. A screen, a source assertion or a renamed module alone does not establish working integration.
 
 ## Preserved contracts and focused evidence
 

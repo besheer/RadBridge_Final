@@ -3,17 +3,18 @@
 from flask import abort, current_app, g, has_request_context, request
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, with_loader_criteria
+from domain.inventory.transfer_policy import (
+    CENTRAL_ACTIONS,
+    can_perform_transfer_action,
+    can_request_transfer,
+)
 
 
 TRANSFER_ENDPOINTS = frozenset({
     "inventory_transfers", "inventory_transfer_detail", "inventory_transfer_approve",
     "inventory_transfer_reject", "inventory_transfer_dispatch", "inventory_transfer_receive",
 })
-CENTRAL_ACTIONS = frozenset({
-    "inventory_transfer_approve", "inventory_transfer_reject", "inventory_transfer_dispatch",
-})
-
-
+CENTRAL_ENDPOINTS = frozenset(f"inventory_transfer_{action}" for action in CENTRAL_ACTIONS)
 def register(m):
     from registration_policy import allowed_registration_branches
 
@@ -112,13 +113,26 @@ def register(m):
                 m.Warehouse.active.is_(True),
                 m.Warehouse.parent_id == source_id,
             ).first() if target_id else None
-            if not permitted_source or not permitted_target:
+            if not permitted_source or not permitted_target or not can_request_transfer(
+                is_central_operator=central,
+                allowed_branch_ids=allowed,
+                target_branch_id=permitted_target.branch_id,
+                source_is_linked_to_target=permitted_source.id == permitted_target.parent_id,
+            ):
                 abort(403)
-        elif endpoint in CENTRAL_ACTIONS:
-            if not central:
+        elif endpoint in CENTRAL_ENDPOINTS:
+            action = endpoint.removeprefix("inventory_transfer_")
+            if not can_perform_transfer_action(
+                action=action, is_central_operator=central,
+                has_approval_permission=m.has_perm("inventory.transfer.approve"),
+                allowed_branch_ids=allowed,
+            ):
                 abort(403)
         elif endpoint == "inventory_transfer_receive":
-            if central or not allowed:
+            if not can_perform_transfer_action(
+                action="receive", is_central_operator=central,
+                has_approval_permission=False, allowed_branch_ids=allowed,
+            ):
                 abort(403)
 
         transfer_id = (request.view_args or {}).get("transfer_id")
@@ -130,7 +144,11 @@ def register(m):
             ).first()
             if row is None:
                 abort(403)
-            if endpoint == "inventory_transfer_receive" and row.target_warehouse.branch_id not in allowed:
+            if endpoint == "inventory_transfer_receive" and not can_perform_transfer_action(
+                action="receive", is_central_operator=central,
+                has_approval_permission=False, allowed_branch_ids=allowed,
+                target_branch_id=row.target_warehouse.branch_id,
+            ):
                 abort(403)
 
     m.app.before_request_funcs.setdefault(None, []).insert(1, guard)
