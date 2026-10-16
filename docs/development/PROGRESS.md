@@ -1,6 +1,6 @@
 # Progress measures / قياس الإنجاز
 
-Date: 2026-10-15. These measures describe the isolated review branch prepared for draft PR #2; they do not certify production readiness.
+Date: 2026-10-16. These measures describe the isolated review branch prepared for draft PR #2; they do not certify production readiness.
 
 | Unit | Measured inventory | What it establishes |
 |---|---:|---|
@@ -10,17 +10,19 @@ Date: 2026-10-15. These measures describe the isolated review branch prepared fo
 | Component/route/helper owner modules | 32 | 12 application components, 12 route modules, eight web helper modules |
 | Migrated legacy modules | 76 / 76 | 100% canonical-owner/alias inventory; mixed workflow dependencies remain |
 | Explicit service dependency boundaries | 29 | Registered service modules with enforced import boundaries; one module can implement several operations/routes |
-| Legacy runtime imports / files | 21 / 8 | Static inventory after inventory, insurance and collection composition seams; started at 27 / 11 |
+| Legacy runtime imports / files | 21 / 8 | Latest static inventory; started at 27 / 11 |
+| Dynamic compatibility namespace calls | 11 | Static inventory; broad runtime bindings still remain |
 | Focused inventory/runtime composition checks | 32 passed | Inventory safety, return service and component ownership/hash contracts |
 | Focused insurance/runtime composition checks | 46 passed | Insurance routes, outbound Worklist gate and component ownership/hash contracts |
 | Focused collection/runtime composition checks | 34 passed | Reception permission, same-branch payment route and component ownership/hash contracts |
 | Focused assignment-monitor runtime composition checks | 52 passed | Monitor/distribution routes, explicit-runtime regression and component ownership/hash contracts |
 | Focused branch/access suites on review branch | 63 passed | Assignment monitor 10, coordinator assignment 30, offer scope 5, readiness/TAT 14, offer-policy permissions 2, communications permissions 2; run separately |
 | Component boundary regression on review branch | 5 passed | Manifest and ownership boundary contracts |
-| Previous complete local SQLite suite | 2,122 passed / 5 skipped / 4 Windows memory errors | Commit d3ee384; affected paths then passed 65 tests on isolated rerun |
-| Focused transfer-policy regression | 1 passed | Candidate branch; synthetic route and authorization cases in one suite |
-| Latest complete GitHub CI suite | 9 / 9 jobs successful | Documentation head ec508c9, run 38697342102; its code/test parent 45bb4ef recorded 2,148 SQLite passed / 5 skipped, seven PostgreSQL suites and Docker smoke |
+| Latest complete local SQLite suite | 2,164 passed / 5 skipped / 0 failed | Python 3.12 temporary environment; code head `0d2eb91`; full `tools/run_tests.py` |
+| Focused stock-transfer scope/policy suites | 16 passed | Synthetic request authorization, central action permission, transfer visibility and cross-branch denial |
+| Latest GitHub Actions run | 0 / 9 jobs verifiable | Run 38875171502 reports all nine jobs failed without step summaries or job logs; cause is unknown |
 | Direct framework/web/database-client imports inside application services | 0 | Static import inventory; ORM operations through the legacy runtime still remain |
+| Stock-transfer scope query adapter | Added | SQLAlchemy query construction moved out of the web extension; handlers and transaction ownership remain legacy |
 | Technician and coordinator query adapters | Added | Worklist return-state/filter/search and bulk-assignment search construction now live in infrastructure adapters |
 
 ## What a percentage means
@@ -37,6 +39,6 @@ The explicit boundaries cover assignment queries/mutations/visits; clinical scop
 
 Remaining boundaries include broad runtime bindings, readiness evidence acquisition, coordinator previews/workers, report editor callbacks/finalization/exports, cash receipt/refund/disbursement workflows, inventory consumption/general stock movement, patient creation/booking, broader user lifecycle/import transactions, staff execution, RT permission/configuration lifecycle and external acceptance, and provider/worker lifecycles. These still require a detailed per-use-case census before a total can be stated.
 
-External synthetic integration, browser role UAT, aggregate branch/role visibility and upgrade/rollback acceptance remain open. Neither source ownership nor mocked/local tests close those gates. The user has asked to continue through production readiness; the PR remains a draft and no production merge/deployment has occurred.
+External synthetic integration, browser role UAT, aggregate branch/role visibility, transfer transaction extraction, PostgreSQL/Docker CI verification and upgrade/rollback acceptance remain open. Neither source ownership nor mocked/local tests close those gates. The user has asked to continue through production readiness; the PR remains a draft and no production merge/deployment has occurred.
 
 The previous conversational 60% was a rough estimate, not a code coverage or completion measurement. This document supersedes that estimate with concrete inventories and explicit limitations. [Implementation status](IMPLEMENTATION_STATUS.md) records commit-specific validation.
