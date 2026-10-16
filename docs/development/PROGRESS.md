@@ -20,7 +20,7 @@ Date: 2026-10-16. These measures describe the isolated review branch prepared fo
 | Component boundary regression on review branch | 5 passed | Manifest and ownership boundary contracts |
 | Latest complete local SQLite suite | 2,164 passed / 5 skipped / 0 failed | Python 3.12 temporary environment; code head `0d2eb91`; full `tools/run_tests.py` |
 | Focused stock-transfer scope/policy suites | 16 passed | Synthetic request authorization, central action permission, transfer visibility and cross-branch denial |
-| Latest GitHub Actions run | 0 / 9 jobs verifiable | Run 38875171502 reports all nine jobs failed without step summaries or job logs; cause is unknown |
+| Latest GitHub Actions run | 0 / 9 jobs verifiable | Run 38877166665 on current head `b76c00c` failed across all nine jobs; job steps are empty and GitHub returned 404 when retrieving logs, including after rerunning failed jobs. Cause remains undetermined. |
 | Direct framework/web/database-client imports inside application services | 0 | Static import inventory; ORM operations through the legacy runtime still remain |
 | Stock-transfer scope query adapter | Added | SQLAlchemy query construction moved out of the web extension; handlers and transaction ownership remain legacy |
 | Technician and coordinator query adapters | Added | Worklist return-state/filter/search and bulk-assignment search construction now live in infrastructure adapters |
