@@ -1,6 +1,10 @@
 import pytest
 
-from domain.inventory.transfer_policy import can_perform_transfer_action, can_request_transfer
+from domain.inventory.transfer_policy import (
+    can_perform_transfer_action,
+    can_request_transfer,
+    transfer_status_after,
+)
 
 
 @pytest.mark.parametrize("source_linked,allowed,expected", [
@@ -49,3 +53,25 @@ def test_receive_is_limited_to_authorized_branch():
         action="receive", is_central_operator=False, has_approval_permission=False,
         allowed_branch_ids=[4], target_branch_id=5,
     )
+
+
+@pytest.mark.parametrize("status,action,next_status", [
+    ("REQUESTED", "approve", "APPROVED"),
+    ("REQUESTED", "reject", "REJECTED"),
+    ("APPROVED", "reject", "REJECTED"),
+    ("APPROVED", "dispatch", "DISPATCHED"),
+    ("DISPATCHED", "receive", "RECEIVED"),
+])
+def test_transfer_lifecycle_allows_only_documented_transitions(status, action, next_status):
+    assert transfer_status_after(status, action) == next_status
+
+
+@pytest.mark.parametrize("status,action", [
+    ("REQUESTED", "dispatch"),
+    ("REJECTED", "approve"),
+    ("RECEIVED", "receive"),
+    ("DISPATCHED", "reject"),
+    ("UNKNOWN", "approve"),
+])
+def test_transfer_lifecycle_fails_closed_for_invalid_transitions(status, action):
+    assert transfer_status_after(status, action) is None
