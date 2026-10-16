@@ -1,0 +1,165 @@
+"""Branch and central authority boundaries for stock transfers."""
+
+from flask import abort, current_app, g, has_request_context, request
+from sqlalchemy import select
+from sqlalchemy.orm import Session, with_loader_criteria
+from domain.inventory.transfer_policy import (
+    CENTRAL_ACTIONS,
+    can_perform_transfer_action,
+    can_request_transfer,
+)
+from infrastructure.adapters.inventory.transfer_scope_repository import (
+    SqlAlchemyStockTransferScopeRepository,
+)
+from application.services.inventory.transfer_workflow import StockTransferWorkflow
+from infrastructure.adapters.inventory.transfer_workflow_repository import (
+    SqlAlchemyStockTransferWorkflowRepository,
+)
+
+
+TRANSFER_ENDPOINTS = frozenset({
+    "inventory_transfers", "inventory_transfer_detail", "inventory_transfer_approve",
+    "inventory_transfer_reject", "inventory_transfer_dispatch", "inventory_transfer_receive",
+})
+CENTRAL_ENDPOINTS = frozenset(f"inventory_transfer_{action}" for action in CENTRAL_ACTIONS)
+def register(m):
+    from registration_policy import allowed_registration_branches
+    transfer_scope = SqlAlchemyStockTransferScopeRepository(m.Warehouse, m.StockTransfer)
+    transfer_repository = SqlAlchemyStockTransferWorkflowRepository(
+        m.StockTransferLine,
+        m.InventoryLot,
+        m.inventory_available_qty,
+        m.stock_lots,
+        m.inventory_move,
+    )
+    m.app.extensions["radbridge_stock_transfer_workflow"] = StockTransferWorkflow(
+        transfer_repository, m.audit
+    )
+
+    @m.app.context_processor
+    def transfer_template_context():
+        if request.endpoint != "inventory_transfers":
+            return {}
+        branch_scope = allowed_registration_branches()
+        branch_ids = tuple(branch_scope or ())
+        source_warehouses = m.Warehouse.query.filter(
+            m.Warehouse.active.is_(True),
+            m.Warehouse.warehouse_type == "MAIN",
+            m.Warehouse.branch_id.is_(None),
+            m.Warehouse.id.in_(transfer_scope.linked_central_ids(branch_ids)),
+        ).order_by(m.Warehouse.name).all()
+        target_warehouses = m.Warehouse.query.filter(
+            m.Warehouse.active.is_(True),
+            m.Warehouse.warehouse_type == "BRANCH",
+            m.Warehouse.branch_id.in_(branch_ids) if branch_ids else m.db.false(),
+        ).order_by(m.Warehouse.name).all()
+        return {
+            "source_warehouses": source_warehouses,
+            "target_warehouses": target_warehouses,
+            "is_central_transfer_operator": getattr(g, "rb_inventory_transfer_central", False),
+        }
+
+    def guard():
+        endpoint = request.endpoint or ""
+        if endpoint not in TRANSFER_ENDPOINTS:
+            return
+        user = m.current_user()
+        if not user or not user.active:
+            abort(403)
+        allowed = allowed_registration_branches()
+        central = not user.branch_id and m.has_perm("inventory.transfer.approve")
+        g.rb_inventory_transfer_central = central
+        g.rb_inventory_transfer_branch_ids = None if central else tuple(allowed or ())
+
+        if request.method == "POST" and endpoint == "inventory_transfers":
+            if central or not allowed:
+                abort(403)
+            source_id = request.form.get("source_warehouse_id", type=int)
+            target_id = request.form.get("target_warehouse_id", type=int)
+            permitted_source = m.Warehouse.query.filter(
+                m.Warehouse.id == source_id,
+                m.Warehouse.id.in_(transfer_scope.linked_central_ids(allowed)),
+            ).first() if source_id else None
+            permitted_target = m.Warehouse.query.filter(
+                m.Warehouse.id == target_id,
+                m.Warehouse.warehouse_type == "BRANCH",
+                m.Warehouse.branch_id.in_(allowed),
+                m.Warehouse.active.is_(True),
+                m.Warehouse.parent_id == source_id,
+            ).first() if target_id else None
+            if not permitted_source or not permitted_target or not can_request_transfer(
+                is_central_operator=central,
+                allowed_branch_ids=allowed,
+                target_branch_id=permitted_target.branch_id,
+                source_is_linked_to_target=permitted_source.id == permitted_target.parent_id,
+            ):
+                abort(403)
+        elif endpoint in CENTRAL_ENDPOINTS:
+            action = endpoint.removeprefix("inventory_transfer_")
+            if not can_perform_transfer_action(
+                action=action, is_central_operator=central,
+                has_approval_permission=m.has_perm("inventory.transfer.approve"),
+                allowed_branch_ids=allowed,
+            ):
+                abort(403)
+        elif endpoint == "inventory_transfer_receive":
+            if not can_perform_transfer_action(
+                action="receive", is_central_operator=central,
+                has_approval_permission=False, allowed_branch_ids=allowed,
+            ):
+                abort(403)
+
+        transfer_id = (request.view_args or {}).get("transfer_id")
+        if transfer_id is not None:
+            ids = transfer_scope.valid_transfer_ids(None if central else allowed)
+            row = m.StockTransfer.query.filter(
+                m.StockTransfer.id == transfer_id,
+                m.StockTransfer.id.in_(ids),
+            ).first()
+            if row is None:
+                abort(403)
+            if endpoint == "inventory_transfer_receive" and not can_perform_transfer_action(
+                action="receive", is_central_operator=central,
+                has_approval_permission=False, allowed_branch_ids=allowed,
+                target_branch_id=row.target_warehouse.branch_id,
+            ):
+                abort(403)
+
+    m.app.before_request_funcs.setdefault(None, []).insert(1, guard)
+
+    @m.app.teardown_request
+    def clear_transfer_context(error=None):
+        g.pop("rb_inventory_transfer_central", None)
+        g.pop("rb_inventory_transfer_branch_ids", None)
+
+    def restrict_transfer_queries(state):
+        if (not has_request_context() or current_app._get_current_object() is not m.app
+                or request.endpoint not in TRANSFER_ENDPOINTS or not state.is_select
+                or not state.is_orm_statement):
+            return
+        branch_ids = getattr(g, "rb_inventory_transfer_branch_ids", ())
+        central = bool(getattr(g, "rb_inventory_transfer_central", False))
+        visible = transfer_scope.valid_transfer_ids(None if central else branch_ids)
+        options = [
+            with_loader_criteria(m.StockTransfer, m.StockTransfer.id.in_(visible), include_aliases=True),
+            with_loader_criteria(m.StockTransferLine, m.StockTransferLine.transfer_id.in_(visible), include_aliases=True),
+        ]
+        if central:
+            warehouses = select(m.Warehouse.id).where(
+                m.Warehouse.id.in_(transfer_scope.linked_central_ids()),
+                m.Warehouse.warehouse_type == "MAIN",
+                m.Warehouse.branch_id.is_(None),
+            ).union(transfer_scope.target_ids())
+        else:
+            warehouses = select(m.Warehouse.id).where(
+                m.Warehouse.branch_id.in_(branch_ids),
+                m.Warehouse.warehouse_type == "BRANCH",
+            ).union(transfer_scope.linked_central_ids(branch_ids))
+        options.append(with_loader_criteria(m.Warehouse, m.Warehouse.id.in_(warehouses), include_aliases=True))
+        state.statement = state.statement.options(*options)
+
+    from sqlalchemy import event
+    event.listen(Session, "do_orm_execute", restrict_transfer_queries)
+    m.app.extensions.setdefault("radbridge_orm_listeners", []).append(
+        (Session, "do_orm_execute", restrict_transfer_queries)
+    )

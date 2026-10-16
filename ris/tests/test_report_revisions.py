@@ -11,7 +11,8 @@ import report_revision_editor as e
 
 @pytest.fixture
 def revision_case(app_ctx,monkeypatch,tmp_path):
-    m=app_ctx;key='CODEX-UAT-'+uuid4().hex[:12]
+    # Branch.code is VARCHAR(20); synthetic identifiers obey the real schema.
+    m=app_ctx;key='CODEX-UAT-'+uuid4().hex[:8]
     monkeypatch.setattr(m,'REPORT_DIR',str(tmp_path))
     monkeypatch.setattr(m,'ONLYOFFICE_JWT_SECRET','CODEX-UAT-isolated-JWT-secret')
     branch=m.Branch(code=key,name=key,active=True)
@@ -201,7 +202,9 @@ def test_coordinator_cannot_write_and_other_branch_denied(revision_case):
     c.current['user']=c.coord
     with client.session_transaction() as session:session['report_revision_csrf']='CODEX-CSRF'
     assert client.post(f'/report-revisions/{row.id}/lease',json={},headers={'X-Report-Revision-CSRF':'CODEX-CSRF'}).status_code==403
-    c.coord.branch_id=99999
+    other=c.m.Branch(code='OTHER-'+uuid4().hex[:8],name='Synthetic Other Branch',active=True)
+    c.m.db.session.add(other);c.m.db.session.flush()
+    c.coord.branch_id=other.id
     assert client.get(f'/report-revisions/{row.id}').status_code==403
 
 def test_csrf_required_for_review(revision_case):

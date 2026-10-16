@@ -114,15 +114,15 @@ def test_visit_link_mismatch_fails_closed(monkeypatch, mismatch):
     with m.app.test_request_context('/'):
         vid = policy.select_visit(patient, branch, datetime(2037, 2, 3), [proc], MultiDict())
         visit = m.AssignmentVisit.query.filter_by(id=vid).one()
+        # Exercise mismatched registration input without corrupting saved FKs.
+        from types import SimpleNamespace
         if mismatch == 'patient':
-            visit.patient_id += 1
+            patient=SimpleNamespace(id=patient.id+100000)
         if mismatch == 'branch':
-            visit.branch_id += 1
-        if mismatch == 'date':
-            visit.visit_date = datetime(2037, 2, 4).date()
-        m.db.session.flush()
+            branch=SimpleNamespace(id=branch.id+100000)
+        scheduled=datetime(2037,2,4) if mismatch=='date' else datetime(2037,2,3)
         with pytest.raises(ValueError, match='same patient, branch and date'):
-            policy.select_visit(patient, branch, datetime(2037, 2, 3), [proc], MultiDict({'assignment_visit_id': vid}))
+            policy.select_visit(patient, branch, scheduled, [proc], MultiDict({'assignment_visit_id': vid}))
 
 def test_no_doctor_override_without_assignment_permission(monkeypatch):
     admin, branch, device, proc, patient = setup(monkeypatch)
@@ -289,6 +289,16 @@ def test_branch_scope_blocks_forged_calendar_and_registration_requests(monkeypat
     client=m.app.test_client()
     with client.session_transaction() as session:session['uid']=staff.id
     assert client.get(f'/schedule/calendar?branch_id={other.id}').status_code==403
+    assert client.post('/patients/new',data={'name':'Unassigned branch patient'}).status_code==403
     before=m.Appointment.query.count()
     assert client.post('/schedule/unified-submit',data=dict(registration_action='BOOK',scheduled='2037-02-03T10:00:00',branch_id=other.id,device_id=device.id,patient_mode='existing',patient_id=patient.id,procedure_ids=proc.id)).status_code==403
     assert m.Appointment.query.count()==before
+
+    # The legacy /orders/new POST remains routable even though its GET redirects
+    # to the calendar. Protect its form fields against branch and patient forgery.
+    assert client.post('/orders/new',data=dict(branch_id=other.id,patient_mode='new')).status_code==403
+    other_patient=m.Patient(patient_id='CODEX-UAT-OTHER-PATIENT',name='Other branch patient')
+    m.db.session.add(other_patient);m.db.session.flush()
+    other_order=m.Order(accession='CODEX-UAT-OTHER-BRANCH',patient_id=other_patient.id,branch_id=other.id,device_id=device.id,modality=proc.modality,procedure=proc.name,procedure_id=proc.id,scheduled=datetime(2037,2,2),status='SCHEDULED')
+    m.db.session.add(other_order);m.db.session.commit()
+    assert client.post('/orders/new',data=dict(branch_id=branch.id,patient_mode='existing',patient=other_patient.id)).status_code==403

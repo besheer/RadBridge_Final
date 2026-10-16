@@ -1,0 +1,57 @@
+name: radbridge-dev
+
+x-runtime: &runtime
+  build:
+    context: .
+    dockerfile: development/Dockerfile
+  environment:
+    RADBRIDGE_DEVELOPMENT: "1"
+    RADBRIDGE_BOOTSTRAP_ON_IMPORT: "0"
+    DATABASE_URL: "postgresql+psycopg2://radbridge_dev:${DEV_DB_PASSWORD:?Use development/.env.example locally}@db:5432/radbridge_dev"
+    SECRET_KEY: "${DEV_SECRET_KEY:?Set a development-only key}"
+    RIS_ADMIN_PASSWORD: "${DEV_ADMIN_PASSWORD:?Set a development-only admin password}"
+    REPORT_DIR: /data/reports
+    ATTACHMENT_DIR: /data/attachments
+    BACKUP_DIR: /data/backups
+    PACS_ORTHANC_URL: http://127.0.0.1:8042
+    ORTHANC_URL: http://127.0.0.1:8042
+    RIS_PUBLIC_URL: "http://127.0.0.1:${RADBRIDGE_DEV_PORT:-18080}"
+  volumes:
+    - dev-files:/data
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: radbridge_dev
+      POSTGRES_PASSWORD: "${DEV_DB_PASSWORD:?Set a development-only password}"
+      POSTGRES_DB: radbridge_dev
+    volumes:
+      - dev-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radbridge_dev -d radbridge_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+  initialize:
+    <<: *runtime
+    command: ["python", "development/initialize.py"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+  web:
+    <<: *runtime
+    ports:
+      - "127.0.0.1:${RADBRIDGE_DEV_PORT:-18080}:8000"
+    depends_on:
+      initialize:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/login',timeout=5)"]
+      interval: 10s
+      timeout: 6s
+      retries: 15
+volumes:
+  dev-db:
+  dev-files:

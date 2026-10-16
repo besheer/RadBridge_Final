@@ -7,7 +7,7 @@ import pytest
 
 @pytest.fixture
 def closing_case(app_ctx, monkeypatch):
-    m=app_ctx; key='CODEX-UAT-'+uuid4().hex[:12]
+    m=app_ctx; key='CODEX-UAT-'+uuid4().hex[:8]
     a=m.Branch(code=key+'A',name=key+'A',active=True,reception_collection_enabled=True)
     b=m.Branch(code=key+'B',name=key+'B',active=True)
     p=m.Patient(patient_id=key,name='CODEX UAT CLOSING',dob='19900101',sex='M')
@@ -15,7 +15,15 @@ def closing_case(app_ctx, monkeypatch):
     o=m.Order(accession=key,patient_id=p.id,branch_id=a.id,modality='DX',procedure=key,
               scheduled=datetime(2037,2,3,10),status='REGISTERED')
     m.db.session.add(o);m.db.session.flush()
-    u=SimpleNamespace(id=99800,username=key,active=True,branch_id=a.id,
+    cashier=m.Role.query.filter_by(code='CASHIER').first()
+    if cashier is None:
+        import json
+        cashier=m.Role(code='CASHIER',name='Synthetic Cashier',permissions_json=json.dumps(m.ROLE_PERMS['CASHIER']))
+        m.db.session.add(cashier);m.db.session.flush()
+    actor=m.User(username=key,full_name='Synthetic Closing Cashier',password_hash='disabled-test-account',
+                 active=True,branch_id=a.id,role=cashier)
+    m.db.session.add(actor);m.db.session.flush()
+    u=SimpleNamespace(id=actor.id,username=key,active=True,branch_id=a.id,
         role=SimpleNamespace(code='CASHIER',permissions=lambda:m.ROLE_PERMS['CASHIER']))
     context={}
     def render(name,**kw):context.clear();context.update(kw);return 'CODEX UAT '+name

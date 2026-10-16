@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 import app as m
 
 
@@ -38,7 +39,7 @@ def test_images_only_route_is_post_only(app_ctx):
 def test_images_only_requires_super_admin(app_ctx):
     import inspect
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_images_only_preflight
     )
 
@@ -50,7 +51,7 @@ def test_images_only_requires_super_admin(app_ctx):
 def test_images_only_requires_reason_and_accession(app_ctx):
     import inspect
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_images_only_preflight
     )
 
@@ -61,7 +62,7 @@ def test_images_only_requires_reason_and_accession(app_ctx):
 def test_images_only_blocks_shared_study(app_ctx):
     import inspect
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_images_only_preflight
     )
 
@@ -71,7 +72,7 @@ def test_images_only_blocks_shared_study(app_ctx):
 def test_images_only_blocks_active_transfer(app_ctx):
     import inspect
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_images_only_preflight
     )
 
@@ -83,7 +84,7 @@ def test_images_only_blocks_active_transfer(app_ctx):
 def test_images_only_identity_checks(app_ctx):
     import inspect
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_images_only_preflight
     )
 
@@ -95,7 +96,7 @@ def test_images_only_identity_checks(app_ctx):
 def test_images_only_exact_orthanc_delete_contract(app_ctx):
     import inspect
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_images_only_execute
     )
 
@@ -107,7 +108,7 @@ def test_images_only_exact_orthanc_delete_contract(app_ctx):
 def test_images_only_retains_pacs_identifiers(app_ctx):
     import inspect
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_images_only_execute
     )
 
@@ -121,7 +122,7 @@ def test_images_only_retains_pacs_identifiers(app_ctx):
 def test_images_only_audit_contract(app_ctx):
     import inspect
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_images_only_execute
     )
 
@@ -133,7 +134,7 @@ def test_images_only_audit_contract(app_ctx):
 def test_images_only_does_not_delete_ris_objects(app_ctx):
     import inspect
 
-    source=inspect.getsource(
+    source=_get_source(
         m.granular_delete_order_images_only
     )
 

@@ -1,9 +1,10 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-APP=(ROOT/'app.py').read_text()
-JS=(ROOT/'static'/'doctor-workspace.js').read_text()
-HTML=(ROOT/'templates'/'doctor_unified_workspace.html').read_text()
+APP=_read_source(ROOT/'app.py')
+JS=_read_source(ROOT/'static'/'doctor-workspace.js')
+HTML=_read_source(ROOT/'templates'/'doctor_unified_workspace.html')
 
 def test_doctor_reconciliation_preserves_advanced_workspace_contract():
     for marker in (

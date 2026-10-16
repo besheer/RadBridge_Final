@@ -3,6 +3,7 @@ import pytest
 import app as m
 import dicom_connections as policy
 from test_assignment_distribution import doctor
+from types import SimpleNamespace
 
 @pytest.fixture(autouse=True)
 def isolated(app_ctx,monkeypatch):
@@ -32,6 +33,15 @@ def test_ddns_ipv4_ipv6_and_ae_normalization():
     assert policy.host('192.168.1.20')=='192.168.1.20'
     assert policy.host('2001:db8::1')=='2001:db8::1'
     assert policy.ae_title(' mini01 ')=='MINI01'
+
+@pytest.mark.parametrize('branch_id,user,global_access,expected',[
+    (4,SimpleNamespace(branch_id=4),False,True),
+    (4,SimpleNamespace(branch_id=5),False,False),
+    (4,SimpleNamespace(branch_id=5),True,True),
+    (4,None,True,False),
+])
+def test_branch_policy_uses_explicit_identity_evidence(branch_id,user,global_access,expected):
+    assert policy.branch_allowed(branch_id,user,global_access=global_access) is expected
 
 def test_real_c_echo_success_and_closed_port_failure():
     from pynetdicom import AE

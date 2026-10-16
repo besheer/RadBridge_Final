@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 
@@ -5,9 +6,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_backend_routes_and_models_are_present():
-    source = (ROOT / "app.py").read_text(encoding="utf-8")
-    assert "class ReadinessSeriesAlias" in source
-    assert "class CaseExceptionResolutionEvent" in source
+    source = _read_source(ROOT / "app.py", encoding="utf-8")
+    from infrastructure.models import ReadinessSeriesAlias, CaseExceptionResolutionEvent
+    assert ReadinessSeriesAlias.__table__.name == 'readiness_series_alias'
+    assert CaseExceptionResolutionEvent.__table__.name == 'case_exception_resolution_event'
     assert "def case_exception_resolver" in source
     assert "def case_exception_series_map" in source
     assert "def case_exception_history_add" in source
@@ -17,7 +19,11 @@ def test_backend_routes_and_models_are_present():
 
 
 def test_service_owns_no_commit_and_protects_terminal_cases():
-    source = (ROOT / "case_exception_resolution_service.py").read_text(encoding="utf-8")
+    # Inspect the executable policy, workflow and persistence owners.
+    source = "\n".join((ROOT / path).read_text(encoding="utf-8") for path in (
+        "domain/readiness_resolution.py",
+        "application/services/readiness/resolution_workflow.py",
+        "infrastructure/adapters/readiness/resolution_repository.py"))
     assert ".commit(" not in source
     assert "with_for_update" in source
     assert "TERMINAL_CASE_RESOLUTION_LOCKED" in source
@@ -27,7 +33,7 @@ def test_service_owns_no_commit_and_protects_terminal_cases():
 
 
 def test_resolver_template_has_search_preview_and_audit_guidance():
-    source = (ROOT / "templates" / "case_exception_resolver.html").read_text(encoding="utf-8")
+    source = _read_source(ROOT / "templates" / "case_exception_resolver.html", encoding="utf-8")
     assert "Search RIS" in source
     assert "Resolution Steps" in source
     assert "Back to Exception Queue" in source
@@ -38,8 +44,8 @@ def test_resolver_template_has_search_preview_and_audit_guidance():
 
 
 def test_migration_chain_and_tables():
-    source = (ROOT / "migrations" / "versions" /
-              "20260904_001_case_exception_resolution.py").read_text(encoding="utf-8")
+    source = _read_source(ROOT / "migrations" / "versions" /
+              "20260904_001_case_exception_resolution.py", encoding="utf-8")
     assert 'revision = "20260904_001"' in source
     assert 'down_revision = "20260903_003"' in source
     assert '"readiness_series_alias"' in source

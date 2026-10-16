@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 from datetime import timedelta
 from pathlib import Path
 
@@ -301,7 +302,7 @@ def test_delete_reports_only_second_execution_hard_blocks(app_ctx,tmp_path):
 def test_delete_reports_only_route_does_not_reference_pacs_delete(app_ctx):
     import inspect
     m=app_ctx
-    source=inspect.getsource(m.granular_delete_reports_only_execute)
+    source=_get_source(m.granular_delete_reports_only_execute)
     assert 'requests.delete' not in source
     assert 'PACS_ORTHANC_URL' not in source
     assert 'CoordinatorTask.query.delete' not in source

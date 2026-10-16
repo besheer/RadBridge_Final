@@ -1,8 +1,9 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-JS=(ROOT/'static'/'doctor-workspace.js').read_text()
-HTML=(ROOT/'templates'/'doctor_unified_workspace.html').read_text()
+JS=_read_source(ROOT/'static'/'doctor-workspace.js')
+HTML=_read_source(ROOT/'templates'/'doctor_unified_workspace.html')
 
 def test_doctor_search_has_clear_apply_model_and_url_sync():
     for marker in (

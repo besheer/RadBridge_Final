@@ -1,3 +1,4 @@
+from web.source_contract import get_source as _get_source
 
 def test_v522_models():
     import app as m
@@ -14,13 +15,13 @@ def test_v522_routes():
 
 def test_ai_draft_is_not_finalizer():
     import app as m,inspect
-    src=inspect.getsource(m.generate_ai_draft_payload)
+    src=_get_source(m.generate_ai_draft_payload)
     assert "Do not claim to have reviewed images" in src
     assert "Never finalize" in src
 
 def test_booking_hotfixes_preserved():
     import app as m,inspect
-    src=inspect.getsource(m.device_booking_reason)
+    src=_get_source(m.device_booking_reason)
     assert "active=True" not in src
     sig=inspect.signature(m.device_booking_reason)
     assert sig.parameters["start_at"].default is None

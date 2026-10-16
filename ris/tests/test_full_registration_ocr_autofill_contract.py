@@ -1,13 +1,12 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 
 def test_full_registration_ocr_autofill_contract():
     ris = Path(__file__).resolve().parents[1]
 
-    app = (ris / "app.py").read_text(encoding="utf-8")
-    tpl = (
-        ris / "templates" / "schedule_calendar.html"
-    ).read_text(encoding="utf-8")
+    app = _read_source(ris / "app.py", encoding="utf-8")
+    tpl = _read_source(ris / "templates" / "schedule_calendar.html", encoding="utf-8")
 
     assert "RB_FULL_REG_OCR_DEMOGRAPHICS_V1" in app
     assert "normalized=normalize_intake_identity(base)" in app

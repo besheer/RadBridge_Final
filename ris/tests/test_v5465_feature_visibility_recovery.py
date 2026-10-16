@@ -1,13 +1,11 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def read(path):
-    return (ROOT / path).read_text(
-        encoding="utf-8",
-        errors="ignore"
-    )
+    return _read_source(ROOT / path, encoding="utf-8", errors="ignore")
 
 
 def test_release_identity():

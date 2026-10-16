@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 from pathlib import Path
 
 
@@ -5,10 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def source():
-    return (ROOT / "app.py").read_text(
-        encoding="utf-8",
-        errors="strict",
-    )
+    return _read_source(ROOT / "app.py", encoding="utf-8", errors="strict")
 
 
 def test_v5468_release_identity():

@@ -64,6 +64,14 @@ def test_preview_is_read_only_and_confirm_assigns_all_with_audit(bulk_cases):
     assert confirm(f,token).status_code==409
 
 
+def test_queue_search_uses_accession_injected_query_adapter(bulk_cases):
+    f=bulk_cases
+    response=f.client.get('/coordinator/manual-assignment?q='+f.orders[1].accession,
+        base_url='https://localhost')
+    assert response.status_code==200
+    assert [order.id for order in f.captured['orders']]==[f.orders[1].id]
+
+
 def test_confirm_rejects_changed_case_without_any_partial_assignment(bulk_cases):
     f=bulk_cases;preview(f);token=f.captured['preview_token']
     f.orders[1].pacs_image_count=4;f.m.db.session.commit()
@@ -130,6 +138,32 @@ def test_blocked_case_is_excluded_with_reason(bulk_cases,problem,expected):
 def test_cross_branch_selection_is_denied(bulk_cases):
     f=bulk_cases;f.orders[0].branch_id=f.other.id;f.m.db.session.commit()
     assert preview(f,[f.orders[0]]).status_code==403
+
+
+def test_foreign_branch_doctor_is_hidden_and_cannot_be_selected(bulk_cases):
+    f=bulk_cases
+    foreign=f.m.User(
+        username=f.key+'FOREIGN', full_name='CODEX UAT FOREIGN DOCTOR',
+        password_hash='not-a-login-password', role_id=f.doctor.role_id,
+        branch_id=f.other.id,
+    )
+    f.m.db.session.add(foreign);f.m.db.session.flush()
+    f.m.db.session.add(f.m.DoctorAssignmentProfile(
+        user_id=foreign.id, modalities='DX,CT', branches=str(f.other.id),
+        max_active_cases=20, available=True, auto_assign=False,
+    ))
+    f.m.db.session.commit()
+
+    assert f.client.get('/coordinator/manual-assignment',base_url='https://localhost').status_code==200
+    assert [doctor.id for doctor in f.captured['doctors']]==[f.doctor.id]
+    response=f.client.post('/coordinator/manual-assignment',base_url='https://localhost',data={
+        'assignment_csrf':'CODEX-UAT-CSRF', 'action':'preview',
+        'doctor_id':foreign.id, 'order_ids':[str(f.orders[0].id)],
+        'note':'CODEX UAT foreign doctor must be denied',
+    })
+    assert response.status_code==409
+    assert not f.captured.get('preview_token')
+    assert all(order.assigned_doctor_id is None for order in f.orders)
 
 
 def test_token_is_bound_to_actor_and_cannot_be_tampered(bulk_cases):

@@ -1,3 +1,4 @@
+from web.source_contract import read_source as _read_source
 
 def test_booking_v2_routes_present():
     import app as m
@@ -20,6 +21,6 @@ def test_device_statuses():
 def test_booking_v2_template_is_backend_link_based():
     from pathlib import Path
     root=Path(__file__).resolve().parents[1]
-    s=(root/"templates"/"schedule_v2.html").read_text(encoding="utf-8")
+    s=_read_source(root/"templates"/"schedule_v2.html", encoding="utf-8")
     assert "schedule_v2_book_form" in s
     assert "Book Slot" in s

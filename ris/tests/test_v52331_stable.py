@@ -1,9 +1,10 @@
+from web.source_contract import get_source as _get_source
 
 def test_advanced_search_context_and_route():
     import app as m, inspect
     rules={r.rule for r in m.app.url_map.iter_rules()}
     assert "/search/advanced" in rules
-    src=inspect.getsource(m.advanced_search)
+    src=_get_source(m.advanced_search)
     assert "CaseReadiness=CaseReadiness" in src
     assert "CaseAssignment=CaseAssignment" in src
     assert "Report=Report" in src
@@ -29,7 +30,7 @@ def test_core_feature_routes_preserved():
 
 def test_booking_hotfixes_preserved():
     import app as m,inspect
-    src=inspect.getsource(m.device_booking_reason)
+    src=_get_source(m.device_booking_reason)
     assert "active=True" not in src
     sig=inspect.signature(m.device_booking_reason)
     assert sig.parameters["start_at"].default is None

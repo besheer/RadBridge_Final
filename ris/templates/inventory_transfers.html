@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block page_title %}{{ ui_phrase('Stock Transfers') }}{% endblock %}
 {% block content %}
-{% if has_perm('inventory.transfer.request') %}
+{% if has_perm('inventory.transfer.request') and not is_central_transfer_operator %}
 <form method="post" class="panel">
 <h3>New Transfer Request</h3>
-<div class="grid2"><select name="source_warehouse_id" required><option value="">Source Warehouse</option>{% for w in warehouses %}<option value="{{w.id}}">{{w.name}}</option>{% endfor %}</select><select name="target_warehouse_id" required><option value="">Target Warehouse</option>{% for w in warehouses %}<option value="{{w.id}}">{{w.name}}</option>{% endfor %}</select></div>
+<div class="grid2"><select name="source_warehouse_id" required><option value="">Central Source Warehouse</option>{% for w in source_warehouses %}<option value="{{w.id}}">{{w.name}}</option>{% endfor %}</select><select name="target_warehouse_id" required><option value="">Branch Target Warehouse</option>{% for w in target_warehouses %}<option value="{{w.id}}">{{w.name}}</option>{% endfor %}</select></div>
 <div id="transferLines"><div class="transfer-line"><select name="item_id"><option value="">{{ ui_phrase('Item') }}</option>{% for i in items %}<option value="{{i.id}}">{{i.name}}</option>{% endfor %}</select><input name="qty" type="number" min="0.0001" step="0.0001" placeholder="{{ ui_phrase('Qty') }}"></div></div>
 <button type="button" class="btn small" id="addTransferLine">＋ Add Item</button>
 <textarea name="notes" placeholder="{{ ui_phrase('Notes') }}"></textarea><button class="btn primary">Request Transfer</button>

@@ -1,0 +1,157 @@
+"""Persisted schema definitions; no web/application initialization."""
+from datetime import datetime, date
+import json
+from infrastructure.extensions import db
+
+class ChatThread(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    thread_type=db.Column(db.String(30),nullable=False,index=True)
+    title=db.Column(db.String(200),default='')
+    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
+    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
+    active=db.Column(db.Boolean,default=True,index=True)
+    order=db.relationship('Order',foreign_keys=[order_id])
+
+class ChatThreadMember(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    thread_id=db.Column(db.Integer,db.ForeignKey('chat_thread.id'),nullable=False,index=True)
+    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
+    joined_at=db.Column(db.DateTime,default=datetime.utcnow)
+    last_read_at=db.Column(db.DateTime)
+    muted=db.Column(db.Boolean,default=False)
+    thread=db.relationship('ChatThread',foreign_keys=[thread_id])
+    user=db.relationship('User',foreign_keys=[user_id])
+    __table_args__=(db.UniqueConstraint('thread_id','user_id',name='uq_chat_thread_user'),)
+
+class ChatMessage(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    thread_id=db.Column(db.Integer,db.ForeignKey('chat_thread.id'),nullable=False,index=True)
+    sender_id=db.Column(db.Integer,db.ForeignKey('user.id'),nullable=False,index=True)
+    body=db.Column(db.Text,nullable=False)
+    attachment_path=db.Column(db.String(600),default='')
+    attachment_name=db.Column(db.String(255),default='')
+    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
+    deleted_at=db.Column(db.DateTime)
+    thread=db.relationship('ChatThread',foreign_keys=[thread_id])
+    sender=db.relationship('User',foreign_keys=[sender_id])
+
+class TelephonyExtension(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    extension=db.Column(db.String(30),unique=True,nullable=False,index=True)
+    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
+    active=db.Column(db.Boolean,default=True,index=True)
+    user=db.relationship('User',foreign_keys=[user_id])
+
+class CallLog(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    direction=db.Column(db.String(20),default='INBOUND',index=True)
+    caller_number=db.Column(db.String(60),default='',index=True)
+    called_number=db.Column(db.String(60),default='',index=True)
+    extension=db.Column(db.String(30),default='',index=True)
+    patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),index=True)
+    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
+    started_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
+    ended_at=db.Column(db.DateTime)
+    status=db.Column(db.String(30),default='RINGING',index=True)
+    notes=db.Column(db.Text,default='')
+    external_call_id=db.Column(db.String(160),default='',index=True)
+    patient=db.relationship('Patient',foreign_keys=[patient_id])
+    user=db.relationship('User',foreign_keys=[user_id])
+
+class CommunicationChannelSetting(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    channel=db.Column(db.String(30),unique=True,nullable=False,index=True)  # WHATSAPP/TELEGRAM/EMAIL
+    enabled=db.Column(db.Boolean,default=False,index=True)
+    provider=db.Column(db.String(60),default='')
+    base_url=db.Column(db.String(500),default='')
+    sender=db.Column(db.String(180),default='')
+    smtp_host=db.Column(db.String(220),default='')
+    smtp_port=db.Column(db.Integer,default=587)
+    smtp_tls=db.Column(db.Boolean,default=True)
+    smtp_user=db.Column(db.String(220),default='')
+    secret_env_name=db.Column(db.String(120),default='')
+    updated_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
+
+class CommunicationTemplate(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    code=db.Column(db.String(80),unique=True,nullable=False,index=True)
+    name_en=db.Column(db.String(180),nullable=False)
+    name_ar=db.Column(db.String(180),default='')
+    channel=db.Column(db.String(30),default='ANY',index=True)
+    event_key=db.Column(db.String(80),default='',index=True)
+    subject_template=db.Column(db.String(300),default='')
+    body_template=db.Column(db.Text,default='')
+    active=db.Column(db.Boolean,default=True,index=True)
+    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    updated_at=db.Column(db.DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
+
+class PatientCommunication(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    patient_id=db.Column(db.Integer,db.ForeignKey('patient.id'),nullable=False,index=True)
+    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
+    receipt_id=db.Column(db.Integer,db.ForeignKey('receipt.id'),index=True)
+    channel=db.Column(db.String(30),nullable=False,index=True)
+    recipient=db.Column(db.String(240),nullable=False,index=True)
+    template_code=db.Column(db.String(80),default='')
+    subject=db.Column(db.String(300),default='')
+    body=db.Column(db.Text,default='')
+    status=db.Column(db.String(30),default='PENDING',index=True) # PENDING/SENT/FAILED
+    provider_message_id=db.Column(db.String(300),default='')
+    error_text=db.Column(db.Text,default='')
+    created_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
+    sent_at=db.Column(db.DateTime)
+    patient=db.relationship('Patient',foreign_keys=[patient_id])
+    order=db.relationship('Order',foreign_keys=[order_id])
+
+class RISNotification(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    user_id=db.Column(db.Integer,db.ForeignKey('user.id'),index=True)
+    role_code=db.Column(db.String(60),default='',index=True)
+    branch_id=db.Column(db.Integer,db.ForeignKey('branch.id'),index=True)
+    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),index=True)
+    severity=db.Column(db.String(20),default='INFO',index=True)
+    event_type=db.Column(db.String(80),default='',index=True)
+    title=db.Column(db.String(220),nullable=False)
+    body=db.Column(db.Text,default='')
+    status=db.Column(db.String(30),default='NEW',index=True)
+    created_at=db.Column(db.DateTime,default=datetime.utcnow,index=True)
+    acknowledged_at=db.Column(db.DateTime)
+    acknowledged_by=db.Column(db.Integer,db.ForeignKey('user.id'))
+
+class NotificationEscalationRule(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    event_type=db.Column(db.String(80),nullable=False,index=True)
+    severity=db.Column(db.String(20),default='WARNING')
+    first_role=db.Column(db.String(60),default='')
+    escalate_role=db.Column(db.String(60),default='BRANCH_MANAGER')
+    escalate_after_min=db.Column(db.Integer,default=15)
+    channels=db.Column(db.String(120),default='INAPP')
+    active=db.Column(db.Boolean,default=True,index=True)
+
+class DeliveryEvent(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    item_type = db.Column(db.String(30), nullable=False)
+    delivery_method = db.Column(db.String(40), default='IN_PERSON')
+    recipient_name = db.Column(db.String(160), default='')
+    recipient_phone = db.Column(db.String(40), default='')
+    delivered_by = db.Column(db.Integer)
+    delivered_at = db.Column(db.DateTime, default=datetime.utcnow)
+    notes = db.Column(db.String(500), default='')
+    order = db.relationship('Order', foreign_keys=[order_id])
+
+class NotificationEvent(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    order_id=db.Column(db.Integer,db.ForeignKey('order.id'),nullable=False,index=True)
+    channel=db.Column(db.String(30),nullable=False)
+    recipient=db.Column(db.String(255),default='')
+    status=db.Column(db.String(30),default='PENDING')
+    attempts=db.Column(db.Integer,default=0)
+    last_error=db.Column(db.Text,default='')
+    created_at=db.Column(db.DateTime,default=datetime.utcnow)
+    sent_at=db.Column(db.DateTime)
+    order=db.relationship('Order',foreign_keys=[order_id])
+    __table_args__=(db.UniqueConstraint('order_id','channel','recipient',name='uq_final_notify_once'),)

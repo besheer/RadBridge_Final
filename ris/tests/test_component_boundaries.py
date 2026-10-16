@@ -1,0 +1,72 @@
+"""Contracts for the live compatibility seam and actual executable components."""
+from web.source_contract import read_source as _read_source
+import ast
+import hashlib
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from application.dependencies import Bindings
+from web.source_contract import ROOT, _handler_source, app_source
+
+
+def test_bindings_keep_live_overrides_and_reject_undeclared_dependencies():
+    target = SimpleNamespace(callback=lambda: "first", secret="unlisted")
+    port = Bindings(target, ("callback",))
+    assert port.callback() == "first"
+    target.callback = lambda: "second"
+    assert port.callback() == "second"
+    assert port.namespace() == {"callback": target.callback}
+    with pytest.raises(AttributeError, match="Undeclared"):
+        _ = port.secret
+
+
+def test_dynamic_reset_model_is_an_explicit_binding():
+    import app as runtime
+    entries = json.loads(_read_source(ROOT / "application/component_manifest.json"))
+    reset = next(entry for entry in entries if entry["symbol"] == "admin_reset_module")
+    assert "NotificationEvent" in reset["dependencies"]
+    bindings = Bindings(runtime, reset["dependencies"])
+    assert bindings.NotificationEvent is runtime.NotificationEvent
+    assert bindings.namespace()["NotificationEvent"] is runtime.NotificationEvent
+    assert "User" not in bindings.namespace()
+
+
+def test_every_original_handler_is_present_once_and_preserves_its_source():
+    entries = json.loads(_read_source(ROOT / "application/component_manifest.json"))
+    assert len(entries) == 949
+    assert len({entry["id"] for entry in entries}) == len(entries)
+    assert len({entry["symbol"] for entry in entries}) == len(entries)
+    composed = ast.parse(app_source())
+    functions = {node.name for node in composed.body if isinstance(node, ast.FunctionDef)}
+    for entry in entries:
+        source = _handler_source(entry)
+        digest = hashlib.sha256(source.encode()).hexdigest()
+        if entry.get("current_sha256"):
+            assert entry.get("source_change_reason"), entry["symbol"]
+            assert digest == entry["current_sha256"], entry["symbol"]
+        else:
+            assert digest == entry["original_sha256"], entry["symbol"]
+        assert entry["symbol"] in functions
+
+
+def test_component_files_parse_and_do_not_import_the_composition_root():
+    for package in ("application/components", "web/routes", "web/components"):
+        for path in (ROOT / package).glob("*.py"):
+            tree = ast.parse(_read_source(path, encoding="utf-8"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    assert all(alias.name != "app" for alias in node.names), path
+                elif isinstance(node, ast.ImportFrom):
+                    assert node.module != "app", path
+
+
+def test_application_components_do_not_receive_http_framework_dependencies():
+    http = {'request', 'session', 'g', 'render_template', 'abort', 'flash', 'redirect',
+            'url_for', 'jsonify', 'make_response', 'send_file', 'Response', 'has_request_context', 'current_app'}
+    entries = json.loads(_read_source(ROOT / "application/component_manifest.json", encoding='utf-8'))
+    for entry in entries:
+        if entry['module'].startswith('application.components.'):
+            assert not http.intersection(entry['dependencies']), entry['symbol']

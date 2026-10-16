@@ -1,0 +1,158 @@
+{
+  "version": 1,
+  "services": [
+    {
+      "module": "application.services.assignment.assignment_queries",
+      "repository": "infrastructure.adapters.assignment.query_repository",
+      "composition": "web.compatibility.assignment_distribution"
+    },
+    {
+      "module": "application.services.assignment.assignment_transaction",
+      "repository": "infrastructure.adapters.assignment.transaction_repository",
+      "composition": "web.compatibility.case_assignment_service"
+    },
+    {
+      "module": "application.services.assignment.visit_assignment",
+      "repository": "infrastructure.adapters.assignment.visit_repository",
+      "composition": "web.compatibility.assignment_visit_grouping"
+    },
+    {
+      "module": "application.services.identity.scope_access",
+      "repository": "infrastructure.adapters.identity.scope_repository",
+      "composition": "web.extensions.clinical_scope"
+    },
+    {
+      "module": "application.services.reporting.report_commit_service",
+      "repository": "infrastructure.adapters.reporting.commit_repository",
+      "composition": "web.compatibility.report_transaction_writer"
+    },
+    {
+      "module": "application.services.reporting.edit_lease_service",
+      "repository": "infrastructure.adapters.reporting.edit_lease_repository",
+      "composition": "web.compatibility.report_edit_control"
+    },
+    {
+      "module": "application.services.reporting.revision_workflow",
+      "repository": "infrastructure.adapters.reporting.revision_repository",
+      "composition": "web.extensions.report_revisions"
+    },
+    {
+      "module": "application.services.finance.settlement_workflow",
+      "repository": "infrastructure.adapters.finance.settlement_repository",
+      "composition": "web.extensions.replacement_settlements"
+    },
+    {
+      "module": "application.services.inventory.return_service",
+      "repository": "infrastructure.adapters.inventory.return_repository",
+      "composition": "web.compatibility.inventory_safety"
+    },
+    {
+      "module": "application.services.inventory.transfer_workflow",
+      "repository": "infrastructure.adapters.inventory.transfer_workflow_repository",
+      "composition": "web.extensions.inventory_transfer_policy"
+    },
+    {
+      "module": "application.services.registration.visit_registration",
+      "repository": "infrastructure.adapters.registration.visit_repository",
+      "composition": "web.compatibility.registration_policy"
+    },
+    {
+      "module": "application.services.registration.insurance_readiness",
+      "repository": "infrastructure.adapters.registration.insurance_repository",
+      "composition": "web.compatibility.insurance_policy"
+    },
+    {
+      "module": "application.services.readiness.resolution_workflow",
+      "repository": "infrastructure.adapters.readiness.resolution_repository",
+      "composition": "web.compatibility.case_exception_resolution_service"
+    },
+    {
+      "module": "application.services.readiness.order_search",
+      "repository": "infrastructure.adapters.readiness.search_repository",
+      "composition": "web.compatibility.case_exception_resolution_service"
+    },
+    {
+      "module": "application.services.readiness.scheduling",
+      "repository": "infrastructure.adapters.readiness.schedule_repository",
+      "composition": "web.extensions.readiness_operations"
+    },
+    {
+      "module": "application.services.readiness.operations_snapshot",
+      "repository": "infrastructure.adapters.readiness.snapshot_repository",
+      "composition": "web.compatibility.case_operations_dashboard_service"
+    },
+    {
+      "module": "application.services.finance.collection_access",
+      "repository": "infrastructure.adapters.finance.collection_repository",
+      "composition": "web.compatibility.collection_policy"
+    },
+    {
+      "module": "application.services.finance.closing_totals",
+      "repository": "infrastructure.adapters.finance.closing_repository",
+      "composition": "web.extensions.daily_closing_policy"
+    },
+    {
+      "module": "application.services.finance.closing_workflow",
+      "repository": "infrastructure.adapters.finance.closing_repository",
+      "composition": "web.extensions.daily_closing_policy"
+    },
+    {
+      "module": "application.services.clinical.rt_course_workflow",
+      "repository": "infrastructure.adapters.clinical.rt_course_repository",
+      "composition": "web.extensions.radiotherapy"
+    },
+    {
+      "module": "application.services.clinical.rt_plan_workflow",
+      "repository": "infrastructure.adapters.clinical.rt_plan_repository",
+      "composition": "web.extensions.radiotherapy"
+    },
+    {
+      "module": "application.services.clinical.rt_session_workflow",
+      "repository": "infrastructure.adapters.clinical.rt_session_repository",
+      "composition": "web.extensions.radiotherapy"
+    },
+    {
+      "module": "application.services.clinical.rt_support_workflow",
+      "repository": "infrastructure.adapters.clinical.rt_support_repository",
+      "composition": "web.extensions.radiotherapy"
+    },
+    {
+      "module": "application.services.clinical.rt_read_queries",
+      "repository": "infrastructure.adapters.clinical.rt_read_repository",
+      "composition": "web.extensions.radiotherapy"
+    },
+    {
+      "module": "application.services.identity.user_contacts",
+      "repository": "infrastructure.adapters.identity.contact_repository",
+      "composition": "web.compatibility.user_access_policy"
+    },
+    {
+      "module": "application.services.registration.demographic_corrections",
+      "repository": "infrastructure.adapters.registration.demographic_repository",
+      "composition": "web.compatibility.patient_correction_policy"
+    },
+    {
+      "module": "application.services.finance.delivery_readiness",
+      "repository": "infrastructure.adapters.finance.delivery_repository",
+      "composition": "web.compatibility.delivery_policy"
+    },
+    {
+      "module": "application.services.assignment.monitoring_queries",
+      "repository": "infrastructure.adapters.assignment.monitor_repository",
+      "composition": "web.compatibility.assignment_monitor"
+    },
+    {
+      "module": "application.services.registration.appointment_creation",
+      "repository": "infrastructure.adapters.registration.appointment_repository",
+      "composition": "web.compatibility.legacy_booking"
+    },
+    {
+      "module": "application.services.clinical.returned_documents",
+      "repository": "infrastructure.adapters.clinical.returned_documents_repository",
+      "composition": "web.compatibility.returned_documents"
+    }
+  ],
+  "helpers": [
+    "application.services.clinical.rt_scope_context"
+  ]
+}

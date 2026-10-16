@@ -9,7 +9,7 @@ import pytest
 @pytest.fixture
 def insurance_case(app_ctx, monkeypatch):
     m = app_ctx
-    key = 'CODEX-UAT-' + uuid4().hex[:12]
+    key = 'CODEX-UAT-' + uuid4().hex[:8]
     branch = m.Branch(code=key, name=key, active=True)
     patient = m.Patient(patient_id=key, name='CODEX UAT INSURANCE', dob='19900101', sex='M')
     contract = m.Contract(code=key, name=key, approval_required=True)
@@ -22,7 +22,10 @@ def insurance_case(app_ctx, monkeypatch):
                     scheduled=datetime(2037, 2, 3, 10), status='REGISTERED',
                     patient_share=100, paid_amount=100, exam_status='BOOKED')
     m.db.session.add(order); m.db.session.flush()
-    user = SimpleNamespace(id=99100, username=key, active=True, branch_id=branch.id,
+    stored_user=m.User(username=key,full_name='Synthetic Insurance Reception',password_hash='disabled-test-account',
+                       active=True,branch_id=branch.id,role=m.Role.query.filter_by(code='RECEPTION').one())
+    m.db.session.add(stored_user);m.db.session.flush()
+    user = SimpleNamespace(id=stored_user.id, username=key, active=True, branch_id=branch.id,
          role=SimpleNamespace(code='RECEPTION', permissions=lambda: m.ROLE_PERMS['RECEPTION']))
     monkeypatch.setattr(m, 'current_user', lambda: user)
     monkeypatch.setattr(m, 'render_template', lambda *a, **k: 'CODEX UAT error')
@@ -112,10 +115,23 @@ def test_ready_order_keeps_existing_conversion_flow(insurance_case,insured):
 
 def test_latest_decision_and_actual_outbound_gate(insurance_case,monkeypatch):
     import insurance_policy
+    import application.legacy_runtime as legacy_runtime
     c=insurance_case
     approval(c,'APPROVED','CODEX-UAT');approval(c,'PENDING')
-    assert insurance_policy.approval_blocker(c.order)
+    assert insurance_policy.approval_blocker(c.order,runtime=c.m)
+    monkeypatch.setattr(legacy_runtime,'resolve_runtime',lambda: (_ for _ in ()).throw(
+        AssertionError('insurance gate must use explicitly supplied runtime')))
     network=Mock(side_effect=AssertionError('Incomplete approval must not leave RIS'))
     monkeypatch.setattr(c.m.requests,'post',network)
     with pytest.raises(ValueError): c.real_sender(c.order)
     network.assert_not_called()
+
+
+def test_insurance_route_authorization_uses_composed_runtime(insurance_case,monkeypatch):
+    import application.legacy_runtime as legacy_runtime
+    c=insurance_case
+    monkeypatch.setattr(legacy_runtime,'resolve_runtime',lambda: (_ for _ in ()).throw(
+        AssertionError('insurance route must use explicitly supplied runtime')))
+    response=post(c,'insurance-approval/start',{'method':'MANUAL'})
+    assert response.status_code==302
+    assert c.m.InsuranceApprovalRequest.query.filter_by(order_id=c.order.id).count()==1
