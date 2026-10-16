@@ -18,11 +18,11 @@ Date: 2026-10-16. These measures describe the isolated review branch prepared fo
 | Focused assignment-monitor runtime composition checks | 52 passed | Monitor/distribution routes, explicit-runtime regression and component ownership/hash contracts |
 | Focused branch/access suites on review branch | 63 passed | Assignment monitor 10, coordinator assignment 30, offer scope 5, readiness/TAT 14, offer-policy permissions 2, communications permissions 2; run separately |
 | Component boundary regression on review branch | 5 passed | Manifest and ownership boundary contracts |
-| Latest complete local SQLite suite | 2,164 passed / 5 skipped / 0 failed | Python 3.12 temporary environment; code head `0d2eb91`; full `tools/run_tests.py` |
-| Focused stock-transfer workflow/scope suites | 25 passed | Service state transitions, dispatch preflight/allocation, receipt, central action permission, transfer visibility and cross-branch denial |
-| Latest GitHub Actions run | 0 / 9 jobs verifiable | Run 38877166665 on current head `b76c00c` failed across all nine jobs; job steps are empty and GitHub returned 404 when retrieving logs, including after rerunning failed jobs. Cause remains undetermined. |
+| Latest complete local SQLite suite | 2,168 passed / 5 skipped / 0 failed | Python 3.12 temporary environment; code head `1eba93e`; full `tools/run_tests.py` |
+| Focused stock-transfer workflow/scope suites | 25 passed | Service transitions, dispatch preflight/allocation, receipt, authorization/scope and source-contract checks |
+| Latest GitHub Actions run | 0 / 9 jobs verifiable | Run 38914487766 on code head `1eba93e` failed all nine jobs; the single failed-job rerun did the same. Jobs expose no steps and log retrieval returns 404, so no source/test failure can be attributed. |
 | Direct framework/web/database-client imports inside application services | 0 | Static import inventory; ORM operations through the legacy runtime still remain |
-| Stock-transfer ports and lifecycle service | Added | Scope queries moved to an infrastructure adapter; approve/reject/dispatch/receive orchestration now uses an application service; request creation and caller-owned commit/rollback remain at the web edge |
+| Stock-transfer ports and lifecycle service | Added | Scope and lifecycle query/movement dependencies use infrastructure adapters; approve/reject/dispatch/receive orchestration uses an application service; request creation and caller-owned commit/rollback remain at the web edge |
 | Technician and coordinator query adapters | Added | Worklist return-state/filter/search and bulk-assignment search construction now live in infrastructure adapters |
 
 ## What a percentage means
