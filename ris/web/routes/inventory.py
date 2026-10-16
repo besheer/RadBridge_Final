@@ -3,8 +3,6 @@
 Legacy behavior is preserved; new policies belong in the independent domain layer.
 """
 
-from domain.inventory.transfer_policy import transfer_status_after as _transfer_status_after
-
 def install_0169(_rb):
     @_rb.app.route('/nursing/<int:order_id>',methods=['GET','POST'])
     @_rb.require_perm('consumables.use')
@@ -610,10 +608,9 @@ def install_0793(_rb):
     @_rb.require_perm('inventory.transfer.approve')
     def inventory_transfer_approve(transfer_id):
         row=_rb.StockTransfer.query.get_or_404(transfer_id)
-        next_status=_transfer_status_after(row.status, 'approve')
-        if not next_status:
+        if row.status!='REQUESTED':
             _rb.flash('Only requested transfers can be approved.','warning');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
-        row.status=next_status;row.approved_by=_rb.current_user().id;row.approved_at=_rb.datetime.utcnow()
+        row.status='APPROVED';row.approved_by=_rb.current_user().id;row.approved_at=_rb.datetime.utcnow()
         _rb.audit('STOCK_TRANSFER_APPROVED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
         return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
     return inventory_transfer_approve
@@ -624,10 +621,9 @@ def install_0794(_rb):
     @_rb.require_perm('inventory.transfer.approve')
     def inventory_transfer_reject(transfer_id):
         row=_rb.StockTransfer.query.get_or_404(transfer_id)
-        next_status=_transfer_status_after(row.status, 'reject')
-        if not next_status:
+        if row.status not in ('REQUESTED','APPROVED'):
             _rb.flash('Transfer cannot be rejected at this stage.','warning');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
-        row.status=next_status;row.approved_by=_rb.current_user().id;row.approved_at=_rb.datetime.utcnow()
+        row.status='REJECTED';row.approved_by=_rb.current_user().id;row.approved_at=_rb.datetime.utcnow()
         row.notes=((row.notes or '')+'\nREJECT: '+(_rb.request.form.get('reason') or '')).strip()
         _rb.audit('STOCK_TRANSFER_REJECTED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
         return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
@@ -639,8 +635,7 @@ def install_0795(_rb):
     @_rb.require_perm('inventory.transfer.dispatch')
     def inventory_transfer_dispatch(transfer_id):
         row=_rb.StockTransfer.query.get_or_404(transfer_id)
-        next_status=_transfer_status_after(row.status, 'dispatch')
-        if not next_status:
+        if row.status!='APPROVED':
             _rb.flash('Transfer must be approved before dispatch.','danger');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
         source=row.source_warehouse
         try:
@@ -657,7 +652,7 @@ def install_0795(_rb):
                     dispatched+=take;remaining-=take
                     if remaining<=1e-9:break
                 line.qty_dispatched=dispatched
-            row.status=next_status;row.dispatched_by=_rb.current_user().id;row.dispatched_at=_rb.datetime.utcnow()
+            row.status='DISPATCHED';row.dispatched_by=_rb.current_user().id;row.dispatched_at=_rb.datetime.utcnow()
             _rb.audit('STOCK_TRANSFER_DISPATCHED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
         except Exception as e:
             _rb.db.session.rollback();_rb.flash(str(e),'danger')
@@ -670,8 +665,7 @@ def install_0796(_rb):
     @_rb.require_perm('inventory.transfer.receive')
     def inventory_transfer_receive(transfer_id):
         row=_rb.StockTransfer.query.get_or_404(transfer_id)
-        next_status=_transfer_status_after(row.status, 'receive')
-        if not next_status:
+        if row.status!='DISPATCHED':
             _rb.flash('Only dispatched transfers can be received.','danger');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
         target=row.target_warehouse
         for line in _rb.StockTransferLine.query.filter_by(transfer_id=row.id).all():
@@ -680,7 +674,7 @@ def install_0796(_rb):
             lot=_rb.InventoryLot.query.filter_by(item_id=line.item_id,warehouse_id=target.id,lot_no='').first()
             _rb.inventory_move(target,line.item,qty,'TRANSFER_IN',lot=lot,reference_type='TRANSFER',reference_id=row.id,notes=row.transfer_no)
             line.qty_received=qty
-        row.status=next_status;row.received_by=_rb.current_user().id;row.received_at=_rb.datetime.utcnow()
+        row.status='RECEIVED';row.received_by=_rb.current_user().id;row.received_at=_rb.datetime.utcnow()
         _rb.audit('STOCK_TRANSFER_RECEIVED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
         return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
     return inventory_transfer_receive

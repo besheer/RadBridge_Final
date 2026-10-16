@@ -2,18 +2,6 @@
 
 
 CENTRAL_ACTIONS = frozenset({"approve", "reject", "dispatch"})
-TRANSFER_TRANSITIONS = {
-    ("REQUESTED", "approve"): "APPROVED",
-    ("REQUESTED", "reject"): "REJECTED",
-    ("APPROVED", "reject"): "REJECTED",
-    ("APPROVED", "dispatch"): "DISPATCHED",
-    ("DISPATCHED", "receive"): "RECEIVED",
-}
-
-
-def transfer_status_after(current_status, action):
-    """Return the next valid transfer status, or None when the transition is invalid."""
-    return TRANSFER_TRANSITIONS.get((str(current_status or "").upper(), str(action or "").lower()))
 
 
 def can_request_transfer(*, is_central_operator, allowed_branch_ids, target_branch_id,
