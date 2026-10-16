@@ -1,6 +1,6 @@
 # Architecture implementation and remaining gates
 
-Date: 2026-10-15. Scope: isolated architecture port on `codex/radbridge-architecture-port`, published in draft PR #2 against GitHub `main`. The prior `refactor/development-foundation` branch remains unchanged. Production has not been modified. Clinical release metadata remains 5.46.9; these changes are not a deployed clinical release.
+Date: 2026-10-16. Scope: isolated architecture port on `codex/radbridge-architecture-port`, published in draft PR #2 against GitHub `main`. The prior `refactor/development-foundation` branch remains unchanged. Production has not been modified. Clinical release metadata remains 5.46.9; these changes are not a deployed clinical release.
 
 ## Implemented ownership
 
@@ -69,6 +69,8 @@ Patient data-management counts and single-patient preview/export/anonymize/delet
 ## CI evidence and current gate
 
 On 2026-10-15, an authorization review found and fixed a zero-valued `branch_id` bypass in delegated account creation/edit: false-like IDs are now checked against the manager's allowed branch set instead of being treated as omitted. Regression coverage verifies both attempted account creation and reassignment are denied without changing stored data. The focused branch-scope suite passed (14 tests); clinical-scope, branch-scope, and clinical-app-factory focused checks passed (29 tests). GitHub Actions run [38717259044](https://github.com/besheer/RadBridge_Final/actions/runs/38717259044) passed all nine jobs on code head `79966a52a365cc2070c95bb06f30e40f5c4b0cc3`: 2,152 SQLite tests passed, five skipped, all seven PostgreSQL suites passed, and the isolated development Docker smoke passed. This verifies the proposed branch only; it does not change production.
+
+The documentation-only head `b4b7b869ae9b1aed2d35253515892c139aed99aa` also passed all nine jobs in [run 38717781992](https://github.com/besheer/RadBridge_Final/actions/runs/38717781992). The docs now report the current dependency audit: zero direct framework/SQLAlchemy/requests/web/infrastructure imports inside `application/services`; legacy SQLAlchemy imports remain in compatibility components. These static counts do not imply full architectural independence.
 
 GitHub Actions runs nine jobs: the complete SQLite suite, seven independent PostgreSQL suites (`clinical`, `assignment`, `scope`, `reporting`, `finance`, `inventory`, `registration`) and a separate Docker Compose build/start/login smoke check.
 
