@@ -47,6 +47,11 @@
       "composition": "web.compatibility.inventory_safety"
     },
     {
+      "module": "application.services.inventory.transfer_workflow",
+      "repository": "infrastructure.adapters.inventory.transfer_workflow_repository",
+      "composition": "web.extensions.inventory_transfer_policy"
+    },
+    {
       "module": "application.services.registration.visit_registration",
       "repository": "infrastructure.adapters.registration.visit_repository",
       "composition": "web.compatibility.registration_policy"

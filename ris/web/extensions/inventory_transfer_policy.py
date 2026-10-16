@@ -11,6 +11,10 @@ from domain.inventory.transfer_policy import (
 from infrastructure.adapters.inventory.transfer_scope_repository import (
     SqlAlchemyStockTransferScopeRepository,
 )
+from application.services.inventory.transfer_workflow import StockTransferWorkflow
+from infrastructure.adapters.inventory.transfer_workflow_repository import (
+    SqlAlchemyStockTransferWorkflowRepository,
+)
 
 
 TRANSFER_ENDPOINTS = frozenset({
@@ -21,6 +25,16 @@ CENTRAL_ENDPOINTS = frozenset(f"inventory_transfer_{action}" for action in CENTR
 def register(m):
     from registration_policy import allowed_registration_branches
     transfer_scope = SqlAlchemyStockTransferScopeRepository(m.Warehouse, m.StockTransfer)
+    transfer_repository = SqlAlchemyStockTransferWorkflowRepository(
+        m.StockTransferLine,
+        m.InventoryLot,
+        m.inventory_available_qty,
+        m.stock_lots,
+        m.inventory_move,
+    )
+    m.app.extensions["radbridge_stock_transfer_workflow"] = StockTransferWorkflow(
+        transfer_repository, m.audit
+    )
 
     @m.app.context_processor
     def transfer_template_context():

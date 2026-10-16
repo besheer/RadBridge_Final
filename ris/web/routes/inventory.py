@@ -608,10 +608,12 @@ def install_0793(_rb):
     @_rb.require_perm('inventory.transfer.approve')
     def inventory_transfer_approve(transfer_id):
         row=_rb.StockTransfer.query.get_or_404(transfer_id)
-        if row.status!='REQUESTED':
-            _rb.flash('Only requested transfers can be approved.','warning');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
-        row.status='APPROVED';row.approved_by=_rb.current_user().id;row.approved_at=_rb.datetime.utcnow()
-        _rb.audit('STOCK_TRANSFER_APPROVED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
+        workflow=_rb.app.extensions['radbridge_stock_transfer_workflow']
+        try:
+            workflow.approve(row,actor_id=_rb.current_user().id,occurred_at=_rb.datetime.utcnow())
+        except workflow.error_type as e:
+            _rb.flash(str(e),'warning');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
+        _rb.db.session.commit()
         return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
     return inventory_transfer_approve
 
@@ -621,11 +623,13 @@ def install_0794(_rb):
     @_rb.require_perm('inventory.transfer.approve')
     def inventory_transfer_reject(transfer_id):
         row=_rb.StockTransfer.query.get_or_404(transfer_id)
-        if row.status not in ('REQUESTED','APPROVED'):
-            _rb.flash('Transfer cannot be rejected at this stage.','warning');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
-        row.status='REJECTED';row.approved_by=_rb.current_user().id;row.approved_at=_rb.datetime.utcnow()
-        row.notes=((row.notes or '')+'\nREJECT: '+(_rb.request.form.get('reason') or '')).strip()
-        _rb.audit('STOCK_TRANSFER_REJECTED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
+        workflow=_rb.app.extensions['radbridge_stock_transfer_workflow']
+        try:
+            workflow.reject(row,actor_id=_rb.current_user().id,occurred_at=_rb.datetime.utcnow(),
+                            reason=_rb.request.form.get('reason') or '')
+        except workflow.error_type as e:
+            _rb.flash(str(e),'warning');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
+        _rb.db.session.commit()
         return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
     return inventory_transfer_reject
 
@@ -635,25 +639,10 @@ def install_0795(_rb):
     @_rb.require_perm('inventory.transfer.dispatch')
     def inventory_transfer_dispatch(transfer_id):
         row=_rb.StockTransfer.query.get_or_404(transfer_id)
-        if row.status!='APPROVED':
-            _rb.flash('Transfer must be approved before dispatch.','danger');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
-        source=row.source_warehouse
         try:
-            for line in _rb.StockTransferLine.query.filter_by(transfer_id=row.id).all():
-                qty=float(line.qty_requested or 0)
-                if _rb.inventory_available_qty(source.id,line.item_id)<qty-1e-9:
-                    raise ValueError(f'Insufficient stock for {line.item.name}')
-            for line in _rb.StockTransferLine.query.filter_by(transfer_id=row.id).all():
-                remaining=float(line.qty_requested or 0);dispatched=0
-                for lot in _rb.stock_lots(source.id,line.item_id):
-                    take=min(max(0,float(lot.qty_on_hand or 0)-float(lot.qty_reserved or 0)),remaining)
-                    if take<=0:continue
-                    _rb.inventory_move(source,line.item,-take,'TRANSFER_OUT',lot=lot,reference_type='TRANSFER',reference_id=row.id,notes=row.transfer_no)
-                    dispatched+=take;remaining-=take
-                    if remaining<=1e-9:break
-                line.qty_dispatched=dispatched
-            row.status='DISPATCHED';row.dispatched_by=_rb.current_user().id;row.dispatched_at=_rb.datetime.utcnow()
-            _rb.audit('STOCK_TRANSFER_DISPATCHED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
+            workflow=_rb.app.extensions['radbridge_stock_transfer_workflow']
+            workflow.dispatch(row,actor_id=_rb.current_user().id,occurred_at=_rb.datetime.utcnow())
+            _rb.db.session.commit()
         except Exception as e:
             _rb.db.session.rollback();_rb.flash(str(e),'danger')
         return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
@@ -665,17 +654,12 @@ def install_0796(_rb):
     @_rb.require_perm('inventory.transfer.receive')
     def inventory_transfer_receive(transfer_id):
         row=_rb.StockTransfer.query.get_or_404(transfer_id)
-        if row.status!='DISPATCHED':
-            _rb.flash('Only dispatched transfers can be received.','danger');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
-        target=row.target_warehouse
-        for line in _rb.StockTransferLine.query.filter_by(transfer_id=row.id).all():
-            qty=float(line.qty_dispatched or 0)
-            if qty<=0:continue
-            lot=_rb.InventoryLot.query.filter_by(item_id=line.item_id,warehouse_id=target.id,lot_no='').first()
-            _rb.inventory_move(target,line.item,qty,'TRANSFER_IN',lot=lot,reference_type='TRANSFER',reference_id=row.id,notes=row.transfer_no)
-            line.qty_received=qty
-        row.status='RECEIVED';row.received_by=_rb.current_user().id;row.received_at=_rb.datetime.utcnow()
-        _rb.audit('STOCK_TRANSFER_RECEIVED','stock_transfer',row.id,row.transfer_no);_rb.db.session.commit()
+        workflow=_rb.app.extensions['radbridge_stock_transfer_workflow']
+        try:
+            workflow.receive(row,actor_id=_rb.current_user().id,occurred_at=_rb.datetime.utcnow())
+        except workflow.error_type as e:
+            _rb.flash(str(e),'danger');return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
+        _rb.db.session.commit()
         return _rb.redirect(_rb.url_for('inventory_transfer_detail',transfer_id=row.id))
     return inventory_transfer_receive
 

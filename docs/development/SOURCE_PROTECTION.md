@@ -32,6 +32,10 @@ Never force-push the independent local branch over a GitHub branch. The architec
 
 Before publication inspect path/content differences, source-safety results and whether any file is omitted unexpectedly. Record local and remote source identities separately. Subsequent CI must run on the resulting remote commit; previous local/remote results are not its results.
 
+## Component handler source contract
+
+`application/component_manifest.json` retains each extracted handler's `original_sha256` as the baseline. If an intentional architectural extraction changes a handler, record a `current_sha256` and `source_change_reason` on that entry. The component-boundary test then checks the new exact source against the reviewed hash while retaining the original baseline for history. Never overwrite `original_sha256` to make an intentional source change appear unchanged.
+
 ## Automated source guard
 
 `python tools/check_source_safety.py --history` checks current tracked content and reachable local Git blobs for operational/key/data paths and selected high-confidence provider tokens/private-key material. Output contains rule/path/line/blob only, never matched credential bytes. Example files remain subject to content checks. Unit tests cover redaction, forbidden paths, example tokens and unexpected key extensions.

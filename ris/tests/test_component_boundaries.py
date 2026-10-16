@@ -43,7 +43,12 @@ def test_every_original_handler_is_present_once_and_preserves_its_source():
     functions = {node.name for node in composed.body if isinstance(node, ast.FunctionDef)}
     for entry in entries:
         source = _handler_source(entry)
-        assert hashlib.sha256(source.encode()).hexdigest() == entry["original_sha256"], entry["symbol"]
+        digest = hashlib.sha256(source.encode()).hexdigest()
+        if entry.get("current_sha256"):
+            assert entry.get("source_change_reason"), entry["symbol"]
+            assert digest == entry["current_sha256"], entry["symbol"]
+        else:
+            assert digest == entry["original_sha256"], entry["symbol"]
         assert entry["symbol"] in functions
 
 

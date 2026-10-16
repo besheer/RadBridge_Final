@@ -12545,7 +12545,9 @@
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "a95afd45bffaa8a8932e4dc35ade63d896616be170d9a16320bd41ac58dcd697"
+    "original_sha256": "a95afd45bffaa8a8932e4dc35ade63d896616be170d9a16320bd41ac58dcd697",
+    "current_sha256": "26040c3d04eebeaf850e6d0c0751867ac45a73122e6576f492c687968cf02fee",
+    "source_change_reason": "Delegate stock-transfer lifecycle rules to the registered application workflow while retaining route, permission and caller-owned transaction behavior."
   },
   {
     "id": "0794",
@@ -12565,7 +12567,9 @@
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "dd30aadc578b601dda1ba9d3ee1b5ca3143ea54613d67fa837bca9981298a865"
+    "original_sha256": "dd30aadc578b601dda1ba9d3ee1b5ca3143ea54613d67fa837bca9981298a865",
+    "current_sha256": "31c44fc3f4a426fb5f16f760c2f50c9e54c387cb90f499e7869eef1e421fb459",
+    "source_change_reason": "Delegate stock-transfer lifecycle rules to the registered application workflow while retaining route, permission and caller-owned transaction behavior."
   },
   {
     "id": "0795",
@@ -12588,7 +12592,9 @@
       "stock_lots",
       "url_for"
     ],
-    "original_sha256": "b4c695db99c903b6aef1f587b01de093900403b9a32a24c05acb1c9f445b4296"
+    "original_sha256": "b4c695db99c903b6aef1f587b01de093900403b9a32a24c05acb1c9f445b4296",
+    "current_sha256": "7831902784d086f11e1e9b08c86f086a934dc297217017bf6b6cf12aade16004",
+    "source_change_reason": "Delegate stock-transfer lifecycle rules to the registered application workflow while retaining route, permission and caller-owned transaction behavior."
   },
   {
     "id": "0796",
@@ -12610,7 +12616,9 @@
       "require_perm",
       "url_for"
     ],
-    "original_sha256": "51bcb9abe6d6dd74ee2c9fac73dc587e1c2ce4b2c776f1a7fe14211dece8f148"
+    "original_sha256": "51bcb9abe6d6dd74ee2c9fac73dc587e1c2ce4b2c776f1a7fe14211dece8f148",
+    "current_sha256": "fedf1598ed59a3992429452b8d71d71d4e3d1591ee6d333e06f87e0e67e39484",
+    "source_change_reason": "Delegate stock-transfer lifecycle rules to the registered application workflow while retaining route, permission and caller-owned transaction behavior."
   },
   {
     "id": "0797",

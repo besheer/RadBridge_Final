@@ -9,7 +9,7 @@ Date: 2026-10-16. These measures describe the isolated review branch prepared fo
 | Functions extracted from the original RIS entry point | 949 / 949 | 100% assigned executable component ownership; not 100% rewritten or framework-independent |
 | Component/route/helper owner modules | 32 | 12 application components, 12 route modules, eight web helper modules |
 | Migrated legacy modules | 76 / 76 | 100% canonical-owner/alias inventory; mixed workflow dependencies remain |
-| Explicit service dependency boundaries | 29 | Registered service modules with enforced import boundaries; one module can implement several operations/routes |
+| Explicit service dependency boundaries | 30 | Registered service modules with enforced import boundaries; one module can implement several operations/routes |
 | Legacy runtime imports / files | 21 / 8 | Latest static inventory; started at 27 / 11 |
 | Dynamic compatibility namespace calls | 11 | Static inventory; broad runtime bindings still remain |
 | Focused inventory/runtime composition checks | 32 passed | Inventory safety, return service and component ownership/hash contracts |
@@ -19,10 +19,10 @@ Date: 2026-10-16. These measures describe the isolated review branch prepared fo
 | Focused branch/access suites on review branch | 63 passed | Assignment monitor 10, coordinator assignment 30, offer scope 5, readiness/TAT 14, offer-policy permissions 2, communications permissions 2; run separately |
 | Component boundary regression on review branch | 5 passed | Manifest and ownership boundary contracts |
 | Latest complete local SQLite suite | 2,164 passed / 5 skipped / 0 failed | Python 3.12 temporary environment; code head `0d2eb91`; full `tools/run_tests.py` |
-| Focused stock-transfer scope/policy suites | 16 passed | Synthetic request authorization, central action permission, transfer visibility and cross-branch denial |
+| Focused stock-transfer workflow/scope suites | 25 passed | Service state transitions, dispatch preflight/allocation, receipt, central action permission, transfer visibility and cross-branch denial |
 | Latest GitHub Actions run | 0 / 9 jobs verifiable | Run 38877166665 on current head `b76c00c` failed across all nine jobs; job steps are empty and GitHub returned 404 when retrieving logs, including after rerunning failed jobs. Cause remains undetermined. |
 | Direct framework/web/database-client imports inside application services | 0 | Static import inventory; ORM operations through the legacy runtime still remain |
-| Stock-transfer scope query adapter | Added | SQLAlchemy query construction moved out of the web extension; handlers and transaction ownership remain legacy |
+| Stock-transfer ports and lifecycle service | Added | Scope queries moved to an infrastructure adapter; approve/reject/dispatch/receive orchestration now uses an application service; request creation and caller-owned commit/rollback remain at the web edge |
 | Technician and coordinator query adapters | Added | Worklist return-state/filter/search and bulk-assignment search construction now live in infrastructure adapters |
 
 ## What a percentage means
