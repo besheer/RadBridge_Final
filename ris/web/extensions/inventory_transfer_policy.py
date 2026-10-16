@@ -1,12 +1,15 @@
 """Branch and central authority boundaries for stock transfers."""
 
 from flask import abort, current_app, g, has_request_context, request
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, with_loader_criteria
 from domain.inventory.transfer_policy import (
     CENTRAL_ACTIONS,
     can_perform_transfer_action,
     can_request_transfer,
+)
+from infrastructure.adapters.inventory.transfer_scope_repository import (
+    SqlAlchemyStockTransferScopeRepository,
 )
 
 
@@ -17,6 +20,7 @@ TRANSFER_ENDPOINTS = frozenset({
 CENTRAL_ENDPOINTS = frozenset(f"inventory_transfer_{action}" for action in CENTRAL_ACTIONS)
 def register(m):
     from registration_policy import allowed_registration_branches
+    transfer_scope = SqlAlchemyStockTransferScopeRepository(m.Warehouse, m.StockTransfer)
 
     @m.app.context_processor
     def transfer_template_context():
@@ -24,17 +28,11 @@ def register(m):
             return {}
         branch_scope = allowed_registration_branches()
         branch_ids = tuple(branch_scope or ())
-        parent_ids = select(m.Warehouse.parent_id).where(
-            m.Warehouse.warehouse_type == "BRANCH",
-            m.Warehouse.active.is_(True),
-            m.Warehouse.parent_id.is_not(None),
-            m.Warehouse.branch_id.in_(branch_ids) if branch_ids else m.db.false(),
-        )
         source_warehouses = m.Warehouse.query.filter(
             m.Warehouse.active.is_(True),
             m.Warehouse.warehouse_type == "MAIN",
             m.Warehouse.branch_id.is_(None),
-            m.Warehouse.id.in_(parent_ids),
+            m.Warehouse.id.in_(transfer_scope.linked_central_ids(branch_ids)),
         ).order_by(m.Warehouse.name).all()
         target_warehouses = m.Warehouse.query.filter(
             m.Warehouse.active.is_(True),
@@ -46,44 +44,6 @@ def register(m):
             "target_warehouses": target_warehouses,
             "is_central_transfer_operator": getattr(g, "rb_inventory_transfer_central", False),
         }
-
-    def linked_central_ids(branch_ids=None):
-        children = select(m.Warehouse.parent_id).where(
-            m.Warehouse.warehouse_type == "BRANCH",
-            m.Warehouse.branch_id.is_not(None),
-            m.Warehouse.parent_id.is_not(None),
-            m.Warehouse.active.is_(True),
-        )
-        if branch_ids is not None:
-            children = children.where(m.Warehouse.branch_id.in_(branch_ids))
-        return select(m.Warehouse.id).where(
-            m.Warehouse.id.in_(children),
-            m.Warehouse.warehouse_type == "MAIN",
-            m.Warehouse.branch_id.is_(None),
-            m.Warehouse.active.is_(True),
-        )
-
-    def target_ids(branch_ids=None):
-        query = select(m.Warehouse.id).where(
-            m.Warehouse.warehouse_type == "BRANCH",
-            m.Warehouse.active.is_(True),
-            m.Warehouse.branch_id.is_not(None),
-        )
-        if branch_ids is not None:
-            query = query.where(m.Warehouse.branch_id.in_(branch_ids))
-        return query
-
-    def valid_transfer_ids(branch_ids=None):
-        target_parent_id = select(m.Warehouse.parent_id).where(
-            m.Warehouse.id == m.StockTransfer.target_warehouse_id,
-            m.Warehouse.warehouse_type == "BRANCH",
-            m.Warehouse.active.is_(True),
-        ).scalar_subquery()
-        return select(m.StockTransfer.id).where(
-            m.StockTransfer.source_warehouse_id.in_(linked_central_ids(branch_ids)),
-            m.StockTransfer.target_warehouse_id.in_(target_ids(branch_ids)),
-            m.StockTransfer.source_warehouse_id == target_parent_id,
-        )
 
     def guard():
         endpoint = request.endpoint or ""
@@ -104,7 +64,7 @@ def register(m):
             target_id = request.form.get("target_warehouse_id", type=int)
             permitted_source = m.Warehouse.query.filter(
                 m.Warehouse.id == source_id,
-                m.Warehouse.id.in_(linked_central_ids(allowed)),
+                m.Warehouse.id.in_(transfer_scope.linked_central_ids(allowed)),
             ).first() if source_id else None
             permitted_target = m.Warehouse.query.filter(
                 m.Warehouse.id == target_id,
@@ -137,7 +97,7 @@ def register(m):
 
         transfer_id = (request.view_args or {}).get("transfer_id")
         if transfer_id is not None:
-            ids = valid_transfer_ids(None if central else allowed)
+            ids = transfer_scope.valid_transfer_ids(None if central else allowed)
             row = m.StockTransfer.query.filter(
                 m.StockTransfer.id == transfer_id,
                 m.StockTransfer.id.in_(ids),
@@ -165,22 +125,22 @@ def register(m):
             return
         branch_ids = getattr(g, "rb_inventory_transfer_branch_ids", ())
         central = bool(getattr(g, "rb_inventory_transfer_central", False))
-        visible = valid_transfer_ids(None if central else branch_ids)
+        visible = transfer_scope.valid_transfer_ids(None if central else branch_ids)
         options = [
             with_loader_criteria(m.StockTransfer, m.StockTransfer.id.in_(visible), include_aliases=True),
             with_loader_criteria(m.StockTransferLine, m.StockTransferLine.transfer_id.in_(visible), include_aliases=True),
         ]
         if central:
             warehouses = select(m.Warehouse.id).where(
-                m.Warehouse.id.in_(linked_central_ids()),
+                m.Warehouse.id.in_(transfer_scope.linked_central_ids()),
                 m.Warehouse.warehouse_type == "MAIN",
                 m.Warehouse.branch_id.is_(None),
-            ).union(target_ids())
+            ).union(transfer_scope.target_ids())
         else:
             warehouses = select(m.Warehouse.id).where(
                 m.Warehouse.branch_id.in_(branch_ids),
                 m.Warehouse.warehouse_type == "BRANCH",
-            ).union(linked_central_ids(branch_ids))
+            ).union(transfer_scope.linked_central_ids(branch_ids))
         options.append(with_loader_criteria(m.Warehouse, m.Warehouse.id.in_(warehouses), include_aliases=True))
         state.statement = state.statement.options(*options)
 
