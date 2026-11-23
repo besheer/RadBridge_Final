@@ -16,3 +16,4 @@ ris/ris-db/
 ris/attachments/
 ris/report-files/
 *.gz
+ris/downloads/airscan.zip

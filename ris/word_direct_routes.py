@@ -557,6 +557,20 @@ def register_word_direct_routes(m):
             mimetype='application/zip'
         )
 
+    @bp.route('/downloads/<path:filename>', methods=['GET'])
+    def download_generic_file(filename):
+        downloads_dir = os.path.join(os.path.dirname(__file__), 'downloads')
+        clean_name = os.path.basename(filename)
+        target_path = os.path.join(downloads_dir, clean_name)
+        if not os.path.isfile(target_path):
+            return jsonify({'ok': False, 'error': 'FILE_NOT_FOUND', 'message': 'الملف المطلوب غير موجود'}), 404
+        return send_file(
+            target_path,
+            as_attachment=True,
+            download_name=clean_name,
+            mimetype='application/zip' if clean_name.endswith('.zip') else 'application/octet-stream'
+        )
+
     m.app.register_blueprint(bp)
     return bp
 
