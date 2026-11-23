@@ -1,0 +1,147 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: docker.io/library/postgres:17-alpine
+    container_name: radbridge-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_secure_pass}
+      POSTGRES_DB: postgres
+      MIRTH_DB_PASSWORD: ${MIRTH_DB_PASSWORD:-mirth_secure_pass}
+      ORTHANC_DB_PASSWORD: ${ORTHANC_DB_PASSWORD:-orthanc_secure_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+    networks:
+      - edge-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  orthanc:
+    image: docker.io/orthancteam/orthanc:26.1.0
+    container_name: radbridge-orthanc
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4242:4242"
+      - "104:4242"
+      - "11112:4242"
+      - "8042:8042"
+    environment:
+      ORTHANC__DICOM_AET: "${ORTHANC_AET:-RADBRIDGE}"
+      ORTHANC__AUTHENTICATION_ENABLED: "true"
+      ORTHANC__REGISTERED_USERS: '{"admin": "${ORTHANC_ADMIN_PASSWORD:-orthanc_secure_pass}"}'
+      ORTHANC__POSTGRESQL__ENABLE_INDEX: "true"
+      ORTHANC__POSTGRESQL__ENABLE_STORAGE: "false"
+      ORTHANC__POSTGRESQL__HOST: "postgres"
+      ORTHANC__POSTGRESQL__PORT: "5432"
+      ORTHANC__POSTGRESQL__DATABASE: "orthancdb"
+      ORTHANC__POSTGRESQL__USERNAME: "orthancuser"
+      ORTHANC__POSTGRESQL__PASSWORD: "${ORTHANC_DB_PASSWORD:-orthanc_secure_pass}"
+      ORTHANC__POSTGRESQL__LOCK: "false"
+      WORKLISTS_PLUGIN_ENABLED: "true"
+      ORTHANC__WORKLISTS__ENABLE: "true"
+      ORTHANC__WORKLISTS__SAVE_IN_ORTHANC_DATABASE: "true"
+      DICOM_WEB_PLUGIN_ENABLED: "true"
+      ORTHANC__DICOM_CHECK_CALLED_AET: "false"
+      ORTHANC__DICOM_ALWAYS_ALLOW_FIND: "true"
+      ORTHANC__DICOM_ALWAYS_ALLOW_STORE: "true"
+      ORTHANC__DICOM_ALWAYS_ALLOW_WORKLIST: "true"
+      ORTHANC__DICOM_MODALITIES: '{"MRI03T": ["MRI03T", "172.17.2.2", 104], "XRAY01": ["XRAY01", "172.17.2.98", 104]}' 
+      ORTHANC__DICOM_ALWAYS_ALLOW_MOVE: "true"
+      ORTHANC__STORAGE_COMPRESSION: "true"
+      ORTHANC__OVERWRITE_INSTANCES: "true"
+      ORTHANC__INGEST_TRANSCODING: "1.2.840.10008.1.2.4.90"
+      ORTHANC__INGEST_TRANSCODING_OF_UNCOMPRESSED: "true"
+      ORTHANC__TRANSCODE_DICOM_PROTOCOL: "true"
+      ORTHANC__DICOM_THREADS_COUNT: "4"
+    volumes:
+      - orthanc_data:/var/lib/orthanc
+    networks:
+      edge-network: {}
+      ris-network:
+        aliases:
+          - ris-pacs
+
+  mirth:
+    image: docker.io/nextgenhealthcare/connect:4.5.0
+    container_name: radbridge-mirth
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8443:8443"
+    environment:
+      DATABASE: "postgres"
+      DATABASE_URL: "jdbc:postgresql://postgres:5432/mirthdb"
+      DATABASE_USERNAME: "mirthuser"
+      DATABASE_PASSWORD: "${MIRTH_DB_PASSWORD:-mirth_secure_pass}"
+      DATABASE_MAX_CONNECTIONS: "20"
+      DATABASE_MAX_RETRY: "5"
+      DATABASE_RETRY_WAIT: "10000"
+      VMOPTIONS: "-Xmx512m"
+    volumes:
+      - mirth_data:/opt/connect/appdata
+    networks:
+      - edge-network
+
+  pgadmin:
+    image: docker.io/dpage/pgadmin4:8
+    container_name: radbridge-pgadmin
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-pgadmin_secure_pass}
+      PGADMIN_CONFIG_PROXY_X_FOR_COUNT: "1"
+      PGADMIN_CONFIG_PROXY_X_PROTO_COUNT: "1"
+      PGADMIN_CONFIG_ENHANCED_SQL_EDITOR: "True"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - edge-network
+
+  nginx:
+    image: docker.io/library/nginx:1.27-alpine
+    container_name: radbridge-nginx
+    restart: always
+    depends_on:
+      - orthanc
+      - mirth
+      - pgadmin
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:80"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - /var/www/certbot:/var/www/certbot:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - edge-network
+      - ris-network
+
+volumes:
+  postgres_data:
+  orthanc_data:
+  mirth_data:
+  pgadmin_data:
+
+networks:
+  edge-network:
+    name: systemd-edge
+  ris-network:
+    external: true
