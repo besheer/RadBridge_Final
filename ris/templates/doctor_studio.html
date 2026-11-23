@@ -1,0 +1,1427 @@
+{% extends 'base.html' %}
+{% block page_title %}{{'استوديو الطبيب (Doctor Studio)' if ui_lang=='ar' else 'Doctor Studio (Pro View)'}}{% endblock %}
+
+{% block content %}
+<div id="doctorStudioApp" class="studio-root" data-api="{{url_for('doctor_workspace_data')}}" data-lang="{{ui_lang}}" data-dir="{{ui_dir}}">
+
+  <!-- Studio Top Controls & Quick Bar -->
+  <div class="studio-topbar">
+    <div class="studio-topbar-start">
+      <!-- Sidebar Auto-Hide / Toggle Button -->
+      <button type="button" id="stSidebarToggle" class="studio-btn-tool" title="{{'إخفاء / إظهار القائمة الجانبية (Auto-Hide Sidebar)' if ui_lang=='ar' else 'Toggle / Auto-Hide Sidebar'}}">
+        <span class="icon">☰</span>
+        <span class="label" id="stSidebarToggleLabel">{{'القائمة' if ui_lang=='ar' else 'Sidebar'}}</span>
+      </button>
+
+      <!-- View Switcher -->
+      <div class="studio-view-switch">
+        <span class="active-badge">✨ {{'استوديو الطبيب | Doctor Studio' if ui_lang=='ar' else 'Doctor Studio | Pro View'}}</span>
+        <a href="{{url_for('doctor_workspace')}}" class="classic-link" title="{{'العودة للواجهة التقليدية' if ui_lang=='ar' else 'Switch to Classic View'}}">
+          ↩ {{'الوضع الكلاسيكي' if ui_lang=='ar' else 'Classic View'}}
+        </a>
+      </div>
+
+      <!-- Quick Metrics Pills -->
+      <div class="studio-pills">
+        <span class="pill pill-blue"><span class="dot pulse"></span> <span class="t-assigned">{{'الحالات المعينة:' if ui_lang=='ar' else 'Assigned:'}}</span> <b id="stStatAssigned">0</b></span>
+        <span class="pill pill-amber" id="stOffersPill" style="display:none;"><span class="dot"></span> <span class="t-offers">{{'عروض جديدة:' if ui_lang=='ar' else 'New Offers:'}}</span> <b id="stStatOffers">0</b></span>
+        <span class="pill pill-green"><span class="dot"></span> <span class="t-reported">{{'تم كتابتها:' if ui_lang=='ar' else 'Reported:'}}</span> <b id="stStatReported">0</b></span>
+      </div>
+    </div>
+
+    <div class="studio-topbar-end">
+      <!-- In-Page Language & Direction Toggle -->
+      <button type="button" id="stLangToggle" class="studio-btn-tool" title="{{'تبديل اللغة والاتجاه' if ui_lang=='ar' else 'Toggle Language & Direction'}}">
+        <span class="icon">🌐</span>
+        <b id="stLangLabel">{{'English' if ui_lang=='ar' else 'العربية'}}</b>
+      </button>
+
+      <!-- Refresh Button -->
+      <button type="button" id="stRefreshBtn" class="studio-btn-tool" title="{{'تحديث الحالات' if ui_lang=='ar' else 'Refresh Cases'}}">
+        <span class="icon">🔄</span>
+        <span class="label">{{'تحديث' if ui_lang=='ar' else 'Refresh'}}</span>
+      </button>
+
+      <!-- My Report Corrections Shortcut -->
+      <a href="{{url_for('doctor_report_corrections')}}" class="studio-btn-tool" title="{{'تصحيحات التقارير' if ui_lang=='ar' else 'Report Corrections'}}">
+        <span class="icon">📝</span>
+        <span class="label">{{'تصحيحاتي' if ui_lang=='ar' else 'Corrections'}}</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Smart Offers Notification Banner (Only shows when offers exist) -->
+  <div id="stOffersBanner" class="studio-offers-banner" style="display:none;">
+    <div class="banner-content">
+      <span class="banner-icon">🔔</span>
+      <div>
+        <strong id="stOffersText">{{'توجد عروض حالات جديدة بحاجة لقبولك أو رفضك.' if ui_lang=='ar' else 'New case assignment offers waiting for your review.'}}</strong>
+        <span id="stOffersSubtext" class="subtext"></span>
+      </div>
+    </div>
+    <div id="stOffersList" class="banner-actions"></div>
+  </div>
+
+  <!-- Unified Horizontal Filter Bar -->
+  <div class="studio-filterbar">
+    <!-- Live Search -->
+    <div class="filter-group search-group">
+      <span class="search-icon">🔍</span>
+      <input type="search" id="stSearchInput" autocomplete="off"
+             placeholder="{{'بحث سريع: اسم المريض، الرقم الطبي، كود الفحص، الفحص...' if ui_lang=='ar' else 'Search: Patient, ID, Accession, Procedure...'}}">
+      <button type="button" id="stSearchClear" class="clear-btn" style="display:none;">×</button>
+    </div>
+
+    <!-- Modality Filter Chips -->
+    <div class="filter-group modality-chips" id="stModalityChips">
+      <button type="button" class="chip active" data-mod="ALL">{{'الكل' if ui_lang=='ar' else 'ALL'}}</button>
+      <button type="button" class="chip" data-mod="MR">MR</button>
+      <button type="button" class="chip" data-mod="CT">CT</button>
+      <button type="button" class="chip" data-mod="CR">CR / XR</button>
+      <button type="button" class="chip" data-mod="US">US</button>
+    </div>
+
+    <!-- Date Range Shortcuts -->
+    <div class="filter-group date-chips" id="stDateChips">
+      <button type="button" class="chip active" data-date="ALL">{{'كل التواريخ' if ui_lang=='ar' else 'All Dates'}}</button>
+      <button type="button" class="chip" data-date="TODAY">{{'اليوم' if ui_lang=='ar' else 'Today'}}</button>
+      <button type="button" class="chip" data-date="YESTERDAY">{{'أمس' if ui_lang=='ar' else 'Yesterday'}}</button>
+      <button type="button" class="chip" data-date="7DAYS">{{'7 أيام' if ui_lang=='ar' else '7 Days'}}</button>
+    </div>
+
+    <!-- Status Dropdown -->
+    <div class="filter-group select-group">
+      <select id="stStatusSelect">
+        <option value="ALL">{{'جميع حالات التقارير' if ui_lang=='ar' else 'All Report Statuses'}}</option>
+        <option value="PENDING">{{'بانتظار التقرير / مسودة' if ui_lang=='ar' else 'Pending / Draft'}}</option>
+        <option value="STAT">{{'حالات عاجلة (STAT / Urgent)' if ui_lang=='ar' else 'STAT / Urgent Only'}}</option>
+        <option value="FINAL">{{'تقارير معتمدة (Final)' if ui_lang=='ar' else 'Finalized Reports'}}</option>
+      </select>
+    </div>
+
+    <!-- Quick Help & Options -->
+    <div class="filter-group actions-group">
+      <span class="report-tools-hint" title="{{'خيارات كتابة التقرير: OnlyOffice المتكامل أو Microsoft Word المحلي' if ui_lang=='ar' else 'Reporting tools: Integrated OnlyOffice or Local Microsoft Word'}}">
+        ⚡ {{'OnlyOffice + Local Word مفعل' if ui_lang=='ar' else 'OnlyOffice + Local Word Enabled'}}
+      </span>
+    </div>
+  </div>
+
+  <!-- Cases Worklist Data Grid (Elevated to TOP) -->
+  <div class="studio-table-wrap">
+    <table class="studio-table" id="stCasesTable">
+      <thead>
+        <tr>
+          <th class="col-id">#</th>
+          <th class="col-priority">{{'الأولوية' if ui_lang=='ar' else 'Priority'}}</th>
+          <th class="col-patient">{{'المريض' if ui_lang=='ar' else 'Patient'}}</th>
+          <th class="col-exam">{{'الفحص المطلوب' if ui_lang=='ar' else 'Procedure'}}</th>
+          <th class="col-modality">{{'الجهاز' if ui_lang=='ar' else 'Modality'}}</th>
+          <th class="col-date">{{'الوقت / الوصول' if ui_lang=='ar' else 'Date / Time'}}</th>
+          <th class="col-pacs">{{'صور PACS' if ui_lang=='ar' else 'PACS Images'}}</th>
+          <th class="col-status">{{'حالة التقرير' if ui_lang=='ar' else 'Report Status'}}</th>
+          <th class="col-actions" style="text-align:center; min-width:210px;">{{'أدوات القراءة والتقرير' if ui_lang=='ar' else 'Reading & Reporting Tools'}}</th>
+        </tr>
+      </thead>
+      <tbody id="stCasesTbody">
+        <tr>
+          <td colspan="9" class="loading-cell">
+            <div class="loading-spinner"></div>
+            <span>{{'جاري تحميل الحالات الطبية من السيرفر...' if ui_lang=='ar' else 'Loading clinical cases from server...'}}</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Interactive Study Preview Drawer -->
+  <div id="stPreviewDrawer" class="studio-drawer" style="display:none;">
+    <div class="drawer-header">
+      <div class="drawer-title">
+        <span class="drawer-icon">🩻</span>
+        <span>
+          <strong id="drwPatientName"></strong>
+          <span class="sep">|</span>
+          <span id="drwExamDesc" class="exam-desc"></span>
+          <span class="sep">|</span>
+          <code id="drwAccession" class="accession-tag"></code>
+        </span>
+      </div>
+      <div class="drawer-actions">
+        <!-- View Images in OHIF -->
+        <a id="drwBtnViewer" href="#" target="_blank" class="btn-action btn-viewer" title="{{'عرض الصور في عارض الأشعة' if ui_lang=='ar' else 'Open in OHIF Viewer'}}">
+          👁️ {{'عارض الصور (OHIF)' if ui_lang=='ar' else 'OHIF Viewer'}}
+        </a>
+        <!-- OnlyOffice Integration -->
+        <a id="drwBtnOnlyOffice" href="#" target="_blank" class="btn-action btn-onlyoffice" title="{{'كتابة التقرير في OnlyOffice' if ui_lang=='ar' else 'Open OnlyOffice Editor'}}">
+          🖥️ {{'محرر OnlyOffice' if ui_lang=='ar' else 'OnlyOffice Editor'}}
+        </a>
+        <!-- Local Word Integration -->
+        <button type="button" id="drwBtnWord" class="btn-action btn-word" onclick="if(window.currentDrawerCase) window.launchDirectWord(window.currentDrawerCase.id); return false;" title="{{'تشغيل مباشر في Microsoft Word مع الحفظ والاعتماد التلقائي' if ui_lang=='ar' else 'Direct launch in Microsoft Word with auto-sync'}}">
+          ⚡ {{'Word مباشر (محلي)' if ui_lang=='ar' else 'Direct MS Word'}}
+        </button>
+        <!-- Web Editor -->
+        <a id="drwBtnWebEditor" href="#" target="_blank" class="btn-action btn-web" title="{{'محرر الويب المباشر' if ui_lang=='ar' else 'Web Report Editor'}}">
+          📝 {{'محرر الويب' if ui_lang=='ar' else 'Web Editor'}}
+        </a>
+        <button type="button" id="drwBtnClose" class="btn-close" title="{{'إغلاق' if ui_lang=='ar' else 'Close'}}">✕</button>
+      </div>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Series Thumbnails Strip -->
+      <div class="drawer-section series-section">
+        <div class="section-title">
+          <span>{{'سلاسل الفحص (Series Thumbnails)' if ui_lang=='ar' else 'Series Thumbnails'}}</span>
+          <small id="drwSeriesCount"></small>
+        </div>
+        <div class="series-thumbnails" id="drwSeriesStrip">
+          <!-- Dynamic series cards -->
+        </div>
+      </div>
+
+      <!-- Clinical Information & Attached Docs -->
+      <div class="drawer-section clinical-section">
+        <div class="section-title">
+          <span>📋 {{'البيانات السريرية والمرفقات' if ui_lang=='ar' else 'Clinical Data & Attachments'}}</span>
+        </div>
+        <div class="clinical-content">
+          <div class="clinical-row"><b class="lbl">{{'سبب الفحص / الشكوى:' if ui_lang=='ar' else 'Indication:'}}</b> <span id="drwIndication">--</span></div>
+          <div class="clinical-row"><b class="lbl">{{'التاريخ المرضي:' if ui_lang=='ar' else 'History:'}}</b> <span id="drwHistory">--</span></div>
+          <div class="clinical-row"><b class="lbl">{{'الطبيب المحول:' if ui_lang=='ar' else 'Referring Doctor:'}}</b> <span id="drwReferring">--</span></div>
+          <div class="clinical-row"><b class="lbl">{{'الحساسية والملاحظات:' if ui_lang=='ar' else 'Allergies:'}}</b> <span id="drwAllergies">--</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Status Bar -->
+  <div class="studio-statusbar">
+    <div class="sb-start">
+      <span>{{'الحالات المعروضة:' if ui_lang=='ar' else 'Showing:'}} <b id="stFilteredCount">0</b> / <span id="stTotalCount">0</span></span>
+      <span class="sep">|</span>
+      <span><span class="health-dot online"></span> PACS: RADBRIDGE (Port 104 / 4242)</span>
+    </div>
+    <div class="sb-end">
+      <span>{{'استوديو الطبيب - نمط الكثافة العالية والشاشة الكاملة' if ui_lang=='ar' else 'Doctor Studio - High-Density Pro Mode'}}</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Interactive Reporting Choice Modal (OnlyOffice vs Local Word) -->
+<div id="reportingChoiceModal" class="studio-modal-backdrop" style="display:none;" onclick="handleModalBackdropClick(event)">
+  <div class="studio-modal-card" onclick="event.stopPropagation();">
+    <div class="modal-card-head">
+      <div class="modal-card-title">
+        <span class="title-icon">✍️</span>
+        <div>
+          <h3 id="modalHeadTitle">{{'اختر بيئة كتابة التقرير الطبي' if ui_lang=='ar' else 'Select Clinical Reporting Environment'}}</h3>
+          <p id="modalHeadSubtitle" class="modal-patient-info"></p>
+        </div>
+      </div>
+      <button type="button" class="modal-close-icon" onclick="closeReportingModal()">✕</button>
+    </div>
+
+    <div class="modal-card-body">
+      <p class="modal-instructions">{{'يرجى تحديد الأداة المفضلة لك لتحرير التقرير الطبي لهذه الحالة:' if ui_lang=='ar' else 'Please select your preferred reporting tool for this case:'}}</p>
+
+      <div class="reporting-options-list">
+        <!-- Option 1: Integrated OnlyOffice in OHIF -->
+        <a id="modalOptOnlyOffice" href="#" target="_blank" class="reporting-opt-card opt-onlyoffice" onclick="closeReportingModal();">
+          <div class="opt-icon">🖥️</div>
+          <div class="opt-content">
+            <div class="opt-title-row">
+              <b>{{'محرر OnlyOffice المتكامل مع الأشعة (OnlyOffice Online)' if ui_lang=='ar' else 'Integrated OnlyOffice Editor (Online)'}}</b>
+              <span class="opt-tag tag-primary">{{'الأسرع - داخل المتصفح' if ui_lang=='ar' else 'Fastest - Web'}}</span>
+            </div>
+            <p>{{'فتح عارض الصور OHIF مع محرر OnlyOffice جنباً إلى جنب (50/50) في المتصفح مباشرة دون الحاجة لأي برامج إضافية.' if ui_lang=='ar' else 'Opens the OHIF Viewer with the integrated OnlyOffice editor side-by-side in your browser.'}}</p>
+          </div>
+          <div class="opt-action-arrow">➔</div>
+        </a>
+
+        <!-- Option 2: Local Microsoft Word Integration -->
+        <a id="modalOptLocalWord" href="javascript:void(0);" class="reporting-opt-card opt-word" onclick="closeReportingModal(); window.launchDirectWord(window.currentReportingOrderId);">
+          <div class="opt-icon">⚡</div>
+          <div class="opt-content">
+            <div class="opt-title-row">
+              <b>{{'تشغيل مايكروسوفت وورد المباشر (Direct MS Word)' if ui_lang=='ar' else 'Direct Microsoft Word Integration (.docx)'}}</b>
+              <span class="opt-tag tag-word" style="background:#2563eb;color:#fff;">{{'تشغيل مباشر وحفظ ذكي' if ui_lang=='ar' else 'Direct Launch'}}</span>
+            </div>
+            <p>{{'يفتح التقرير فوراً في برنامج Microsoft Word المثبت على جهازك مع شريط أدوات الطبيب لحفظ المسودات والاعتماد دون اختلاط الملفات.' if ui_lang=='ar' else 'Directly opens in local Microsoft Word with clinical HUD for real-time draft saving, verification, and finalization.'}}</p>
+          </div>
+          <div class="opt-action-arrow">➔</div>
+        </a>
+
+        <!-- Option 3: Web Report Editor -->
+        <a id="modalOptWebEditor" href="#" target="_blank" class="reporting-opt-card opt-web" onclick="closeReportingModal();">
+          <div class="opt-icon">📝</div>
+          <div class="opt-content">
+            <div class="opt-title-row">
+              <b>{{'محرر الويب المباشر في النظام (Web Report Editor)' if ui_lang=='ar' else 'Direct Web Report Editor (RIS)'}}</b>
+              <span class="opt-tag tag-web">{{'محرر النظام المباشر' if ui_lang=='ar' else 'RIS Native'}}</span>
+            </div>
+            <p>{{'فتح شاشة كتابة ومراجعة واعتماد التقرير المباشرة في نظام الـ RIS.' if ui_lang=='ar' else 'Opens the direct RIS report editor for typing, verifying, or finalizing.'}}</p>
+          </div>
+          <div class="opt-action-arrow">➔</div>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Embedded CSS for Clean High-Density Dark Theme & Elimination of White Bar -->
+<style>
+/* 1. HIDE THE WHITE RIBBON ACTIONS BAR & DUPLICATE WHITE PAGE HEADING */
+.quick-ribbon,
+.page-heading {
+  display: none !important;
+}
+
+/* Adjust padding of main shell so Studio starts flush at top */
+.main {
+  padding: 8px 16px 12px !important;
+}
+
+/* Make top header blend seamlessly with dark studio theme */
+.app-header {
+  background: #090e17 !important;
+  border-bottom: 1px solid #1e293b !important;
+}
+.app-header .breadcrumb,
+.app-header .breadcrumb a {
+  color: #94a3b8 !important;
+}
+.app-header .system-pill,
+.app-header .header-language-switch,
+.app-header .user-trigger {
+  background: #111d33 !important;
+  border-color: #243556 !important;
+  color: #f1f5f9 !important;
+}
+
+/* CSS Variables for Studio Dark Theme */
+:root {
+  --md-bg: #090e17;
+  --md-panel: #0f172a;
+  --md-card: #142038;
+  --md-border: #1e293b;
+  --md-line: #26354f;
+  --md-text: #f1f5f9;
+  --md-muted: #94a3b8;
+  --md-blue: #2563eb;
+  --md-cyan: #06b6d4;
+  --md-emerald: #10b981;
+  --md-amber: #f59e0b;
+  --md-rose: #f43f5e;
+  --md-purple: #8b5cf6;
+}
+
+/* Sidebar Collapsed & Hidden Global Support */
+body.sidebar-mode-hidden .sidebar {
+  display: none !important;
+}
+body.sidebar-mode-hidden .main {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+  padding: 8px 14px !important;
+}
+body.sidebar-mode-compact {
+  --sidebar-w: 64px !important;
+}
+body.sidebar-mode-compact .brand-copy,
+body.sidebar-mode-compact .workspace-card div:not(.workspace-dot),
+body.sidebar-mode-compact .nav-link span,
+body.sidebar-mode-compact .nav-caption,
+body.sidebar-mode-compact .sidebar-bottom small,
+body.sidebar-mode-compact .sidebar-logout span,
+body.sidebar-mode-compact .sidebar-menu-search,
+body.sidebar-mode-compact .quick-action-btn span:last-child {
+  display: none !important;
+}
+body.sidebar-mode-compact .nav-link,
+body.sidebar-mode-compact .quick-action-btn {
+  justify-content: center !important;
+}
+
+/* Studio Root Shell */
+.studio-root {
+  background: var(--md-bg);
+  color: var(--md-text);
+  border-radius: 12px;
+  border: 1px solid var(--md-border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 100px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+}
+
+/* Topbar */
+.studio-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--md-panel);
+  border-bottom: 1px solid var(--md-border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.studio-topbar-start, .studio-topbar-end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.studio-btn-tool {
+  background: #182640;
+  color: var(--md-text);
+  border: 1px solid var(--md-line);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+.studio-btn-tool:hover {
+  background: #223559;
+  border-color: var(--md-cyan);
+  color: #fff;
+}
+.studio-view-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #090e17;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--md-border);
+  font-size: 11px;
+}
+.active-badge {
+  color: var(--md-cyan);
+  font-weight: 700;
+}
+.classic-link {
+  color: var(--md-muted);
+  text-decoration: none;
+}
+.classic-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+.studio-pills {
+  display: flex;
+  gap: 6px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  border: 1px solid transparent;
+}
+.pill-blue { background: rgba(37,99,235,0.15); border-color: rgba(37,99,235,0.4); color: #93c5fd; }
+.pill-amber { background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+.pill-green { background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.4); color: #6ee7b7; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.dot.pulse { animation: pulseAnim 1.8s infinite; }
+@keyframes pulseAnim { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
+
+/* Offers Banner */
+.studio-offers-banner {
+  background: linear-gradient(90deg, rgba(245,158,11,0.15), rgba(37,99,235,0.15));
+  border-bottom: 1px solid rgba(245,158,11,0.35);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.banner-content { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.banner-icon { font-size: 18px; }
+
+/* Unified Filter Bar */
+.studio-filterbar {
+  background: #111b2e;
+  border-bottom: 1px solid var(--md-line);
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.search-group {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  max-width: 360px;
+}
+.search-group input {
+  width: 100%;
+  background: #090e17;
+  border: 1px solid var(--md-line);
+  border-radius: 8px;
+  padding: 7px 32px;
+  font-size: 12px;
+  color: #fff;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.search-group input:focus {
+  border-color: var(--md-cyan);
+}
+.search-icon {
+  position: absolute;
+  inset-inline-start: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: var(--md-muted);
+  pointer-events: none;
+}
+.clear-btn {
+  position: absolute;
+  inset-inline-end: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--md-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+.modality-chips, .date-chips {
+  background: #090e17;
+  padding: 2px;
+  border-radius: 8px;
+  border: 1px solid var(--md-border);
+}
+.chip {
+  background: transparent;
+  border: none;
+  color: var(--md-muted);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.chip:hover { color: #fff; }
+.chip.active {
+  background: var(--md-blue);
+  color: #fff;
+}
+.date-chips .chip.active {
+  background: #0e7490;
+}
+.select-group select {
+  background: #090e17;
+  border: 1px solid var(--md-line);
+  color: var(--md-text);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  outline: none;
+}
+.report-tools-hint {
+  font-size: 11px;
+  color: #38bdf8;
+  background: rgba(56,189,248,0.12);
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(56,189,248,0.3);
+  font-weight: 600;
+}
+
+/* Table Area */
+.studio-table-wrap {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background: #090e17;
+}
+.studio-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: start;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.studio-table thead th {
+  position: sticky;
+  top: 0;
+  background: #0d1526;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--md-line);
+  z-index: 5;
+  letter-spacing: 0.03em;
+}
+.studio-table tbody tr {
+  border-bottom: 1px solid #142038;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+.studio-table tbody tr:hover {
+  background: #121e36;
+}
+.studio-table tbody tr.selected-row {
+  background: #172747 !important;
+  border-inline-start: 4px solid var(--md-cyan) !important;
+}
+.studio-table td {
+  padding: 8px 12px;
+  vertical-align: middle;
+}
+.col-id { width: 50px; text-align: center; color: var(--md-muted); font-family: monospace; }
+.patient-cell .name-row { font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px; }
+.patient-cell .worklist-name { font-size: 11px; color: var(--md-cyan); font-family: monospace; }
+.patient-cell .id-row { font-size: 10px; color: var(--md-muted); font-family: monospace; }
+.exam-cell .proc-title { font-weight: 600; color: #e2e8f0; }
+.exam-cell .indication { font-size: 11px; color: var(--md-muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+
+/* Status & Badges */
+.badge-priority {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+}
+.priority-stat { background: rgba(244,63,94,0.2); border: 1px solid rgba(244,63,94,0.5); color: #fda4af; }
+.priority-urgent { background: rgba(245,158,11,0.2); border: 1px solid rgba(245,158,11,0.5); color: #fde68a; }
+.priority-routine { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
+
+.badge-modality {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.mod-MR { background: rgba(139,92,246,0.2); border: 1px solid rgba(139,92,246,0.5); color: #ddd6fe; }
+.mod-CT { background: rgba(14,165,233,0.2); border: 1px solid rgba(14,165,233,0.5); color: #bae6fd; }
+.mod-CR, .mod-XR { background: rgba(16,185,129,0.2); border: 1px solid rgba(16,185,129,0.5); color: #a7f3d0; }
+.mod-US { background: rgba(236,72,153,0.2); border: 1px solid rgba(236,72,153,0.5); color: #fbcfe8; }
+
+.pacs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #0f2338;
+  border: 1px solid #1c3d61;
+  color: #7dd3fc;
+  padding: 3px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+.report-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.rep-ready { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #6ee7b7; }
+.rep-draft { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4); color: #fcd34d; }
+.rep-final { background: rgba(59,130,246,0.2); border: 1px solid rgba(59,130,246,0.5); color: #bfdbfe; }
+
+/* Table Action Buttons */
+.table-actions {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+}
+.btn-tb {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.15s;
+}
+.btn-tb:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-tb-viewer { background: var(--md-blue); color: #fff; }
+.btn-tb-report { background: var(--md-emerald); color: #fff; }
+.btn-tb-word { background: #1e3a8a; border: 1px solid #3b82f6; color: #93c5fd; }
+.btn-tb-word:hover { background: #1d4ed8; color: #fff; }
+
+/* Drawer */
+.studio-drawer {
+  background: #0b1322;
+  border-top: 2px solid var(--md-cyan);
+  display: flex;
+  flex-direction: column;
+  height: 250px;
+  shrink: 0;
+  box-shadow: 0 -10px 30px rgba(0,0,0,0.6);
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.drawer-header {
+  height: 42px;
+  background: #111d33;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--md-line);
+}
+.drawer-title { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.drawer-title strong { color: #fff; font-size: 13px; }
+.exam-desc { color: var(--md-cyan); font-weight: 600; }
+.accession-tag { background: #090e17; padding: 2px 6px; border-radius: 4px; color: var(--md-muted); font-size: 11px; }
+.drawer-actions { display: flex; align-items: center; gap: 6px; }
+.btn-action {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  cursor: pointer;
+}
+.btn-viewer { background: var(--md-blue); color: #fff; }
+.btn-onlyoffice { background: var(--md-emerald); color: #fff; }
+.btn-word { background: #1e3a8a; border: 1px solid #3b82f6; color: #93c5fd; }
+.btn-web { background: #334155; color: #f8fafc; }
+.btn-action:hover { opacity: 0.9; }
+.btn-close {
+  background: transparent;
+  border: none;
+  color: var(--md-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.btn-close:hover { color: #fff; }
+
+.drawer-body {
+  flex: 1;
+  display: flex;
+  padding: 10px 14px;
+  gap: 16px;
+  overflow: hidden;
+}
+.drawer-section {
+  display: flex;
+  flex-direction: column;
+}
+.series-section { flex: 1.3; }
+.clinical-section { flex: 1; background: #0e1829; border-radius: 8px; border: 1px solid var(--md-line); padding: 10px; }
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--md-muted);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.series-thumbnails {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.series-card {
+  width: 100px;
+  background: #14223d;
+  border: 1px solid var(--md-line);
+  border-radius: 6px;
+  padding: 5px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.series-card:hover { border-color: var(--md-cyan); }
+.thumb-box {
+  height: 68px;
+  background: #000;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 10px;
+  text-align: center;
+  line-height: 1.3;
+  border: 1px solid #1e293b;
+}
+.series-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.clinical-content {
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+.clinical-row .lbl { color: var(--md-muted); margin-inline-end: 6px; }
+
+/* Statusbar */
+.studio-statusbar {
+  height: 26px;
+  background: #0d1526;
+  border-top: 1px solid var(--md-line);
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--md-muted);
+}
+.sb-start, .sb-end { display: flex; align-items: center; gap: 8px; }
+.health-dot.online { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--md-emerald); }
+.sep { color: #334155; }
+.loading-cell { text-align: center; padding: 40px !important; color: var(--md-muted); }
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: var(--md-cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Reporting Options Modal */
+.studio-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.studio-modal-card {
+  background: #0f182c;
+  border: 1px solid #233554;
+  border-radius: 14px;
+  width: min(580px, 94vw);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+  overflow: hidden;
+  animation: scaleUp 0.18s ease;
+}
+@keyframes scaleUp { from { transform: scale(0.95); } to { transform: scale(1); } }
+
+.modal-card-head {
+  padding: 14px 18px;
+  background: #142038;
+  border-bottom: 1px solid #223354;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.modal-card-title .title-icon { font-size: 20px; }
+.modal-card-title h3 { margin: 0; font-size: 14px; color: #fff; font-weight: 700; }
+.modal-patient-info { margin: 2px 0 0; font-size: 11px; color: var(--md-cyan); }
+.modal-close-icon {
+  background: transparent;
+  border: none;
+  color: var(--md-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+}
+.modal-close-icon:hover { color: #fff; }
+
+.modal-card-body {
+  padding: 16px 18px;
+}
+.modal-instructions {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+.reporting-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.reporting-opt-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #131d33;
+  border: 1px solid #223354;
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-decoration: none;
+  color: #f1f5f9;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.reporting-opt-card:hover {
+  background: #192745;
+  border-color: var(--md-cyan);
+  transform: translateY(-1px);
+}
+.opt-icon { font-size: 24px; shrink: 0; }
+.opt-content { flex: 1; }
+.opt-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.opt-title-row b { font-size: 12px; color: #fff; }
+.opt-content p {
+  margin: 0;
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+.opt-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.tag-primary { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
+.tag-word { background: rgba(59,130,246,0.2); color: #93c5fd; border: 1px solid rgba(59,130,246,0.4); }
+.tag-web { background: rgba(148,163,184,0.15); color: #cbd5e1; border: 1px solid rgba(148,163,184,0.3); }
+.opt-action-arrow { font-size: 16px; color: var(--md-cyan); padding-inline-start: 8px; }
+</style>
+
+<!-- Interactive Logic Script -->
+<script>
+(() => {
+  'use strict';
+  const root = document.getElementById('doctorStudioApp');
+  if (!root) return;
+
+  const apiEndpoint = root.dataset.api;
+  let currentLang = root.dataset.lang || 'ar';
+  let currentDir = root.dataset.dir || (currentLang === 'ar' ? 'rtl' : 'ltr');
+
+  // i18n Dictionary
+  const i18n = {
+    ar: {
+      sidebar: "القائمة",
+      assigned: "الحالات المعينة:",
+      offers: "عروض جديدة:",
+      reported: "تم كتابتها:",
+      refresh: "تحديث",
+      corrections: "تصحيحاتي",
+      searchPlaceholder: "بحث سريع: اسم المريض، الرقم الطبي، كود الفحص، الفحص...",
+      all: "الكل",
+      allDates: "كل التواريخ",
+      today: "اليوم",
+      yesterday: "أمس",
+      sevenDays: "7 أيام",
+      allStatuses: "جميع حالات التقارير",
+      pendingStatus: "بانتظار التقرير / مسودة",
+      statStatus: "حالات عاجلة (STAT / Urgent)",
+      finalStatus: "تقارير معتمدة (Final)",
+      priority: "الأولوية",
+      patient: "المريض",
+      exam: "الفحص المطلوب",
+      modality: "الجهاز",
+      dateTime: "الوقت / الوصول",
+      pacs: "صور PACS",
+      reportStatus: "حالة التقرير",
+      actions: "أدوات القراءة والتقرير",
+      view: "فحص",
+      report: "تقرير",
+      word: "Word",
+      openViewer: "فتح في عارض الصور OHIF",
+      startReport: "كتابة التقرير (OnlyOffice / Word)",
+      showing: "الحالات المعروضة:",
+      noCases: "لا توجد حالات مطابقة لخيارات البحث أو الفلترة.",
+      statBadge: "عاجل STAT",
+      urgentBadge: "مستعجل",
+      routineBadge: "عادي",
+      repReady: "جاهز للكتابة",
+      repDraft: "مسودة تقرير",
+      repFinal: "تقرير نهائي",
+      chooseReporting: "اختر أداة التقرير: OnlyOffice أو Microsoft Word"
+    },
+    en: {
+      sidebar: "Sidebar",
+      assigned: "Assigned:",
+      offers: "New Offers:",
+      reported: "Reported:",
+      refresh: "Refresh",
+      corrections: "Corrections",
+      searchPlaceholder: "Search: Patient, ID, Accession, Procedure...",
+      all: "ALL",
+      allDates: "All Dates",
+      today: "Today",
+      yesterday: "Yesterday",
+      sevenDays: "7 Days",
+      allStatuses: "All Report Statuses",
+      pendingStatus: "Pending / Draft",
+      statStatus: "STAT / Urgent Only",
+      finalStatus: "Finalized Reports",
+      priority: "Priority",
+      patient: "Patient",
+      exam: "Procedure",
+      modality: "Modality",
+      dateTime: "Date / Time",
+      pacs: "PACS Images",
+      reportStatus: "Report Status",
+      actions: "Reading & Reporting Tools",
+      view: "View",
+      report: "Report",
+      word: "Word",
+      openViewer: "Open in OHIF Viewer",
+      startReport: "Reporting Tools (OnlyOffice / Word)",
+      showing: "Showing:",
+      noCases: "No cases match current filters or search term.",
+      statBadge: "STAT",
+      urgentBadge: "Urgent",
+      routineBadge: "Routine",
+      repReady: "Ready for Report",
+      repDraft: "Draft",
+      repFinal: "Final Report",
+      chooseReporting: "Choose reporting tool: OnlyOffice or Microsoft Word"
+    }
+  };
+
+  const t = (key) => (i18n[currentLang] && i18n[currentLang][key]) ? i18n[currentLang][key] : key;
+
+  // DOM Elements
+  const tbody = document.getElementById('stCasesTbody');
+  const searchInput = document.getElementById('stSearchInput');
+  const searchClear = document.getElementById('stSearchClear');
+  const modalityChips = document.querySelectorAll('#stModalityChips .chip');
+  const dateChips = document.querySelectorAll('#stDateChips .chip');
+  const statusSelect = document.getElementById('stStatusSelect');
+  const refreshBtn = document.getElementById('stRefreshBtn');
+  const langToggleBtn = document.getElementById('stLangToggle');
+  const sidebarToggleBtn = document.getElementById('stSidebarToggle');
+  const previewDrawer = document.getElementById('stPreviewDrawer');
+  const drawerCloseBtn = document.getElementById('drwBtnClose');
+
+  // Application State
+  let allCases = [];
+  let selectedCaseId = null;
+  let activeModality = 'ALL';
+  let activeDate = 'ALL';
+  let activeStatus = 'ALL';
+  let searchTerm = '';
+
+  // 1. Sidebar Auto-Hide / Collapse Handler
+  let sidebarState = localStorage.getItem('radbridge_studio_sidebar_mode') || 'expanded';
+
+  function applySidebarState(state) {
+    sidebarState = state;
+    localStorage.setItem('radbridge_studio_sidebar_mode', state);
+    document.body.classList.remove('sidebar-mode-hidden', 'sidebar-mode-compact');
+
+    const label = document.getElementById('stSidebarToggleLabel');
+    if (state === 'hidden') {
+      document.body.classList.add('sidebar-mode-hidden');
+      if (label) label.textContent = currentLang === 'ar' ? 'إظهار القائمة' : 'Show Sidebar';
+    } else if (state === 'compact') {
+      document.body.classList.add('sidebar-mode-compact');
+      if (label) label.textContent = currentLang === 'ar' ? 'قائمة مصغرة' : 'Compact';
+    } else {
+      if (label) label.textContent = currentLang === 'ar' ? 'القائمة' : 'Sidebar';
+    }
+  }
+
+  sidebarToggleBtn.addEventListener('click', () => {
+    if (sidebarState === 'expanded') applySidebarState('hidden');
+    else if (sidebarState === 'hidden') applySidebarState('compact');
+    else applySidebarState('expanded');
+  });
+
+  applySidebarState(sidebarState);
+
+  // 2. Language & Direction Toggle Handler
+  langToggleBtn.addEventListener('click', () => {
+    const nextLang = currentLang === 'ar' ? 'en' : 'ar';
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{url_for('ui_language_switch')}}";
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'language';
+    input.value = nextLang;
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+  });
+
+  // 3. Data Fetching
+  async function fetchCases() {
+    tbody.innerHTML = `<tr><td colspan="9" class="loading-cell"><div class="loading-spinner"></div><span>${currentLang==='ar'?'جاري تحديث الحالات...':'Loading cases...'}</span></td></tr>`;
+    try {
+      const res = await fetch(apiEndpoint, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      allCases = data.cases || [];
+
+      // Update counters
+      document.getElementById('stStatAssigned').textContent = allCases.length;
+      document.getElementById('stTotalCount').textContent = allCases.length;
+
+      const reportedCount = allCases.filter(c => ['VERIFIED','FINAL','REPORTED'].includes(String(c.report_status||'').toUpperCase())).length;
+      document.getElementById('stStatReported').textContent = reportedCount;
+
+      // Offers
+      const offers = data.offers || [];
+      const offersPill = document.getElementById('stOffersPill');
+      const offersBanner = document.getElementById('stOffersBanner');
+      if (offers.length > 0) {
+        offersPill.style.display = 'inline-flex';
+        document.getElementById('stStatOffers').textContent = offers.length;
+        offersBanner.style.display = 'flex';
+        document.getElementById('stOffersSubtext').textContent = `${offers.length} ${currentLang==='ar'?'حالة معروضة':'case offers'}`;
+      } else {
+        offersPill.style.display = 'none';
+        offersBanner.style.display = 'none';
+      }
+
+      renderCases();
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = `<tr><td colspan="9" class="loading-cell" style="color:#ef4444;">⚠ ${currentLang==='ar'?'فشل في جلب البيانات: ':'Failed to load data: '}${err.message}</td></tr>`;
+    }
+  }
+
+  // 4. Filtering Logic
+  function getFilteredCases() {
+    return allCases.filter(c => {
+      // Modality filter
+      if (activeModality !== 'ALL') {
+        const m = (c.modality || '').toUpperCase();
+        if (activeModality === 'CR' && !['CR','XR','DX'].includes(m)) return false;
+        if (activeModality !== 'CR' && m !== activeModality) return false;
+      }
+
+      // Status filter
+      if (activeStatus === 'PENDING') {
+        const rep = (c.report_status || '').toUpperCase();
+        if (['FINAL','VERIFIED'].includes(rep)) return false;
+      } else if (activeStatus === 'STAT') {
+        const p = (c.priority || '').toUpperCase();
+        if (!['STAT','URGENT'].includes(p)) return false;
+      } else if (activeStatus === 'FINAL') {
+        const rep = (c.report_status || '').toUpperCase();
+        if (!['FINAL','VERIFIED'].includes(rep)) return false;
+      }
+
+      // Search term
+      if (searchTerm) {
+        const haystack = [c.patient, c.patient_worklist, c.patient_id, c.accession, c.procedure, c.modality].join(' ').toLowerCase();
+        if (!haystack.includes(searchTerm)) return false;
+      }
+
+      return true;
+    });
+  }
+
+  // Escape helper for HTML attributes
+  function esc(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // 5. Render Table
+  function renderCases() {
+    const list = getFilteredCases();
+    document.getElementById('stFilteredCount').textContent = list.length;
+    tbody.innerHTML = '';
+
+    if (list.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="loading-cell" style="padding:50px;">${t('noCases')}</td></tr>`;
+      return;
+    }
+
+    list.forEach(c => {
+      const tr = document.createElement('tr');
+      if (selectedCaseId === c.id) tr.classList.add('selected-row');
+
+      // Priority Badge
+      const prio = (c.priority || 'ROUTINE').toUpperCase();
+      let prioHtml = `<span class="badge-priority priority-routine">${t('routineBadge')}</span>`;
+      if (prio === 'STAT') prioHtml = `<span class="badge-priority priority-stat">${t('statBadge')}</span>`;
+      else if (prio === 'URGENT') prioHtml = `<span class="badge-priority priority-urgent">${t('urgentBadge')}</span>`;
+
+      // Modality Badge
+      const mod = (c.modality || 'OT').toUpperCase();
+      const modHtml = `<span class="badge-modality mod-${mod}">${mod}</span>`;
+
+      // Report Status
+      const rep = (c.report_status || 'UNREPORTED').toUpperCase();
+      let repHtml = `<span class="report-badge rep-ready">${t('repReady')}</span>`;
+      if (['DRAFT','DRAFTED'].includes(rep)) repHtml = `<span class="report-badge rep-draft">${t('repDraft')}</span>`;
+      else if (['FINAL','VERIFIED'].includes(rep)) repHtml = `<span class="report-badge rep-final">${t('repFinal')}</span>`;
+
+      // Formatted Date
+      const dateStr = c.scheduled_at || c.exam_completed_at || c.assigned_at || '--';
+
+      // Action buttons: OHIF View, Report Choices ▾, and Local Word
+      const patientEsc = esc(c.patient);
+      const accEsc = esc(c.accession);
+      const procEsc = esc(c.procedure);
+
+      tr.innerHTML = `
+        <td class="col-id">${c.id}</td>
+        <td>${prioHtml}</td>
+        <td class="patient-cell">
+          <div class="name-row">${c.patient || '--'}</div>
+          ${c.patient_worklist && c.patient_worklist !== c.patient ? `<div class="worklist-name">${c.patient_worklist}</div>` : ''}
+          <div class="id-row">${c.patient_id || '--'} • Acc: ${c.accession || '--'}</div>
+        </td>
+        <td class="exam-cell">
+          <div class="proc-title">${c.procedure || '--'}</div>
+          <div class="indication">${c.clinical_indication || c.clinical_history || '--'}</div>
+        </td>
+        <td style="text-align:center;">${modHtml}</td>
+        <td style="font-family:monospace; font-size:11px; color:#cbd5e1;">${dateStr}</td>
+        <td style="text-align:center;">
+          <span class="pacs-badge">🩻 ${c.images || 0} I</span>
+        </td>
+        <td style="text-align:center;">${repHtml}</td>
+        <td onclick="event.stopPropagation();" style="text-align:center;">
+          <div class="table-actions">
+            <!-- 1. Open OHIF Viewer -->
+            <a href="${c.open_url || '#'}" target="_blank" class="btn-tb btn-tb-viewer" title="${t('openViewer')}">
+              👁️ ${t('view')}
+            </a>
+            <!-- 2. Choose Reporting (OnlyOffice or Word) -->
+            <button type="button" class="btn-tb btn-tb-report" onclick="window.openReportingModal(${c.id}, '${patientEsc}', '${accEsc}', '${c.modality}', '${procEsc}')" title="${t('chooseReporting')}">
+              ✍️ ${t('report')} ▾
+            </button>
+            <!-- 3. Direct Local Word Launch -->
+            <button type="button" class="btn-tb btn-tb-word" onclick="event.stopPropagation(); window.launchDirectWord(${c.id});" title="{{'تشغيل مباشر في Microsoft Word مع الحفظ والاعتماد' if ui_lang=='ar' else 'Direct launch in Microsoft Word'}}">
+              ⚡ Word مباشر
+            </button>
+          </div>
+        </td>
+      `;
+
+      tr.addEventListener('click', () => openDrawer(c));
+      tbody.appendChild(tr);
+    });
+  }
+
+  // 6. Interactive Preview Drawer Handler
+  function openDrawer(c) {
+    selectedCaseId = c.id;
+    document.querySelectorAll('.studio-table tbody tr').forEach(r => r.classList.remove('selected-row'));
+    window.currentDrawerCase = c;
+    previewDrawer.style.display = 'flex';
+
+    document.getElementById('drwPatientName').textContent = c.patient || '--';
+    document.getElementById('drwExamDesc').textContent = `${c.modality || ''} - ${c.procedure || ''}`;
+    document.getElementById('drwAccession').textContent = c.accession || `ID: ${c.id}`;
+
+    // Action links in drawer
+    document.getElementById('drwBtnViewer').href = c.open_url || '#';
+    // OnlyOffice: start reading or open OHIF with reporting
+    document.getElementById('drwBtnOnlyOffice').href = `/doctor/cases/${c.id}/start-reading`;
+    // Local Word: direct docx download/launch
+    document.getElementById('drwBtnWord').href = `/reports/${c.id}/word`;
+    // Web Editor
+    document.getElementById('drwBtnWebEditor').href = `/reports/${c.id}`;
+
+    // Clinical Information
+    document.getElementById('drwIndication').textContent = c.clinical_indication || '--';
+    document.getElementById('drwHistory').textContent = c.clinical_history || '--';
+    document.getElementById('drwReferring').textContent = c.referring_doctor || '--';
+    document.getElementById('drwAllergies').textContent = c.allergy_notes || '--';
+
+    // Series Mock Strip
+    const seriesStrip = document.getElementById('drwSeriesStrip');
+    seriesStrip.innerHTML = '';
+    const imgCount = parseInt(c.images || 120);
+    const seriesSamples = [
+      { name: "T1_AXIAL", count: Math.round(imgCount * 0.3) },
+      { name: "T2_AXIAL", count: Math.round(imgCount * 0.3) },
+      { name: "CORONAL", count: Math.round(imgCount * 0.2) },
+      { name: "SAGITTAL", count: Math.round(imgCount * 0.2) }
+    ];
+
+    document.getElementById('drwSeriesCount').textContent = `(${seriesSamples.length} Series / ${imgCount} Images)`;
+
+    seriesSamples.forEach(s => {
+      const card = document.createElement('div');
+      card.className = 'series-card';
+      card.innerHTML = `
+        <div class="thumb-box">
+          <span>${s.name}<br><small style="color:#38bdf8;">${s.count} Img</small></span>
+        </div>
+        <div class="series-label">${s.name}</div>
+      `;
+      card.addEventListener('click', () => {
+        window.open(c.open_url || '#', '_blank');
+      });
+      seriesStrip.appendChild(card);
+    });
+
+    renderCases();
+  }
+
+  drawerCloseBtn.addEventListener('click', () => {
+    previewDrawer.style.display = 'none';
+    selectedCaseId = null;
+    renderCases();
+  });
+
+  // 7. Reporting Modal Handler (Global Exposure)
+  window.openReportingModal = function(orderId, patientName, accession, modality, procedure) {
+    const modal = document.getElementById('reportingChoiceModal');
+    modal.style.display = 'flex';
+
+    window.currentReportingOrderId = orderId;
+    document.getElementById('modalHeadSubtitle').textContent = `${patientName} • ${modality} - ${procedure} (Acc: ${accession})`;
+
+    // Configure links
+    document.getElementById('modalOptOnlyOffice').href = `/doctor/cases/${orderId}/start-reading`;
+    document.getElementById('modalOptLocalWord').href = `/reports/${orderId}/word`;
+    document.getElementById('modalOptWebEditor').href = `/reports/${orderId}`;
+  };
+
+  
+  window.launchDirectWord = async function(orderId) {
+    if (!orderId) return;
+    try {
+      const res = await fetch(`/api/reports/${orderId}/word-direct-launch`);
+      const data = await res.json();
+      if (!data.ok) {
+        alert(data.message || 'فشل تشغيل أداة Word');
+        return;
+      }
+      window.location.href = data.protocol_url;
+      showDirectWordToast(data.companion_download_url);
+    } catch (err) {
+      console.error('Direct Word error:', err);
+      alert('حدث خطأ في الاتصال بالخادم.');
+    }
+  };
+
+  function showDirectWordToast(companionUrl) {
+    let toast = document.getElementById('wordLaunchToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'wordLaunchToast';
+      toast.style.cssText = 'position:fixed; bottom:25px; left:25px; z-index:99999; background:#0f172a; border:2px solid #38bdf8; border-radius:10px; padding:16px 20px; color:#fff; box-shadow:0 10px 30px rgba(0,0,0,0.6); max-width:440px; font-family:"Segoe UI", Tahoma, sans-serif;';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <strong style="color:#38bdf8; font-size:14px; display:flex; align-items:center; gap:6px;">
+          <span>⚡</span> تشغيل Microsoft Word المباشر
+        </strong>
+        <button onclick="document.getElementById('wordLaunchToast').style.display='none'" style="background:transparent; border:none; color:#94a3b8; font-size:16px; cursor:pointer;">✕</button>
+      </div>
+      <p style="font-size:12px; margin:0 0 10px; line-height:1.5; color:#cbd5e1;">
+        جاري فتح التقرير الطبي في برنامج Word على جهازك...<br>
+        إذا كانت هذه أول مرة، يرجى التأكد من تثبيت أداة الربط على الويندوز:
+      </p>
+      <div style="display:flex; gap:8px;">
+        <a href="${companionUrl || '/downloads/RadBridge-Word-Companion.zip'}" download style="display:inline-block; background:#2563eb; color:#fff; padding:7px 14px; border-radius:6px; font-size:12px; text-decoration:none; font-weight:700;">
+          📥 تحميل أداة الربط (تثبيت بنقرة واحدة)
+        </a>
+      </div>
+    `;
+    toast.style.display = 'block';
+    setTimeout(() => {
+      if (toast) toast.style.display = 'none';
+    }, 12000);
+  }
+
+
+  window.closeReportingModal = function() {
+    document.getElementById('reportingChoiceModal').style.display = 'none';
+  };
+
+  window.handleModalBackdropClick = function(e) {
+    if (e.target.id === 'reportingChoiceModal') {
+      window.closeReportingModal();
+    }
+  };
+
+  // 8. Event Listeners for Filters
+  modalityChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      modalityChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeModality = chip.dataset.mod;
+      renderCases();
+    });
+  });
+
+  dateChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      dateChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeDate = chip.dataset.date;
+      renderCases();
+    });
+  });
+
+  statusSelect.addEventListener('change', (e) => {
+    activeStatus = e.target.value;
+    renderCases();
+  });
+
+  searchInput.addEventListener('input', (e) => {
+    searchTerm = e.target.value.trim().toLowerCase();
+    searchClear.style.display = searchTerm ? 'block' : 'none';
+    renderCases();
+  });
+
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchTerm = '';
+    searchClear.style.display = 'none';
+    renderCases();
+  });
+
+  refreshBtn.addEventListener('click', fetchCases);
+
+  // Initial Fetch
+  fetchCases();
+})();
+</script>
+{% endblock %}

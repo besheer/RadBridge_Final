@@ -4294,13 +4294,16 @@ OHIF_INTERNAL_URL=os.getenv(
 
 OHIF_PUBLIC_URL=os.getenv(
     'OHIF_PUBLIC_URL',
-    'http://51.89.248.57:8092'
+    'https://airscan.dynu.net'
 ).rstrip('/')
 
 
 def ohif_study_uid(order):
     if not order:
         return None
+
+    if getattr(order, 'study_instance_uid', None):
+        return str(order.study_instance_uid).strip()
 
     if order.pacs_study_id:
         try:
@@ -4534,8 +4537,9 @@ def ohif_url_for_order(order):
 
     from urllib.parse import quote
 
+    mode_name = os.getenv("OHIF_VIEWER_MODE", "radbridge").strip()
     url = (
-        f'{OHIF_PUBLIC_URL}/radbridge'
+        f'{OHIF_PUBLIC_URL}/{mode_name}'
         f'?StudyInstanceUIDs={quote(uid,safe="")}'
         f'&radbridgeOrderId={order.id}'
     )
@@ -7466,6 +7470,30 @@ def doctor_workspace():
     )
 
 
+@app.route('/doctor/studio')
+@app.route('/doctor-studio')
+@app.route('/doctor/pro')
+@require_perm('reports.view')
+def doctor_studio():
+    # RB_DOCTOR_STUDIO_V1: High-density clinical workspace with auto-hide sidebar
+    if not doctor_workspace_user(current_user()):
+        abort(403)
+    return render_template(
+        'doctor_studio.html',
+        saved_views=_saved_views_for('DOCTOR'),
+        saved_view_page='DOCTOR',
+        ribbon_actions=[],
+        hide_quick_ribbon=True,
+    )
+
+
+@app.route('/doctor/meddream')
+@app.route('/doctor-meddream')
+@require_perm('reports.view')
+def doctor_meddream_redirect():
+    return redirect(url_for('doctor_studio'))
+
+
 @app.get('/api/doctor/workspace')
 @require_perm('reports.view')
 def doctor_workspace_data():
@@ -7835,7 +7863,7 @@ def admin_assignment_distribution():
     return render_template('admin_assignment_distribution.html',policy=policy_snapshot(),doctors=assignable_doctors())
 
 
-@app.post('/doctor/cases/<int:order_id>/start-reading')
+@app.route('/doctor/cases/<int:order_id>/start-reading', methods=['GET', 'POST'])
 @require_perm('reports.view')
 def doctor_reading_start(order_id):
     from assignment_distribution import mark_reading_started
@@ -7843,8 +7871,11 @@ def doctor_reading_start(order_id):
     if not doctor_workspace_user(user): abort(403)
     order=Order.query.get_or_404(order_id)
     if order.assigned_doctor_id != user.id or not doctor_case_access_allowed(user,order): abort(403)
-    if not mark_reading_started(order.id,user.id): abort(409)
-    db.session.commit()
+    try:
+        mark_reading_started(order.id,user.id)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
     return redirect(url_for('doctor_workspace_open',order_id=order.id))
 
 
@@ -38667,3 +38698,7 @@ register_procedure_staff_workflow(_reporting_support_sys.modules[__name__])
 
 from radiotherapy import register as register_radiotherapy
 register_radiotherapy(_reporting_support_sys.modules[__name__])
+
+
+from word_direct_routes import register as register_word_direct_routes
+register_word_direct_routes(_reporting_support_sys.modules[__name__])

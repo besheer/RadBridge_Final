@@ -1,0 +1,89 @@
+services:
+  ris-db:
+    image: postgres:16-alpine
+    container_name: ris-web-db
+    restart: unless-stopped
+    environment:
+      TZ: "Africa/Cairo"
+      POSTGRES_USER: risweb
+      POSTGRES_PASSWORD: ${RIS_DB_PASSWORD:-risweb_secure_db_pass_2026}
+      POSTGRES_DB: risweb
+    volumes:
+      - ris-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U risweb -d risweb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ris-network
+
+  ris-web:
+    image: radbridge-ris:latest
+    container_name: ris-web
+    restart: unless-stopped
+    depends_on:
+      ris-db:
+        condition: service_healthy
+    ports:
+      - "8090:8000"
+    environment:
+      TZ: "Africa/Cairo"
+      DATABASE_URL: "postgresql+psycopg2://risweb:${RIS_DB_PASSWORD:-risweb_secure_db_pass_2026}@ris-db:5432/risweb"
+      SECRET_KEY: "${SECRET_KEY:-radbridge_ris_secret_production_key_2026}"
+      RIS_ADMIN_PASSWORD: "${RIS_ADMIN_PASSWORD:-admin}"
+      RADBRIDGE_BOOTSTRAP_ON_IMPORT: "${RADBRIDGE_BOOTSTRAP_ON_IMPORT:-1}"
+      ORTHANC_URL: "${ORTHANC_URL:-http://radbridge-orthanc:8042}"
+      ORTHANC_USER: "${ORTHANC_USER:-admin}"
+      ORTHANC_PASSWORD: "${ORTHANC_PASSWORD:-admin}"
+      ORTHANC_PUBLIC_URL: "https://airscan.dynu.net/orthanc"
+      PACS_ORTHANC_URL: "${PACS_ORTHANC_URL:-http://radbridge-orthanc:8042}"
+      PACS_ORTHANC_USER: "${ORTHANC_USER:-admin}"
+      PACS_ORTHANC_PASSWORD: "${ORTHANC_PASSWORD:-admin}"
+      PACS_IMAGES_STABLE_SECONDS: "120"
+      RIS_PUBLIC_URL: "https://airscan.dynu.net"
+      REPORT_DIR: "/app/report-files"
+      ATTACHMENT_DIR: "/app/attachments"
+    volumes:
+      - ./report-files:/app/report-files
+      - ./attachments:/app/attachments
+    networks:
+      - ris-network
+
+  pacs-worker:
+    image: radbridge-ris:latest
+    container_name: ris-pacs-worker
+    restart: unless-stopped
+    command: ["python", "pacs_worker.py"]
+    depends_on:
+      ris-db:
+        condition: service_healthy
+      ris-web:
+        condition: service_started
+    environment:
+      TZ: "Africa/Cairo"
+      DATABASE_URL: "postgresql+psycopg2://risweb:${RIS_DB_PASSWORD:-risweb_secure_db_pass_2026}@ris-db:5432/risweb"
+      SECRET_KEY: "${SECRET_KEY:-radbridge_ris_secret_production_key_2026}"
+      ORTHANC_URL: "${ORTHANC_URL:-http://radbridge-orthanc:8042}"
+      ORTHANC_USER: "${ORTHANC_USER:-admin}"
+      ORTHANC_PASSWORD: "${ORTHANC_PASSWORD:-admin}"
+      PACS_ORTHANC_URL: "${PACS_ORTHANC_URL:-http://radbridge-orthanc:8042}"
+      PACS_ORTHANC_USER: "${ORTHANC_USER:-admin}"
+      PACS_ORTHANC_PASSWORD: "${ORTHANC_PASSWORD:-admin}"
+      PACS_WORKER_INTERVAL_SECONDS: "30"
+      REPORT_DIR: "/app/report-files"
+      ATTACHMENT_DIR: "/app/attachments"
+    volumes:
+      - ./report-files:/app/report-files
+      - ./attachments:/app/attachments
+      - ./backups:/app/backups
+      - ./rclone:/app/rclone
+    networks:
+      - ris-network
+
+volumes:
+  ris-db-data:
+
+networks:
+  ris-network:
+    external: true

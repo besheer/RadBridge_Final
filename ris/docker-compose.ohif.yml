@@ -1,7 +1,7 @@
 services:
 
   ohif-app:
-    image: ohif/app:v3.12.10
+    image: radbridge-ohif:custom
     container_name: radbridge-ohif-app
     restart: unless-stopped
 

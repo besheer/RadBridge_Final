@@ -804,9 +804,9 @@ export default function OnlyOfficeReportEditor({
             style={{
               position: 'absolute',
               top: 0,
-        bottom: 0,
-        right: 0,
-        left: `${viewerPercent}%`,
+              bottom: 0,
+              right: 0,
+              left: 0,
               zIndex: 2,
               display: 'flex',
               alignItems: 'center',

@@ -1,0 +1,25 @@
+services:
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    container_name: radbridge-onlyoffice
+    restart: unless-stopped
+    environment:
+      JWT_ENABLED: true
+      JWT_SECRET: radbridge_onlyoffice_jwt_secret_2026
+      JWT_HEADER: Authorization
+      JWT_IN_BODY: true
+      WOPI_ENABLED: false
+      USE_UNAUTHORIZED_STORAGE: true
+    networks:
+      - ris-network
+    volumes:
+      - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_log:/var/log/onlyoffice
+
+volumes:
+  onlyoffice_data:
+  onlyoffice_log:
+
+networks:
+  ris-network:
+    external: true

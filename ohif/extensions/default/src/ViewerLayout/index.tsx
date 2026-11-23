@@ -187,14 +187,21 @@ function ViewerLayout({
         }
       `}</style>
       {reportViewerPercent > 0 && <style>{`
-        [data-radbridge-docked="true"] [data-panel-id]:not([data-panel-id="viewerLayoutResizableViewportGridPanel"]) {
+        [data-radbridge-docked="true"] [data-panel-id="viewerLayoutResizableRightPanel"] {
           flex: 0 0 0px !important; min-width: 0 !important; max-width: 0 !important;
-          overflow: hidden !important; visibility: hidden; pointer-events: none;
+          overflow: hidden !important; visibility: hidden !important; pointer-events: none !important;
         }
         [data-radbridge-docked="true"] [data-panel-id="viewerLayoutResizableViewportGridPanel"] {
-          flex: 1 1 100% !important; min-width: 0 !important; max-width: none !important;
+          flex: 1 1 0px !important; min-width: 0 !important; max-width: none !important;
         }
-        [data-radbridge-docked="true"] [data-panel-resize-handle-id] { display: none; }
+        [data-radbridge-docked="true"] [data-panel-resize-handle-id]:last-of-type {
+          display: none !important;
+        }
+        @container rb-viewer (max-width: 700px) {
+          [data-radbridge-docked="true"] [data-panel-id="viewerLayoutResizableLeftPanel"]:not([data-collapsed="true"]) {
+            max-width: 220px !important;
+          }
+        }
       `}</style>}
       <ViewerHeader
         hotkeysManager={hotkeysManager}

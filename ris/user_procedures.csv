@@ -1,0 +1,342 @@
+Item,ItemNameA
+x-ray left Humerus (2 views),عاديه علي العضد اليسر وضعين
+MRI lumbar spine  ,رنين على الفقرات القطنية
+MRI cervical spine,رنين على الفقرات العنقية
+MRI dorsal spine,رنين على الفقرات الصدرية
+MRI brain,رنين على المخ
+MRI right knee,رنين على الركبة اليمنى
+MRI left knee,رنين على الركبة اليسرى
+MRI both Knees,رنين على الركبتين
+MRA brain,رنين على شرايين المخ
+MRI vertebral column,رنين على العمود الفقرى كاملا
+MRI and MRA brain,رنين على المخ وشريين المخ
+MRI DLS,رنين على الفقرات الصدرية القطنية
+MRI CDS,رنين على الفقرات العنقية الصدرية
+MRI PNS,رنين على الجيوب الانفية
+MRI sella,رنين على الغدة النخامية
+MRI right shoulder,رنين على الكتف الايمن
+MRI right femur,رنين على الفخذ الايمن
+MRCP,رنين على القنوات المرارية
+MRI abdomen,رنين على البطن
+MRI pelvis,رنين على الحوض
+MRI chest,رنين على الصدر
+MRI petrous  bone,رنين على الاذن
+MRI orbit,رنين على العين
+MRI extremities,رنين على الاطراف
+MRI Rt ankle,رنين على الكاحل الايمن
+MRI right foot,رنين على القدم الايمن
+MRU,رنين على المسالك البولية
+MRI of mandible,رنين على الفك
+MRI nasopharynx,رنين على البلعوم الانفي
+MRA Neck,رنين على شرايين الرقبة
+MRI right arm,رنين على الذراع الايمن
+MRI left arm,رنين على الذراع الايسر
+MRI right elbow,رنين على الكوع الايمن
+MRI left elbow,رنين على الكوع الايسر
+MRI neck,رنين على الرقبة
+MRI left shoulder,رنين على الكتف الايسر
+MRI right breast,رنين على الثدي الايمن
+MRI both breasts,رنين على الثديين
+MRA of the leg,رنين على شرايين الساق
+MRI of the right thigh,رنين على الساق الايمن
+MRI New films for a previous examination,طباعة نسخة جديدة من الافلام
+New copy from a previous report,طباعة صورة من التقرير القديم
+MRI of the face,رنين على عظام الوجه
+MRV of the brain,رنين على اوردة المخ
+MRI both TMJ,رنين على الفكين
+MRI of the right clavicle,رنين على الترقوة اليمنى
+MRI of the left clavicle,رنين على الترقوة اليسرى
+MRI of the right hand,رنين على اليد اليمنى
+MRI of the left foot,رنين على القدم الايسر
+MRI of the left hip,رنين على الفخذ الايسر
+MRI of the left breast,رنين على الثدي الايسر
+MRI of the left leg,رنين على الساق الايسر
+MRI of the right  wrist,رنين على الرسغ الايمن
+MRI of the left wrist,رنين على الرسغ الايسر
+MRI of the left hand,رنين على اليد اليسرى
+MRI lt ankle,رنين على الكاحل الايسر
+"MRI,MRA,MRV BRAIN",رنين على المخ واوردة وشرايين المخ
+MRI Brain& petrous,رنين على المخ والاذن
+MRI Brain& Orbit,رنين على المخ والعين
+MRI Brain& Sella,رنين على المخ والغدة النخامية
+MRI Brain& PIN,رنين على المخ والجيوب الانفية
+MRI &MRA Neck,رنين على الرقبة وشرايين الرقبة
+MRI Chest,رنين على الصدر وشرايين الصدر
+MRI & MRA abdomen,رنين على البطن وشرايين البطن
+MRI Pelvis,رنين على الحوض وشرايين الحوض
+MRI& MRV Of Brain,رنين على المخ واوردة المخ
+MRI Abdoman & pelvis,رنين على البطن والحوض
+MRI fistulography,رنين على الناصور
+MRI right calcenous bone,رنين علي الكعب الايمن
+MRI left calcenous bone,رنين على الكعب الايسر
+MRI Of anus,رنين على الشرج
+MRI  hips joints,رنين على مفصل الحوض
+رنين على شرايين الذراع,رنين على شرايين الذراع
+MRI Liver triphasic,رنين ثلاثى المراحل على الكبد شامل الصبغه
+الدوبلر,
+Aortic Doppler,دوبلر على الاورطى بالبطن
+Carotid arteries Doppler,دوبلر على شرايين الرقبة
+Hepatic arteries Doppler,دوبلر على شرايين الكبد
+Hepatic Veins Doppler,دوبلر على اوردة الكبد
+Renal veins Doppler,دوبلر على اوردة الكلى
+Penile Doppler,دوبلر على القضيب
+Right arterial tree L.L Doppler,دوبلر على شرايين الساق اليمنى
+Right venous tree L.L Doppler,دوبلر على اوردة الساق اليمنى
+Obst. Doppler,دوبلر على الحمل
+right L.L ( art. + venous),دوبلر على أوردة وشرايين الساق اليمنى
+renal arteries Doppler,دوبلر على شرايين الكلى
+Testis Doppler,دوبلر على الخصيتين
+pelvic vessels Doppler,دوبلر على الحوض
+portal vein Doppler,دوبلر على الوريد البابي بالكبد
+Left L.L arterial tree Doppler,دوبلر على شرايين الساق اليسرى
+Both L.L arterial tree Doppler,دوبلر على شرايين الساقين
+Left L.L venous tree Doppler,دوبلر على اوردة الساق اليسرى
+Both L.L venous tree Doppler,دوبلر على اوردة الساقين
+Left L.L arterial &venous tree Doppler,دوبلر على أوردة وشرايين الساق اليسرى
+Both L.L arterial & venous tree Doppler,دوبلر على أوردة وشرايين الساقين
+Right U.L arterial & venous tree Doppler,دوبلر على اوردة وشرايين الذراع اليمنى
+Left U.L arterial & venous tree Doppler,دوبلر على اوردة وشرايين الذراع اليسرى
+Both U.L arterial tree Doppler,دوبلر على شرايين الذراعين
+Right U.L venous tree Doppler,دوبلر على اوردة الذراع اليمنى
+Left U.L venous tree Doppler,دوبلر على اوردة الذراع اليسرى
+Both U.L venous tree Doppler,دوبلر على اوردة الذراعين
+Both U.L arterial & venous tree Doppler,دوبلر على اوردة وشرايين الذراعين
+Gland Doppler,دوبلر على الغدة
+Right U.L arterial tree Doppler,دوبلر على شرايين الذراع اليمنى
+Left U.L arterial tree Doppler,دوبلر على شرايين الذراع اليسرى
+,
+Carotid venous Doppler ,دوبلر على اوردة الرقبة
+Brain EEG,رسم المخ بالكمبيوتر
+Digital Brain EEG,رسم مخ ديجيتال
+,
+CT brain,مقطعية على المخ
+CT paranasal sinuses ( one view),مقطعية على الجيوب الانفية وضع واحد
+CT paranasal sinuses ( two views),مقطعية على الجيوب الانفية وضعين
+CT brain & paranasal sinuses,مقطعية على المخ والجيوب الانفية
+CT orbit,مقطعية على العين
+CT lumber spine,مقطعية على الفقرات القطنية
+CT dorsal spine,مقطعية على الفقرات الصدرية
+CT cervical spine,مقطعية على الفقرات العنقية
+CT chest,مقطعية على الصدر
+CT pelvis,مقطعية على الحوض
+CT abdomen,مقطعية على البطن
+CT abdomen & pelvis,مقطعية على البطن والحوض
+CT neck,مقطعية على الرقبة
+CT TMJ,مقطعية على الفك
+CT scanogram,مقطعية على الاطراف
+CT facial bones,مقطعية على عظام الوجه وضع واحد
+CT right knee,مقطعية على الركبة اليمنى
+CT petrous bone,مقطعية على الاذن
+CT femur,مقطعية على الفخذ
+CT RT ankle,مقطعية على الكاحل الايمن
+CT right shoulder,مقطعية على الكتف الايمن
+CT lT ankle,مقطعية على الكاحل الايسر
+CT sella turcica,مقطعية على الغدة النخامية
+3D Bones CT,مقطعية ثلاثية الابعاد على العظام ويضاف ثمن الفحص
+CT of the LT leg,مقطعية على الساق الايسر
+3D bone CT,مقطعية ثلاثية الابعاد على العظام
+CT parotid gland,مقطعية على الغدة النكافية
+Virtual colonoscopy,منظار تخيلي للقولون باستخدام المقطعية
+Vitrual bronchoscopy,منظار تخيلي للقصبه الهوائيه با
+CT of the RT leg,مقطعية على الساق الايمن
+CT urography,مقطعية على المسالك البولية
+CT left knee,مقطعية على الركبة اليسرى
+CT both knees,مقطعية على الركبتين
+CT left shoulder,مقطعية على الكتف الايسر
+CT right foot,مقطعية على الكعب الايمن
+CT left foot,مقطعية على الكعب الايسر
+CT facial bones ( 2 views),مقطعية على عظام الوجه وضعين
+CT brain & CPA,مقطعية على المخ والاذن
+CT wrist,مقطعية على الرسغ
+CT Hand,مقطعية على اليد
+CT fistulography,مقطعية على الناصور
+CT Left elbow,مقطعية على الكوع الايسر
+CT right elbow with,مقطعية على الكوع الايمن
+CT right arm,مقطعية على الذراع الايمن
+CT Left arm,مقطعية على الذراع الايسر
+CT both Thighs,مقطعية على الفخذين
+ct right foot,مقطعية على القدم اليمنى
+ct left foot,مقطعية على القدم اليسرى
+True Cut under CT.,عينة True Cut تحت الاشعة المقطعية
+CT Right U.L venous tree,مقطعية على اوردة الذراع الايمن
+CT Left U.L venous tree,مقطعية على اوردة الذراع الايسر
+CT BOTH U.L venous tree,مقطعية على اوردة الذراعين
+CT Right L.L venous tree,مقطعية على اوردة الساق الايمن
+CT Left L.L venous tree,مقطعية على اوردة الساق الايسر
+CT Both L.L venous tree,مقطعية على اوردة الساقين
+CT angio of the brain ,مقطعية على اوردة المخ
+CT angio of the neck,مقطعية على اوردة الرقبة
+CT entrography,مقطعية بالصبغة على الامعاء الدقيقة
+CT virtual gastroscopy,مقطعية تخيلية على المعدة
+CT Angio of the abdominal aorta With Contrast,مقطعية على الشريان الاورطي بالبطن 
+CT Angio of the thoracic aorta With Contrast,مقطعية على الشريان الاورطي بالصدر 
+CT angiography of both renal arteries With Contrast,مقطعية على شرايين الكلى 
+CT carotid angiography With Contrast,مقطعية على شرايين الرقبة بالصبغة
+CT angiography of both L.L or U.L With Contrast,مقطعية بالصبغة على شرايين الساقين أو الذراعين
+CT angio of the brain  With Contrast,مقطعية على شرايين المخ بالصبغة
+CT angiography of the pulmonary arteries With Contrast,مقطعية على شرايين الصدر 
+CT angiography of the chest and abdomen  With Contrast,مقطعية على شرايين الصدر والبطن بالصبغة
+CT portal vein  With Contrast,مقطعية على الوريد البابي بالكبد
+Triphasic CT abdomen,مقطعية على البطن ( ثلاثية المراحل)
+Triphasic CT abdomen & pelvis,مقطعية على البطن والحوض ( ثلاثية المراحل )
+CT ANGIOGRAPHY OF THE LUNG,مقطعية على شرايين الرئة
+Nerve conduction Study,رسم اعصاب فقط (طرف او طرفين)
+Nerve conduction Study&Limited EMG,رسم اعصاب اوعضلات جزئي او رسم عضلات فقط
+Full Nerve conduction Study&Full EMG,رسم اعصاب مع عضلات كلى
+Item,ItemNameA
+Nerve conduction Study,رسم الأعصاب - طرف واحد
+Nerve conduction Study&Limited EMG,رسم أعصاب - طرفين
+Full Nerve conduction Study&Full EMG,رسم أعصاب - 4 اطراف
+رسم أعصاب او عضلات على الوجه,رسم أعصاب او عضلات على الوجه
+رسم اعصاب + عضلات على الوجه,رسم اعصاب + عضلات على الوجه
+Nerve conduction Study&Limited EMG,رسم اعصاب وعضلات - طرف واحد
+Nerve conduction Study&Limited EMG,رسم اعصاب وعضلات - طرفين
+Full Nerve conduction Study&Full EMG,رسم اعصاب وعصلات - 4 اطراف
+Brachial plexus -1 Limb,رسم اعصاب او عضلات على الضفيرة العصبية - طرف واحد
+x-ray skull ( 2 views),عادية على الجمجمة وضعين
+x-ray  TMJ ( 1 view),عادية على مفصل الفك وضع واحد
+x-ray  orbit ( 1 view),عادية على الحجاج وضع واحد
+x-ray  mandible,عادية على عظام الفك
+x-ray paranasal sinuses ( one view),عادية على الجيوب الانفية وضع واحد
+x-ray nasal septum,عادية على الحاجز الانفى
+x-ray cervical spine ( 2 views),عادية على الفقرات العنقية وضعين
+x-ray lumber spine ( 2 views),عادية على الفقرات القطنية وضعين
+x-ray dorsal spine ( 2 views),عادية على الفقرات الصدرية وضعين
+x-ray chest  ( 2 views),عادية على الصدر - وضعين
+x-ray right foot,عادية على القدم اليمنى
+x-ray both hips joints,عادية على مفصلى الحوض
+x-ray left calcenous bone,عادية على الكعب الايسر
+x-ray left foot,عادية على القدم اليسرى
+x-ray right hand,عادية على اليد اليمنى
+x-ray right arm,عادية على الذراع الايمن
+x-ray ribs,عادية على الضلوع وضعين
+x-ray both hips joints ( 2 views),عادية على مفصلى الحوض وضعين
+x-ray right femur,عادية على الفخذ الايمن
+x-ray right knee,عادية على الركبة اليمنى
+x-ray left knee,عادية على الركبة اليسرى
+x-ray both knees,عادية على الركبتين
+x-ray right forearm,عادية على المرفق الايمن
+x-ray right shoulder,عادية على الكتف الايمن
+Item,ItemNameA
+x-ray right wrist,عادية على الرسغ الايمن
+x-ray right elbow,عادية على الكوع الايمن
+x-ray left elbow,عادية على الكوع الايسر
+x-ray right leg,عادية على الساق الايمن
+x-ray Abdomen ( erect),عادية على البطن واقفا
+x-ray right ankle,عادية على الكاحل الايمن
+x-ray PUT,عادية على المسالك البولية
+extra view,عادية وضع اضافي واحد للجمجمة
+2 extra views,عادية وضعين اضافيين للجمجمة
+x-ray both feet,عادية على القدمين
+x-ray both calcenous bones,عادية على الكعبين
+x-ray both hands,عادية على اليدين
+x-ray both wrists,عادية على الرسغين
+x-ray both elbows,عادية على الكوعين
+x-ray sacrum ( 2 views),عادية على الفقرات العصعصية وضعين
+x-ray left shoulder,عادية على الكتف الايسر
+x-ray right clavicle,عادية على الترقوة اليمنى
+x-ray left clavicle,عادية على الترقوة اليسرى
+x-ray sternum ( 2 views),عادية على القص - وضعين
+x-ray left arm,عادية على الذراع الايسر
+x-ray left hand,عادية على اليد اليسرى
+x-ray left wrist,عادية على الرسغ الايسر
+x-ray left femur,عادية على الفخذ الايسر
+x-ray left leg ( Tibia & fibula ),عادية على الساق الايسر
+x-ray both legs,عادية على الساقين
+x-ray left ankle,عادية على الكاحل الايسر
+x-ray right calcenous bone,عادية على الكعب الايمن
+adittional  film ( 14x17),عادية وضع اضافى واحد فيلم كبير
+adittional       2 films ( 14x,عادية وضعين اضافيين فيلم كبير
+x-ray left forearm,عادية على المرفق الايسر
+x-ray both forearms,عادية على المرفقين
+x-ray both femurs,عادية على الفخذين
+x-ray both shoulders,عادية على الكتفين
+X-ray paranasal sinuses ( whole group),عادية على الجيوب الانفية المجموعة كلها
+x-ray both ankles,عادية على الكاحلين
+X-ray Skull (one view ),عادية على الجمجمةوضع واحد
+X-ray cervical spine (one view),عادية على الفقرات العنقية وضع واحد
+X-ray lumber spine (one view),عادية على الفقرات القطنية وضع واحد
+X-ray dorsal spine (one view),عادية على الفقرات الصدرية وضع واحد
+X-ray both arms,عادية على الذراعين
+x-ray chest,عادية على الصدر
+X-ray nasopharynx,عادية على البلعوم الانفي
+X-ray salivary gland,عادية على الغدة اللعابية ناحية واحدة
+X-ray parotid gland,عادية على الغدة النكافية
+complementary X-ray from US,استكمال عادية من التلفزيونية
+complementary XRAY FROM CT,استكمال عادية من المقطعية
+complementary XRAY FROM MRI,استكمال عادية من الرنين
+complementary XRAY FROM DOPPLE,استكمال عادية من دوبلر
+x-ray sacrum  (one view),عادية على الفقرات العصعصية وضع واحد
+x-ray right knee ( 2 views),عادية على الركبة اليمنى وضعين
+x-ray left knee ( 2 views),عادية على الركبة اليسرى وضعين
+x-ray both knees ( 2 views),عادية على الركبتين وضعين
+x-ray right hand,' عادية على اليد اليمنى وضعين
+x-ray left hand,عادية على اليد اليسرى وضعين
+x-ray left leg ( Tibia & fibula ),عادية على الساق الايسر وضعين
+x-ray rigt leg ( Tibia & fibula ),عادية على الساق الايمن وضعين
+x-ray both legs,عادية على الساقين وضعين
+x-ray both feet,عادية على القدمين وضع واحد
+x-ray both calcenous bones,عادية على الكعبين وضع واحد
+x-ray both hands,عادية على اليدين وضع واحد
+x-ray both wrists,عادية على الرسغين وضع واحد
+x-ray both elbows,عادية على الكوعين وضع واحد
+x-ray both shoulders,عادية على الكتفين وضع واحد
+Item,ItemNameA
+x-ray right forearm ( 2 views),عادية على المرفق الايمن وضعين
+x-ray right shoulder  ( 2 views),عادية على الكتف الايمن وضعين
+x-ray right wrist  ( 2 views),عادية على الرسغ الايمن وضعين
+x-ray right elbow ( 2 views),عادية على الكوع الايمن وضعين
+x-ray left elbow ( 2 views),عادية على الكوع الايسر وضعين
+x-ray right ankle ( 2 views),عادية على الكاحل الايمن وضعين
+x-ray left arm ( 2 views),عادية على الذراع الايسر وضعين
+x-ray left wrist ( 2 views),عادية على الرسغ الايسر وضعين
+x-ray left femur ( 2 views),عادية على الفخذ الايسر وضعين
+x-ray left ankle  ( 2 views),عادية على الكاحل الايسر وضعين
+x-ray right calcenous bone  ( ,عادية على الكعب الايمن وضعين
+x-ray left forearm  ( 2 views),عادية على المرفق الايسر وضعين
+x-ray left calcenous bone ( 2 ,عادية على الكعب الايسر وضعيين
+x-ray right foot  ( 2 views),عادية على القدم اليمنى وضعين
+x-ray left foot  ( 2 views),عادية على القدم اليسرى وضعين
+x-ray right arm  ( 2 views),عادية على الذراع الايمن وضعين
+x-ray right femur ( 2 views),عادية على الفخذ الايمن وضعين
+x-ray left shoulder (2 views),عادية على الكتف الايسر وضعين
+x-ray right Humerus (2 views),عادية على العضد الايمن وضعين
+x-ray right Humerus,عادية على العضد الايمن وضع
+x-ray left Humerus,عادية على العضد الايسر وضع
+Fistulography,عادية بالصبغة على الناصور
+Cavernosography,عادية بالصبغة على القضيب
+Ascending cystourethrography,عادية بالصبغة الصاعدة على المثانة
+I.V.P + ( CONTRAST ),عادية على المسالك بالصبغة I.V.P
+Urethrography +( contarst),عادية على المجرى البولي بالصبغة
+Barium swallow,عادية بالباريوم على المرئ
+Barium meal,عادية بالباريوم على المعدة والاثنى عشر
+Barium follow through,عادية بالباريوم على الامعاء الدقيقة
+Barium enema,عادية بالباريوم على القولون
+Hystrosalpingoraphy,عادية بالصبغة على الرحم H.C.G
+Larynx plain 1 v,عادية على الحنجرة وضع واحد
+Larynx plain 2v,عادية على  الحنجرة وضعين
+Barium meal,عادية بالباريوم على المعدة
+Abdominal US,تلفزيونية على البطن
+Pelvic US,تلفزيونية على الحوض
+Pelviabdominal US,تلفزيونية على البطن والحوض
+Obsetric US,تلفزيونية على الحمل
+breast US,تلفزيونية على الثدي
+scrotal US,تلفزيونية على الخصية
+Thyroid US,تلفزيونية على الغدة
+Transvaginal US,تلفزيونية عن طريق المهبل
+Transrectal US,تلفزيونية عن طريق الشرج
+folliculometry,تلفزيونية متابعة تبويض مرحلة واحدة
+both breasts US,تلفزيونية على الثديين
+skull US,تلفزيونية على الجمجمة
+joints US,تلفزيونية على المفاصل
+US Axilla,تلفزيونية على الابط
+right knee US,تلفزيونية على الركبة اليمنى
+left knee US,تلفزيونية على الركبة اليسرى
+Item,ItemNameA
+folliculometry ( 3 phases),تلفزيونية متابعة تبويض 3مراحل
+Superficial tissue US,سونار على الأنسجة السطحية
+Muscle US,تلفزيونية على العضلة
+US GUIDED ASPIRATION,شفط سائل من كيس بالثدى عن طريق الموجات الصوتيه
+True Cut Under US.,عينة True Cut تحت الموجات فوق الصوتية
+عينة FNA  تحت الموجات فوق صوتيه,عينة FNA  تحت الموجات فوق صوتيه
+مقطعية على مفصلى الحوض,مقطعية على مفصلى الحوض

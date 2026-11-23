@@ -254,14 +254,14 @@ body.ltr .nav-link{flex-direction:row;text-align:left}
 
 .quick-ribbon{
   display:flex;align-items:center;gap:7px;overflow-x:auto;
-  margin:12px 0 0;padding:8px 10px;background:#fff;
-  border:1px solid var(--line);border-radius:12px;
+  margin:12px 0 0;padding:8px 10px;background:var(--surface, #0f172a);
+  border:1px solid var(--line, #334155); color:var(--text, #f8fafc);border-radius:12px;
 }
 .quick-ribbon-action{
   min-width:76px;display:flex;flex-direction:column;align-items:center;
   gap:3px;padding:6px 8px;border-radius:9px;color:inherit;text-decoration:none;
 }
-.quick-ribbon-action:hover{background:#eff6ff}
+.quick-ribbon-action:hover{background:var(--hover, #1e293b)}
 .quick-ribbon-action span{font-size:19px}
 .quick-ribbon-action small{font-size:10px;font-weight:800;white-space:nowrap}
 .quick-ribbon-action.customize{border-inline-start:1px solid var(--line)}

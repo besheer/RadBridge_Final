@@ -94,6 +94,7 @@
 {% if has_perm("rt.view") %}<a class="nav-link" href="{{url_for('rt_worklist')}}">☢ <span>{{"العلاج الإشعاعي" if ui_lang=="ar" else "Radiotherapy"}}</span></a>{% endif %}
 {% if has_perm("nursing.worklist") %}<a class="nav-link" href="{{url_for('nursing_worklist')}}">✚ <span>{{"التمريض" if ui_lang=="ar" else "Nursing"}}</span></a>{% endif %}
 {% if has_perm("reports.view") %}<a class="nav-link" href="{{url_for('doctor_workspace')}}">🩺 <span>{{"مساحة الطبيب" if ui_lang=="ar" else "Doctor Workspace"}}</span></a>{% endif %}
+{% if has_perm("reports.view") %}<a class="nav-link" href="{{url_for('doctor_studio')}}">✨ <span>{{"استوديو الطبيب (المتطور)" if ui_lang=="ar" else "Doctor Studio (Pro)"}}</span></a>{% endif %}
 {% if has_perm("reports.coordinate") %}<a class="nav-link" href="{{url_for('coordinator_queue')}}">🗂 <span>{{"قائمة المنسق" if ui_lang=="ar" else "Coordinator Queue"}}</span></a>{% endif %}
 {% if has_perm("reports.view") %}<a class="nav-link" href="{{url_for('reports_portal')}}">📄 <span>{{"التقارير" if ui_lang=="ar" else "Reporting"}}</span></a>{% endif %}
 <a class="nav-link" href="{{url_for('returned_cases_queue')}}">↩ <span>{{"الحالات المرتجعة" if ui_lang=="ar" else "Returned Cases"}}</span></a>
@@ -291,7 +292,7 @@
 </div>
 </header>
 
-{% if ribbon_actions %}
+{% if ribbon_actions and not hide_quick_ribbon %}
 <div class="quick-ribbon">
 {% for x in ribbon_actions %}
 {% set a=x.action %}

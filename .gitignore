@@ -10,3 +10,9 @@ build/
 report-files/
 *.pyc
 *.log
+
+*.bak*
+ris/ris-db/
+ris/attachments/
+ris/report-files/
+*.gz
