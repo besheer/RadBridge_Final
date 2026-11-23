@@ -519,7 +519,7 @@
  <form method="get" class="rb-tools">
   <input type="hidden" name="date" value="{{selected.isoformat()}}">
   <select name="branch_id"><option value="">{{ ui_phrase('All Branches') }}</option>{% for b in branches %}<option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select>
-  <select name="device_id"><option value="">{{ ui_phrase('All Devices') }}</option>{% for d in all_devices %}<option value="{{d.id}}" {% if selected_device_id==d.id %}selected{% endif %}>{{d.modality}} — {{d.name}}</option>{% endfor %}</select>
+  <select name="device_id"><option value="">{{ ui_phrase('All Devices') }}</option>{% for d in (devices if branch_id else all_devices) %}<option value="{{d.id}}" {% if selected_device_id==d.id %}selected{% endif %}>{{d.modality}} — {{d.name}}</option>{% endfor %}</select>
   <button class="btn">{{ ui_phrase('Apply') }}</button>
  </form>
 </div>

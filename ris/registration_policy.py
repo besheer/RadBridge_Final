@@ -134,12 +134,19 @@ def assign_reserved_visit(order):
 
 
 def allowed_registration_branches():
-    """None means all active branches; ordinary staff use their assigned branch."""
+    """None means all active branches; multi-branch staff can access and book in all branches."""
     import app as m
     user=m.current_user()
-    if user and user.role and user.role.code in ('SUPER_ADMIN','CALL_CENTER'):
+    if not user:
         return None
-    return [user.branch_id] if user and getattr(user,'branch_id',None) else []
+    # Staff roles that can book or view across all branches (Belbeis, Deyerb, Main)
+    multi_branch_roles = {
+        'SUPER_ADMIN', 'ADMIN', 'CALL_CENTER', 'RECEPTION',
+        'CASE_COORDINATOR', 'BRANCH_MANAGER', 'MANAGEMENT', 'IT'
+    }
+    if user.role and user.role.code in multi_branch_roles:
+        return None
+    return [user.branch_id] if getattr(user, 'branch_id', None) else None
 
 def require_registration_branch(branch_id):
     import app as m
