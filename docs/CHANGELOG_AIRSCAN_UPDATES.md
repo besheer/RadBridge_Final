@@ -69,10 +69,33 @@
 
 ---
 
-## 6. سجل التعديلات المرفوعة (Git Commits):
+## 6. الفحص الآلي اليومي لسجلات النظام وحل الأخطاء (Daily Log & Health Inspector)
+
+### المطلب:
+فحص اللوج وسجلات الخوادم مرتين يومياً: صباحاً (08:00 ص) ومساءً (08:00 م) بتوقيت القاهرة، لرصد أي أخطاء أو تعطل في الخدمات وحلها تلقائياً (Self-Healing).
+
+### الإجراءات التقنية المنفذة:
+1. **تطوير محرك الفحص الذكي (`scripts/daily_system_health.py`):**
+   * يفحص حالة جميع حاويات الدوكر (`ris-web`, `radbridge-orthanc`, `radbridge-postgres`, `radbridge-nginx`, `radbridge-mirth`, `radbridge-ohif`).
+   * يفحص استجابة واجهة الويب (`HTTP 200 OK`) وقاعدة البيانات وشبكة الباكس.
+   * يقوم بعمل مسح عميق لسجلات اللوج (Logs) لآخر 12 ساعة لاكتشاف أي استثناءات بايثون (`Tracebacks`) أو أخطاء خادم (`500`).
+   * يتحقق من السعة التخزينية المتبقية والذاكرة العشوائية (RAM).
+   * **التعافي الذاتي التلقائي (Self-Healing):** في حال توقف أي خدمة، يقوم المحرك بمحاولة إعادة تشغيلها فوراً وتوثيق الإجراء في التقرير.
+   * يصدر تقريراً دورياً مفصلاً في مسار `/home/rispacs/RadBridge_Final/logs/health_reports/latest_health.md`.
+2. **الجدولة الدورية التلقائية:**
+   * تم تفعيل الجدولة على نظام Linux عبر Crontab بمعدل مرتين يومياً: `0 8,20 * * *`.
+   * تم تكوين أتمتة Antigravity السحابية (`Daily AirScan Log & Health Inspector`) بمواعيد `CRON_TZ=Africa/Cairo 0 8,20 * * *`.
+3. **حل خطأ سبام الـ 403 في اللوج:**
+   * تم رصد استهلاك غير مبرر للوج بطلبات متكررة كل 3 ثوانٍ على `/api/staff/communications/queue` من شاشات الأطباء تعطي `403 Forbidden`.
+   * تم تقييد تشغيل عداد التنبيهات على موظفي الاستقبال وخدمة العملاء فقط، وتحديث مسار الـ API ليعيد `{"ok": true, "items": []}` للأدوار الأخرى بدلاً من الخطأ، مما جعل سجل اللوج نظيفاً ومستقراً تماماً.
+
+---
+
+## 7. سجل التعديلات المرفوعة (Git Commits):
 
 | الكود | وصف التعديل |
 | :--- | :--- |
+| `d62122c` | Add daily system health & log inspector with morning/evening schedule and resolve comm queue 403 spam |
 | `0136862` | Configure Orthanc DICOM Lossless Compression (JPEG 2000 Lossless) and auto-ingest transcoding |
 | `3de7312` | Auto-select first available free slot to prevent booking collisions on occupied timeslots |
 | `3a53767` | Support in-place patient demographic editing during registration and patient edit page |
