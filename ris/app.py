@@ -13845,7 +13845,15 @@ def _rb_v5462_payment(orders,form):
     method=(form.get('payment_method') or '').strip().upper()
     if method not in ('CASH','VISA','MASTERCARD','WALLET','BANK_TRANSFER'):raise ValueError('Select payment method.')
     total_due=sum(max(0,float(o.patient_share or 0)) for o in orders)
-    if amount>total_due+0.01:
+    if total_due <= 0.01 and amount > 0 and len(orders) > 0:
+        share_per_order = round(amount / len(orders), 2)
+        for o in orders:
+            o.gross_price = share_per_order
+            o.contract_price = share_per_order
+            o.patient_share = share_per_order
+            o.company_share = 0.0
+        total_due = sum(max(0, float(o.patient_share or 0)) for o in orders)
+    elif amount > total_due + 0.01:
         raise ValueError(f'Payment exceeds patient total due ({total_due:.2f}).')
     left=amount
     for o in orders:
