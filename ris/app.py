@@ -37695,7 +37695,7 @@ def communications_dashboard():
 def staff_communications_queue():
 
     if not _rb_staff_role_allowed():
-        abort(403)
+        return jsonify(ok=True, items=[])
 
     rows = db.session.execute(
         db.text("""

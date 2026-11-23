@@ -637,6 +637,7 @@ rbStartOfferCountdown(d.expires_at);document.getElementById('rbOfferForm').actio
 </style>
 
 
+{% if current_user and current_user.is_authenticated and current_user.role and current_user.role.code in ["SUPER_ADMIN", "RECEPTION", "CALL_CENTER", "CASE_COORDINATOR", "ADMIN", "COORDINATOR"] %}
 <div id="rbGlobalCommAlert">
 
 <div id="rbGlobalCommPhone">
@@ -975,6 +976,7 @@ rbStartOfferCountdown(d.expires_at);document.getElementById('rbOfferForm').actio
 })();
 
 </script>
+{% endif %}
 
 
 <script src="{{url_for('static',filename='action-guidance.js')}}?v=1" defer></script>
