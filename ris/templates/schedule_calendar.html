@@ -927,7 +927,26 @@ function refreshRegistrationBranch(resetExams){
  if(resetExams){examRows.innerHTML='';addExam();registrationVisit.value='';loadRegistrationVisits();rbRegistrationValidation();}
 }
 document.getElementById('fBranch').addEventListener('change',()=>refreshRegistrationBranch(true));
-document.getElementById('registrationDevice').addEventListener('change',e=>{document.getElementById('fDevice').value=e.target.value;refreshRegistrationBranch(true);});
+function findFirstFreeCell(deviceId){
+  const cells = [...document.querySelectorAll('.rb-cell')].filter(c => c.dataset.device === String(deviceId));
+  for(const c of cells){
+    if(c.querySelector('.rb-add') && !c.querySelector('.rb-appt') && !c.classList.contains('occupied')){
+      return c;
+    }
+  }
+  return null;
+}
+document.getElementById('registrationDevice').addEventListener('change',e=>{
+  document.getElementById('fDevice').value=e.target.value;
+  refreshRegistrationBranch(true);
+  const freeCell = findFirstFreeCell(e.target.value);
+  if(freeCell && freeCell.dataset.dt){
+    const dt = freeCell.dataset.dt;
+    document.getElementById('fScheduled').value = dt;
+    document.getElementById('metaDt').textContent = dt.replace('T', ' ');
+    document.getElementById('sStart').textContent = dt.replace('T', ' ');
+  }
+});
 function openWs(cell){const dt=cell.dataset.dt;modality=(cell.dataset.modality||'').toUpperCase();document.getElementById('fScheduled').value=dt;document.getElementById('fDevice').value=cell.dataset.device;document.getElementById('fBranch').value=cell.dataset.branch;refreshRegistrationBranch(false);document.getElementById('metaDevice').textContent=cell.dataset.name+' · '+modality;document.getElementById('metaDt').textContent=dt.replace('T',' ');document.getElementById('sDevice').textContent=cell.dataset.name;document.getElementById('sStart').textContent=dt.replace('T',' ');examRows.innerHTML='';docRows.innerHTML='';addExam();addDoc();setMode('new');registrationVisit.value='';registrationMultiple.checked=false;document.getElementById('visitLinkControls').classList.add('rb-hidden');document.getElementById('registrationOpen').checked=false;registrationMode.value='AUTO';registrationDoctor.value='';registrationMode.onchange();dirty=false;overlay.hidden=false;loadRegistrationVisits();rbRegistrationValidation()}
 document.querySelectorAll('.rb-add').forEach(b=>b.onclick=()=>openWs(b.closest('.rb-cell')));
 function closeWs(){if(dirty&&!confirm('Discard unsaved changes?'))return;overlay.hidden=true;dirty=false}
@@ -1121,7 +1140,18 @@ if(qs.get('open_registration')==='1'){
   }
 
   if(!b){
-    b=document.querySelector('.rb-add');
+    // Auto-select first free cell without appointments
+    const devSelect = document.getElementById('registrationDevice');
+    if(devSelect && devSelect.value){
+      const freeCell = findFirstFreeCell(devSelect.value);
+      if(freeCell) b = freeCell.querySelector('.rb-add');
+    }
+    if(!b){
+      const allCells = [...document.querySelectorAll('.rb-cell')];
+      const freeCell = allCells.find(c => c.querySelector('.rb-add') && !c.querySelector('.rb-appt'));
+      if(freeCell) b = freeCell.querySelector('.rb-add');
+    }
+    if(!b) b=document.querySelector('.rb-add');
   }
 
   if(b){

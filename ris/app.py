@@ -9687,6 +9687,24 @@ def booking_restriction_reason(branch,procedure,device,start_at,duration_min,exc
         return reason or 'Device is unavailable'
     return ''
 
+def find_first_available_slot(branch, procedure, device, start_at, duration_min=None, max_search_hours=72):
+    duration = max(5, int(duration_min or (procedure.duration_min if procedure else 20) or 20))
+    cursor = start_at
+    limit = start_at + timedelta(hours=max_search_hours)
+    while cursor < limit:
+        ok, reason, conflict = device_available_for_booking(device, cursor, duration)
+        if ok:
+            control_reason = booking_control_reason(branch, procedure, device, cursor, cursor + timedelta(minutes=duration)) if procedure else None
+            if not control_reason:
+                return cursor
+        if conflict:
+            ce = conflict.scheduled + timedelta(minutes=max(5, int(conflict.duration_min or 20)))
+            if ce > cursor:
+                cursor = ce
+                continue
+        cursor += timedelta(minutes=15)
+    return start_at
+
 def ensure_default_procedure_branch_mappings():
     added=0
     branches=Branch.query.filter_by(active=True).all()
@@ -14030,6 +14048,7 @@ def schedule_unified_submit():
             for p in procs:
                 duration=max(5,int(p.duration_min or 20))
                 if not waiting:
+                    cursor = find_first_available_slot(branch, p, device, cursor, duration)
                     acquire_booking_slot_lock(device.id,cursor)
                     reason=booking_restriction_reason(branch,p,device,cursor,duration)
                     if reason: raise ValueError(f'{p.name}: {reason}')
@@ -14062,9 +14081,11 @@ def schedule_unified_submit():
         proc_prices = request.form.getlist('procedure_prices')
         for i, p in enumerate(procs):
             duration=max(5,int(p.duration_min or 20))
-            acquire_booking_slot_lock(device.id,cursor)
-            reason=booking_restriction_reason(branch,p,device,cursor,duration)
-            if reason: raise ValueError(f'{p.name}: {reason}')
+            if not waiting:
+                cursor = find_first_available_slot(branch, p, device, cursor, duration)
+                acquire_booking_slot_lock(device.id,cursor)
+                reason=booking_restriction_reason(branch,p,device,cursor,duration)
+                if reason: raise ValueError(f'{p.name}: {reason}')
             gross,effective,patient_share,company_share,_=price_order(p,contract)
             
             # Reception custom price input
@@ -14210,6 +14231,7 @@ def schedule_book():
         for proc in procedures:
             duration=max(5,int(proc.duration_min or 20))
             if not waiting:
+                cursor = find_first_available_slot(branch, proc, device, cursor, duration)
                 acquire_booking_slot_lock(device.id,cursor)
                 reason=booking_restriction_reason(branch,proc,device,cursor,duration)
                 if reason:raise ValueError(f'{proc.name}: {reason}')
