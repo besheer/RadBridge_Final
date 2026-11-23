@@ -7,6 +7,8 @@ echo        RadBridge Word Companion Installer
 echo ========================================================
 echo.
 
+taskkill /F /FI "WINDOWTITLE eq RadBridge*" >nul 2>&1
+
 set "TARGET_DIR=%LOCALAPPDATA%\RadBridge"
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 
@@ -33,6 +35,6 @@ echo   SUCCESS: RadBridge Word Companion is now installed!
 echo ========================================================
 echo.
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand QQBkAGQALQBUAHkAcABlACAALQBBAHMAcwBlAG0AYgBsAHkATgBhAG0AZQAgAFMAeQBzAHQAZQBtAC4AVwBpAG4AZABvAHcAcwAuAEYAbwByAG0AcwA7ACAAWwBTAHkAcwB0AGUAbQAuAFcAaQBuAGQAbwB3AHMALgBGAG8AcgBtAHMALgBNAGUAcwBzAGEAZwBlAEIAbwB4AF0AOgA6AFMAaABvAHcAKAAnACoGRQYgACoGKwYoBkoGKgYgACMGLwYnBikGIABSAGEAZABCAHIAaQBkAGcAZQAgAFcAbwByAGQAIABDAG8AbQBwAGEAbgBpAG8AbgAgACgGRgYsBicGLQYgACoGJwZFBiEAYABuAGAAbgBKBkUGQwZGBkMGIAAnBkQGIgZGBiAAJwZEBkYGQgYxBiAAOQZEBkkGIAAyBjEGIABXAG8AcgBkACAAJwZEBkUGKAYnBjQGMQYgAEEGSgYgACcGRAZFBioGNQZBBi0GIABIBjMGSgYqBkUGIABBBioGLQYgACcGRAYqBkIGMQZKBjEGIAAqBkQGQgYnBiYGSgYnBksGIABBBkoGIABNAGkAYwByAG8AcwBvAGYAdAAgAFcAbwByAGQALgAnACwAIAAnAFIAYQBkAEIAcgBpAGQAZwBlACAAQwBvAG0AcABhAG4AaQBvAG4AJwAsACAAWwBTAHkAcwB0AGUAbQAuAFcAaQBuAGQAbwB3AHMALgBGAG8AcgBtAHMALgBNAGUAcwBzAGEAZwBlAEIAbwB4AEIAdQB0AHQAbwBuAHMAXQA6ADoATwBLACwAIABbAFMAeQBzAHQAZQBtAC4AVwBpAG4AZABvAHcAcwAuAEYAbwByAG0AcwAuAE0AZQBzAHMAYQBnAGUAQgBvAHgASQBjAG8AbgBdADoAOgBJAG4AZgBvAHIAbQBhAHQAaQBvAG4AKQA=
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[System.Windows.Forms.MessageBox]::Show('تم تثبيت وتحديث أداة RadBridge Word Companion بنجاح تام!`n`nيمكنك الآن الضغط على زر Word المباشر في المتصفح وسيتم فتح التقرير وحفظه بسلاسة.', 'RadBridge Word Companion', [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)"
 
 pause

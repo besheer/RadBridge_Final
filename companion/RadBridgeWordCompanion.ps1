@@ -1,4 +1,4 @@
-﻿﻿<#
+<#
 .SYNOPSIS
     RadBridge Microsoft Word Direct Companion (Windows Native)
     Direct 1-Click Launch, Real-Time Sync, and Anti-Mixup Safe Finalization.
@@ -56,7 +56,7 @@ function Parse-UriParams($raw) {
 
 $argsMap = Parse-UriParams $LaunchUri
 
-$server = if ($argsMap.ContainsKey('server')) { $argsMap['server'].TrimEnd('/') } else { 'https://airscan.dynu.net' }
+$server = if ($argsMap.ContainsKey('server')) { $argsMap['server'].TrimEnd('/') } else { 'http://192.168.100.23:8090' }
 $orderId = if ($argsMap.ContainsKey('order_id')) { [int]$argsMap['order_id'] } else { 0 }
 $accession = if ($argsMap.ContainsKey('accession')) { $argsMap['accession'] } else { '' }
 $patientName = if ($argsMap.ContainsKey('patient_name')) { $argsMap['patient_name'] } else { 'Unknown Patient' }
@@ -86,36 +86,55 @@ New-Item -ItemType Directory -Force -Path $workDir | Out-Null
 $cleanName = [regex]::Replace($patientName, '[^\w\u0600-\u06FF.-]', '_')
 $localDocx = Join-Path $workDir "${cleanName}_${accession}.docx"
 
-# Candidate servers: try the passed server first, fallback to https://airscan.dynu.net
-$serversToTry = @($server)
-if ($server -ne 'https://airscan.dynu.net') {
+# Candidate servers: try the passed server first, fallback to LAN IP and public WAN domain
+$serversToTry = @()
+if (-not [string]::IsNullOrWhiteSpace($server)) {
+    $serversToTry += $server.TrimEnd('/')
+}
+if ($serversToTry -notcontains 'http://192.168.100.23:8090') {
+    $serversToTry += 'http://192.168.100.23:8090'
+}
+if ($serversToTry -notcontains 'https://airscan.dynu.net') {
     $serversToTry += 'https://airscan.dynu.net'
 }
 
 $downloadSucceeded = $false
 $lastError = ""
-$script:activeServer = $server
+$script:activeServer = $serversToTry[0]
 
 foreach ($cand in $serversToTry) {
     try {
         $downloadUrl = "$cand/api/reports/$orderId/word-direct-file?token=$token"
-        $wc = New-Object System.Net.WebClient
-        $wc.Headers.Add("User-Agent", "RadBridgeWordCompanion/1.0")
-        $wc.DownloadFile($downloadUrl, $localDocx)
-        $wc.Dispose()
-        if (Test-Path $localDocx) {
+        $req = [System.Net.HttpWebRequest]::Create($downloadUrl)
+        $req.Timeout = 6000
+        $req.ReadWriteTimeout = 15000
+        $req.UserAgent = "RadBridgeWordCompanion/1.0"
+        $req.ServerCertificateValidationCallback = { $true }
+        
+        $resp = $req.GetResponse()
+        $respStream = $resp.GetResponseStream()
+        $fileStream = New-Object System.IO.FileStream($localDocx, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
+        $respStream.CopyTo($fileStream)
+        $fileStream.Close()
+        $fileStream.Dispose()
+        $respStream.Close()
+        $respStream.Dispose()
+        $resp.Close()
+        
+        if ((Test-Path $localDocx) -and (Get-Item $localDocx).Length -gt 0) {
             $downloadSucceeded = $true
             $script:activeServer = $cand
             break
         }
     } catch {
         $lastError = $_.Exception.Message
+        if (Test-Path $localDocx) { Remove-Item -Force $localDocx -ErrorAction SilentlyContinue }
     }
 }
 
 if (-not $downloadSucceeded) {
     [System.Windows.Forms.MessageBox]::Show(
-        "فشل تنزيل ملف التقرير من السيرفر:`nالرابط: $downloadUrl`nالسبب: $lastError`n`nيرجى التأكد من اتصال الإنترنت.",
+        "فشل تنزيل ملف التقرير من السيرفر:`nالرابط المحاول: $downloadUrl`nالسبب: $lastError`n`nيرجى التأكد من تشغيل السيرفر أو اتصال الإنترنت.",
         "خطأ في الاتصال بالخادم",
         [System.Windows.Forms.MessageBoxButtons]::OK,
         [System.Windows.Forms.MessageBoxIcon]::Error
@@ -148,71 +167,66 @@ $form.StartPosition = "Manual"
 $form.FormBorderStyle = "FixedToolWindow"
 $form.TopMost = $true
 $form.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0b1322")
-$form.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#f8fafc")
-$form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
 
-# Position at top-right of screen
+# Position top-right near Word ribbon
 $screen = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
-$form.Location = New-Object System.Drawing.Point(($screen.Right - 550), 30)
+$form.Location = New-Object System.Drawing.Point(($screen.Right - 550), ($screen.Top + 35))
 
-# Header App Title
-$lblApp = New-Object System.Windows.Forms.Label
-$lblApp.Text = "🩺 RadBridge Direct Word Reporter"
-$lblApp.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
-$lblApp.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#38bdf8")
-$lblApp.Location = New-Object System.Drawing.Point(16, 10)
-$lblApp.Size = New-Object System.Drawing.Size(280, 22)
-$form.Controls.Add($lblApp)
+# Header: Title & Version badge
+$lblTitle = New-Object System.Windows.Forms.Label
+$lblTitle.Text = "🗲 RadBridge Direct Word Reporter"
+$lblTitle.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$lblTitle.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#38bdf8")
+$lblTitle.Location = New-Object System.Drawing.Point(16, 12)
+$lblTitle.Size = New-Object System.Drawing.Size(320, 24)
+$form.Controls.Add($lblTitle)
 
-# Badge Status
 $lblBadge = New-Object System.Windows.Forms.Label
 $lblBadge.Text = "$status · v$versionNo"
 $lblBadge.Font = New-Object System.Drawing.Font("Segoe UI", 8.5, [System.Drawing.FontStyle]::Bold)
-$lblBadge.TextAlign = "MiddleCenter"
-$lblBadge.Size = New-Object System.Drawing.Size(120, 24)
-$lblBadge.Location = New-Object System.Drawing.Point(380, 10)
+$lblBadge.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#93c5fd")
 $lblBadge.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#1e293b")
-$lblBadge.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#34d399")
-$lblBadge.BorderStyle = "FixedSingle"
+$lblBadge.TextAlign = "MiddleCenter"
+$lblBadge.Location = New-Object System.Drawing.Point(395, 12)
+$lblBadge.Size = New-Object System.Drawing.Size(105, 22)
 $form.Controls.Add($lblBadge)
 
-# Patient Card Panel
-$panel = New-Object System.Windows.Forms.Panel
-$panel.Location = New-Object System.Drawing.Point(16, 38)
-$panel.Size = New-Object System.Drawing.Size(484, 76)
-$panel.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#131d2f")
-$panel.BorderStyle = "FixedSingle"
-$form.Controls.Add($panel)
+# Patient Clinical Context Card
+$pnlCard = New-Object System.Windows.Forms.Panel
+$pnlCard.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#131d31")
+$pnlCard.Location = New-Object System.Drawing.Point(16, 42)
+$pnlCard.Size = New-Object System.Drawing.Size(484, 70)
+$form.Controls.Add($pnlCard)
 
 $lblPatient = New-Object System.Windows.Forms.Label
-$lblPatient.Text = "👤 $patientName"
+$lblPatient.Text = "🗎 $patientName"
 $lblPatient.Font = New-Object System.Drawing.Font("Segoe UI", 10.5, [System.Drawing.FontStyle]::Bold)
 $lblPatient.ForeColor = [System.Drawing.Color]::White
-$lblPatient.Location = New-Object System.Drawing.Point(8, 6)
-$lblPatient.Size = New-Object System.Drawing.Size(465, 24)
-$panel.Controls.Add($lblPatient)
+$lblPatient.Location = New-Object System.Drawing.Point(10, 6)
+$lblPatient.Size = New-Object System.Drawing.Size(464, 22)
+$pnlCard.Controls.Add($lblPatient)
 
 $lblMeta = New-Object System.Windows.Forms.Label
-$lblMeta.Text = "🆔 $patientId   |   📋 Acc: $accession   |   🔬 $study"
+$lblMeta.Text = "🪪 $patientId   |   Acc: $accession   |   $study"
 $lblMeta.Font = New-Object System.Drawing.Font("Segoe UI", 8.5)
 $lblMeta.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#94a3b8")
-$lblMeta.Location = New-Object System.Drawing.Point(8, 30)
-$lblMeta.Size = New-Object System.Drawing.Size(465, 20)
-$panel.Controls.Add($lblMeta)
+$lblMeta.Location = New-Object System.Drawing.Point(10, 30)
+$lblMeta.Size = New-Object System.Drawing.Size(464, 18)
+$pnlCard.Controls.Add($lblMeta)
 
-$lblSafetyNote = New-Object System.Windows.Forms.Label
-$lblSafetyNote.Text = "🛡️ نظام الحماية مفعل: يتم التحقق من بيانات المريض عند الحفظ تلقائياً لمنع أي اختلاط."
-$lblSafetyNote.Font = New-Object System.Drawing.Font("Segoe UI", 7.5)
-$lblSafetyNote.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#64748b")
-$lblSafetyNote.Location = New-Object System.Drawing.Point(8, 52)
-$lblSafetyNote.Size = New-Object System.Drawing.Size(465, 18)
-$panel.Controls.Add($lblSafetyNote)
+$lblSafety = New-Object System.Windows.Forms.Label
+$lblSafety.Text = "🛡 نظام الحماية مفعل: يتم التحقق من بيانات المريض عند الحفظ تلقائياً لمنع أي اختلاط"
+$lblSafety.Font = New-Object System.Drawing.Font("Segoe UI", 7.5)
+$lblSafety.ForeColor = [System.Drawing.ColorTranslator]::FromHtml("#38bdf8")
+$lblSafety.Location = New-Object System.Drawing.Point(10, 50)
+$lblSafety.Size = New-Object System.Drawing.Size(464, 16)
+$pnlCard.Controls.Add($lblSafety)
 
-# Action Buttons
+# Actions Row
 $btnDraft = New-Object System.Windows.Forms.Button
 $btnDraft.Text = "💾 حفظ مسودة (Draft)"
 $btnDraft.Font = New-Object System.Drawing.Font("Segoe UI", 9.5, [System.Drawing.FontStyle]::Bold)
-$btnDraft.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#1d4ed8")
+$btnDraft.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#0284c7")
 $btnDraft.ForeColor = [System.Drawing.Color]::White
 $btnDraft.FlatStyle = "Flat"
 $btnDraft.Location = New-Object System.Drawing.Point(16, 122)
@@ -267,27 +281,30 @@ function Sync-CaseReport([string]$actionName) {
     try {
         # Read bytes safely while Word has the file open (FileShare.ReadWrite)
         [byte[]]$fileBytes = $null
-        try {
-            $fs = New-Object System.IO.FileStream($localDocx, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-            $fileBytes = New-Object byte[] $fs.Length
-            $fs.Read($fileBytes, 0, $fs.Length) | Out-Null
-            $fs.Close()
-            $fs.Dispose()
-        } catch {
-            $tmpCopy = Join-Path $env:TEMP ('rb_' + [System.Guid]::NewGuid().ToString('N') + '.docx')
-            $srcStream = New-Object System.IO.FileStream($localDocx, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-            $dstStream = New-Object System.IO.FileStream($tmpCopy, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
-            $srcStream.CopyTo($dstStream)
-            $srcStream.Close()
-            $srcStream.Dispose()
-            $dstStream.Close()
-            $dstStream.Dispose()
-            $fileBytes = [System.IO.File]::ReadAllBytes($tmpCopy)
-            Remove-Item $tmpCopy -Force -ErrorAction SilentlyContinue
+        $readSuccess = $false
+        for ($retry = 0; $retry -lt 5; $retry++) {
+            try {
+                $fs = New-Object System.IO.FileStream($localDocx, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                $fileBytes = New-Object byte[] $fs.Length
+                $totalRead = 0
+                while ($totalRead -lt $fs.Length) {
+                    $read = $fs.Read($fileBytes, $totalRead, $fs.Length - $totalRead)
+                    if ($read -le 0) { break }
+                    $totalRead += $read
+                }
+                $fs.Close()
+                $fs.Dispose()
+                if ($fileBytes -ne $null -and $fileBytes.Length -gt 0) {
+                    $readSuccess = $true
+                    break
+                }
+            } catch {
+                Start-Sleep -Milliseconds 300
+            }
         }
 
-        if ($fileBytes -eq $null -or $fileBytes.Length -eq 0) {
-            throw "تعذر قراءة محتوى ملف الوورد (حجم الملف غير صالح)"
+        if (-not $readSuccess -or $fileBytes -eq $null -or $fileBytes.Length -eq 0) {
+            throw "تعذر قراءة ملف التقرير أثناء فتحه في الوورد. يرجى الضغط على زر الحفظ (Ctrl+S) داخل Word ثم المحاولة مجدداً."
         }
         $enc = [System.Text.Encoding]::UTF8
 

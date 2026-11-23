@@ -3583,6 +3583,7 @@ def find_duplicate_patients(name='',dob='',phone='',national_id=''):
     found=[]
     if national_id:found += Patient.query.filter(Patient.national_id==national_id).limit(10).all()
     if phone and dob:found += Patient.query.filter(Patient.phone==phone,Patient.dob==dob).limit(10).all()
+    if phone and name:found += Patient.query.filter(Patient.phone==phone,Patient.name==name).limit(10).all()
     return list({p.id:p for p in found}.values())
 
 def _orthanc_recent_studies(limit=100):
@@ -5050,7 +5051,8 @@ def _rb_registration_v2_create_patient(form,audit_action='PATIENT_CREATE_FROM_CA
     duplicates=find_duplicate_patients(name,dob,phone,national)
     if duplicates and form.get('confirm_duplicate') not in ('1', 'true', 'yes'):
         d=duplicates[0]
-        raise ValueError('Possible duplicate patient: ' + str(d.patient_id) + ' - ' + str(d.name) + '. Use the existing patient or review the duplicate.')
+        audit(audit_action + '_REUSE_EXISTING', 'patient', d.id, f'{d.patient_id} {d.name}')
+        return d
     patient=Patient(
         patient_id='TMP'+secrets.token_hex(8),name=name,dob=dob,
         dob_estimated=dob_resolution.estimated,
