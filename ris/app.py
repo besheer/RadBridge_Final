@@ -5048,9 +5048,9 @@ def _rb_registration_v2_create_patient(form,audit_action='PATIENT_CREATE_FROM_CA
     validate_patient_fields(dict(name=name,phone=phone,national_id=national,dob=dob,sex=form.get('new_sex',''),
         email=form.get('new_email',''),address=form.get('new_address',''),nationality=form.get('new_nationality','')))
     duplicates=find_duplicate_patients(name,dob,phone,national)
-    if duplicates:
+    if duplicates and form.get('confirm_duplicate') not in ('1', 'true', 'yes'):
         d=duplicates[0]
-        raise ValueError(f'Possible duplicate patient: {d.patient_id} — {d.name}. Use the existing patient or review the duplicate.')
+        raise ValueError(f'المريض مسجل مسبقاً في النظام برقم ({d.patient_id} — {d.name}). يرجى اختيار 'مريض مسجل / Existing' بدلاً من مريض جديد، أو تأكيد التسجيل.')
     patient=Patient(
         patient_id='TMP'+secrets.token_hex(8),name=name,dob=dob,
         dob_estimated=dob_resolution.estimated,
