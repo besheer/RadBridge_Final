@@ -579,7 +579,31 @@
  <div><label>{{ ui_phrase('Nationality') }}</label><input name="new_nationality"></div>
 </div><div class="notice info" style="margin-top:6px"><span id="nameView">—</span> <span class="rb-small">DICOM: <span id="dicomView">—</span></span></div></div>
 
-<div id="existingPane" class="rb-hidden"><label>{{ ui_phrase('Search Patient') }}</label><input id="patientSearch"><input type="hidden" name="patient_id" id="patientId"><div class="rb-results" id="patientResults">{% for p in patients %}<button class="rb-result" type="button" data-id="{{p.id}}" data-q="{{(p.patient_id or '')|lower}} {{(p.name or '')|lower}} {{(p.phone or '')|lower}} {{(p.national_id or '')|lower}}"><b>{{p.patient_id}} — {{p.name}}</b><div class="rb-small">{{p.phone or ''}} {{p.national_id or ''}}</div></button>{% endfor %}</div><div id="selectedPatient" class="notice info rb-hidden"></div></div>
+<div id="existingPane" class="rb-hidden"><label>{{ ui_phrase('Search Patient') }}</label><input id="patientSearch"><input type="hidden" name="patient_id" id="patientId"><div class="rb-results" id="patientResults">{% for p in patients %}<button class="rb-result" type="button" data-id="{{p.id}}" data-phone="{{p.phone or ''}}" data-national="{{p.national_id or ''}}" data-address="{{p.address or ''}}" data-email="{{p.email or ''}}" data-q="{{(p.patient_id or '')|lower}} {{(p.name or '')|lower}} {{(p.phone or '')|lower}} {{(p.national_id or '')|lower}}"><b>{{p.patient_id}} — {{p.name}}</b><div class="rb-small">{{p.phone or ''}} {{p.national_id or ''}}</div></button>{% endfor %}</div><div id="selectedPatient" class="notice info rb-hidden"></div>
+<div id="selectedPatientDetails" class="rb-hidden" style="margin-top:10px; background:#1e293b; border:1px solid #38bdf8; border-radius:8px; padding:12px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+    <strong style="color:#38bdf8; font-size:13px;">{{ 'بيانات المريض (يمكنك تعديلها هنا مباشرة وسيتم حفظها مع الفحص):' if ui_lang=='ar' else 'Patient Details (Editable, auto-saved with exam):' }}</strong>
+    <span class="rb-small" style="color:#94a3b8;">{{ 'تحديث فوري' if ui_lang=='ar' else 'Instant update' }}</span>
+  </div>
+  <div class="rb-grid2" style="gap:8px;">
+    <div>
+      <label style="font-size:11px; margin-bottom:2px;">{{ 'رقم الموبايل / الهاتف' if ui_lang=='ar' else 'Mobile / Phone' }}</label>
+      <input name="existing_phone" id="existingPhone" style="padding:6px; font-size:13px;" placeholder="01xxxxxxxxx">
+    </div>
+    <div>
+      <label style="font-size:11px; margin-bottom:2px;">{{ 'الرقم القومي' if ui_lang=='ar' else 'National ID' }}</label>
+      <input name="existing_national_id" id="existingNationalId" style="padding:6px; font-size:13px;" placeholder="14 أرقام">
+    </div>
+    <div>
+      <label style="font-size:11px; margin-bottom:2px;">{{ 'العنوان' if ui_lang=='ar' else 'Address' }}</label>
+      <input name="existing_address" id="existingAddress" style="padding:6px; font-size:13px;">
+    </div>
+    <div>
+      <label style="font-size:11px; margin-bottom:2px;">{{ 'البريد الإلكتروني' if ui_lang=='ar' else 'Email' }}</label>
+      <input type="email" name="existing_email" id="existingEmail" style="padding:6px; font-size:13px;">
+    </div>
+  </div>
+</div></div>
 
 <div id="ocrPane" class="rb-ocr rb-hidden"><b>{{ ui_phrase('Smart OCR') }}</b><p class="rb-small">{{ ui_phrase('OCR suggestions are applied automatically. Review or edit before registration. Failure never blocks registration.') }}</p><div class="rb-grid2"><select id="ocrType"><option value="OTHER">{{ ui_phrase('Auto / Other') }}</option>{% for value,en,ar in document_types %}<option value="{{value}}">{{en}} / {{ar}}</option>{% endfor %}</select><input id="ocrFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp,.dcm"></div><button class="btn" type="button" id="readOcr" style="margin-top:6px">{{ ui_phrase('Read Document') }}</button><div id="ocrStatus" class="rb-small"></div><div id="ocrResults"></div></div>
 </section>
@@ -909,7 +933,16 @@ document.querySelectorAll('.rb-add').forEach(b=>b.onclick=()=>openWs(b.closest('
 function closeWs(){if(dirty&&!confirm('Discard unsaved changes?'))return;overlay.hidden=true;dirty=false}
 document.getElementById('closeWs').onclick=closeWs;document.getElementById('cancelWs').onclick=closeWs;document.getElementById('addExam').onclick=()=>{addExam();dirty=true};document.getElementById('addDoc').onclick=()=>{addDoc();dirty=true};
 document.querySelectorAll('.rb-tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.rb-tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.rb-panel').forEach(x=>x.classList.toggle('active',x.dataset.panel===b.dataset.tab))});
-const psearch=document.getElementById('patientSearch'),pitems=[...document.querySelectorAll('.rb-result')];psearch.oninput=()=>{const q=psearch.value.toLowerCase().trim();pitems.forEach(x=>x.hidden=q&&!x.dataset.q.includes(q))};pitems.forEach(x=>x.onclick=()=>{document.getElementById('patientId').value=x.dataset.id;const t=x.querySelector('b').textContent;document.getElementById('selectedPatient').textContent=t;document.getElementById('selectedPatient').classList.remove('rb-hidden');document.getElementById('sPatient').textContent=t;dirty=true;rbRegistrationValidation()});
+const psearch=document.getElementById('patientSearch'),pitems=[...document.querySelectorAll('.rb-result')];psearch.oninput=()=>{const q=psearch.value.toLowerCase().trim();pitems.forEach(x=>x.hidden=q&&!x.dataset.q.includes(q))};pitems.forEach(x=>x.onclick=()=>{document.getElementById('patientId').value=x.dataset.id;const t=x.querySelector('b').textContent;document.getElementById('selectedPatient').textContent=t;document.getElementById('selectedPatient').classList.remove('rb-hidden');document.getElementById('sPatient').textContent=t;
+const detailsBox = document.getElementById('selectedPatientDetails');
+if(detailsBox){
+  detailsBox.classList.remove('rb-hidden');
+  document.getElementById('existingPhone').value=x.dataset.phone||'';
+  document.getElementById('existingNationalId').value=x.dataset.national||'';
+  document.getElementById('existingAddress').value=x.dataset.address||'';
+  document.getElementById('existingEmail').value=x.dataset.email||'';
+}
+dirty=true;rbRegistrationValidation()});
 const worklistNameMap={{worklist_name_map|tojson}};
 const worklistNameInput=document.getElementById('worklistNameEnglish');
 let worklistNameEdited=false;

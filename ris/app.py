@@ -5051,6 +5051,23 @@ def _rb_registration_v2_create_patient(form,audit_action='PATIENT_CREATE_FROM_CA
     duplicates=find_duplicate_patients(name,dob,phone,national)
     if duplicates and form.get('confirm_duplicate') not in ('1', 'true', 'yes'):
         d=duplicates[0]
+        updated = False
+        if phone and phone != (d.phone or ''):
+            d.phone = phone
+            updated = True
+        if national and national != (d.national_id or ''):
+            d.national_id = national
+            updated = True
+        new_address = (form.get('new_address') or '').strip()
+        if new_address and new_address != (d.address or ''):
+            d.address = new_address
+            updated = True
+        new_email = (form.get('new_email') or '').strip()
+        if new_email and new_email != (d.email or ''):
+            d.email = new_email
+            updated = True
+        if updated:
+            db.session.flush()
         audit(audit_action + '_REUSE_EXISTING', 'patient', d.id, f'{d.patient_id} {d.name}')
         return d
     patient=Patient(
@@ -13709,6 +13726,27 @@ def _rb_v5462_patient(form):
         patient=Patient.query.get_or_404(pid)
         from registration_policy import validate_patient
         validate_patient(patient)
+        # Update demographics if edited in registration modal
+        updated = False
+        new_phone = (form.get('existing_phone') or '').strip()
+        new_national = (form.get('existing_national_id') or '').strip()
+        new_address = (form.get('existing_address') or '').strip()
+        new_email = (form.get('existing_email') or '').strip()
+        if new_phone and new_phone != (patient.phone or ''):
+            patient.phone = new_phone
+            updated = True
+        if new_national and new_national != (patient.national_id or ''):
+            patient.national_id = new_national
+            updated = True
+        if new_address and new_address != (patient.address or ''):
+            patient.address = new_address
+            updated = True
+        if new_email and new_email != (patient.email or ''):
+            patient.email = new_email
+            updated = True
+        if updated:
+            db.session.flush()
+            audit('PATIENT_UPDATE_FROM_REGISTRATION', 'patient', patient.id, f'{patient.patient_id} {patient.name}')
         return patient
     return _rb_registration_v2_create_patient(
         form,
@@ -38741,3 +38779,32 @@ register_radiotherapy(_reporting_support_sys.modules[__name__])
 
 from word_direct_routes import register as register_word_direct_routes
 register_word_direct_routes(_reporting_support_sys.modules[__name__])
+
+
+@app.route('/patients/<int:patient_id>/edit', methods=['GET', 'POST'])
+@require_perm('patients.edit')
+def patient_edit(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        phone = request.form.get('phone', '').strip()
+        national_id = request.form.get('national_id', '').strip()
+        address = request.form.get('address', '').strip()
+        email = request.form.get('email', '').strip()
+        sex = request.form.get('sex', '').strip()
+        dob = request.form.get('dob', '').strip().replace('-', '')
+
+        if name: patient.name = name
+        patient.phone = phone
+        patient.national_id = national_id
+        patient.address = address
+        patient.email = email
+        if sex in ('M', 'F'): patient.sex = sex
+        if dob: patient.dob = dob
+
+        db.session.commit()
+        audit('PATIENT_UPDATE', 'patient', patient.id, f'{patient.patient_id} {patient.name}')
+        flash(f'تم تحديث بيانات المريض {patient.name} بنجاح.', 'success')
+        return redirect(request.args.get('next') or url_for('patients'))
+
+    return render_template('patient_edit.html', patient=patient)

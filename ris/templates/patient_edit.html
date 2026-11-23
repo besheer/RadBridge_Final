@@ -1,0 +1,56 @@
+{% extends "base.html" %}{% block page_title %}{{ 'تعديل بيانات المريض' if ui_lang=='ar' else 'Edit Patient' }}{% endblock %}{% block subtitle %}{{ patient.patient_id }} — {{ patient.name }}{% endblock %}
+{% block content %}
+<div class="panel" style="max-width:720px; margin:20px auto; padding:24px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #334155; padding-bottom:12px;">
+    <h3 style="margin:0; color:#38bdf8;">{{ 'تعديل الملف الطبي للمريض' if ui_lang=='ar' else 'Edit Patient Demographics' }}</h3>
+    <span class="notice info" style="padding:4px 10px; font-weight:bold;">{{ patient.patient_id }}</span>
+  </div>
+
+  <form method="post" action="{{ url_for('patient_edit', patient_id=patient.id) }}">
+    <div class="grid2" style="gap:16px;">
+      <div style="grid-column:span 2;">
+        <label>{{ 'اسم المريض بالكامل' if ui_lang=='ar' else 'Full Patient Name *' }}</label>
+        <input name="name" value="{{ patient.name }}" required style="font-size:14px; padding:8px;">
+      </div>
+
+      <div>
+        <label>{{ 'رقم الموبايل / الهاتف' if ui_lang=='ar' else 'Phone / Mobile' }}</label>
+        <input name="phone" value="{{ patient.phone or '' }}" placeholder="01xxxxxxxxx" style="font-size:14px; padding:8px;">
+      </div>
+
+      <div>
+        <label>{{ 'الرقم القومي (14 رقم)' if ui_lang=='ar' else 'National ID' }}</label>
+        <input name="national_id" value="{{ patient.national_id or '' }}" placeholder="14 أرقام" style="font-size:14px; padding:8px;">
+      </div>
+
+      <div>
+        <label>{{ 'النوع' if ui_lang=='ar' else 'Gender' }}</label>
+        <select name="sex" style="font-size:14px; padding:8px;">
+          <option value="M" {% if patient.sex=='M' %}selected{% endif %}>{{ 'ذكر / Male' if ui_lang=='ar' else 'Male' }}</option>
+          <option value="F" {% if patient.sex=='F' %}selected{% endif %}>{{ 'أنثى / Female' if ui_lang=='ar' else 'Female' }}</option>
+        </select>
+      </div>
+
+      <div>
+        <label>{{ 'تاريخ الميلاد (YYYYMMDD)' if ui_lang=='ar' else 'Date of Birth' }}</label>
+        <input name="dob" value="{{ patient.dob or '' }}" placeholder="19900101" style="font-size:14px; padding:8px;">
+      </div>
+
+      <div>
+        <label>{{ 'العنوان بالتفصيل' if ui_lang=='ar' else 'Address' }}</label>
+        <input name="address" value="{{ patient.address or '' }}" style="font-size:14px; padding:8px;">
+      </div>
+
+      <div>
+        <label>{{ 'البريد الإلكتروني' if ui_lang=='ar' else 'Email' }}</label>
+        <input type="email" name="email" value="{{ patient.email or '' }}" style="font-size:14px; padding:8px;">
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:24px; border-top:1px solid #334155; padding-top:16px;">
+      <a class="btn" href="{{ request.args.get('next') or url_for('patients') }}">{{ 'إلغاء / رجوع' if ui_lang=='ar' else 'Cancel' }}</a>
+      <button class="btn primary" type="submit">{{ 'حفظ التعديلات' if ui_lang=='ar' else 'Save Changes' }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
