@@ -282,11 +282,107 @@
 }
 
 .rb-exam{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px;
+  padding:7px 9px;
+  margin-bottom:7px;
+  position:relative;
+}
+.rb-exam-controls{
   display:grid;
-  grid-template-columns:1fr 70px 35px;
+  grid-template-columns:1fr 110px 55px 32px;
   gap:6px;
   align-items:center;
-  margin-bottom:6px;
+}
+.rb-exam-search-wrap{
+  position:relative;
+  width:100%;
+}
+.rb-exam-search{
+  width:100%;
+  padding:6px 10px;
+  font-size:13px;
+  border-radius:6px;
+  border:1px solid var(--rb-border, #334155);
+  background:var(--rb-surface-soft, #0f172a);
+  color:var(--text, #f8fafc);
+  outline:none;
+}
+.rb-exam-search:focus{
+  border-color:#38bdf8;
+  box-shadow:0 0 0 2px rgba(56,189,248,0.2);
+}
+.rb-exam-dropdown{
+  position:absolute;
+  top:calc(100% + 2px);
+  left:0;
+  right:0;
+  max-height:240px;
+  overflow-y:auto;
+  background:#1e293b;
+  border:1px solid #38bdf8;
+  border-radius:6px;
+  z-index:99999;
+  box-shadow:0 10px 25px rgba(0,0,0,0.6);
+  display:none;
+}
+.rb-exam-item{
+  padding:7px 10px;
+  cursor:pointer;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:12.5px;
+  color:#f1f5f9;
+}
+.rb-exam-item:hover{
+  background:#0284c7;
+  color:#fff;
+}
+.rb-exam-item .item-title{
+  font-weight:600;
+}
+.rb-exam-item .item-meta{
+  font-size:11px;
+  color:#94a3b8;
+  display:flex;
+  gap:6px;
+}
+.rb-exam-item:hover .item-meta{
+  color:#e0f2fe;
+}
+.rb-exam-price-wrap{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.rb-exam-price-wrap input{
+  width:72px;
+  padding:5px 4px;
+  text-align:center;
+  font-weight:bold;
+  border-radius:6px;
+  border:1px solid var(--rb-border, #334155);
+  background:var(--rb-surface-soft, #0f172a);
+  color:var(--text, #f8fafc);
+}
+.rb-exam-price-wrap span{
+  font-size:11px;
+  color:#94a3b8;
+  white-space:nowrap;
+}
+.rb-exam-selected-label{
+  font-size:11.5px;
+  color:#38bdf8;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:0 4px;
 }
 
 .rb-tabs{
@@ -441,7 +537,7 @@
    {% set outside_hours=(slot_hm < work_start or slot_hm >= work_end) %}
    <div class="rb-cell{% if cell and cell.occupied %} rb-occupied{% endif %}{% if outside_hours %} rb-outside-hours{% endif %}" data-device="{{d.id}}" data-branch="{{d.branch_id}}" data-name="{{d.name}}" data-modality="{{d.modality}}" data-work-start="{{work_start}}" data-work-end="{{work_end}}" data-dt="{{slot.strftime('%Y-%m-%dT%H:%M')}}" {% if outside_hours %}title="{{'خارج ساعات العمل' if ui_lang=='ar' else 'Outside working hours'}} · {{work_start}}-{{work_end}}"{% endif %}>
     {% if cell and cell.starts %}
-      {% for a in cell.starts %}<div class="rb-appt">{% if a.order_id %}<a href="{{url_for('order_detail',order_id=a.order_id)}}">{% endif %}<b>{{a.patient.name}}</b><div>{{a.procedure.name}} · {{a.duration_min or 20}}{{ ui_phrase('m ·') }} {{a.status}}</div>{% if a.order_id %}</a><a class="btn" href="{{url_for('order_detail',order_id=a.order_id)}}">{{ ui_phrase('أمر الشغل / Work Order') }}</a>{% elif a.status in ['BOOKED','CONFIRMED','WAITING'] and has_perm('appointments.manage') %}
+      {% for a in cell.starts %}<div class="rb-appt">{% if a.order_id %}<a href="{{url_for('order_detail',order_id=a.order_id)}}">{% endif %}<b>{{a.patient.name}}</b><div>{{ (a.procedure.name_ar if ui_lang=='ar' and a.procedure.name_ar else a.procedure.name) }} · {{a.duration_min or 20}}{{ ui_phrase('m ·') }} {{a.status}}</div>{% if a.order_id %}</a><a class="btn" href="{{url_for('order_detail',order_id=a.order_id)}}">{{ ui_phrase('أمر الشغل / Work Order') }}</a>{% elif a.status in ['BOOKED','CONFIRMED','WAITING'] and has_perm('appointments.manage') %}
 <a class="btn" href="{{url_for('appointment_edit',appointment_id=a.id)}}">{{ ui_phrase('تعديل البيانات والفحص / Edit booking and patient') }}</a><details><summary>{{ ui_phrase('تعديل الموعد / Change time') }}</summary><form class="rb-booking-edit" method="post" action="{{url_for('appointment_reschedule',appointment_id=a.id)}}"><label>{{ ui_phrase('الموعد / Time') }}</label><input type="datetime-local" name="scheduled" value="{{a.scheduled.strftime('%Y-%m-%dT%H:%M')}}" required><input type="hidden" name="device_id" value="{{a.device_id}}"><button class="btn" type="submit">{{ ui_phrase('حفظ / Save') }}</button><span aria-live="polite"></span></form></details>
 <form method="post" action="{{url_for('appointment_action',appointment_id=a.id,action='checkin')}}"><button class="btn" type="submit">{{ ui_phrase('تسجيل الحضور / Check-in') }}</button></form>
 {% endif %}</div>{% endfor %}
@@ -502,7 +598,7 @@
 <div style="margin-top:7px"><label>{{ ui_phrase('General Notes') }}</label><textarea name="notes" rows="2"></textarea></div>
 </section>
 
-<aside class="rb-pane rb-summary-pane"><h3>{{ ui_phrase('Summary') }}</h3><div class="rb-summary"><span>{{ ui_phrase('Patient') }}</span><b id="sPatient">{{ ui_phrase('New Patient') }}</b></div><div class="rb-summary"><span>{{ ui_phrase('Device') }}</span><b id="sDevice">—</b></div><div class="rb-summary"><span>{{ ui_phrase('Start') }}</span><b id="sStart">—</b></div><div class="rb-summary"><span>{{ ui_phrase('Exams') }}</span><b id="sCount">0</b></div><div class="rb-summary"><span>{{ ui_phrase('Duration') }}</span><b><span id="sDuration">0</span>{{ ui_phrase('m') }}</b></div><div class="rb-summary"><span>{{ ui_phrase('OCR Docs') }}</span><b id="sOcr">0</b></div><div id="rbValidationGuide" class="notice" style="margin-top:10px" aria-live="polite"><b id="rbValidationTitle">{{ ui_phrase('Complete required information') }}</b><div id="rbValidationItems" class="rb-small"></div></div><p class="rb-small">{{ ui_phrase('Book Only = editable booking. Register & Save = registration and accession. Convert to Work Order from the order page after financial clearance. / الحجز قابل للتعديل؛ التحويل إلى أمر شغل من صفحة الطلب بعد التسوية المالية.') }}</p></aside>
+<aside class="rb-pane rb-summary-pane"><h3>{{ ui_phrase('Summary') }}</h3><div class="rb-summary"><span>{{ ui_phrase('Patient') }}</span><b id="sPatient">{{ ui_phrase('New Patient') }}</b></div><div class="rb-summary"><span>{{ ui_phrase('Device') }}</span><b id="sDevice">—</b></div><div class="rb-summary"><span>{{ ui_phrase('Start') }}</span><b id="sStart">—</b></div><div class="rb-summary"><span>{{ ui_phrase('Exams') }}</span><b id="sCount">0</b></div><div class="rb-summary"><span>{{ ui_phrase('Duration') }}</span><b><span id="sDuration">0</span>{{ ui_phrase('m') }}</b></div><div class="rb-summary"><span>{{ 'إجمالي السعر' if ui_lang=='ar' else 'Total Price' }}</span><b id="sPrice" style="color:#38bdf8">0.00 {{ 'ج.م' if ui_lang=='ar' else 'EGP' }}</b></div><div class="rb-summary"><span>{{ ui_phrase('OCR Docs') }}</span><b id="sOcr">0</b></div><div id="rbValidationGuide" class="notice" style="margin-top:10px" aria-live="polite"><b id="rbValidationTitle">{{ ui_phrase('Complete required information') }}</b><div id="rbValidationItems" class="rb-small"></div></div><p class="rb-small">{{ ui_phrase('Book Only = editable booking. Register & Save = registration and accession. Convert to Work Order from the order page after financial clearance. / الحجز قابل للتعديل؛ التحويل إلى أمر شغل من صفحة الطلب بعد التسوية المالية.') }}</p></aside>
 </div>
 
 <div class="rb-ws-foot"><span class="rb-small">{{ ui_phrase('Optional missing data does not block. Duplicate/safety checks remain active.') }}</span><div class="rb-actions"><button type="button" class="btn" id="cancelWs">{{ ui_phrase('Cancel') }}</button><button type="submit" class="btn" data-action="BOOK" id="rbBookBtn">{{ ui_phrase('Book Only') }}</button><button type="submit" class="btn primary" data-action="REGISTER" id="rbRegisterBtn">{{ ui_phrase('Register & Save') }}</button></div></div>
@@ -511,7 +607,17 @@
 <script>
 (function(){
 const overlay=document.getElementById('rbOverlay'),form=document.getElementById('rbForm'),modeInput=document.getElementById('fMode'),newPane=document.getElementById('newPane'),existingPane=document.getElementById('existingPane'),ocrPane=document.getElementById('ocrPane'),examRows=document.getElementById('examRows'),docRows=document.getElementById('docRows');let modality='',dirty=false,ocrIds=[];
-const procedures=[{% for p in procedures %}{id:{{p.id}},name:{{p.name|tojson}},modality:{{p.modality|tojson}},duration:{{(p.duration_min or 20)|int}}},{% endfor %}];
+const isArabic = {{ (ui_lang == 'ar')|tojson }};
+const procedures=[{% for p in procedures %}{
+  id: {{ p.id }},
+  name: {{ p.name|tojson }},
+  name_ar: {{ (p.name_ar or p.name)|tojson }},
+  display_name: {{ ((p.name_ar ~ ' (' ~ p.name ~ ')') if ui_lang=='ar' and p.name_ar else p.name)|tojson }},
+  code: {{ (p.code or '')|tojson }},
+  modality: {{ (p.modality or '')|tojson }},
+  duration: {{ (p.duration_min or 20)|int }},
+  price: {{ (p.base_price or 0.0)|float }}
+},{% endfor %}];
 function setMode(mode){
 modeInput.value=mode==='existing'?'existing':'new';
 document.querySelectorAll('[data-mode]').forEach(
@@ -546,8 +652,244 @@ if(mode==='ocr'){
 }
 }
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{setMode(b.dataset.mode);dirty=true;rbRegistrationValidation()});
-function recalc(){let n=0,m=0;examRows.querySelectorAll('select').forEach(s=>{if(s.value){n++;m+=Number(s.selectedOptions[0]?.dataset.duration||0)}});document.getElementById('sCount').textContent=n;document.getElementById('sDuration').textContent=m}
-function addExam(id){const row=document.createElement('div');row.className='rb-exam';const s=document.createElement('select');s.name='procedure_ids';s.required=true;const list=procedures.filter(p=>(p.modality||'').toUpperCase()===modality);s.innerHTML='<option value="">Choose examination...</option>'+list.map(p=>`<option value="${p.id}" data-duration="${p.duration}">${p.name} (${p.duration}m)</option>`).join('');if(id)s.value=String(id);const dur=document.createElement('span'),x=document.createElement('button');x.type='button';x.className='btn';x.textContent='×';function sync(){dur.textContent=(s.selectedOptions[0]?.dataset.duration||'—')+'m';recalc()}s.onchange=()=>{sync();dirty=true};x.onclick=()=>{if(examRows.children.length>1){row.remove();recalc()}};row.append(s,dur,x);examRows.append(row);sync()}
+function matchProcedure(p, query) {
+  if (!query) return true;
+  const q = query.trim().toLowerCase();
+  const nameEn = (p.name || '').toLowerCase();
+  const nameAr = (p.name_ar || '').toLowerCase();
+  const code = (p.code || '').toLowerCase();
+
+  // Wildcard match (% or *)
+  if (q.includes('%') || q.includes('*')) {
+    try {
+      const escaped = q.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/[%*]+/g, '.*');
+      const rx = new RegExp(escaped, 'i');
+      if (rx.test(nameAr) || rx.test(nameEn) || rx.test(code)) return true;
+    } catch(e) {}
+  }
+
+  // Token / prefix / substring search
+  const tokens = q.split(/\s+/).filter(Boolean);
+  return tokens.every(tok => nameAr.includes(tok) || nameEn.includes(tok) || code.includes(tok));
+}
+
+function recalc(){
+  let n = 0, m = 0, totalPrice = 0;
+  examRows.querySelectorAll('.rb-exam').forEach(row => {
+    const s = row.querySelector('.rb-exam-select');
+    const priceInp = row.querySelector('.rb-exam-price');
+    if (s && s.value) {
+      n++;
+      const p = procedures.find(x => String(x.id) === String(s.value));
+      m += p ? Number(p.duration || 0) : 0;
+      totalPrice += parseFloat(priceInp ? priceInp.value : 0) || 0;
+    }
+  });
+
+  const sCount = document.getElementById('sCount');
+  if (sCount) sCount.textContent = n;
+  const sDuration = document.getElementById('sDuration');
+  if (sDuration) sDuration.textContent = m;
+  const sPrice = document.getElementById('sPrice');
+  if (sPrice) sPrice.textContent = totalPrice.toFixed(2) + ' ' + (isArabic ? 'ج.م' : 'EGP');
+
+  // Auto-fill payment_amount in payment tab if empty or untouched
+  const payInp = document.querySelector('input[name="payment_amount"]');
+  if (payInp) {
+    const curVal = parseFloat(payInp.value) || 0;
+    if (curVal === 0 || payInp.dataset.autofilled === '1') {
+      payInp.value = totalPrice > 0 ? totalPrice.toFixed(2) : '0';
+      payInp.dataset.autofilled = '1';
+    }
+  }
+}
+
+function addExam(id, initialPrice){
+  const row = document.createElement('div');
+  row.className = 'rb-exam';
+
+  const list = procedures.filter(p => (p.modality || '').toUpperCase() === modality);
+
+  // Row controls
+  const controls = document.createElement('div');
+  controls.className = 'rb-exam-controls';
+
+  // 1. Search Box & Primary Hidden Select
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'rb-exam-search-wrap';
+
+  const s = document.createElement('select');
+  s.name = 'procedure_ids';
+  s.required = true;
+  s.className = 'rb-exam-select';
+  s.style.display = 'none';
+  s.innerHTML = '<option value="">' + (isArabic ? 'اختر الفحص...' : 'Choose examination...') + '</option>' +
+    list.map(p => {
+      const label = isArabic && p.name_ar ? `${p.name_ar} (${p.name})` : `${p.name} (${p.duration}m)`;
+      return `<option value="${p.id}" data-duration="${p.duration}" data-price="${p.price}">${label}</option>`;
+    }).join('');
+
+  const searchInp = document.createElement('input');
+  searchInp.type = 'text';
+  searchInp.className = 'rb-exam-search';
+  searchInp.autocomplete = 'off';
+  searchInp.placeholder = isArabic ? '🔍 ابحث باسم الفحص بالعربي أو الإنجليزي (يدعم % و *)...' : '🔍 Search exam name or code (supports % and *)...';
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'rb-exam-dropdown';
+
+  searchWrap.append(s, searchInp, dropdown);
+
+  // 2. Price Input
+  const priceWrap = document.createElement('div');
+  priceWrap.className = 'rb-exam-price-wrap';
+  const priceInp = document.createElement('input');
+  priceInp.type = 'number';
+  priceInp.name = 'procedure_prices';
+  priceInp.className = 'rb-exam-price';
+  priceInp.min = '0';
+  priceInp.step = 'any';
+  priceInp.placeholder = isArabic ? 'السعر' : 'Price';
+  const priceCurr = document.createElement('span');
+  priceCurr.textContent = isArabic ? 'ج.م' : 'EGP';
+  priceWrap.append(priceInp, priceCurr);
+
+  // 3. Duration badge
+  const dur = document.createElement('span');
+  dur.style.fontSize = '12px';
+  dur.style.textAlign = 'center';
+  dur.style.color = '#94a3b8';
+  dur.textContent = '—m';
+
+  // 4. Remove button
+  const x = document.createElement('button');
+  x.type = 'button';
+  x.className = 'btn';
+  x.textContent = '×';
+  x.title = isArabic ? 'إزالة الفحص' : 'Remove';
+
+  controls.append(searchWrap, priceWrap, dur, x);
+
+  // Label showing selected procedure details
+  const selectedLabel = document.createElement('div');
+  selectedLabel.className = 'rb-exam-selected-label';
+  selectedLabel.style.display = 'none';
+
+  row.append(controls, selectedLabel);
+  examRows.append(row);
+
+  function sync(){
+    const p = procedures.find(x => String(x.id) === String(s.value));
+    dur.textContent = p ? (p.duration + 'm') : '—m';
+    recalc();
+  }
+
+  function chooseProcedure(p){
+    s.value = p ? String(p.id) : '';
+    if (p) {
+      const displayName = isArabic && p.name_ar ? `${p.name_ar} (${p.name})` : p.name;
+      searchInp.value = displayName;
+      selectedLabel.innerHTML = `✓ <b>${displayName}</b> · <small style="color:#94a3b8">${p.code || ''} · ${p.duration}m</small>`;
+      selectedLabel.style.display = 'flex';
+
+      // Auto set price if untouched
+      if (!priceInp.value || parseFloat(priceInp.value) === 0 || priceInp.dataset.autofilled === '1') {
+        priceInp.value = p.price > 0 ? p.price : '';
+        priceInp.dataset.autofilled = '1';
+      }
+    } else {
+      searchInp.value = '';
+      selectedLabel.style.display = 'none';
+      priceInp.value = '';
+    }
+    dropdown.style.display = 'none';
+    sync();
+    dirty = true;
+    rbRegistrationValidation();
+  }
+
+  function renderDropdown(q){
+    dropdown.innerHTML = '';
+    const filtered = list.filter(p => matchProcedure(p, q));
+    if (!filtered.length) {
+      const empty = document.createElement('div');
+      empty.className = 'rb-exam-item';
+      empty.style.color = '#94a3b8';
+      empty.textContent = isArabic ? 'لا توجد فحوصات مطابقة' : 'No matching procedures';
+      dropdown.append(empty);
+      dropdown.style.display = 'block';
+      return;
+    }
+
+    filtered.slice(0, 30).forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'rb-exam-item';
+      const mainName = isArabic && p.name_ar ? p.name_ar : p.name;
+      const subName = isArabic && p.name_ar ? p.name : (p.name_ar || '');
+      const priceText = p.price > 0 ? `${p.price} ${isArabic ? 'ج.م' : 'EGP'}` : (isArabic ? 'تحديد السعر' : 'Set Price');
+      item.innerHTML = `
+        <div>
+          <div class="item-title">${mainName}</div>
+          <div class="item-meta"><span>${subName}</span> ${p.code ? `<span>[${p.code}]</span>` : ''}</div>
+        </div>
+        <div style="text-align:end">
+          <div style="font-weight:bold;color:#38bdf8">${priceText}</div>
+          <div style="font-size:11px;color:#94a3b8">${p.duration} ${isArabic ? 'د' : 'm'}</div>
+        </div>
+      `;
+      item.onmousedown = (e) => {
+        e.preventDefault();
+        chooseProcedure(p);
+      };
+      dropdown.append(item);
+    });
+    dropdown.style.display = 'block';
+  }
+
+  searchInp.oninput = () => {
+    selectedLabel.style.display = 'none';
+    s.value = '';
+    renderDropdown(searchInp.value);
+    dirty = true;
+    rbRegistrationValidation();
+  };
+
+  searchInp.onfocus = () => {
+    renderDropdown(searchInp.value);
+  };
+
+  searchInp.onblur = () => {
+    setTimeout(() => { dropdown.style.display = 'none'; }, 200);
+  };
+
+  priceInp.oninput = () => {
+    priceInp.dataset.autofilled = '0';
+    sync();
+    dirty = true;
+  };
+
+  x.onclick = () => {
+    if (examRows.children.length > 1) {
+      row.remove();
+      sync();
+      dirty = true;
+      rbRegistrationValidation();
+    }
+  };
+
+  if (id) {
+    const found = list.find(p => String(p.id) === String(id));
+    if (found) {
+      chooseProcedure(found);
+      if (initialPrice !== undefined && initialPrice !== null) {
+        priceInp.value = initialPrice;
+        priceInp.dataset.autofilled = '0';
+      }
+    }
+  }
+
+  sync();
+}
 function addDoc(){const row=document.createElement('div');row.className='rb-doc';row.innerHTML='<input type="file" name="attachment_files"><select name="attachment_categories"><option value="PRESCRIPTION">Prescription</option><option value="APPROVAL">Approval</option><option value="INSURANCE_CARD">Insurance Card</option><option value="IDENTITY">ID</option><option value="PREVIOUS_REPORT">Previous Report</option><option value="QUESTIONNAIRE">Questionnaire</option><option value="OTHER">Other</option></select><input name="attachment_notes" placeholder="Notes"><button type="button" class="btn">×</button>';row.querySelector('button').onclick=()=>row.remove();docRows.append(row)}
 function refreshRegistrationBranch(resetExams){
  const branch=document.getElementById('fBranch').value,choices=document.getElementById('registrationDevice');

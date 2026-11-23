@@ -5050,7 +5050,7 @@ def _rb_registration_v2_create_patient(form,audit_action='PATIENT_CREATE_FROM_CA
     duplicates=find_duplicate_patients(name,dob,phone,national)
     if duplicates and form.get('confirm_duplicate') not in ('1', 'true', 'yes'):
         d=duplicates[0]
-        raise ValueError(f'المريض مسجل مسبقاً في النظام برقم ({d.patient_id} — {d.name}). يرجى اختيار 'مريض مسجل / Existing' بدلاً من مريض جديد، أو تأكيد التسجيل.')
+        raise ValueError('Possible duplicate patient: ' + str(d.patient_id) + ' - ' + str(d.name) + '. Use the existing patient or review the duplicate.')
     patient=Patient(
         patient_id='TMP'+secrets.token_hex(8),name=name,dob=dob,
         dob_estimated=dob_resolution.estimated,
@@ -14019,12 +14019,41 @@ def schedule_unified_submit():
 
         if not (has_perm('*') or has_perm('orders.create')): abort(403)
 
-        for p in procs:
+        proc_prices = request.form.getlist('procedure_prices')
+        for i, p in enumerate(procs):
             duration=max(5,int(p.duration_min or 20))
             acquire_booking_slot_lock(device.id,cursor)
             reason=booking_restriction_reason(branch,p,device,cursor,duration)
             if reason: raise ValueError(f'{p.name}: {reason}')
             gross,effective,patient_share,company_share,_=price_order(p,contract)
+            
+            # Reception custom price input
+            custom_p = None
+            if i < len(proc_prices) and proc_prices[i].strip():
+                try:
+                    cp = float(proc_prices[i].strip())
+                    if cp >= 0: custom_p = cp
+                except Exception: pass
+            if custom_p is None:
+                kp = request.form.get(f'procedure_price_{p.id}')
+                if kp and kp.strip():
+                    try:
+                        cp = float(kp.strip())
+                        if cp >= 0: custom_p = cp
+                    except Exception: pass
+            
+            if custom_p is not None:
+                gross = custom_p
+                if contract and contract.patient_share_percent is not None:
+                    share_pct = float(contract.patient_share_percent or 100.0)
+                    patient_share = round(custom_p * share_pct / 100.0, 2)
+                    company_share = round(custom_p - patient_share, 2)
+                    effective = custom_p
+                else:
+                    effective = custom_p
+                    patient_share = custom_p
+                    company_share = 0.0
+
             o=Order(
                 accession=new_accession(),patient=patient,modality=p.modality,
                 procedure=p.name,procedure_id=p.id,branch_id=branch.id,
