@@ -835,9 +835,11 @@ body.sidebar-mode-hidden .main {
               <label>{{ 'الغرفة / الجهاز *' if ui_lang=='ar' else 'Room / Device *' }}</label>
               <select name="device_id" id="formDevice" onchange="onFormDeviceChange()">
                 {% for d in all_devices %}
+                  {% if not branch_id or d.branch_id == branch_id or (not branch_id and d.branch_id == user_default_branch) %}
                   <option value="{{ d.id }}" data-branch="{{ d.branch_id }}" data-modality="{{ d.modality }}" data-name="{{ d.name }}">
                     🚪 غرفة: {{ d.modality }} — {{ d.name }}
                   </option>
+                  {% endif %}
                 {% endfor %}
               </select>
             </div>
@@ -894,6 +896,56 @@ body.sidebar-mode-hidden .main {
                 </table>
               </div>
               <input type="hidden" name="procedures_json" id="proceduresJson" value="[]">
+            </div>
+
+            <!-- Medical Consumables & Contrast Media (المستهلكات الطبية والصبغة) -->
+            <div class="rd-col-2 rd-field" style="grid-column: 1 / -1; margin-top:6px; margin-bottom:8px; border-top:1px dashed #334155; padding-top:8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-weight:700; color:#f59e0b; font-size:12.5px;">💉 المستهلكات الطبية والصبغة:</span>
+                  <span id="consumablesCountBadge" style="background:#b45309; color:#fff; font-size:11px; padding:1px 8px; border-radius:12px; font-weight:bold;">0 مستهلك</span>
+                  <span id="contrastAutoNotice" style="display:none; font-size:11px; color:#38bdf8; background:rgba(2,132,199,0.18); border:1px solid #0284c7; padding:2px 8px; border-radius:4px; font-weight:600;">
+                    ✨ فحص بالصبغة: تم تفعيل صبغة الأشعة ومستلزمات الحقن آلياً
+                  </span>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                  <select id="quickConsumableSelect" style="padding:4px 8px; height:28px; font-size:11.5px; background:#0f172a; color:#fff; border:1px solid #475569; border-radius:6px; max-width:260px;">
+                    <option value="">-- اختر مستهلك لإضافته --</option>
+                    {% for c in consumables %}
+                      <option value="{{ c.id }}" data-code="{{ c.code }}" data-name="{{ c.name_ar or c.name }}" data-price="{{ c.selling_price or 0 }}" data-unit="{{ c.unit or 'قطعة' }}" data-category="{{ c.category or '' }}">
+                        [{{ c.category }}] {{ c.name_ar or c.name }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                  <input type="number" id="quickConsumableQty" value="1" min="1" step="1" style="width:50px; padding:3px; height:28px; font-size:11.5px; background:#0f172a; color:#fff; border:1px solid #475569; border-radius:6px; text-align:center;">
+                  <button type="button" onclick="addSelectedConsumable()" style="padding:4px 10px; font-size:11.5px; font-weight:600; background:#d97706; color:#fff; border:1px solid #f59e0b; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                    ➕ <span>إضافة مستهلك</span>
+                  </button>
+                  <button type="button" onclick="clearConsumables()" style="padding:4px 8px; font-size:11px; background:#334155; color:#94a3b8; border:1px solid #475569; border-radius:6px; cursor:pointer;">
+                    مسح
+                  </button>
+                </div>
+              </div>
+
+              <div style="background:#0b1329; border:1px solid #334155; border-radius:8px; overflow:hidden;">
+                <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:right;">
+                  <thead>
+                    <tr style="background:#1e293b; color:#94a3b8; border-bottom:1px solid #334155;">
+                      <th style="padding:5px 8px; width:28px;">#</th>
+                      <th style="padding:5px 8px; width:110px;">التصنيف</th>
+                      <th style="padding:5px 8px;">اسم المستهلك / الصبغة</th>
+                      <th style="padding:5px 8px; width:80px; text-align:center;">الكمية</th>
+                      <th style="padding:5px 8px; width:95px; text-align:center;">سعر الوحدة</th>
+                      <th style="padding:5px 8px; width:95px; text-align:center;">الإجمالي</th>
+                      <th style="padding:5px 8px; width:45px; text-align:center;">إجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody id="consumablesTableBody">
+                    <!-- Populated dynamically via renderConsumables() -->
+                  </tbody>
+                </table>
+              </div>
+              <input type="hidden" name="consumables_json" id="consumablesJson" value="[]">
             </div>
 
             <div class="rd-col-1 rd-field" style="position:relative;">
@@ -1189,12 +1241,16 @@ body.sidebar-mode-hidden .main {
            data-attachments='{{ (o.attachments|map(attribute="id")|list)|tojson }}'
            data-attachments-names='{{ (o.attachments|map(attribute="original_name")|list)|tojson }}'
            data-attachments-categories='{{ (o.attachments|map(attribute="category")|list)|tojson }}'
+           data-consumables='{{ (o.consumables|map(attribute="consumable_id")|list)|tojson }}'
+           data-consumables-names='{{ (o.consumables|map(attribute="consumable.name_ar")|list)|tojson }}'
+           data-consumables-qtys='{{ (o.consumables|map(attribute="qty")|list)|tojson }}'
            onclick="selectCaseCard(this)">
         <div class="rd-case-top">
           <span class="rd-case-name">
             {{ o.patient.name }}
             {% if o.attachments and o.attachments|length > 0 %}<span title="يوجد مرفقات" style="font-size:11px;">📎</span>{% endif %}
             {% if o.assessment and (o.assessment.history or o.assessment.clinical_indication) %}<span title="يوجد هيستوري/ملاحظات" style="font-size:11px;">🩺</span>{% endif %}
+            {% if o.consumables and o.consumables|length > 0 %}<span title="يوجد مستهلكات/صبغة" style="font-size:11px;">💉</span>{% endif %}
           </span>
           <span class="rd-case-time">{{ o.scheduled.strftime('%H:%M') if o.scheduled else '' }}</span>
         </div>
@@ -1245,6 +1301,20 @@ const ALL_REFERRERS = [
     id: "{{ r.id }}",
     code: "{{ r.code }}",
     name: {{ r.name|tojson }}
+  },
+  {% endfor %}
+];
+
+const ALL_CONSUMABLES = [
+  {% for c in consumables %}
+  {
+    id: "{{ c.id }}",
+    code: {{ (c.code or '')|tojson }},
+    name: {{ (c.name_ar or c.name)|tojson }},
+    nameEn: {{ (c.name_en or c.name)|tojson }},
+    category: {{ (c.category or '')|tojson }},
+    unit: {{ (c.unit or 'قطعة')|tojson }},
+    price: {{ c.selling_price or 0 }}
   },
   {% endfor %}
 ];
@@ -1601,6 +1671,154 @@ function onProcedureChange(){
 let examBasket = [];
 let currentPaymentType = 'CASH';
 
+// ==========================================
+// Medical Consumables & Contrast Media State
+// ==========================================
+let selectedConsumables = [];
+
+function renderConsumables() {
+  const tbody = document.getElementById('consumablesTableBody');
+  const countBadge = document.getElementById('consumablesCountBadge');
+  const hiddenInput = document.getElementById('consumablesJson');
+  if (!tbody) return;
+
+  if (selectedConsumables.length === 0) {
+    tbody.innerHTML = '<tr style="color:#94a3b8;"><td colspan="7" style="padding:10px; text-align:center;">لا توجد مستهلكات أو صبغة مضافة لهذه الزيارة (يمكنك إضافة مستهلك من القائمة أعلاه أو يتم التفعيل تلقائياً عند اختيار فحص بالصبغة).</td></tr>';
+    if (countBadge) countBadge.textContent = '0 مستهلك';
+    if (hiddenInput) hiddenInput.value = '[]';
+    calculateFinances();
+    return;
+  }
+
+  if (countBadge) countBadge.textContent = selectedConsumables.length + ' مستهلك';
+  if (hiddenInput) hiddenInput.value = JSON.stringify(selectedConsumables);
+
+  let html = '';
+  for (let idx = 0; idx < selectedConsumables.length; idx++) {
+    const item = selectedConsumables[idx];
+    const bg = idx % 2 === 0 ? 'transparent' : 'rgba(30, 41, 59, 0.4)';
+    const itemTotal = ((parseFloat(item.price) || 0) * (parseFloat(item.qty) || 1)).toFixed(1);
+    html += '<tr style="border-bottom:1px solid #1e293b; background:' + bg + ';">' +
+      '<td style="padding:5px 8px; font-weight:bold; color:#94a3b8;">' + (idx + 1) + '</td>' +
+      '<td style="padding:5px 8px;"><span class="badge" style="background:#78350f; color:#fde68a; font-size:10px; padding:2px 6px; border-radius:4px;">' + (item.category || 'عام') + '</span></td>' +
+      '<td style="padding:5px 8px; color:#f8fafc; font-weight:600;">' + item.name + ' <span style="font-size:10px; color:#94a3b8;">(' + (item.unit || 'قطعة') + ')</span></td>' +
+      '<td style="padding:5px 8px; text-align:center;"><input type="number" step="1" min="1" value="' + item.qty + '" onchange="onConsumableQtyChange(' + idx + ', this.value)" style="width:55px; padding:2px 4px; height:24px; font-size:11.5px; background:#1e293b; color:#fff; font-weight:bold; border:1px solid #475569; border-radius:4px; text-align:center;"></td>' +
+      '<td style="padding:5px 8px; text-align:center;"><input type="number" step="0.5" min="0" value="' + item.price + '" onchange="onConsumablePriceChange(' + idx + ', this.value)" style="width:75px; padding:2px 4px; height:24px; font-size:11.5px; background:#1e293b; color:#f59e0b; font-weight:bold; border:1px solid #475569; border-radius:4px; text-align:center;"></td>' +
+      '<td style="padding:5px 8px; text-align:center; font-weight:bold; color:#10b981;">' + itemTotal + ' ج.م</td>' +
+      '<td style="padding:5px 8px; text-align:center;"><button type="button" onclick="removeConsumableItem(' + idx + ')" title="حذف هذا المستهلك" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:13px; padding:2px 6px; border-radius:4px;">🗑️</button></td>' +
+      '</tr>';
+  }
+  tbody.innerHTML = html;
+  calculateFinances();
+}
+
+function addSelectedConsumable() {
+  const sel = document.getElementById('quickConsumableSelect');
+  const qtyInp = document.getElementById('quickConsumableQty');
+  if (!sel || !sel.value) {
+    alert('يرجى اختيار صنف مستهلك من القائمة أولاً.');
+    return;
+  }
+  const opt = sel.options[sel.selectedIndex];
+  const cId = opt.value;
+  const qty = parseFloat(qtyInp ? qtyInp.value : 1) || 1;
+  const price = parseFloat(opt.dataset.price) || 0;
+  
+  const existing = selectedConsumables.find(x => String(x.consumable_id) === String(cId));
+  if (existing) {
+    existing.qty += qty;
+  } else {
+    selectedConsumables.push({
+      consumable_id: cId,
+      code: opt.dataset.code || '',
+      name: opt.dataset.name || '',
+      category: opt.dataset.category || '',
+      unit: opt.dataset.unit || 'قطعة',
+      qty: qty,
+      price: price
+    });
+  }
+  renderConsumables();
+  sel.value = '';
+}
+
+function removeConsumableItem(idx) {
+  selectedConsumables.splice(idx, 1);
+  renderConsumables();
+}
+
+function onConsumableQtyChange(idx, val) {
+  const q = parseFloat(val) || 1;
+  if (selectedConsumables[idx]) {
+    selectedConsumables[idx].qty = Math.max(1, q);
+    renderConsumables();
+  }
+}
+
+function onConsumablePriceChange(idx, val) {
+  const p = parseFloat(val) || 0;
+  if (selectedConsumables[idx]) {
+    selectedConsumables[idx].price = Math.max(0, p);
+    renderConsumables();
+  }
+}
+
+function clearConsumables() {
+  selectedConsumables = [];
+  renderConsumables();
+}
+
+function checkAndSuggestContrastConsumables() {
+  const contrastProcs = examBasket.filter(item => {
+    const text = ((item.procedure_name || '') + ' ' + (item.procedure_code || '')).toLowerCase();
+    return text.includes('صبغة') || text.includes('contrast') || text.includes('مع الصبغة') || text.includes('بالصبغة') || text.includes('triphasic');
+  });
+
+  const notice = document.getElementById('contrastAutoNotice');
+  if (contrastProcs.length > 0) {
+    if (notice) notice.style.display = 'inline-block';
+    
+    const hasCT = contrastProcs.some(p => (p.modality || '').toUpperCase() === 'CT');
+    const hasMR = contrastProcs.some(p => (p.modality || '').toUpperCase() === 'MR');
+
+    let addedAny = false;
+    if (hasCT) {
+      if (ensureConsumable('CTCONTRAST100', 1)) addedAny = true;
+      if (ensureConsumable('CANNULA18', 1)) addedAny = true;
+      if (ensureConsumable('INJECTOR_LINE', 1)) addedAny = true;
+      if (ensureConsumable('SALINE500', 1)) addedAny = true;
+    }
+    if (hasMR) {
+      if (ensureConsumable('GAD10', 1)) addedAny = true;
+      if (ensureConsumable('CANNULA20', 1)) addedAny = true;
+      if (ensureConsumable('SALINE500', 1)) addedAny = true;
+    }
+    if (addedAny) {
+      renderConsumables();
+    }
+  } else {
+    if (notice) notice.style.display = 'none';
+  }
+}
+
+function ensureConsumable(code, defaultQty = 1) {
+  if (selectedConsumables.some(c => c.code === code)) return false;
+  const master = ALL_CONSUMABLES.find(c => c.code === code);
+  if (master) {
+    selectedConsumables.push({
+      consumable_id: master.id,
+      code: master.code,
+      name: master.name,
+      category: master.category,
+      unit: master.unit,
+      qty: defaultQty,
+      price: master.price
+    });
+    return true;
+  }
+  return false;
+}
+
 function renderExamBasket() {
   const tbody = document.getElementById('examBasketBody');
   const countBadge = document.getElementById('basketCountBadge');
@@ -1617,6 +1835,7 @@ function renderExamBasket() {
 
   if (countBadge) countBadge.textContent = examBasket.length + ' فحص';
   if (hiddenInput) hiddenInput.value = JSON.stringify(examBasket);
+  checkAndSuggestContrastConsumables();
 
   let htmlRows = '';
   for (let idx = 0; idx < examBasket.length; idx++) {
@@ -1775,14 +1994,20 @@ function round2(num) {
 }
 
 function calculateFinances() {
-  let gross = 0;
+  let examsGross = 0;
   if (examBasket.length > 0) {
-    gross = examBasket.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+    examsGross = examBasket.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
   } else {
     const pSel = document.getElementById('formProcedure');
     const opt = pSel ? pSel.options[pSel.selectedIndex] : null;
-    gross = opt && opt.dataset.price ? parseFloat(opt.dataset.price) : 0;
+    examsGross = opt && opt.dataset.price ? parseFloat(opt.dataset.price) : 0;
   }
+
+  let consumablesGross = 0;
+  if (selectedConsumables.length > 0) {
+    consumablesGross = selectedConsumables.reduce((sum, item) => sum + ((parseFloat(item.price) || 0) * (parseFloat(item.qty) || 1)), 0);
+  }
+  const gross = Math.round((examsGross + consumablesGross) * 100) / 100;
   document.getElementById('formGross').value = gross;
 
   let net = gross;
@@ -1972,6 +2197,7 @@ function resetFormForNewPatient(){
   document.getElementById('patientAddress').value = '';
   examBasket = [];
   renderExamBasket();
+  clearConsumables();
   setPaymentType('CASH');
   document.getElementById('formClinicalHistory').value = '';
   document.getElementById('formClinicalIndication').value = '';
@@ -2064,6 +2290,33 @@ function selectCaseCard(card){
   document.getElementById('formPaid').value = d.paid;
   document.getElementById('formPaid').dataset.manualEdited = '1';
   document.getElementById('formRemaining').value = d.remaining;
+
+  // Populate Case Consumables
+  try {
+    const cIds = JSON.parse(d.consumables || '[]');
+    const cNames = JSON.parse(d.consumablesNames || '[]');
+    const cQtys = JSON.parse(d.consumablesQtys || '[]');
+
+    selectedConsumables = [];
+    if (cIds && cIds.length > 0) {
+      for (let i = 0; i < cIds.length; i++) {
+        const master = ALL_CONSUMABLES.find(x => String(x.id) === String(cIds[i]));
+        selectedConsumables.push({
+          consumable_id: cIds[i],
+          code: master ? master.code : '',
+          name: cNames[i] || (master ? master.name : ('مستهلك #' + cIds[i])),
+          category: master ? master.category : '',
+          unit: master ? master.unit : 'قطعة',
+          qty: cQtys[i] || 1,
+          price: master ? master.price : 0
+        });
+      }
+    }
+    renderConsumables();
+  } catch(e) {
+    selectedConsumables = [];
+    renderConsumables();
+  }
 
   // Clinical History & Notes
   document.getElementById('formClinicalHistory').value = d.history || '';

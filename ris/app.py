@@ -14652,6 +14652,35 @@ def reception_desk():
             if not validated_items:
                 raise ValueError('يجب تحديد فحص واحد على الأقل للزيارة.')
 
+            # Medical Consumables Resolution (المستهلكات الطبية والصبغة)
+            consumables_data = []
+            raw_consumables_json = request.form.get('consumables_json')
+            if raw_consumables_json:
+                try:
+                    consumables_data = json.loads(raw_consumables_json)
+                except Exception:
+                    consumables_data = []
+
+            validated_consumables = []
+            total_consumables_price = 0.0
+            for c_item in consumables_data:
+                c_id = int(c_item.get('consumable_id') or 0)
+                if not c_id:
+                    continue
+                c_obj = Consumable.query.get(c_id)
+                if not c_obj:
+                    continue
+                c_qty = float(c_item.get('qty') or 1.0)
+                c_price = float(c_item.get('price') if c_item.get('price') is not None else (c_obj.selling_price or 0.0))
+                c_total = round(c_qty * c_price, 2)
+                total_consumables_price += c_total
+                validated_consumables.append({
+                    'obj': c_obj,
+                    'qty': c_qty,
+                    'unit_price': c_price,
+                    'total_price': c_total
+                })
+
             # 4. Patient Resolution
             patient_mode = (request.form.get('patient_mode') or 'new').strip().lower()
             if patient_mode == 'existing':
@@ -14771,6 +14800,12 @@ def reception_desk():
                     'company_share': i_comp
                 })
 
+            if total_consumables_price > 0 and item_calculations:
+                item_calculations[0]['gross'] = round(item_calculations[0]['gross'] + total_consumables_price, 2)
+                item_calculations[0]['patient_share'] = round(item_calculations[0]['patient_share'] + total_consumables_price, 2)
+                item_calculations[0]['contract_price'] = round(item_calculations[0]['contract_price'] + total_consumables_price, 2)
+                total_patient_required = round(total_patient_required + total_consumables_price, 2)
+
             # 7. Create Orders (One Order per examination)
             created_orders = []
             allocated_paid = 0.0
@@ -14821,6 +14856,33 @@ def reception_desk():
             primary_order = created_orders[0]
             accessions_str = ', '.join([o.accession for o in created_orders])
             procs_str = ', '.join([o.procedure for o in created_orders])
+
+            # Attach consumables to primary or contrast order
+            target_order = primary_order
+            for ord_c in created_orders:
+                if (ord_c.modality or '').upper() in ('CT', 'MR'):
+                    target_order = ord_c
+                    break
+
+            for vc in validated_consumables:
+                oc = OrderConsumable(
+                    order_id=target_order.id,
+                    consumable_id=vc['obj'].id,
+                    qty=vc['qty'],
+                    source='RECEPTION',
+                    created_by=current_user().id
+                )
+                db.session.add(oc)
+                if hasattr(vc['obj'], 'stock_qty'):
+                    try:
+                        _record_stock_movement(
+                            vc['obj'], -vc['qty'], 'RECEPTION_USAGE',
+                            reason=f'Reception registration usage for {target_order.accession}',
+                            reference_type='order', reference_id=target_order.id,
+                            branch_id=branch.id, user_id=current_user().id
+                        )
+                    except Exception as sm_e:
+                        app.logger.warning(f"Stock movement recording warning: {sm_e}")
 
             # 8. Clinical Assessment (History & Doctor/Technician Notes)
             clinical_history = (request.form.get('clinical_history') or '').strip()
@@ -14968,6 +15030,7 @@ def reception_desk():
         o.latest_receipt = Receipt.query.filter_by(order_id=o.id).order_by(Receipt.id.desc()).first()
         o.assessment = ClinicalAssessment.query.filter_by(order_id=o.id).first()
         o.attachments = Attachment.query.filter_by(order_id=o.id).all()
+        o.consumables = OrderConsumable.query.filter_by(order_id=o.id).all()
 
     # Pre-select order if requested
     selected_order_id = request.args.get('order_id', type=int)
@@ -14983,6 +15046,8 @@ def reception_desk():
             selected_order.assessment = ClinicalAssessment.query.filter_by(order_id=selected_order.id).first()
         if not hasattr(selected_order, 'attachments'):
             selected_order.attachments = Attachment.query.filter_by(order_id=selected_order.id).all()
+        if not hasattr(selected_order, 'consumables'):
+            selected_order.consumables = OrderConsumable.query.filter_by(order_id=selected_order.id).all()
 
     # Calculate Cash Drawer balance today for active branch
     today_start = datetime.combine(selected_date, datetime.min.time())
@@ -15009,6 +15074,8 @@ def reception_desk():
 
     assigned_doctors = assignable_doctors()
     contracts = Contract.query.filter_by(active=True).order_by(Contract.name.asc()).all()
+    consumables = Consumable.query.filter_by(active=True)\
+        .order_by(Consumable.category.asc(), Consumable.name.asc()).all()
     print_receipt_id = request.args.get('print_receipt', type=int)
 
     return render_template(
@@ -15023,6 +15090,7 @@ def reception_desk():
         referring_doctors=referring_doctors,
         assigned_doctors=assigned_doctors,
         contracts=contracts,
+        consumables=consumables,
         today_orders=today_orders,
         selected_order=selected_order,
         safe_cash=safe_cash,
