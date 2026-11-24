@@ -1,187 +1,133 @@
 {% extends "base.html" %}
 {% block title %}{{ 'كاونتر الاستقبال السريع' if ui_lang=='ar' else 'Quick Reception Desk' }} - AirScan PACS{% endblock %}
+{% block page_title %}{{ 'كاونتر الاستقبال السريع' if ui_lang=='ar' else 'Quick Reception Desk' }}{% endblock %}
 
 {% block content %}
 <style>
-/* System Sidebar Collapsed / Hidden Support (Like Doctor Studio & PACS) */
-body.sidebar-mode-hidden .sidebar {
+/* Elevate workspace directly to the top & hide unnecessary top ribbons */
+.app-header {
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 0 14px !important;
+  margin: 0 -18px 4px -18px !important;
+}
+.page-heading,
+.quick-ribbon,
+.admin-quick-link,
+.registration-default-links,
+.app-footer {
   display: none !important;
 }
-body.sidebar-mode-hidden .main {
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  width: 100% !important;
-  padding: 8px 14px !important;
+.page-content {
+  padding: 0 !important;
+  max-width: 100% !important;
 }
+.main {
+  padding: 2px 12px 8px !important;
+}
+
+/* Flex layout: Form on RIGHT, Cases List on LEFT */
+.rd-container {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  min-height: calc(100vh - 54px);
+  margin-top: 2px;
+  width: 100%;
+}
+body.rtl .rd-main, [dir="rtl"] .rd-main {
+  order: 1 !important;
+}
+body.rtl .rd-sidebar, [dir="rtl"] .rd-sidebar {
+  order: 2 !important;
+}
+body.ltr .rd-sidebar, [dir="ltr"] .rd-sidebar {
+  order: 1 !important;
+}
+body.ltr .rd-main, [dir="ltr"] .rd-main {
+  order: 2 !important;
+}
+
+/* System Sidebar Compact & Hidden Global Modes */
 body.sidebar-mode-compact {
   --sidebar-w: 64px !important;
+}
+body.sidebar-mode-compact .sidebar {
+  width: 64px !important;
+  min-width: 64px !important;
+  max-width: 64px !important;
+  padding: 10px 4px !important;
+  overflow-x: hidden !important;
+}
+body.rtl.sidebar-mode-compact .sidebar,
+body.sidebar-mode-compact[dir="rtl"] .sidebar {
+  right: 0 !important;
+  left: auto !important;
+}
+body.rtl.sidebar-mode-compact .main,
+body.sidebar-mode-compact[dir="rtl"] .main {
+  margin-right: 64px !important;
+  margin-left: 0 !important;
+  width: calc(100% - 64px) !important;
+}
+body.ltr.sidebar-mode-compact .main,
+body.sidebar-mode-compact[dir="ltr"] .main {
+  margin-left: 64px !important;
+  margin-right: 0 !important;
+  width: calc(100% - 64px) !important;
 }
 body.sidebar-mode-compact .brand-copy,
 body.sidebar-mode-compact .workspace-card div:not(.workspace-dot),
 body.sidebar-mode-compact .nav-link span,
-body.sidebar-mode-compact .nav-caption,
 body.sidebar-mode-compact .sidebar-bottom small,
 body.sidebar-mode-compact .sidebar-logout span,
 body.sidebar-mode-compact .sidebar-menu-search,
 body.sidebar-mode-compact .quick-action-btn span:last-child {
   display: none !important;
 }
-
-.rd-container {
-  display: flex;
-  gap: 16px;
-  min-height: calc(100vh - 110px);
-  margin-top: 4px;
-  transition: all 0.2s ease;
-}
-
-/* Sidebar: Today's Cases List */
-.rd-sidebar {
-  width: 370px;
-  min-width: 340px;
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
-  transition: all 0.2s ease;
-}
-
-.rd-sidebar.collapsed {
+body.sidebar-mode-compact .rb-nav-group > summary {
   display: none !important;
 }
-
-.rd-sidebar-header {
-  padding: 12px 14px;
-  background: #1e293b;
-  border-bottom: 1px solid #334155;
+body.sidebar-mode-compact .rb-nav-group {
+  display: block !important;
+  margin-bottom: 6px !important;
+}
+body.sidebar-mode-compact .rb-nav-group-links {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+body.sidebar-mode-compact .nav-link,
+body.sidebar-mode-compact .quick-action-btn {
+  justify-content: center !important;
+  padding: 8px 0 !important;
+  font-size: 18px !important;
+  text-align: center !important;
+}
+body.sidebar-mode-compact .brand {
+  justify-content: center !important;
+  padding: 4px 0 !important;
+}
+body.sidebar-mode-compact .workspace-card {
+  justify-content: center !important;
+  padding: 6px 0 !important;
+  margin: 0 0 8px 0 !important;
 }
 
-.rd-date-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 8px;
+body.sidebar-mode-hidden {
+  --sidebar-w: 0px !important;
+}
+body.sidebar-mode-hidden .sidebar {
+  display: none !important;
+}
+body.rtl.sidebar-mode-hidden .main,
+body.sidebar-mode-hidden .main {
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  width: 100% !important;
 }
 
-.rd-date-bar .btn {
-  padding: 4px 10px;
-  font-size: 13px;
-  background: #0f172a;
-  border: 1px solid #475569;
-  color: #f8fafc;
-}
-
-.rd-filter-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.rd-search-box {
-  width: 100%;
-  position: relative;
-}
-
-.rd-search-box input {
-  width: 100%;
-  padding: 7px 12px;
-  font-size: 13px;
-  background: #0f172a;
-  border: 1px solid #38bdf8;
-  color: #fff;
-  border-radius: 6px;
-}
-
-.rd-cases-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.rd-case-card {
-  padding: 10px 12px;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  position: relative;
-}
-
-.rd-case-card:hover {
-  background: #334155;
-  border-color: #38bdf8;
-}
-
-.rd-case-card.active {
-  background: #0369a1;
-  border-color: #38bdf8;
-  color: #fff;
-  box-shadow: 0 0 0 2px #38bdf8;
-}
-
-.rd-case-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.rd-case-name {
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.rd-case-time {
-  font-size: 12px;
-  color: #94a3b8;
-}
-
-.rd-case-card.active .rd-case-time {
-  color: #e0f2fe;
-}
-
-.rd-case-details {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: #cbd5e1;
-}
-
-.rd-badge-modality {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 4px;
-  background: #0284c7;
-  color: #fff;
-}
-
-.rd-badge-mr { background: #7c3aed; }
-.rd-badge-ct { background: #0284c7; }
-.rd-badge-dx { background: #0d9488; }
-.rd-badge-us { background: #d97706; }
-.rd-badge-eeg { background: #16a34a; }
-
-.rd-badge-status {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.rd-badge-paid { background: #065f46; color: #6ee7b7; }
-.rd-badge-partial { background: #7c2d12; color: #fdba74; }
-.rd-badge-unpaid { background: #475569; color: #e2e8f0; }
-
-/* Main Area: Reception Form */
+/* Main Area: Reception Form (Takes flex: 1 on Right in RTL) */
 .rd-main {
   flex: 1;
   background: #0f172a;
@@ -194,25 +140,25 @@ body.sidebar-mode-compact .quick-action-btn span:last-child {
 }
 
 .rd-main-header {
-  padding: 10px 16px;
+  padding: 8px 14px;
   background: #1e293b;
   border-bottom: 1px solid #334155;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .rd-header-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .rd-header-title h2 {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   color: #38bdf8;
 }
 
@@ -225,7 +171,7 @@ body.sidebar-mode-compact .quick-action-btn span:last-child {
 
 .rd-main-body {
   flex: 1;
-  padding: 16px;
+  padding: 14px;
   overflow-y: auto;
 }
 
@@ -233,26 +179,26 @@ body.sidebar-mode-compact .quick-action-btn span:last-child {
   background: #1e293b;
   border: 1px solid #334155;
   border-radius: 10px;
-  padding: 14px 16px;
-  margin-bottom: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
 }
 
 .rd-section-title {
-  margin: 0 0 12px 0;
-  font-size: 14px;
+  margin: 0 0 10px 0;
+  font-size: 13px;
   font-weight: bold;
   color: #38bdf8;
   display: flex;
   align-items: center;
   gap: 8px;
   border-bottom: 1px solid #334155;
-  padding-bottom: 6px;
+  padding-bottom: 5px;
 }
 
 .rd-form-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px 14px;
+  gap: 10px 14px;
 }
 
 .rd-col-1 { grid-column: span 1; }
@@ -262,16 +208,16 @@ body.sidebar-mode-compact .quick-action-btn span:last-child {
 
 .rd-field label {
   display: block;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   color: #cbd5e1;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .rd-field input, .rd-field select, .rd-field textarea {
   width: 100%;
-  padding: 7px 10px;
-  font-size: 13px;
+  padding: 6px 9px;
+  font-size: 12.5px;
   background: #0f172a;
   border: 1px solid #475569;
   color: #f8fafc;
@@ -296,18 +242,18 @@ body.sidebar-mode-compact .quick-action-btn span:last-child {
 
 .rd-radio-group {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   align-items: center;
-  height: 35px;
+  height: 32px;
 }
 
 .rd-radio-group label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   color: #f1f5f9;
 }
 
@@ -315,11 +261,11 @@ body.sidebar-mode-compact .quick-action-btn span:last-child {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   border: 1px solid #38bdf8;
   border-radius: 10px;
-  padding: 14px;
+  padding: 12px 14px;
 }
 
 .rd-money-highlight {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: bold;
   color: #38bdf8;
 }
@@ -330,25 +276,25 @@ body.sidebar-mode-compact .quick-action-btn span:last-child {
   align-items: center;
   padding-top: 8px;
   border-top: 1px solid #334155;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 /* Modality Quick Buttons */
 .rd-modality-tabs {
   display: flex;
   gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 
 .rd-mod-btn {
-  padding: 6px 12px;
+  padding: 5px 11px;
   border-radius: 6px;
   border: 1px solid #475569;
   background: #0f172a;
   color: #cbd5e1;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11.5px;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -375,134 +321,197 @@ body.sidebar-mode-compact .quick-action-btn span:last-child {
 }
 
 .rd-autocomplete-item {
-  padding: 8px 12px;
+  padding: 7px 11px;
   border-bottom: 1px solid #334155;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .rd-autocomplete-item:hover {
   background: #0284c7;
   color: #fff;
 }
+
+/* Sidebar: Today's Cases List (Located on Left in RTL) */
+.rd-sidebar {
+  width: 360px;
+  min-width: 330px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+  transition: all 0.2s ease;
+}
+
+.rd-sidebar.collapsed {
+  display: none !important;
+}
+
+.rd-sidebar-header {
+  padding: 10px 12px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.rd-date-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.rd-date-bar .btn {
+  padding: 3px 8px;
+  font-size: 12px;
+  background: #0f172a;
+  border: 1px solid #475569;
+  color: #f8fafc;
+}
+
+.rd-filter-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.rd-search-box {
+  width: 100%;
+  position: relative;
+}
+
+.rd-search-box input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 12px;
+  background: #0f172a;
+  border: 1px solid #38bdf8;
+  color: #fff;
+  border-radius: 6px;
+}
+
+.rd-cases-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rd-case-card {
+  padding: 8px 10px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.rd-case-card:hover {
+  background: #334155;
+  border-color: #38bdf8;
+}
+
+.rd-case-card.active {
+  background: #0369a1;
+  border-color: #38bdf8;
+  color: #fff;
+  box-shadow: 0 0 0 2px #38bdf8;
+}
+
+.rd-case-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.rd-case-name {
+  font-weight: bold;
+  font-size: 13.5px;
+}
+
+.rd-case-time {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.rd-case-card.active .rd-case-time {
+  color: #e0f2fe;
+}
+
+.rd-case-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  color: #cbd5e1;
+}
+
+.rd-badge-modality {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #0284c7;
+  color: #fff;
+}
+
+.rd-badge-mr { background: #7c3aed; }
+.rd-badge-ct { background: #0284c7; }
+.rd-badge-dx { background: #0d9488; }
+.rd-badge-us { background: #d97706; }
+.rd-badge-eeg { background: #16a34a; }
+
+.rd-badge-status {
+  font-size: 10.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.rd-badge-paid { background: #065f46; color: #6ee7b7; }
+.rd-badge-partial { background: #7c2d12; color: #fdba74; }
+.rd-badge-unpaid { background: #475569; color: #e2e8f0; }
 </style>
 
 <div class="rd-container" dir="{{ 'rtl' if ui_lang=='ar' else 'ltr' }}">
-  <!-- Left Column: Today's Cases List -->
-  <aside class="rd-sidebar" id="rdSidebar">
-    <div class="rd-sidebar-header">
-      <div class="rd-date-bar">
-        <a class="btn" href="{{ url_for('reception_desk', date=(selected_date - timedelta(days=1)).isoformat(), branch_id=branch_id or '') }}">‹</a>
-        <a class="btn" href="{{ url_for('reception_desk', branch_id=branch_id or '') }}"><b>{{ 'اليوم' if ui_lang=='ar' else 'Today' }}</b></a>
-        <input type="date" id="rdDateInput" value="{{ selected_date.isoformat() }}" style="padding:4px 8px; font-size:12px; background:#0f172a; color:#fff; border:1px solid #475569; border-radius:6px;" onchange="window.location.href='{{ url_for('reception_desk') }}?date='+this.value+'&branch_id={{ branch_id or '' }}'">
-        <a class="btn" href="{{ url_for('reception_desk', date=(selected_date + timedelta(days=1)).isoformat(), branch_id=branch_id or '') }}">›</a>
-      </div>
-
-      <div class="rd-filter-row">
-        <select id="rdBranchFilter" style="padding:6px; font-size:12px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid #475569; width:100%;" onchange="window.location.href='{{ url_for('reception_desk') }}?date={{ selected_date.isoformat() }}&branch_id='+this.value">
-          {% if not allowed_branches %}<option value="" {% if not branch_id %}selected{% endif %}>🌐 {{ 'جميع الفروع' if ui_lang=='ar' else 'All Branches' }}</option>{% endif %}
-          {% for b in branches %}
-            <option value="{{ b.id }}" {% if branch_id == b.id %}selected{% endif %}>🏢 {{ b.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="rd-search-box">
-        <input type="text" id="rdCaseSearch" placeholder="{{ '🔍 بحث سريع بالحالات (اسم أو هاتف)...' if ui_lang=='ar' else '🔍 Search cases (name, phone)...' }}">
-      </div>
-      
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:12px; color:#94a3b8;">
-        <span>{{ 'الحالات:' if ui_lang=='ar' else 'Cases:' }} <b id="rdCasesCount" style="color:#38bdf8;">{{ today_orders|length }}</b></span>
-        <span>💵 الخزينة: <b style="color:#10b981;">{{ '%.2f'|format(safe_cash) }} ج.م</b></span>
-      </div>
-    </div>
-
-    <!-- Case Cards List -->
-    <div class="rd-cases-list" id="rdCasesList">
-      {% for o in today_orders %}
-      <div class="rd-case-card {% if selected_order and selected_order.id == o.id %}active{% endif %}" 
-           data-id="{{ o.id }}"
-           data-accession="{{ o.accession }}"
-           data-patient-name="{{ o.patient.name }}"
-           data-patient-id="{{ o.patient.patient_id }}"
-           data-worklist-name="{{ o.patient.worklist_name or '' }}"
-           data-dob="{{ o.patient.dob or '' }}"
-           data-sex="{{ o.patient.sex or 'M' }}"
-           data-phone="{{ o.patient.phone or '' }}"
-           data-national-id="{{ o.patient.national_id or '' }}"
-           data-address="{{ o.patient.address or '' }}"
-           data-branch-id="{{ o.branch_id }}"
-           data-modality="{{ o.modality }}"
-           data-device-id="{{ o.device_id or '' }}"
-           data-procedure-id="{{ o.procedure_id or '' }}"
-           data-gross="{{ o.gross_price or 0 }}"
-           data-discount="{{ (o.gross_price or 0) - (o.patient_share or 0) }}"
-           data-paid="{{ o.paid_amount or 0 }}"
-           data-remaining="{{ (o.patient_share or 0) - (o.paid_amount or 0) }}"
-           data-scheduled="{{ o.scheduled.strftime('%Y-%m-%dT%H:%M') if o.scheduled else '' }}"
-           data-referring="{{ o.referring_doctor_id or '' }}"
-           data-assigned="{{ o.assigned_doctor_id or '' }}"
-           data-receipt-id="{{ o.latest_receipt.id if o.latest_receipt else '' }}"
-           onclick="selectCaseCard(this)">
-        <div class="rd-case-top">
-          <span class="rd-case-name">{{ o.patient.name }}</span>
-          <span class="rd-case-time">{{ o.scheduled.strftime('%H:%M') if o.scheduled else '' }}</span>
-        </div>
-        <div class="rd-case-details">
-          <div>
-            <span class="rd-badge-modality rd-badge-{{ o.modality|lower }}">{{ o.modality }}</span>
-            <span style="margin-right:4px;">{{ o.procedure }}</span>
-          </div>
-          {% set remaining = (o.patient_share or 0) - (o.paid_amount or 0) %}
-          {% if remaining <= 0 and (o.paid_amount or 0) > 0 %}
-            <span class="rd-badge-status rd-badge-paid">{{ 'مسدد' if ui_lang=='ar' else 'Paid' }}</span>
-          {% elif remaining > 0 and (o.paid_amount or 0) > 0 %}
-            <span class="rd-badge-status rd-badge-partial">{{ 'باقي ' ~ ('%.0f'|format(remaining)) }}</span>
-          {% else %}
-            <span class="rd-badge-status rd-badge-unpaid">{{ 'غير مسدد' if ui_lang=='ar' else 'Unpaid' }}</span>
-          {% endif %}
-        </div>
-      </div>
-      {% else %}
-      <div style="text-align:center; padding:30px 10px; color:#64748b; font-size:13px;">
-        {{ 'لا توجد حالات مسجلة لهذا التاريخ' if ui_lang=='ar' else 'No registered cases for this date' }}
-      </div>
-      {% endfor %}
-    </div>
-  </aside>
-
-  <!-- Right Area: Reception Desk Form -->
+  <!-- MAIN REGISTRATION AREA (First child in RTL displays on RIGHT) -->
   <main class="rd-main">
     <!-- Header with Action Buttons & Sidebar Toggles -->
     <div class="rd-main-header">
       <div class="rd-header-title">
-        <!-- Toggle System Sidebar (Full Screen Mode) -->
-        <button type="button" class="btn small" id="btnToggleSysSidebar" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8;" onclick="toggleSystemSidebar()" title="{{ 'طي / إظهار القائمة الجانبية للنظام' if ui_lang=='ar' else 'Toggle System Sidebar' }}">
-          <span id="sysSidebarIcon">⛶</span> <span id="sysSidebarText">{{ 'القائمة الرئيسية' if ui_lang=='ar' else 'Menu' }}</span>
+        <!-- System Sidebar 3-State Toggle (Expanded / Compact / Hidden) -->
+        <button type="button" class="btn small" id="btnToggleSysSidebar" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; font-weight:bold;" onclick="cycleSystemSidebar()" title="{{ 'تغيير وضع القائمة الرئيسية: عادية / مصغرة / مخفية' if ui_lang=='ar' else 'Cycle Sidebar: Expanded / Compact / Hidden' }}">
+          <span id="sysSidebarIcon">◀</span> <span id="sysSidebarText">{{ 'القائمة: عادية' if ui_lang=='ar' else 'Sidebar: Normal' }}</span>
         </button>
 
         <!-- Toggle Reception Cases Sidebar -->
-        <button type="button" class="btn small" id="btnToggleCasesSidebar" style="background:#0f172a; color:#cbd5e1; border:1px solid #475569;" onclick="toggleCasesSidebar()" title="{{ 'طي / إظهار قائمة الحالات' if ui_lang=='ar' else 'Toggle Cases List' }}">
-          <span id="casesSidebarIcon">📋</span> <span id="casesSidebarText">{{ 'قائمة الحالات' if ui_lang=='ar' else 'Cases' }}</span>
+        <button type="button" class="btn small" id="btnToggleCasesSidebar" style="background:#0f172a; color:#cbd5e1; border:1px solid #475569;" onclick="toggleCasesSidebar()" title="{{ 'طي / إظهار قائمة أسماء الحالات' if ui_lang=='ar' else 'Toggle Cases List' }}">
+          📋 <span id="casesSidebarText">{{ 'طي قائمة الحالات' if ui_lang=='ar' else 'Hide Cases' }}</span>
         </button>
 
         <h2>🛎️ {{ 'كاونتر الاستقبال السريع' if ui_lang=='ar' else 'Reception Desk Workspace' }}</h2>
-        <span class="status-chip" style="background:#0284c7; color:#fff; font-size:11px; padding:3px 10px; border-radius:12px;">
+        <span class="status-chip" style="background:#0284c7; color:#fff; font-size:11px; padding:2px 8px; border-radius:10px;">
           🏢 {{ selected_order.branch.name if selected_order and selected_order.branch else ('الفرع الرئيسي' if ui_lang=='ar' else 'Main Branch') }}
         </span>
       </div>
 
       <div class="rd-actions-bar">
-        <button type="button" class="btn" style="background:#10b981; color:#fff; border-color:#059669; font-weight:bold;" onclick="resetFormForNewPatient()">
+        <button type="button" class="btn small" style="background:#10b981; color:#fff; border-color:#059669; font-weight:bold;" onclick="resetFormForNewPatient()">
           ➕ {{ 'حالة جديدة' if ui_lang=='ar' else 'New Case' }}
         </button>
-        <button type="button" class="btn" id="btnPrintReceipt" style="background:#0284c7; color:#fff; border-color:#0369a1;" onclick="printSelectedReceipt()" {% if not (selected_order and selected_order.latest_receipt) %}disabled{% endif %}>
+        <button type="button" class="btn small" id="btnPrintReceipt" style="background:#0284c7; color:#fff; border-color:#0369a1;" onclick="printSelectedReceipt()" {% if not (selected_order and selected_order.latest_receipt) %}disabled{% endif %}>
           🖨️ {{ 'طباعة إيصال' if ui_lang=='ar' else 'Print Receipt' }}
         </button>
-        <button type="button" class="btn" id="btnPrintSticker" style="background:#475569; color:#fff; border-color:#334155;" onclick="printSelectedSticker()" {% if not selected_order %}disabled{% endif %}>
+        <button type="button" class="btn small" id="btnPrintSticker" style="background:#475569; color:#fff; border-color:#334155;" onclick="printSelectedSticker()" {% if not selected_order %}disabled{% endif %}>
           🏷️ {{ 'استيكر / باركود' if ui_lang=='ar' else 'Barcode' }}
         </button>
-        <a class="btn" id="btnWorkOrder" href="{{ url_for('order_detail', order_id=selected_order.id) if selected_order else '#' }}" target="_blank" style="background:#334155; color:#cbd5e1; border-color:#475569;" {% if not selected_order %}disabled{% endif %}>
+        <a class="btn small" id="btnWorkOrder" href="{{ url_for('order_detail', order_id=selected_order.id) if selected_order else '#' }}" target="_blank" style="background:#334155; color:#cbd5e1; border-color:#475569;" {% if not selected_order %}disabled{% endif %}>
           📄 {{ 'أمر الشغل' if ui_lang=='ar' else 'Work Order' }}
         </a>
       </div>
@@ -518,7 +527,7 @@ body.sidebar-mode-compact .quick-action-btn span:last-child {
         <div class="rd-section">
           <div class="rd-section-title">
             <span>👤 {{ 'بيانات المريض (Patient Information)' if ui_lang=='ar' else 'Patient Information' }}</span>
-            <div style="margin-right:auto; margin-left:0; display:flex; gap:8px;">
+            <div style="margin-right:auto; margin-left:0; display:flex; gap:6px;">
               <button type="button" class="btn small" id="modeBtnNew" style="background:#0284c7; color:#fff;" onclick="setPatientMode('new')">
                 ➕ {{ 'مريض جديد' if ui_lang=='ar' else 'New Patient' }}
               </button>
@@ -529,8 +538,8 @@ body.sidebar-mode-compact .quick-action-btn span:last-child {
           </div>
 
           <!-- Existing Patient Search (Hidden by default) -->
-          <div id="existingPatientSearchWrap" style="display:none; margin-bottom:14px; position:relative;">
-            <label style="font-size:12px; font-weight:bold; color:#38bdf8;">{{ 'ابحث عن مريض سابق بالاسم أو رقم التليفون أو كود المريض:' if ui_lang=='ar' else 'Search existing patient by name, phone or ID:' }}</label>
+          <div id="existingPatientSearchWrap" style="display:none; margin-bottom:12px; position:relative;">
+            <label style="font-size:11.5px; font-weight:bold; color:#38bdf8;">{{ 'ابحث عن مريض سابق بالاسم أو رقم التليفون أو كود المريض:' if ui_lang=='ar' else 'Search existing patient by name, phone or ID:' }}</label>
             <input type="text" id="existingPatientSearch" placeholder="{{ 'اكتب حرفين أو أكثر للبحث...' if ui_lang=='ar' else 'Type to search...' }}" autocomplete="off">
             <div id="patientAutocomplete" class="rd-autocomplete" style="display:none;"></div>
           </div>
@@ -720,24 +729,107 @@ body.sidebar-mode-compact .quick-action-btn span:last-child {
 
         <!-- Footer Actions & Direct Print Options -->
         <div class="rd-footer-actions">
-          <div style="display:flex; gap:16px; align-items:center;">
-            <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:#f8fafc; font-size:13px; font-weight:600;">
+          <div style="display:flex; gap:14px; align-items:center;">
+            <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:#f8fafc; font-size:12.5px; font-weight:600;">
               <input type="checkbox" id="autoPrintReceipt" checked style="width:16px; height:16px;">
               🖨️ {{ 'فتح إيصال السداد للطباعة فورياً بعد الحفظ' if ui_lang=='ar' else 'Auto print receipt on save' }}
             </label>
-            <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:#f8fafc; font-size:13px; font-weight:600;">
+            <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:#f8fafc; font-size:12.5px; font-weight:600;">
               <input type="checkbox" id="autoPrintSticker" style="width:16px; height:16px;">
               🏷️ {{ 'فتح باركود الفحص للطباعة فورياً' if ui_lang=='ar' else 'Auto print sticker on save' }}
             </label>
           </div>
 
-          <button type="submit" id="btnSubmitForm" class="btn primary" style="padding:10px 24px; font-size:15px; font-weight:bold; background:#0284c7; border-color:#0284c7;">
+          <button type="submit" id="btnSubmitForm" class="btn primary" style="padding:9px 22px; font-size:14px; font-weight:bold; background:#0284c7; border-color:#0284c7;">
             💾 {{ 'حفظ وتسجيل الفحص وإرساله لأجهزة الأشعة (Save & Push MWL)' if ui_lang=='ar' else 'Save & Push to MWL' }}
           </button>
         </div>
       </form>
     </div>
   </main>
+
+  <!-- CASES LIST SIDEBAR (Second child in RTL displays on LEFT) -->
+  <aside class="rd-sidebar" id="rdCasesSidebar">
+    <div class="rd-sidebar-header">
+      <div class="rd-date-bar">
+        <a class="btn" href="{{ url_for('reception_desk', date=(selected_date - timedelta(days=1)).isoformat(), branch_id=branch_id or '') }}">‹</a>
+        <a class="btn" href="{{ url_for('reception_desk', branch_id=branch_id or '') }}"><b>{{ 'اليوم' if ui_lang=='ar' else 'Today' }}</b></a>
+        <input type="date" id="rdDateInput" value="{{ selected_date.isoformat() }}" style="padding:3px 6px; font-size:11.5px; background:#0f172a; color:#fff; border:1px solid #475569; border-radius:6px;" onchange="window.location.href='{{ url_for('reception_desk') }}?date='+this.value+'&branch_id={{ branch_id or '' }}'">
+        <a class="btn" href="{{ url_for('reception_desk', date=(selected_date + timedelta(days=1)).isoformat(), branch_id=branch_id or '') }}">›</a>
+      </div>
+
+      <div class="rd-filter-row">
+        <select id="rdBranchFilter" style="padding:5px; font-size:11.5px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid #475569; width:100%;" onchange="window.location.href='{{ url_for('reception_desk') }}?date={{ selected_date.isoformat() }}&branch_id='+this.value">
+          {% if not allowed_branches %}<option value="" {% if not branch_id %}selected{% endif %}>🌐 {{ 'جميع الفروع' if ui_lang=='ar' else 'All Branches' }}</option>{% endif %}
+          {% for b in branches %}
+            <option value="{{ b.id }}" {% if branch_id == b.id %}selected{% endif %}>🏢 {{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="rd-search-box">
+        <input type="text" id="rdCaseSearch" placeholder="{{ '🔍 بحث سريع بالحالات (اسم أو هاتف)...' if ui_lang=='ar' else '🔍 Search cases (name, phone)...' }}">
+      </div>
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:11.5px; color:#94a3b8;">
+        <span>{{ 'الحالات:' if ui_lang=='ar' else 'Cases:' }} <b id="rdCasesCount" style="color:#38bdf8;">{{ today_orders|length }}</b></span>
+        <span>💵 الخزينة: <b style="color:#10b981;">{{ '%.2f'|format(safe_cash) }} ج.م</b></span>
+      </div>
+    </div>
+
+    <!-- Case Cards List -->
+    <div class="rd-cases-list" id="rdCasesList">
+      {% for o in today_orders %}
+      <div class="rd-case-card {% if selected_order and selected_order.id == o.id %}active{% endif %}" 
+           data-id="{{ o.id }}"
+           data-accession="{{ o.accession }}"
+           data-patient-name="{{ o.patient.name }}"
+           data-patient-id="{{ o.patient.patient_id }}"
+           data-worklist-name="{{ o.patient.worklist_name or '' }}"
+           data-dob="{{ o.patient.dob or '' }}"
+           data-sex="{{ o.patient.sex or 'M' }}"
+           data-phone="{{ o.patient.phone or '' }}"
+           data-national-id="{{ o.patient.national_id or '' }}"
+           data-address="{{ o.patient.address or '' }}"
+           data-branch-id="{{ o.branch_id }}"
+           data-modality="{{ o.modality }}"
+           data-device-id="{{ o.device_id or '' }}"
+           data-procedure-id="{{ o.procedure_id or '' }}"
+           data-gross="{{ o.gross_price or 0 }}"
+           data-discount="{{ (o.gross_price or 0) - (o.patient_share or 0) }}"
+           data-paid="{{ o.paid_amount or 0 }}"
+           data-remaining="{{ (o.patient_share or 0) - (o.paid_amount or 0) }}"
+           data-scheduled="{{ o.scheduled.strftime('%Y-%m-%dT%H:%M') if o.scheduled else '' }}"
+           data-referring="{{ o.referring_doctor_id or '' }}"
+           data-assigned="{{ o.assigned_doctor_id or '' }}"
+           data-receipt-id="{{ o.latest_receipt.id if o.latest_receipt else '' }}"
+           onclick="selectCaseCard(this)">
+        <div class="rd-case-top">
+          <span class="rd-case-name">{{ o.patient.name }}</span>
+          <span class="rd-case-time">{{ o.scheduled.strftime('%H:%M') if o.scheduled else '' }}</span>
+        </div>
+        <div class="rd-case-details">
+          <div>
+            <span class="rd-badge-modality rd-badge-{{ o.modality|lower }}">{{ o.modality }}</span>
+            <span style="margin-right:4px;">{{ o.procedure }}</span>
+          </div>
+          {% set remaining = (o.patient_share or 0) - (o.paid_amount or 0) %}
+          {% if remaining <= 0 and (o.paid_amount or 0) > 0 %}
+            <span class="rd-badge-status rd-badge-paid">{{ 'مسدد' if ui_lang=='ar' else 'Paid' }}</span>
+          {% elif remaining > 0 and (o.paid_amount or 0) > 0 %}
+            <span class="rd-badge-status rd-badge-partial">{{ 'باقي ' ~ ('%.0f'|format(remaining)) }}</span>
+          {% else %}
+            <span class="rd-badge-status rd-badge-unpaid">{{ 'غير مسدد' if ui_lang=='ar' else 'Unpaid' }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div style="text-align:center; padding:30px 10px; color:#64748b; font-size:12.5px;">
+        {{ 'لا توجد حالات مسجلة لهذا التاريخ' if ui_lang=='ar' else 'No registered cases for this date' }}
+      </div>
+      {% endfor %}
+    </div>
+  </aside>
 </div>
 
 <script>
@@ -746,31 +838,37 @@ const worklistMap = {{ worklist_name_map|tojson }};
 let currentSelectedReceiptId = {{ (selected_order.latest_receipt.id if (selected_order and selected_order.latest_receipt) else 0) }};
 let currentSelectedOrderId = {{ (selected_order.id if selected_order else 0) }};
 
-// 1. System Sidebar Toggle (Global Fullscreen Mode)
-let sysSidebarState = localStorage.getItem('radbridge_reception_sys_sidebar') || 'expanded';
+// 1. System Sidebar 3-State Cycle (Expanded -> Compact -> Hidden -> Expanded)
+let sysSidebarState = localStorage.getItem('radbridge_sys_sidebar_mode') || 'expanded';
 
 function applySysSidebarState(state){
   sysSidebarState = state;
-  localStorage.setItem('radbridge_reception_sys_sidebar', state);
+  localStorage.setItem('radbridge_sys_sidebar_mode', state);
   document.body.classList.remove('sidebar-mode-hidden', 'sidebar-mode-compact');
   
   const icon = document.getElementById('sysSidebarIcon');
   const text = document.getElementById('sysSidebarText');
   if(state === 'hidden'){
     document.body.classList.add('sidebar-mode-hidden');
-    if(icon) icon.textContent = '⛶';
-    if(text) text.textContent = 'إظهار القائمة';
+    if(icon) icon.textContent = '▶';
+    if(text) text.textContent = 'القائمة: مخفية';
+  } else if(state === 'compact'){
+    document.body.classList.add('sidebar-mode-compact');
+    if(icon) icon.textContent = '✖';
+    if(text) text.textContent = 'القائمة: مصغرة';
   } else {
-    if(icon) icon.textContent = '☰';
-    if(text) text.textContent = 'القائمة الرئيسية';
+    if(icon) icon.textContent = '◀';
+    if(text) text.textContent = 'القائمة: عادية';
   }
 }
 
-function toggleSystemSidebar(){
-  if(sysSidebarState === 'hidden'){
-    applySysSidebarState('expanded');
-  } else {
+function cycleSystemSidebar(){
+  if(sysSidebarState === 'expanded'){
+    applySysSidebarState('compact');
+  } else if(sysSidebarState === 'compact'){
     applySysSidebarState('hidden');
+  } else {
+    applySysSidebarState('expanded');
   }
 }
 
@@ -780,7 +878,7 @@ let casesSidebarHidden = localStorage.getItem('radbridge_reception_cases_sidebar
 function applyCasesSidebarState(hidden){
   casesSidebarHidden = hidden;
   localStorage.setItem('radbridge_reception_cases_sidebar', hidden ? 'hidden' : 'visible');
-  const sidebar = document.getElementById('rdSidebar');
+  const sidebar = document.getElementById('rdCasesSidebar');
   const text = document.getElementById('casesSidebarText');
   if(sidebar){
     sidebar.classList.toggle('collapsed', hidden);
@@ -1043,7 +1141,7 @@ function resetFormForNewPatient(){
   document.getElementById('patientName').focus();
 }
 
-// Select a Case Card from Left List
+// Select a Case Card from Cases List
 function selectCaseCard(card){
   document.querySelectorAll('.rd-case-card').forEach(c => c.classList.remove('active'));
   card.classList.add('active');
