@@ -545,7 +545,7 @@ body.ltr .rd-cases-dock-tab {
   box-shadow: 0 2px 4px rgba(0,0,0,0.25);
 }
 
-@media (max-width: 980px) {
+@media (max-width: 900px) {
   .rd-mobile-tabs {
     display: flex !important;
   }
@@ -575,8 +575,9 @@ body.ltr .rd-cases-dock-tab {
     max-width: 100% !important;
   }
 
+  /* Keep toggle button always visible and usable */
   #btnToggleCasesSidebar {
-    display: none !important;
+    display: inline-flex !important;
   }
 
   .rd-main-header {
@@ -1416,9 +1417,11 @@ function applySysSidebarState(state){
   const icon = document.getElementById('sysSidebarIcon');
   const text = document.getElementById('sysSidebarText');
   const btn = document.getElementById('btnToggleSysSidebar');
+  const sb = document.getElementById('sidebar');
   
   if(state === 'hidden'){
     document.body.classList.add('sidebar-mode-hidden');
+    if(sb) sb.style.display = 'none';
     if(icon) icon.textContent = '▶';
     if(text) text.textContent = 'إظهار القائمة الرئيسية';
     if(btn){
@@ -1428,6 +1431,7 @@ function applySysSidebarState(state){
       btn.title = 'إظهار القائمة الجانبية الرئيسية للنظام';
     }
   } else {
+    if(sb) sb.style.display = '';
     if(icon) icon.textContent = '◀';
     if(text) text.textContent = 'طي القائمة الرئيسية';
     if(btn){
@@ -1453,17 +1457,24 @@ let casesSidebarHidden = localStorage.getItem('radbridge_reception_cases_sidebar
 function applyCasesSidebarState(hidden){
   casesSidebarHidden = hidden;
   localStorage.setItem('radbridge_reception_cases_sidebar', hidden ? 'hidden' : 'visible');
+  const container = document.getElementById('rdContainer');
   const sidebar = document.getElementById('rdCasesSidebar');
   const text = document.getElementById('casesSidebarText');
   const btn = document.getElementById('btnToggleCasesSidebar');
   const dock = document.getElementById('rdCasesDockTab');
-  const count = '{{ today_orders|length }}';
-  
+  const countEl = document.getElementById('rdCasesCount');
+  const count = countEl ? countEl.textContent : '{{ today_orders|length }}';
+
+  if(window.innerWidth > 900 && container){
+    container.classList.remove('view-cases', 'view-form');
+  }
+
   if(sidebar){
     sidebar.classList.toggle('collapsed', hidden);
+    sidebar.style.display = hidden ? 'none' : 'flex';
   }
   if(text){
-    text.textContent = hidden ? ('إظهار قائمة الحالات (' + count + ')') : 'طي قائمة الحالات';
+    text.textContent = hidden ? ('📋 إظهار قائمة الحالات (' + count + ')') : '◀ طي قائمة الحالات';
   }
   if(btn){
     if(hidden){
@@ -1477,14 +1488,16 @@ function applyCasesSidebarState(hidden){
     }
   }
   if(dock){
-    dock.style.display = (hidden && window.innerWidth > 980) ? 'flex' : 'none';
+    dock.style.display = (hidden && window.innerWidth > 900) ? 'flex' : 'none';
   }
 }
 
 function toggleCasesSidebar(){
-  if(window.innerWidth <= 980){
-    const container = document.getElementById('rdContainer');
-    if(container && container.classList.contains('view-cases')){
+  const container = document.getElementById('rdContainer');
+  const isSmallScreen = window.innerWidth <= 900;
+
+  if(isSmallScreen && container){
+    if(container.classList.contains('view-cases')){
       switchMobileView('form');
     } else {
       switchMobileView('cases');
@@ -1499,17 +1512,43 @@ function switchMobileView(view){
   const container = document.getElementById('rdContainer');
   const tabForm = document.getElementById('tabMobileForm');
   const tabCases = document.getElementById('tabMobileCases');
+  const sidebar = document.getElementById('rdCasesSidebar');
+  const text = document.getElementById('casesSidebarText');
+  const btn = document.getElementById('btnToggleCasesSidebar');
+  const countEl = document.getElementById('rdCasesCount');
+  const count = countEl ? countEl.textContent : '';
+
   if(!container) return;
+
   if(view === 'cases'){
     container.classList.remove('view-form');
     container.classList.add('view-cases');
+    if(sidebar){
+      sidebar.classList.remove('collapsed');
+      sidebar.style.display = 'flex';
+    }
     if(tabForm) tabForm.classList.remove('active');
     if(tabCases) tabCases.classList.add('active');
+    if(text) text.textContent = '📝 العودة للاستمارة';
+    if(btn){
+      btn.style.background = '#0284c7';
+      btn.style.color = '#ffffff';
+      btn.style.borderColor = '#38bdf8';
+    }
   } else {
     container.classList.remove('view-cases');
     container.classList.add('view-form');
+    if(sidebar){
+      sidebar.style.display = 'none';
+    }
     if(tabCases) tabCases.classList.remove('active');
     if(tabForm) tabForm.classList.add('active');
+    if(text) text.textContent = '📋 إظهار قائمة الحالات' + (count ? ' (' + count + ')' : '');
+    if(btn){
+      btn.style.background = '#0f172a';
+      btn.style.color = '#cbd5e1';
+      btn.style.borderColor = '#475569';
+    }
   }
 }
 
@@ -2508,7 +2547,7 @@ function resetFormForNewPatient(){
 
 // Select a Case Card from Cases List
 function selectCaseCard(card){
-  if(window.innerWidth <= 980) switchMobileView('form');
+  if(window.innerWidth <= 900) switchMobileView('form');
   document.querySelectorAll('.rd-case-card').forEach(c => c.classList.remove('active'));
   card.classList.add('active');
 
@@ -2898,7 +2937,7 @@ function toggleMobileSidebar(){
 }
 
 function handleSidebarToggle(){
-  if(window.innerWidth <= 980){
+  if(window.innerWidth <= 900){
     toggleMobileSidebar();
   } else {
     cycleSystemSidebar();
@@ -2908,28 +2947,62 @@ function handleSidebarToggle(){
 window.addEventListener('resize', () => {
   const dock = document.getElementById('rdCasesDockTab');
   if(dock){
-    dock.style.display = (casesSidebarHidden && window.innerWidth > 980) ? 'flex' : 'none';
+    dock.style.display = (casesSidebarHidden && window.innerWidth > 900) ? 'flex' : 'none';
+  }
+  const container = document.getElementById('rdContainer');
+  if(window.innerWidth > 900 && container){
+    container.classList.remove('view-cases', 'view-form');
+    const sb = document.getElementById('rdCasesSidebar');
+    if(sb) sb.style.display = casesSidebarHidden ? 'none' : 'flex';
   }
 });
 
-// Ensure mobile header hamburger buttons also work
+// Robust DOM Event Listeners for All Toggle Buttons
 document.addEventListener('DOMContentLoaded', () => {
+  // Main System Sidebar button
+  const btnSys = document.getElementById('btnToggleSysSidebar');
+  if(btnSys) btnSys.addEventListener('click', (e) => { e.preventDefault(); handleSidebarToggle(); });
+
+  // Cases list toggle button in header
+  const btnCases = document.getElementById('btnToggleCasesSidebar');
+  if(btnCases) btnCases.addEventListener('click', (e) => { e.preventDefault(); toggleCasesSidebar(); });
+
+  // Floating dock tab
+  const dock = document.getElementById('rdCasesDockTab');
+  if(dock) dock.addEventListener('click', (e) => { e.preventDefault(); toggleCasesSidebar(); });
+
+  // Mobile navigation tabs
+  const tabForm = document.getElementById('tabMobileForm');
+  if(tabForm) tabForm.addEventListener('click', (e) => { e.preventDefault(); switchMobileView('form'); });
+
+  const tabCases = document.getElementById('tabMobileCases');
+  if(tabCases) tabCases.addEventListener('click', (e) => { e.preventDefault(); switchMobileView('cases'); });
+
+  // Hamburger buttons
   const mOpen = document.getElementById('mobileMenuOpen');
   const sOpen = document.getElementById('sidebarOpen');
-  if(mOpen) mOpen.onclick = toggleMobileSidebar;
-  if(sOpen) sOpen.onclick = toggleMobileSidebar;
+  if(mOpen) mOpen.addEventListener('click', (e) => { e.preventDefault(); toggleMobileSidebar(); });
+  if(sOpen) sOpen.addEventListener('click', (e) => { e.preventDefault(); toggleMobileSidebar(); });
+
+  // Sidebar close & overlay
   const sClose = document.getElementById('sidebarClose');
   const ov = document.getElementById('sidebarOverlay');
-  if(sClose) sClose.onclick = () => {
+  if(sClose) sClose.addEventListener('click', (e) => {
+    e.preventDefault();
     const sb = document.getElementById('sidebar');
     if(sb) sb.classList.remove('open');
     if(ov) ov.classList.remove('open', 'show');
-  };
-  if(ov) ov.onclick = () => {
+  });
+  if(ov) ov.addEventListener('click', (e) => {
+    e.preventDefault();
     const sb = document.getElementById('sidebar');
     if(sb) sb.classList.remove('open');
     ov.classList.remove('open', 'show');
-  };
+  });
+
+  // Apply initial states
+  applySysSidebarState(sysSidebarState);
+  applyCasesSidebarState(casesSidebarHidden);
 });
 
 // Omni Search across Procedures (Code + Name), Departments, and Rooms

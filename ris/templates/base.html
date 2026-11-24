@@ -15,6 +15,27 @@
 .rb-nav-group-links{display:flex;flex-direction:column;gap:1px;padding-bottom:3px}
 .rb-nav-group .nav-link{margin-left:3px;margin-right:3px}
 .sidebar{overflow-y:auto}
+
+/* Universal Layering for Sidebar & Overlay across all views */
+.sidebar.open {
+  z-index: 1000 !important;
+  transform: none !important;
+  display: flex !important;
+}
+.sidebar-overlay.open, .sidebar-overlay.show {
+  display: block !important;
+  z-index: 990 !important;
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.45) !important;
+}
+@media (max-width: 900px) {
+  body.sidebar-mode-hidden .sidebar.open {
+    display: flex !important;
+    transform: none !important;
+    z-index: 1000 !important;
+  }
+}
 </style>
 </head>
 {% set selected_theme = user_profile.theme if user_profile else 'light' %}
