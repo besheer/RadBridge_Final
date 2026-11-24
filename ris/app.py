@@ -14877,8 +14877,22 @@ def order_clinical_notes(order_id):
 @login_required
 def my_profile():
     p=get_user_profile()
+    u=current_user()
+
+    from registration_policy import allowed_registration_branches
+    allowed_branches=allowed_registration_branches()
+    can_choose_branch=(allowed_branches is None)
 
     if request.method=='POST':
+        if can_choose_branch and 'branch_id' in request.form:
+            branch_val=request.form.get('branch_id','').strip()
+            u.branch_id=int(branch_val) if branch_val else None
+            session['active_branch_id']=u.branch_id
+            reg_def=RegistrationDefault.query.filter_by(user_id=u.id,active=True).first()
+            if not reg_def:
+                reg_def=RegistrationDefault(user_id=u.id,is_global=False,active=True)
+                db.session.add(reg_def)
+            reg_def.default_branch_id=u.branch_id
 
         requested_theme = (
             request.form.get('theme')
@@ -14974,6 +14988,10 @@ def my_profile():
     return render_template(
         'my_profile.html',
         profile=p,
+        me=u,
+        branches=Branch.query.filter_by(active=True).order_by(Branch.name).all(),
+        user_branch_id=u.branch_id,
+        can_choose_branch=can_choose_branch,
         preferred_image_viewer=image_viewer_preference(p),
         reporting_preferences=(
             user_reporting_preferences(p)

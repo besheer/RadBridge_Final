@@ -12,6 +12,59 @@
     {{ t('profile.title','My Profile & Workspace') }}
   </h2>
 
+  <!-- Branch & Workplace Settings Card -->
+  <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1px solid #38bdf8; border-radius: 10px; padding: 18px; margin-bottom: 22px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
+      <h3 style="margin: 0; color: #38bdf8; font-size: 16px;">
+        🏢 {{ 'إعدادات الفرع ومكان العمل' if ui_lang=='ar' else 'Branch & Workplace Settings' }}
+      </h3>
+      {% if me.branch %}
+        <span class="status-chip" style="background:#0284c7; color:#fff; font-size:12px; padding:3px 10px; border-radius:12px;">🏢 {{ me.branch.name }}</span>
+      {% else %}
+        <span class="status-chip" style="background:#475569; color:#e2e8f0; font-size:12px; padding:3px 10px; border-radius:12px;">🌐 {{ 'جميع الفروع' if ui_lang=='ar' else 'All Branches' }}</span>
+      {% endif %}
+    </div>
+    <p style="margin: 0 0 14px 0; font-size: 13px; color: #94a3b8;">
+      {{ 'يمكنك هنا تحديد الفرع الافتراضي الخاص بك؛ سيتم اعتماده آلياً في جدول المواعيد، تسجيل الزيارات، والخزينة.' if ui_lang=='ar' else 'Select your default working branch. It will be pre-selected automatically in scheduling, registration, and cashier.' }}
+    </p>
+
+    <div class="grid2" style="gap:14px;">
+      <div>
+        <label style="font-weight:bold; color:#f1f5f9; margin-bottom:6px; display:block;">
+          {{ 'الفرع الافتراضي لك' if ui_lang=='ar' else 'Your Default Branch' }}
+        </label>
+        {% if can_choose_branch %}
+        <select name="branch_id" style="width:100%; padding:8px 12px; font-size:14px; font-weight:bold; border-radius:6px; border:1px solid #38bdf8; background:#0f172a; color:#f8fafc;">
+          <option value="" {% if not user_branch_id %}selected{% endif %}>{{ '🌐 جميع الفروع (إدارة مركزية / متنقل)' if ui_lang=='ar' else '🌐 All Branches (Floating / Central)' }}</option>
+          {% for b in branches %}
+            <option value="{{b.id}}" {% if user_branch_id == b.id %}selected{% endif %}>🏢 {{b.name}}</option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <input type="text" value="{{ me.branch.name if me.branch else ('الفرع الرئيسي' if ui_lang=='ar' else 'Main Branch') }}" readonly style="background:#334155; color:#cbd5e1; cursor:not-allowed; padding:8px 12px; width:100%; border-radius:6px;">
+        <small style="color:#f59e0b; font-size:11px; margin-top:4px; display:block;">{{ '🔒 صلاحيات حسابك مقصورة على هذا الفرع بقرار الإدارة' if ui_lang=='ar' else 'Branch locked by administrator policy' }}</small>
+        {% endif %}
+      </div>
+
+      <div>
+        <label style="font-weight:bold; color:#f1f5f9; margin-bottom:6px; display:block;">
+          {{ 'نطاق الصلاحيات على الفروع' if ui_lang=='ar' else 'Branch Access Scope' }}
+        </label>
+        <div style="margin-top:4px;">
+          {% if can_choose_branch %}
+            <div style="background:rgba(6, 95, 70, 0.4); border:1px solid #10b981; border-radius:6px; padding:8px 12px; color:#6ee7b7; font-size:13px;">
+              ✓ {{ 'متاح لك العمل والتنقل بين جميع الفروع بحرية' if ui_lang=='ar' else 'Multi-branch access enabled' }}
+            </div>
+          {% else %}
+            <div style="background:rgba(133, 77, 14, 0.4); border:1px solid #f59e0b; border-radius:6px; padding:8px 12px; color:#fde047; font-size:13px;">
+              🔒 {{ 'محدد بالعمل في فرعك المسجل فقط' if ui_lang=='ar' else 'Single branch restricted' }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="grid2">
 
     <label>
