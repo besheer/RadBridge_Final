@@ -80,6 +80,7 @@
 <summary class="nav-caption">{{"الاستقبال" if ui_lang=="ar" else "Reception"}}</summary>
 <div class="rb-nav-group-links">
 {% if has_perm("appointments.manage") or has_perm("orders.create") or has_perm("patients.view") or has_perm("cashier.workstation") or has_perm("*") %}<a class="nav-link nav-link-featured" href="{{url_for('reception_desk')}}">🛎️ <span>{{"كاونتر الاستقبال السريع" if ui_lang=="ar" else "Reception Desk"}}</span></a>{% endif %}
+<a class="nav-link" href="{{url_for('branch_manager_audit')}}">🛡️ <span>{{"رقابة تعديلات الفرع" if ui_lang=="ar" else "Branch Edits Audit"}}</span></a>
 {% if has_perm("appointments.manage") %}<a class="nav-link" href="{{url_for('schedule_calendar')}}">📅 <span>{{"الجدول والتسجيل" if ui_lang=="ar" else "Scheduler & Registration"}}</span></a>{% endif %}
 {% if has_perm("patients.view") %}<a class="nav-link" href="{{url_for('patients')}}">♙ <span>{{"المرضى" if ui_lang=="ar" else "Patients"}}</span></a>{% endif %}
 {% if has_perm("orders.view") %}<a class="nav-link" href="{{url_for('orders')}}">▤ <span>{{"الزيارات / الطلبات" if ui_lang=="ar" else "Visits / Orders"}}</span></a>{% endif %}

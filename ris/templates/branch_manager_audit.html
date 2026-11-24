@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block page_title %}{{ 'سجل الرقابة وتدقيق التعديلات' if ui_lang=='ar' else 'Branch Edits & Audit Center' }}{% endblock %}
+{% block subtitle %}{{ 'متابعة وتدقيق تعديلات الموظفين على بيانات المرضى، وإلغاء الفحوصات، وتعديلات الأسعار' if ui_lang=='ar' else 'Audit employee edits on patient demographics, cancellations, and financial changes' }}{% endblock %}
+
+{% block content %}
+<style>
+.audit-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.audit-kpi-card {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.audit-kpi-card b {
+  font-size: 24px;
+  font-weight: 800;
+  color: #f8fafc;
+  line-height: 1.2;
+}
+.audit-kpi-card small {
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin-top: 4px;
+  font-weight: 600;
+}
+.badge-action {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+.badge-demo { background: #0369a1; color: #e0f2fe; border: 1px solid #38bdf8; }
+.badge-cancel { background: #991b1b; color: #fee2e2; border: 1px solid #f87171; }
+.badge-finance { background: #065f46; color: #d1fae5; border: 1px solid #34d497; }
+.badge-workflow { background: #581c87; color: #f3e8ff; border: 1px solid #c084fc; }
+.badge-other { background: #334155; color: #cbd5e1; border: 1px solid #64748b; }
+
+.audit-filter-panel {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  text-align: right;
+}
+.audit-table th {
+  background: #1e293b;
+  color: #94a3b8;
+  padding: 8px 12px;
+  border-bottom: 2px solid #334155;
+  font-weight: 700;
+}
+.audit-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #1e293b;
+  color: #f8fafc;
+  vertical-align: middle;
+}
+.audit-table tr:hover {
+  background: #1e293b66;
+}
+
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+  .app-header, .sidebar, .audit-filter-panel, .rb-actions, .kpi-grid, .audit-kpi-grid { display: none !important; }
+  .panel { border: none !important; box-shadow: none !important; }
+  .audit-table th, .audit-table td { color: #000 !important; border: 1px solid #ccc !important; }
+}
+</style>
+
+<!-- Top Summary Cards -->
+<div class="audit-kpi-grid">
+  <div class="audit-kpi-card" style="border-top: 3px solid #38bdf8;">
+    <b>{{ total_edits }}</b>
+    <small>📊 إجمالي التعديلات والعمليات</small>
+  </div>
+  <div class="audit-kpi-card" style="border-top: 3px solid #0ea5e9;">
+    <b style="color:#38bdf8;">{{ demographics_count }}</b>
+    <small>👤 تعديلات بيانات المرضى</small>
+  </div>
+  <div class="audit-kpi-card" style="border-top: 3px solid #ef4444;">
+    <b style="color:#f87171;">{{ cancellations_count }}</b>
+    <small>❌ الفحوصات والطلبات الملغاة</small>
+  </div>
+  <div class="audit-kpi-card" style="border-top: 3px solid #10b981;">
+    <b style="color:#34d399;">{{ financial_count }}</b>
+    <small>💵 الخصومات وتعديلات السداد</small>
+  </div>
+  <div class="audit-kpi-card" style="border-top: 3px solid #a855f7;">
+    <b style="color:#c084fc;">{{ workflow_count }}</b>
+    <small>⚡ إرسال الأجهزة وتحويل الحالات</small>
+  </div>
+</div>
+
+<!-- Filter Panel -->
+<div class="audit-filter-panel">
+  <form method="get" action="{{ url_for('branch_manager_audit') }}">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end;">
+      <div>
+        <label style="font-size:11px; font-weight:bold; color:#94a3b8; display:block; margin-bottom:4px;">📅 من تاريخ:</label>
+        <input type="date" name="date_from" value="{{ date_from }}" style="width:100%; height:32px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px; padding:2px 8px; font-size:12px;">
+      </div>
+      <div>
+        <label style="font-size:11px; font-weight:bold; color:#94a3b8; display:block; margin-bottom:4px;">📅 إلى تاريخ:</label>
+        <input type="date" name="date_to" value="{{ date_to }}" style="width:100%; height:32px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px; padding:2px 8px; font-size:12px;">
+      </div>
+      <div>
+        <label style="font-size:11px; font-weight:bold; color:#94a3b8; display:block; margin-bottom:4px;">📑 نوع التعديل / التصنيف:</label>
+        <select name="category" style="width:100%; height:32px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px; padding:2px 8px; font-size:12px;">
+          <option value="ALL" {% if category == 'ALL' %}selected{% endif %}>⚡ جميع التعديلات والعمليات التشغيلية</option>
+          <option value="DEMOGRAPHICS" {% if category == 'DEMOGRAPHICS' %}selected{% endif %}>👤 تعديل بيانات المرضى فقط</option>
+          <option value="CANCELLATIONS" {% if category == 'CANCELLATIONS' %}selected{% endif %}>❌ الفحوصات والطلبات الملغاة فقط</option>
+          <option value="FINANCIAL" {% if category == 'FINANCIAL' %}selected{% endif %}>💵 الخصومات وتعديلات السداد فقط</option>
+          <option value="WORKFLOW" {% if category == 'WORKFLOW' %}selected{% endif %}>⚡ إرسال الأجهزة والتحويلات فقط</option>
+          <option value="EVERYTHING" {% if category == 'EVERYTHING' %}selected{% endif %}>🌐 كل سجلات النظام (بما فيها تسجيل الدخول)</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px; font-weight:bold; color:#94a3b8; display:block; margin-bottom:4px;">👤 الموظف:</label>
+        <input type="text" name="user" value="{{ user_filter }}" placeholder="اسم المستخدم (مثال: rec, admin)" style="width:100%; height:32px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px; padding:2px 8px; font-size:12px;">
+      </div>
+      <div>
+        <label style="font-size:11px; font-weight:bold; color:#94a3b8; display:block; margin-bottom:4px;">🔍 بحث حر:</label>
+        <input type="text" name="q" value="{{ search_q }}" placeholder="اسم المريض، كود، أو تفاصيل..." style="width:100%; height:32px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px; padding:2px 8px; font-size:12px;">
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; border-top:1px solid #334155; padding-top:10px;">
+      <div style="display:flex; gap:8px;">
+        <button type="submit" class="btn small primary" style="background:#0284c7; color:#fff; border:none; padding:4px 14px; font-weight:bold; border-radius:4px; cursor:pointer;">
+          🔎 تطبيق الفلتر
+        </button>
+        <a href="{{ url_for('branch_manager_audit') }}" class="btn small" style="background:#334155; color:#cbd5e1; border:1px solid #475569; padding:4px 10px; border-radius:4px; text-decoration:none;">
+          تفريغ
+        </a>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <a href="{{ url_for('branch_manager_audit_csv', date_from=date_from, date_to=date_to, category=category, user=user_filter, q=search_q) }}" class="btn small" style="background:#065f46; color:#a7f3d0; border:1px solid #10b981; padding:4px 10px; border-radius:4px; text-decoration:none; font-weight:600;">
+          📥 تصدير Excel / CSV
+        </a>
+        <button type="button" onclick="window.print()" class="btn small" style="background:#334155; color:#f8fafc; border:1px solid #64748b; padding:4px 10px; border-radius:4px; cursor:pointer;">
+          🖨️ طباعة التقرير
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Audit Log Table -->
+<div class="panel" style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; overflow-x:auto;">
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th style="width:140px;">التاريخ والوقت</th>
+        <th style="width:110px;">الموظف القائم بالإجراء</th>
+        <th style="width:160px; text-align:center;">نوع التعديل / الإجراء</th>
+        <th style="width:100px;">الهدف / المعرف</th>
+        <th>تفاصيل التعديل والبيانات المتغيرة</th>
+        <th style="width:120px; direction:ltr; text-align:left;">عنوان الجهاز IP</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td style="color:#cbd5e1; font-family:monospace; font-size:12px;">
+          📅 {{ r.created_at.strftime('%Y-%m-%d') if r.created_at else '' }}<br>
+          <span style="color:#94a3b8; font-size:11px;">⏰ {{ r.created_at.strftime('%H:%M:%S') if r.created_at else '' }}</span>
+        </td>
+        <td>
+          <span style="font-weight:700; color:#38bdf8; display:inline-flex; align-items:center; gap:4px;">
+            👤 {{ r.username or 'SYSTEM' }}
+          </span>
+        </td>
+        <td style="text-align:center;">
+          {% if r.action in demographics_actions %}
+            <span class="badge-action badge-demo">👤 تعديل بيانات مريض</span>
+          {% elif r.action in cancellation_actions %}
+            <span class="badge-action badge-cancel">❌ إلغاء طلب / فحص</span>
+          {% elif r.action in financial_actions %}
+            <span class="badge-action badge-finance">💵 تعديل مالي / سداد</span>
+          {% elif r.action in workflow_actions %}
+            <span class="badge-action badge-workflow">⚡ إرسال للأجهزة / توجيه</span>
+          {% else %}
+            <span class="badge-action badge-other">{{ r.action }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if r.entity == 'order' %}
+            <a href="{{ url_for('order_detail', order_id=r.entity_id) }}" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600; font-family:monospace;">
+              📄 طلب #{{ r.entity_id }}
+            </a>
+          {% elif r.entity == 'patient' %}
+            <span style="color:#a7f3d0; font-weight:600; font-family:monospace;">
+              👤 مريض #{{ r.entity_id }}
+            </span>
+          {% else %}
+            <span style="color:#94a3b8; font-family:monospace;">
+              {{ r.entity }} {{ r.entity_id }}
+            </span>
+          {% endif %}
+        </td>
+        <td style="line-height:1.4;">
+          <span style="color:#f8fafc; font-size:12.5px;">{{ r.details }}</span>
+        </td>
+        <td style="direction:ltr; text-align:left; color:#94a3b8; font-family:monospace; font-size:11px;">
+          {{ r.ip or '127.0.0.1' }}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" style="text-align:center; padding:32px; color:#94a3b8;">
+          🔍 لا توجد عمليات أو تعديلات مطابقة لشروط البحث المحددة في هذه الفترة.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

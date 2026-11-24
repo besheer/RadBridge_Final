@@ -687,6 +687,9 @@ body.sidebar-mode-hidden .main {
         <button type="button" class="btn small" style="background:#10b981; color:#fff; border-color:#059669; font-weight:bold;" onclick="resetFormForNewPatient()">
           ➕ {{ 'حالة جديدة' if ui_lang=='ar' else 'New Case' }}
         </button>
+        <a class="btn small" href="{{ url_for('branch_manager_audit') }}" target="_blank" style="background:#0f766e; color:#fff; border-color:#14b8a6; font-weight:bold; text-decoration:none;">
+          🛡️ {{ 'رقابة التعديلات' if ui_lang=='ar' else 'Audit Edits' }}
+        </a>
         <button type="button" class="btn small" id="btnPrintReceipt" style="background:#0284c7; color:#fff; border-color:#0369a1;" onclick="printSelectedReceipt()" {% if not (selected_order and selected_order.latest_receipt) %}disabled{% endif %}>
           🖨️ {{ 'طباعة إيصال' if ui_lang=='ar' else 'Print Receipt' }}
         </button>

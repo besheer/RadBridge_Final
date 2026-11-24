@@ -21980,6 +21980,166 @@ def admin_erp_sync_items():
     flash(f'Queued {count} item master record(s) for ERP sync.','success')
     return redirect(url_for('admin_erp'))
 
+
+# ============================================================
+# Branch Manager Audit & Operational Edits Center
+# (سجل التدقيق والرقابة على التعديلات لمدير الفرع)
+# ============================================================
+
+@app.route('/branch/manager/audit')
+@login_required
+def branch_manager_audit():
+    u = current_user()
+    if not (has_perm('*') or has_perm('audit.view') or has_perm('orders.view') or has_perm('dashboard.view') or getattr(u, 'role_id', None) in (1, 2, 10, 14)):
+        abort(403)
+        
+    date_from = request.args.get('date_from', '').strip()
+    date_to = request.args.get('date_to', '').strip()
+    category = request.args.get('category', 'ALL').strip().upper()
+    user_filter = request.args.get('user', '').strip()
+    search_q = request.args.get('q', '').strip()
+    
+    # Default date range to today if empty
+    if not date_from and not date_to:
+        date_from = datetime.now().strftime('%Y-%m-%d')
+        date_to = datetime.now().strftime('%Y-%m-%d')
+        
+    q = AuditLog.query
+    
+    if date_from:
+        q = q.filter(AuditLog.created_at >= f"{date_from} 00:00:00")
+    if date_to:
+        q = q.filter(AuditLog.created_at <= f"{date_to} 23:59:59")
+        
+    if user_filter:
+        q = q.filter(AuditLog.username.ilike(f"%{user_filter}%"))
+        
+    demographics_actions = [
+        'PATIENT_DEMOGRAPHICS_UPDATED_RECEPTION', 'DEMOGRAPHIC_OVERRIDE',
+        'PATIENT_CORRECTION', 'PATIENT_DEMOGRAPHICS_CORRECTION', 'PATIENT_CREATE'
+    ]
+    cancellation_actions = [
+        'ORDER_CANCELLED_RECEPTION', 'ORDER_CANCELLED_DUPLICATE_FIX',
+        'ORDER_CANCELLED_ADMIN', 'APPOINTMENT_CANCELLED_ADMIN', 'ORDER_REFERRAL_REMOVED'
+    ]
+    financial_actions = [
+        'DISCOUNT_APPLIED', 'DISCOUNT_APPROVED_DIRECT', 'ORDER_PAYMENT_CONSOLIDATED',
+        'PAYMENT_RECEIVED', 'PRICE_OVERRIDE', 'DISCOUNT_REQUEST_APPROVED'
+    ]
+    workflow_actions = [
+        'RECEPTION_PUSH_MWL', 'PERFORMING_DOCTOR_SET', 'CASE_REASSIGNED',
+        'EXAM_COMPLETED', 'CONSUMABLES_POSTED'
+    ]
+    
+    all_audit_actions = demographics_actions + cancellation_actions + financial_actions + workflow_actions
+    
+    if category == 'DEMOGRAPHICS':
+        q = q.filter(AuditLog.action.in_(demographics_actions))
+    elif category == 'CANCELLATIONS':
+        q = q.filter(AuditLog.action.in_(cancellation_actions))
+    elif category == 'FINANCIAL':
+        q = q.filter(AuditLog.action.in_(financial_actions))
+    elif category == 'WORKFLOW':
+        q = q.filter(AuditLog.action.in_(workflow_actions))
+    elif category != 'EVERYTHING':
+        q = q.filter(AuditLog.action.in_(all_audit_actions))
+        
+    if search_q:
+        q = q.filter(or_(
+            AuditLog.details.ilike(f"%{search_q}%"),
+            AuditLog.entity_id.ilike(f"%{search_q}%"),
+            AuditLog.username.ilike(f"%{search_q}%"),
+            AuditLog.action.ilike(f"%{search_q}%")
+        ))
+        
+    rows = q.order_by(AuditLog.created_at.desc()).limit(300).all()
+    
+    # Summary stats
+    stats_base = AuditLog.query
+    if date_from:
+        stats_base = stats_base.filter(AuditLog.created_at >= f"{date_from} 00:00:00")
+    if date_to:
+        stats_base = stats_base.filter(AuditLog.created_at <= f"{date_to} 23:59:59")
+        
+    total_edits = stats_base.filter(AuditLog.action.in_(all_audit_actions)).count()
+    demographics_count = stats_base.filter(AuditLog.action.in_(demographics_actions)).count()
+    cancellations_count = stats_base.filter(AuditLog.action.in_(cancellation_actions)).count()
+    financial_count = stats_base.filter(AuditLog.action.in_(financial_actions)).count()
+    workflow_count = stats_base.filter(AuditLog.action.in_(workflow_actions)).count()
+    
+    all_users = User.query.filter_by(active=True).order_by(User.username).all()
+    branches = Branch.query.filter_by(active=True).order_by(Branch.name).all()
+    
+    return render_template(
+        'branch_manager_audit.html',
+        rows=rows,
+        date_from=date_from,
+        date_to=date_to,
+        category=category,
+        user_filter=user_filter,
+        search_q=search_q,
+        total_edits=total_edits,
+        demographics_count=demographics_count,
+        cancellations_count=cancellations_count,
+        financial_count=financial_count,
+        workflow_count=workflow_count,
+        all_users=all_users,
+        branches=branches,
+        demographics_actions=demographics_actions,
+        cancellation_actions=cancellation_actions,
+        financial_actions=financial_actions,
+        workflow_actions=workflow_actions
+    )
+
+
+@app.route('/branch/manager/audit/export.csv')
+@login_required
+def branch_manager_audit_csv():
+    u = current_user()
+    if not (has_perm('*') or has_perm('audit.view') or getattr(u, 'role_id', None) in (1, 2, 10, 14)):
+        abort(403)
+        
+    date_from = request.args.get('date_from', '').strip()
+    date_to = request.args.get('date_to', '').strip()
+    category = request.args.get('category', 'ALL').strip().upper()
+    user_filter = request.args.get('user', '').strip()
+    search_q = request.args.get('q', '').strip()
+    
+    q = AuditLog.query
+    if date_from: q = q.filter(AuditLog.created_at >= f"{date_from} 00:00:00")
+    if date_to: q = q.filter(AuditLog.created_at <= f"{date_to} 23:59:59")
+    if user_filter: q = q.filter(AuditLog.username.ilike(f"%{user_filter}%"))
+    if search_q:
+        q = q.filter(or_(
+            AuditLog.details.ilike(f"%{search_q}%"),
+            AuditLog.entity_id.ilike(f"%{search_q}%"),
+            AuditLog.username.ilike(f"%{search_q}%")
+        ))
+    rows = q.order_by(AuditLog.created_at.desc()).limit(1000).all()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['ID', 'Date Time', 'Username', 'Action', 'Entity', 'Entity ID', 'Details', 'IP Address'])
+    for r in rows:
+        writer.writerow([
+            r.id,
+            r.created_at.strftime('%Y-%m-%d %H:%M:%S') if r.created_at else '',
+            r.username or '',
+            r.action or '',
+            r.entity or '',
+            r.entity_id or '',
+            r.details or '',
+            r.ip or ''
+        ])
+        
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename=branch_audit_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'}
+    )
+
+
 @app.route('/admin/audit')
 @require_perm('audit.view')
 def admin_audit():
