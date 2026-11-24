@@ -14697,6 +14697,12 @@ def reception_desk():
                     raise ValueError('Choose an existing patient.')
                 patient = Patient.query.get_or_404(patient_id)
 
+                new_name = (request.form.get('name') or '').strip()
+                if new_name and new_name != patient.name:
+                    patient.name = new_name
+                new_wl = (request.form.get('worklist_name') or '').strip()
+                if new_wl and new_wl != (patient.worklist_name or ''):
+                    patient.worklist_name = new_wl
                 new_phone = (request.form.get('phone') or '').strip()
                 if new_phone and new_phone != (patient.phone or ''):
                     patient.phone = new_phone
@@ -14706,6 +14712,25 @@ def reception_desk():
                 new_addr = (request.form.get('address') or '').strip()
                 if new_addr and new_addr != (patient.address or ''):
                     patient.address = new_addr
+                new_sex = (request.form.get('sex') or '').strip().upper()
+                if new_sex in ('M', 'F') and new_sex != (patient.sex or ''):
+                    patient.sex = new_sex
+                dob_raw = (request.form.get('dob') or '').strip()
+                age_years = request.form.get('age_years', type=int)
+                if dob_raw:
+                    try:
+                        clean_dob = datetime.strptime(dob_raw.replace('/', '-'), '%Y-%m-%d').strftime('%Y%m%d')
+                        if clean_dob != (patient.dob or ''):
+                            patient.dob = clean_dob
+                            patient.dob_estimated = False
+                    except Exception:
+                        pass
+                elif age_years is not None and age_years >= 0:
+                    age_months = request.form.get('age_months', type=int) or 0
+                    age_days = request.form.get('age_days', type=int) or 0
+                    calc_dt = datetime.now().date() - timedelta(days=int(age_years * 365.25 + age_months * 30.4 + age_days))
+                    patient.dob = calc_dt.strftime('%Y%m%d')
+                    patient.dob_estimated = True
             else:
                 name = (request.form.get('name') or '').strip()
                 if not name:
@@ -15225,6 +15250,143 @@ def api_reception_push_mwl(order_id):
         }), 400
 
 
+
+
+
+@app.route('/api/reception/update-patient-demographics', methods=['POST'])
+@login_required
+def api_reception_update_patient_demographics():
+    if not (has_perm('*') or has_perm('orders.create') or has_perm('patients.view') or has_perm('appointments.manage')):
+        abort(403)
+    
+    data = request.get_json(silent=True) or request.form
+    patient_id = data.get('patient_id') if hasattr(data, 'get') else None
+    try:
+        patient_id = int(patient_id)
+    except Exception:
+        patient_id = None
+        
+    if not patient_id:
+        return jsonify({'ok': False, 'error': 'معرف المريض مطلوب (Patient ID required)'}), 400
+    
+    patient = Patient.query.get_or_404(patient_id)
+    u = current_user()
+    
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'ok': False, 'error': 'اسم المريض مطلوب'}), 400
+    
+    patient.name = name
+    worklist_name = (data.get('worklist_name') or '').strip()
+    if worklist_name:
+        patient.worklist_name = worklist_name
+    elif not patient.worklist_name:
+        patient.worklist_name = latinSuggestion(name) if 'latinSuggestion' in globals() else name
+        
+    phone = (data.get('phone') or '').strip()
+    if phone:
+        patient.phone = phone
+        
+    national_id = (data.get('national_id') or '').strip()
+    patient.national_id = national_id or None
+    
+    address = (data.get('address') or '').strip()
+    patient.address = address or None
+    
+    sex = (data.get('sex') or '').strip().upper()
+    if sex in ('M', 'F'):
+        patient.sex = sex
+        
+    dob_raw = (data.get('dob') or '').strip()
+    age_years = data.get('age_years')
+    try:
+        age_years = int(age_years) if age_years is not None and str(age_years).isdigit() else None
+    except Exception:
+        age_years = None
+        
+    if dob_raw:
+        clean_dob = dob_raw.replace('/', '').replace('-', '')[:8]
+        if len(clean_dob) == 8:
+            patient.dob = clean_dob
+            patient.dob_estimated = False
+    elif age_years is not None and age_years >= 0:
+        age_months = int(data.get('age_months') or 0)
+        age_days = int(data.get('age_days') or 0)
+        calc_dt = datetime.now().date() - timedelta(days=int(age_years * 365.25 + age_months * 30.4 + age_days))
+        patient.dob = calc_dt.strftime('%Y%m%d')
+        patient.dob_estimated = True
+        
+    al = AuditLog(
+        action='PATIENT_DEMOGRAPHICS_UPDATED_RECEPTION',
+        entity='patient',
+        entity_id=patient.id,
+        details=f'Updated by {u.username}: name={patient.name}, phone={patient.phone}, dob={patient.dob}, sex={patient.sex}',
+        user_id=u.id,
+        username=u.username
+    )
+    db.session.add(al)
+    db.session.commit()
+    
+    return jsonify({
+        'ok': True,
+        'message': f'تم تحديث بيانات المريض [{patient.patient_id}] بنجاح!',
+        'patient': {
+            'id': patient.id,
+            'patient_id': patient.patient_id,
+            'name': patient.name,
+            'worklist_name': patient.worklist_name,
+            'phone': patient.phone or '',
+            'dob': patient.dob or '',
+            'sex': patient.sex or 'M',
+            'national_id': patient.national_id or '',
+            'address': patient.address or ''
+        }
+    })
+
+
+@app.route('/api/reception/order/<int:order_id>/cancel', methods=['POST'])
+@login_required
+def api_reception_cancel_order(order_id):
+    if not (has_perm('*') or has_perm('orders.create') or has_perm('data.cancel.case') or has_perm('appointments.manage')):
+        abort(403)
+        
+    order = Order.query.get_or_404(order_id)
+    if (order.pacs_image_count or 0) > 0:
+        return jsonify({'ok': False, 'error': 'لا يمكن إلغاء فحص تم رفع صور PACS له بالفعل'}), 400
+        
+    if str(order.status or '').upper() in ('FINAL', 'FINALIZED', 'VERIFIED'):
+        return jsonify({'ok': False, 'error': 'لا يمكن إلغاء فحص تم اعتماد تقريره الطبي'}), 400
+        
+    data = request.get_json(silent=True) or request.form
+    reason = (data.get('reason') if hasattr(data, 'get') else '') or 'إلغاء طلب مكرر من الاستقبال'
+    
+    u = current_user()
+    order.status = 'CANCELLED'
+    if hasattr(order, 'exam_status'):
+        order.exam_status = 'CANCELLED'
+        
+    for a in CaseAssignment.query.filter_by(order_id=order.id, active=True).all():
+        a.active = False
+        a.unassigned_at = datetime.utcnow()
+    for off in AssignmentOffer.query.filter_by(order_id=order.id, status='PENDING').all():
+        off.status = 'CANCELLED'
+        off.responded_at = datetime.utcnow()
+        
+    al = AuditLog(
+        action='ORDER_CANCELLED_RECEPTION',
+        entity='order',
+        entity_id=order.id,
+        details=f'Cancelled by {u.username}: reason={reason}; accession={order.accession}',
+        user_id=u.id,
+        username=u.username
+    )
+    db.session.add(al)
+    db.session.commit()
+    
+    return jsonify({
+        'ok': True,
+        'message': f'تم إلغاء الطلب [{order.accession}] بنجاح!'
+    })
 
 
 @app.route('/schedule/v2')

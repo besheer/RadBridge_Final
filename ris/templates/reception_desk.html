@@ -699,6 +699,9 @@ body.sidebar-mode-hidden .main {
         <a class="btn small" id="btnWorkOrder" href="{{ url_for('order_detail', order_id=selected_order.id) if selected_order else '#' }}" target="_blank" style="background:#334155; color:#cbd5e1; border-color:#475569;" {% if not selected_order %}disabled{% endif %}>
           📄 {{ 'أمر الشغل' if ui_lang=='ar' else 'Work Order' }}
         </a>
+        <button type="button" class="btn small" id="btnCancelOrder" style="background:#dc2626; color:#fff; border-color:#b91c1c; font-weight:bold; display:none;" onclick="cancelSelectedOrder()">
+          ❌ {{ 'إلغاء الطلب المكرر' if ui_lang=='ar' else 'Cancel Order' }}
+        </button>
       </div>
     </div>
 
@@ -712,7 +715,10 @@ body.sidebar-mode-hidden .main {
         <div class="rd-section">
           <div class="rd-section-title">
             <span>👤 {{ 'بيانات المريض (Patient Information)' if ui_lang=='ar' else 'Patient Information' }}</span>
-            <div style="margin-right:auto; margin-left:0; display:flex; gap:6px;">
+            <div style="margin-right:auto; margin-left:0; display:flex; gap:6px; align-items:center;">
+              <button type="button" class="btn small" id="btnQuickSavePatient" style="background:#059669; color:#fff; border-color:#10b981; font-weight:bold; display:none;" onclick="savePatientDemographics()">
+                💾 {{ 'حفظ تعديل بيانات المريض' if ui_lang=='ar' else 'Save Patient Edits' }}
+              </button>
               <button type="button" class="btn small" id="modeBtnNew" style="background:#0284c7; color:#fff;" onclick="setPatientMode('new')">
                 ➕ {{ 'مريض جديد' if ui_lang=='ar' else 'New Patient' }}
               </button>
@@ -739,9 +745,12 @@ body.sidebar-mode-hidden .main {
                    style="display:none; max-height:280px; z-index:95; position:absolute; width:100%; top:40px; background:#0f172a; border:1px solid #0284c7; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.7); overflow-y:auto;">
               </div>
             </div>
-            <div id="selectedPatientBadge" style="display:none; margin-top:8px; padding:6px 12px; background:#064e3b; border:1px solid #059669; border-radius:6px; color:#6ee7b7; font-size:12px; justify-content:space-between; align-items:center;">
+            <div id="selectedPatientBadge" style="display:none; margin-top:8px; padding:6px 12px; background:#064e3b; border:1px solid #059669; border-radius:6px; color:#6ee7b7; font-size:12px; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <span id="selectedPatientBadgeText"></span>
-              <button type="button" onclick="resetFormForNewPatient()" style="background:#047857; color:#fff; border:none; padding:2px 8px; border-radius:4px; font-size:11px; cursor:pointer;">إلغاء والتسجيل كجديد</button>
+              <div style="display:flex; gap:6px;">
+                <button type="button" onclick="savePatientDemographics()" style="background:#0284c7; color:#fff; border:1px solid #38bdf8; padding:3px 10px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">💾 حفظ التعديل</button>
+                <button type="button" onclick="resetFormForNewPatient()" style="background:#047857; color:#fff; border:none; padding:2px 8px; border-radius:4px; font-size:11px; cursor:pointer;">إلغاء والتسجيل كجديد</button>
+              </div>
             </div>
           </div>
 
@@ -2319,6 +2328,7 @@ function chooseExistingPatient(p){
     badgeText.innerHTML = `✅ <b>تم اختيار المريض:</b> ${p.name} <code style="color:#fff; background:#065f46; padding:1px 6px; border-radius:3px;">${p.patient_id}</code> - هاتف: ${p.phone || 'بدون'}`;
     badge.style.display = 'flex';
   }
+  const sBtn = document.getElementById('btnQuickSavePatient'); if(sBtn) sBtn.style.display = 'inline-flex';
 }
 
 // Reset for New Patient
@@ -2370,6 +2380,8 @@ function resetFormForNewPatient(){
   document.getElementById('btnWorkOrder').href = '#';
   currentSelectedReceiptId = 0;
   currentSelectedOrderId = 0;
+  const sBtn = document.getElementById('btnQuickSavePatient'); if(sBtn) sBtn.style.display = 'none';
+  const cBtn = document.getElementById('btnCancelOrder'); if(cBtn) cBtn.style.display = 'none';
   
   document.getElementById('patientName').focus();
 }
@@ -2497,9 +2509,109 @@ function selectCaseCard(card){
   const pushBtn = document.getElementById('btnPushMwl'); if(pushBtn) pushBtn.disabled = false;
   document.getElementById('btnWorkOrder').removeAttribute('disabled');
   document.getElementById('btnWorkOrder').href = `/orders/${d.id}`;
+  const sBtn = document.getElementById('btnQuickSavePatient'); if(sBtn) sBtn.style.display = 'inline-flex';
+  const cBtn = document.getElementById('btnCancelOrder'); if(cBtn) cBtn.style.display = 'inline-flex';
 }
 
 // Print Actions
+
+async function savePatientDemographics() {
+  const pId = document.getElementById('selectedPatientId').value;
+  if (!pId) {
+    alert('يرجى اختيار مريض مسجل أولاً لحفظ التعديلات على بياناته.');
+    return;
+  }
+  const name = document.getElementById('patientName').value.trim();
+  if (!name) {
+    alert('اسم المريض مطلوب.');
+    return;
+  }
+  const btn = document.getElementById('btnQuickSavePatient');
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '⏳ جارٍ الحفظ...'; btn.disabled = true; }
+
+  const payload = {
+    patient_id: parseInt(pId),
+    name: name,
+    worklist_name: document.getElementById('worklistName').value.trim(),
+    phone: document.getElementById('patientPhone').value.trim(),
+    age_years: document.getElementById('ageYears').value,
+    age_months: document.getElementById('ageMonths').value,
+    age_days: document.getElementById('ageDays').value,
+    dob: document.getElementById('patientDob').value.trim(),
+    national_id: document.getElementById('patientNationalId').value.trim(),
+    address: document.getElementById('patientAddress').value.trim(),
+    sex: document.querySelector('input[name="sex"]:checked') ? document.querySelector('input[name="sex"]:checked').value : 'M'
+  };
+
+  try {
+    const res = await fetch('/api/reception/update-patient-demographics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showBasketNotice('✅ ' + data.message, 'success');
+      const badgeText = document.getElementById('selectedPatientBadgeText');
+      if (badgeText) {
+        badgeText.innerHTML = `✅ <b>تم تعديل بيانات:</b> ${data.patient.name} <code style="color:#fff; background:#065f46; padding:1px 6px; border-radius:3px;">${data.patient.patient_id}</code> - هاتف: ${data.patient.phone || 'بدون'}`;
+      }
+      if (currentSelectedOrderId) {
+        const card = document.querySelector(`.rd-case-card[data-id="${currentSelectedOrderId}"]`);
+        if (card) {
+          const nameSpan = card.querySelector('.rd-patient-name');
+          if (nameSpan) nameSpan.textContent = data.patient.name;
+          card.dataset.patientName = data.patient.name;
+          card.dataset.phone = data.patient.phone;
+        }
+      }
+    } else {
+      alert('⚠️ تعذر حفظ التعديلات: ' + (data.error || 'خطأ غير معروف'));
+    }
+  } catch (err) {
+    alert('حدث خطأ في الاتصال: ' + err);
+  } finally {
+    if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+  }
+}
+
+async function cancelSelectedOrder() {
+  if (!currentSelectedOrderId) {
+    alert('يرجى اختيار حالة من قائمة الحالات على اليمين أولاً لإلغائها.');
+    return;
+  }
+  const reason = prompt('هل أنت متأكد من إلغاء هذا الطلب / الفحص؟\n\nاكتب سبب الإلغاء (مثال: طلب مكرر، أو رغبة المريض):', 'طلب مكرر');
+  if (reason === null) return;
+
+  try {
+    const res = await fetch(`/api/reception/order/${currentSelectedOrderId}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: reason || 'إلغاء طلب مكرر من الاستقبال' })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showBasketNotice('✅ ' + data.message, 'success');
+      const card = document.querySelector(`.rd-case-card[data-id="${currentSelectedOrderId}"]`);
+      if (card) {
+        card.style.opacity = '0.35';
+        const st = card.querySelector('.rd-case-status');
+        if (st) {
+          st.textContent = 'ملغي';
+          st.style.background = '#7f1d1d';
+          st.style.color = '#fca5a5';
+        }
+      }
+      resetFormForNewPatient();
+    } else {
+      alert('⚠️ تعذر إلغاء الطلب: ' + (data.error || 'خطأ غير معروف'));
+    }
+  } catch (err) {
+    alert('حدث خطأ في الاتصال: ' + err);
+  }
+}
+
 function printSelectedReceipt(){
   if(currentSelectedReceiptId){
     window.open(`/receipts/${currentSelectedReceiptId}`, '_blank', 'width=850,height=700');
