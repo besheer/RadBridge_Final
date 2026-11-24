@@ -14822,7 +14822,68 @@ def reception_desk():
             accessions_str = ', '.join([o.accession for o in created_orders])
             procs_str = ', '.join([o.procedure for o in created_orders])
 
-            # 8. Receipt & Cashier Entry
+            # 8. Clinical Assessment (History & Doctor/Technician Notes)
+            clinical_history = (request.form.get('clinical_history') or '').strip()
+            clinical_indication = (request.form.get('clinical_indication') or '').strip()
+            if clinical_history or clinical_indication:
+                for ord_item in created_orders:
+                    ca = ClinicalAssessment(
+                        order_id=ord_item.id,
+                        complaint=clinical_history[:250] if clinical_history else '',
+                        history=clinical_history,
+                        clinical_indication=clinical_indication,
+                        created_by=current_user().id
+                    )
+                    db.session.add(ca)
+
+            # 9. Prescription & Medical Approval Attachments Upload
+            uploaded_files = request.files.getlist('attachment_files')
+            doc_category = (request.form.get('attachment_category') or 'PRESCRIPTION').upper()
+            allowed_exts = ('.pdf', '.jpg', '.jpeg', '.png', '.webp', '.doc', '.docx', '.dcm', '.dicom')
+
+            for f in uploaded_files:
+                if not f or not f.filename:
+                    continue
+                ext = os.path.splitext(f.filename)[1].lower()
+                if ext not in allowed_exts:
+                    continue
+                safe_filename = re.sub(r'[^A-Za-z0-9._-]', '_', f.filename)
+                timestamp_prefix = int(datetime.utcnow().timestamp())
+                stored_filename = f"{timestamp_prefix}_{safe_filename}"
+
+                folder = os.path.join(ATTACHMENT_DIR, str(patient.id), str(primary_order.id))
+                os.makedirs(folder, exist_ok=True)
+                file_path = os.path.join(folder, stored_filename)
+                f.save(file_path)
+
+                for ord_item in created_orders:
+                    att = Attachment(
+                        patient_id=patient.id,
+                        order_id=ord_item.id,
+                        category=doc_category,
+                        original_name=f.filename,
+                        stored_path=file_path,
+                        mime_type=f.mimetype or '',
+                        notes=f'{doc_category}: {f.filename}',
+                        uploaded_by=current_user().id
+                    )
+                    db.session.add(att)
+
+                    pdoc = PatientDocument(
+                        patient_id=patient.id,
+                        order_id=ord_item.id,
+                        document_type=doc_category,
+                        category=doc_category,
+                        reference_no=ord_item.accession,
+                        file_path=file_path,
+                        original_name=f.filename,
+                        uploaded_by=current_user().id
+                    )
+                    db.session.add(pdoc)
+
+                audit('ATTACHMENT_UPLOAD', 'order', primary_order.id, f'{doc_category}:{f.filename}')
+
+            # 10. Receipt & Cashier Entry
             receipt = None
             if paid_amount > 0:
                 receipt = Receipt(
@@ -14905,6 +14966,8 @@ def reception_desk():
     today_orders = orders_q.order_by(Order.scheduled.desc(), Order.id.desc()).all()
     for o in today_orders:
         o.latest_receipt = Receipt.query.filter_by(order_id=o.id).order_by(Receipt.id.desc()).first()
+        o.assessment = ClinicalAssessment.query.filter_by(order_id=o.id).first()
+        o.attachments = Attachment.query.filter_by(order_id=o.id).all()
 
     # Pre-select order if requested
     selected_order_id = request.args.get('order_id', type=int)
@@ -14913,8 +14976,13 @@ def reception_desk():
         selected_order = Order.query.get(selected_order_id)
     elif today_orders:
         selected_order = today_orders[0]
-    if selected_order and not hasattr(selected_order, 'latest_receipt'):
-        selected_order.latest_receipt = Receipt.query.filter_by(order_id=selected_order.id).order_by(Receipt.id.desc()).first()
+    if selected_order:
+        if not hasattr(selected_order, 'latest_receipt'):
+            selected_order.latest_receipt = Receipt.query.filter_by(order_id=selected_order.id).order_by(Receipt.id.desc()).first()
+        if not hasattr(selected_order, 'assessment'):
+            selected_order.assessment = ClinicalAssessment.query.filter_by(order_id=selected_order.id).first()
+        if not hasattr(selected_order, 'attachments'):
+            selected_order.attachments = Attachment.query.filter_by(order_id=selected_order.id).all()
 
     # Calculate Cash Drawer balance today for active branch
     today_start = datetime.combine(selected_date, datetime.min.time())

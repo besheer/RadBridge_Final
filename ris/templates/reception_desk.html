@@ -701,7 +701,7 @@ body.sidebar-mode-hidden .main {
 
     <!-- Main Registration Form -->
     <div class="rd-main-body">
-      <form id="rdForm" method="post" action="{{ url_for('reception_desk') }}">
+      <form id="rdForm" method="post" action="{{ url_for('reception_desk') }}" enctype="multipart/form-data">
         <input type="hidden" name="patient_mode" id="patientMode" value="new">
         <input type="hidden" name="patient_id" id="selectedPatientId" value="">
 
@@ -942,6 +942,67 @@ body.sidebar-mode-hidden .main {
           </div>
         </div>
 
+        <!-- Section 2.5: Clinical History, Doctor/Technician Notes & Attachments -->
+        <div class="rd-section" style="border-color:#3b82f6;">
+          <div class="rd-section-title" style="color:#60a5fa; border-color:#2563eb;">
+            <span>🩺 {{ 'التاريخ المرضي والمرفقات الطبية وملاحظات الفحص (Clinical & Attachments)' if ui_lang=='ar' else 'Clinical History & Attachments' }}</span>
+          </div>
+
+          <div class="rd-form-grid">
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'التاريخ المرضي / الشكوى السريرية (الهيستوري)' if ui_lang=='ar' else 'Clinical History & Complaint' }}</label>
+              <textarea name="clinical_history" id="formClinicalHistory" rows="2" 
+                        placeholder="{{ 'اكتب الشكوى السريرية، التاريخ المرضي، الأعراض (مثال: ألم شديد بالركبة اليمنى منذ أسبوعين، سقوط على الرأس، متابعة عملية...)' if ui_lang=='ar' else 'Clinical history, symptoms, complaint...' }}" 
+                        style="width:100%; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:6px; padding:6px 10px; font-size:12px; resize:vertical;"></textarea>
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'ملاحظات وتنبيهات للطبيب المعالج أو الفني' if ui_lang=='ar' else 'Notes for Radiologist & Technician' }}</label>
+              <textarea name="clinical_indication" id="formClinicalIndication" rows="2" 
+                        placeholder="{{ 'تنبيهات سريرية أو تعليمات للفني والطبيب (مثال: حساسية صبغة، كانيولا باليد اليسرى، فوبيا أماكن مغلقة، التركيز على الفقرة L4-L5...)' if ui_lang=='ar' else 'Notes for radiologist or tech (allergies, special focus, etc.)...' }}" 
+                        style="width:100%; background:#0f172a; color:#f8fafc; border:1px solid #334155; border-radius:6px; padding:6px 10px; font-size:12px; resize:vertical;"></textarea>
+            </div>
+
+            <!-- Medical Attachments (الروشتة / موافقة التأمين / تقارير سابقة) -->
+            <div class="rd-col-2 rd-field" style="grid-column: 1 / -1; margin-top:2px;">
+              <div style="background:#0b1329; border:1px dashed #3b82f6; border-radius:8px; padding:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-weight:700; color:#93c5fd; font-size:12.5px;">📎 {{ 'إرفاق الروشتة أو الموافقات الطبية والتقارير:' if ui_lang=='ar' else 'Attach Prescription, Approvals or Reports:' }}</span>
+                    <span id="attachCountBadge" style="background:#1e3a8a; color:#bfdbfe; font-size:11px; padding:1px 8px; border-radius:12px; font-weight:600;">0 ملفات</span>
+                  </div>
+
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <label style="font-size:11.5px; color:#94a3b8; margin:0;">{{ 'نوع المرفق:' if ui_lang=='ar' else 'Category:' }}</label>
+                    <select name="attachment_category" id="formAttachCategory" style="padding:3px 8px; height:28px; font-size:11.5px; background:#0f172a; color:#f8fafc; border:1px solid #475569; border-radius:6px;">
+                      <option value="PRESCRIPTION">📄 {{ 'روشتة طبيب / طلب فحص' if ui_lang=='ar' else 'Prescription' }}</option>
+                      <option value="APPROVAL">📑 {{ 'موافقة تأمين / خطاب تعاقد' if ui_lang=='ar' else 'Insurance Approval' }}</option>
+                      <option value="REPORT">📋 {{ 'تقرير سابق / تحاليل' if ui_lang=='ar' else 'Prior Report / Lab' }}</option>
+                      <option value="OTHER">📎 {{ 'مستند آخر' if ui_lang=='ar' else 'Other Document' }}</option>
+                    </select>
+
+                    <button type="button" onclick="document.getElementById('formAttachmentFiles').click()" style="padding:4px 14px; font-size:12px; font-weight:600; background:#2563eb; color:#fff; border:1px solid #3b82f6; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                      📁 <span>{{ 'اختيار ملفات / كاميرا' if ui_lang=='ar' else 'Browse / Camera' }}</span>
+                    </button>
+                    <input type="file" name="attachment_files" id="formAttachmentFiles" multiple accept="image/*,application/pdf" style="display:none;" onchange="handleAttachmentFilesChange(this.files)">
+                  </div>
+                </div>
+
+                <!-- Live Preview of Staged Files to Upload -->
+                <div id="attachmentsPreviewList" style="display:none; flex-wrap:wrap; gap:8px; margin-top:8px;">
+                  <!-- Rendered dynamically via JavaScript -->
+                </div>
+
+                <!-- Existing Attachments for Selected Case (when viewing an existing order) -->
+                <div id="existingCaseAttachmentsWrap" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed #334155;">
+                  <span style="font-size:11.5px; color:#38bdf8; font-weight:600;">{{ 'المرفقات المحفوظة لهذه الحالة:' if ui_lang=='ar' else 'Saved Attachments for this Case:' }}</span>
+                  <div id="existingCaseAttachmentsList" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Section 3: Financials & Safe -->
         <div class="rd-section rd-financial-box">
           <div class="rd-section-title" style="color:#10b981; border-color:#059669;">
@@ -1123,9 +1184,18 @@ body.sidebar-mode-hidden .main {
            data-referring="{{ o.referring_doctor_id or '' }}"
            data-assigned="{{ o.assigned_doctor_id or '' }}"
            data-receipt-id="{{ o.latest_receipt.id if o.latest_receipt else '' }}"
+           data-history="{{ (o.assessment.history if o.assessment else '')|e }}"
+           data-indication="{{ (o.assessment.clinical_indication if o.assessment else '')|e }}"
+           data-attachments='{{ (o.attachments|map(attribute="id")|list)|tojson }}'
+           data-attachments-names='{{ (o.attachments|map(attribute="original_name")|list)|tojson }}'
+           data-attachments-categories='{{ (o.attachments|map(attribute="category")|list)|tojson }}'
            onclick="selectCaseCard(this)">
         <div class="rd-case-top">
-          <span class="rd-case-name">{{ o.patient.name }}</span>
+          <span class="rd-case-name">
+            {{ o.patient.name }}
+            {% if o.attachments and o.attachments|length > 0 %}<span title="يوجد مرفقات" style="font-size:11px;">📎</span>{% endif %}
+            {% if o.assessment and (o.assessment.history or o.assessment.clinical_indication) %}<span title="يوجد هيستوري/ملاحظات" style="font-size:11px;">🩺</span>{% endif %}
+          </span>
           <span class="rd-case-time">{{ o.scheduled.strftime('%H:%M') if o.scheduled else '' }}</span>
         </div>
         <div class="rd-case-details">
@@ -1903,6 +1973,12 @@ function resetFormForNewPatient(){
   examBasket = [];
   renderExamBasket();
   setPaymentType('CASH');
+  document.getElementById('formClinicalHistory').value = '';
+  document.getElementById('formClinicalIndication').value = '';
+  stagedAttachmentFiles = [];
+  renderAttachmentsPreview();
+  const exWrap = document.getElementById('existingCaseAttachmentsWrap');
+  if(exWrap) exWrap.style.display = 'none';
   const badge = document.getElementById('selectedPatientBadge');
   if(badge) badge.style.display = 'none';
   if(searchInp) searchInp.value = '';
@@ -1988,6 +2064,38 @@ function selectCaseCard(card){
   document.getElementById('formPaid').value = d.paid;
   document.getElementById('formPaid').dataset.manualEdited = '1';
   document.getElementById('formRemaining').value = d.remaining;
+
+  // Clinical History & Notes
+  document.getElementById('formClinicalHistory').value = d.history || '';
+  document.getElementById('formClinicalIndication').value = d.indication || '';
+
+  // Render Saved Attachments if any
+  const exWrap = document.getElementById('existingCaseAttachmentsWrap');
+  const exList = document.getElementById('existingCaseAttachmentsList');
+  try {
+    const attIds = JSON.parse(d.attachments || '[]');
+    const attNames = JSON.parse(d.attachmentsNames || '[]');
+    const attCats = JSON.parse(d.attachmentsCategories || '[]');
+
+    if (attIds && attIds.length > 0) {
+      exWrap.style.display = 'block';
+      exList.innerHTML = attIds.map((id, i) => {
+        const name = attNames[i] || ('مرفق #' + id);
+        const cat = attCats[i] || 'مستند';
+        return `
+          <a href="/attachments/${id}/preview" target="_blank" 
+             style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; font-size:11px; background:#1e3a8a; color:#bfdbfe; border:1px solid #3b82f6; border-radius:4px; text-decoration:none; font-weight:600;">
+            📎 <span>${cat}: ${name}</span> 👁️
+          </a>
+        `;
+      }).join('');
+    } else {
+      exWrap.style.display = 'none';
+      exList.innerHTML = '';
+    }
+  } catch(e) {
+    if (exWrap) exWrap.style.display = 'none';
+  }
 
   document.getElementById('btnPrintReceipt').disabled = !currentSelectedReceiptId;
   document.getElementById('btnPrintSticker').disabled = false;
@@ -2315,6 +2423,74 @@ async function pushSelectedOrderToMwl(){
   }
 }
 
+
+
+// ==========================================
+// Medical Attachments Handling & Preview
+// ==========================================
+let stagedAttachmentFiles = [];
+
+function handleAttachmentFilesChange(files) {
+  if (!files || files.length === 0) return;
+  const categorySel = document.getElementById('formAttachCategory');
+  const cat = categorySel ? categorySel.value : 'PRESCRIPTION';
+  const catText = categorySel ? categorySel.options[categorySel.selectedIndex].text : 'روشتة';
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    stagedAttachmentFiles.push({
+      file: f,
+      name: f.name,
+      size: formatFileSize(f.size),
+      category: cat,
+      categoryText: catText
+    });
+  }
+  renderAttachmentsPreview();
+}
+
+function renderAttachmentsPreview() {
+  const container = document.getElementById('attachmentsPreviewList');
+  const countBadge = document.getElementById('attachCountBadge');
+  if (!container) return;
+
+  if (stagedAttachmentFiles.length === 0) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    if (countBadge) countBadge.textContent = '0 ملفات';
+    return;
+  }
+
+  container.style.display = 'flex';
+  if (countBadge) countBadge.textContent = stagedAttachmentFiles.length + ' ملف';
+
+  container.innerHTML = stagedAttachmentFiles.map((item, idx) => {
+    const isImg = item.name.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+    const icon = isImg ? '🖼️' : '📄';
+    return `
+      <div style="background:#1e293b; border:1px solid #475569; border-radius:6px; padding:4px 8px; display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:#f8fafc;">
+        <span>${icon}</span>
+        <b style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.name}</b>
+        <span style="color:#94a3b8; font-size:10.5px;">(${item.size})</span>
+        <span class="badge" style="background:#0284c7; color:#fff; font-size:9.5px; padding:1px 5px; border-radius:3px;">${item.categoryText}</span>
+        <button type="button" onclick="removeStagedAttachment(${idx})" title="إلغاء هذا الملف" style="background:none; border:none; color:#ef4444; font-weight:bold; cursor:pointer; font-size:12px; padding:0 2px;">✕</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function removeStagedAttachment(idx) {
+  stagedAttachmentFiles.splice(idx, 1);
+  renderAttachmentsPreview();
+  const fileInput = document.getElementById('formAttachmentFiles');
+  if (fileInput) fileInput.value = '';
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
 
 // Form Submit Validation for Basket and Contract
 const rdForm = document.getElementById('rdForm');
