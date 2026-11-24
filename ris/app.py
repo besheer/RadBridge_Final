@@ -14578,34 +14578,88 @@ def reception_desk():
             return redirect(url_for('reception_desk'))
 
         try:
-            # 1. Branch, Device, Procedure resolution
+            # 1. Payment Type & Contract Resolution
+            payment_type = (request.form.get('payment_type') or 'CASH').strip().upper()
+            contract_id = None
+            approval_no = None
+            patient_share_percent = 0.0
+            discount_percent = 0.0
+
+            if payment_type == 'CONTRACT':
+                contract_id = request.form.get('contract_id', type=int)
+                if not contract_id:
+                    raise ValueError('يرجى تحديد جهة التعاقد لحالات التعاقد.')
+                contract = Contract.query.get_or_404(contract_id)
+                approval_no = (request.form.get('approval_no') or '').strip()
+                if contract.approval_required and not approval_no:
+                    raise ValueError(f'رقم الموافقة / الخطاب مطلوب لجهة التعاقد: {contract.name}')
+                patient_share_percent = float(request.form.get('patient_share_percent') or contract.patient_share_percent or 0.0)
+                discount_percent = float(request.form.get('discount_percent') or contract.discount_percent or 0.0)
+            else:
+                payment_type = 'CASH'
+                patient_share_percent = 100.0
+
+            # 2. Branch Resolution
             branch_id = request.form.get('branch_id', type=int) or user_default_branch
             require_registration_branch(branch_id)
             branch = Branch.query.get_or_404(branch_id)
-            
-            device_id = request.form.get('device_id', type=int)
-            procedure_id = request.form.get('procedure_id', type=int)
-            if not device_id or not procedure_id:
-                raise ValueError('Branch, device, and examination are required.')
-            
-            device = Device.query.get_or_404(device_id)
-            proc = Procedure.query.get_or_404(procedure_id)
-            
-            if device.branch_id != branch.id:
-                raise ValueError('Selected device does not belong to the selected branch.')
-            if (proc.modality or '').upper() != (device.modality or '').upper():
-                raise ValueError(f'{proc.name} is not compatible with {device.name}.')
-            if not procedure_available_in_branch(proc.id, branch.id):
-                raise ValueError(f'{proc.name} is not available in {branch.name}.')
 
-            # 2. Patient Resolution
+            # 3. Procedures & Devices Resolution (Multi-procedure basket support)
+            procedures_data = []
+            raw_procedures_json = request.form.get('procedures_json')
+            if raw_procedures_json:
+                try:
+                    procedures_data = json.loads(raw_procedures_json)
+                except Exception:
+                    procedures_data = []
+
+            if not procedures_data:
+                dev_id = request.form.get('device_id', type=int)
+                pr_id = request.form.get('procedure_id', type=int)
+                pr_price = float(request.form.get('gross_price') or 0.0)
+                if not dev_id or not pr_id:
+                    raise ValueError('يرجى اختيار الفحص والجهاز المطلوب.')
+                procedures_data = [{
+                    'procedure_id': pr_id,
+                    'device_id': dev_id,
+                    'price': pr_price
+                }]
+
+            validated_items = []
+            total_gross = 0.0
+            for item in procedures_data:
+                pr_id = int(item.get('procedure_id') or 0)
+                dev_id = int(item.get('device_id') or 0)
+                if not pr_id or not dev_id:
+                    continue
+                p_obj = Procedure.query.get_or_404(pr_id)
+                d_obj = Device.query.get_or_404(dev_id)
+                if d_obj.branch_id != branch.id:
+                    raise ValueError(f'الجهاز ({d_obj.name}) لا يتبع الفرع المحدد ({branch.name}).')
+                if (p_obj.modality or '').upper() != (d_obj.modality or '').upper():
+                    raise ValueError(f'الفحص ({p_obj.name}) غير متوافق مع الجهاز ({d_obj.name}).')
+                if not procedure_available_in_branch(p_obj.id, branch.id):
+                    raise ValueError(f'الفحص ({p_obj.name}) غير متاح في ({branch.name}).')
+
+                item_price = float(item.get('price') if item.get('price') is not None else (p_obj.base_price or 0.0))
+                total_gross += item_price
+                validated_items.append({
+                    'proc': p_obj,
+                    'device': d_obj,
+                    'price': item_price
+                })
+
+            if not validated_items:
+                raise ValueError('يجب تحديد فحص واحد على الأقل للزيارة.')
+
+            # 4. Patient Resolution
             patient_mode = (request.form.get('patient_mode') or 'new').strip().lower()
             if patient_mode == 'existing':
                 patient_id = request.form.get('patient_id', type=int)
                 if not patient_id:
                     raise ValueError('Choose an existing patient.')
                 patient = Patient.query.get_or_404(patient_id)
-                
+
                 new_phone = (request.form.get('phone') or '').strip()
                 if new_phone and new_phone != (patient.phone or ''):
                     patient.phone = new_phone
@@ -14619,13 +14673,13 @@ def reception_desk():
                 name = (request.form.get('name') or '').strip()
                 if not name:
                     raise ValueError('Patient name is required / اسم المريض مطلوب.')
-                
+
                 dob_raw = (request.form.get('dob') or '').strip()
                 age_years = request.form.get('age_years', type=int)
                 age_months = request.form.get('age_months', type=int) or 0
                 age_days = request.form.get('age_days', type=int) or 0
                 dob_estimated = False
-                
+
                 if dob_raw:
                     try:
                         dob_dt = datetime.strptime(dob_raw.replace('/', '-'), '%Y-%m-%d')
@@ -14638,13 +14692,13 @@ def reception_desk():
                     dob = calc_dt.strftime('%Y%m%d')
                 else:
                     dob = ''
-                
+
                 sex = (request.form.get('sex') or 'M').strip().upper()
                 phone = (request.form.get('phone') or '').strip()
                 national_id = (request.form.get('national_id') or '').strip()
                 address = (request.form.get('address') or '').strip()
                 worklist_name = normalized_worklist_name(name, request.form.get('worklist_name', ''))
-                
+
                 duplicates = find_duplicate_patients(name, dob, phone, national_id)
                 if duplicates and request.form.get('confirm_duplicate') != '1':
                     d = duplicates[0]
@@ -14668,18 +14722,15 @@ def reception_desk():
                     db.session.flush()
                     patient.patient_id = generate_patient_id(patient)
 
-            # 3. Schedule Time
+            # 5. Schedule Time & Common Order Attributes
             sched_raw = (request.form.get('scheduled') or '').strip()
             try:
                 scheduled = datetime.fromisoformat(sched_raw) if sched_raw else datetime.now()
             except Exception:
                 scheduled = datetime.now()
 
-            # 4. Pricing & Financials
-            gross_price = float(request.form.get('gross_price') or proc.base_price or 0)
-            discount_amount = float(request.form.get('discount_amount') or 0)
-            net_price = max(0.0, gross_price - discount_amount)
-            paid_amount = float(request.form.get('paid_amount') or 0)
+            form_discount = float(request.form.get('discount_amount') or 0.0)
+            paid_amount = float(request.form.get('paid_amount') or 0.0)
             payment_method = (request.form.get('payment_method') or 'CASH').strip().upper()
             payment_ref = (request.form.get('payment_reference') or '').strip()
 
@@ -14687,39 +14738,99 @@ def reception_desk():
             assigned_doctor_id = request.form.get('assigned_doctor_id', type=int) or None
             priority = (request.form.get('priority') or 'ROUTINE').upper()
 
-            # 5. Create Order
-            order = Order(
-                accession=new_accession(),
-                patient=patient,
-                modality=proc.modality,
-                procedure=proc.name,
-                procedure_id=proc.id,
-                branch_id=branch.id,
-                device_id=device.id,
-                station_ae=device.ae_title,
-                scheduled=scheduled,
-                referring_doctor_id=referring_doctor_id,
-                assigned_doctor_id=assigned_doctor_id,
-                priority=priority,
-                status='REGISTERED',
-                gross_price=gross_price,
-                contract_price=net_price,
-                patient_share=net_price,
-                paid_amount=paid_amount,
-                created_by=current_user().id
-            )
-            db.session.add(order)
-            db.session.flush()
+            # 6. Financial Itemization
+            total_patient_required = 0.0
+            item_calculations = []
+            for item in validated_items:
+                i_gross = item['price']
+                if payment_type == 'CONTRACT':
+                    i_disc = round(i_gross * (discount_percent / 100.0), 2) if discount_percent else 0.0
+                    i_net = max(0.0, round(i_gross - i_disc, 2))
+                    if patient_share_percent > 0:
+                        i_patient = round(i_net * (patient_share_percent / 100.0), 2)
+                        i_comp = round(i_net - i_patient, 2)
+                    else:
+                        i_patient = 0.0
+                        i_comp = i_net
+                else:
+                    if total_gross > 0 and form_discount > 0:
+                        i_disc = round(form_discount * (i_gross / total_gross), 2)
+                    else:
+                        i_disc = 0.0
+                    i_net = max(0.0, round(i_gross - i_disc, 2))
+                    i_patient = i_net
+                    i_comp = 0.0
 
-            # 6. Payment & Receipt
+                total_patient_required += i_patient
+                item_calculations.append({
+                    'proc': item['proc'],
+                    'device': item['device'],
+                    'gross': i_gross,
+                    'contract_price': i_net,
+                    'patient_share': i_patient,
+                    'company_share': i_comp
+                })
+
+            # 7. Create Orders (One Order per examination)
+            created_orders = []
+            allocated_paid = 0.0
+            num_items = len(item_calculations)
+
+            for idx, ic in enumerate(item_calculations):
+                if total_patient_required > 0:
+                    if idx == num_items - 1:
+                        order_paid = max(0.0, round(paid_amount - allocated_paid, 2))
+                    else:
+                        order_paid = round(paid_amount * (ic['patient_share'] / total_patient_required), 2)
+                        allocated_paid += order_paid
+                else:
+                    order_paid = paid_amount if idx == 0 else 0.0
+
+                order = Order(
+                    accession=new_accession(),
+                    patient=patient,
+                    modality=ic['proc'].modality,
+                    procedure=ic['proc'].name,
+                    procedure_id=ic['proc'].id,
+                    branch_id=branch.id,
+                    device_id=ic['device'].id,
+                    station_ae=ic['device'].ae_title,
+                    scheduled=scheduled,
+                    referring_doctor_id=referring_doctor_id,
+                    assigned_doctor_id=assigned_doctor_id,
+                    priority=priority,
+                    status='REGISTERED',
+                    gross_price=ic['gross'],
+                    contract_price=ic['contract_price'],
+                    patient_share=ic['patient_share'],
+                    company_share=ic['company_share'],
+                    paid_amount=order_paid,
+                    contract_id=contract_id,
+                    approval_no=approval_no,
+                    created_by=current_user().id
+                )
+                db.session.add(order)
+                db.session.flush()
+                created_orders.append(order)
+
+                try:
+                    send_mwl(order)
+                except Exception as mwl_e:
+                    app.logger.warning(f"MWL push warning for accession {order.accession}: {mwl_e}")
+
+            primary_order = created_orders[0]
+            accessions_str = ', '.join([o.accession for o in created_orders])
+            procs_str = ', '.join([o.procedure for o in created_orders])
+
+            # 8. Receipt & Cashier Entry
             receipt = None
             if paid_amount > 0:
                 receipt = Receipt(
                     receipt_no=next_receipt_no(),
-                    order_id=order.id,
+                    order_id=primary_order.id,
                     amount=paid_amount,
                     payment_method=payment_method,
-                    reference_no=payment_ref,
+                    reference_no=payment_ref or accessions_str,
                     created_by=current_user().id
                 )
                 db.session.add(receipt)
@@ -14730,37 +14841,34 @@ def reception_desk():
                         category='RECEPTION_CASH',
                         amount=paid_amount,
                         branch_id=branch.id,
-                        device_id=device.id,
+                        device_id=primary_order.device_id,
                         payment_method='CASH',
-                        reference_no=order.accession,
-                        description=f'إيراد حجز استقبال: {patient.name} - {proc.name}',
+                        reference_no=accessions_str,
+                        description=f'إيراد حجز استقبال: {patient.name} - {len(created_orders)} فحص ({procs_str})',
                         created_by=current_user().id,
                         status='ACTIVE'
                     )
                     db.session.add(fe)
 
-            # 7. DICOM MWL Push
-            try:
-                send_mwl(order)
-            except Exception as e:
-                app.logger.warning(f"MWL push warning for accession {order.accession}: {e}")
+            for o in created_orders:
+                audit('RECEPTION_DESK_REGISTER', 'order', o.id, f'{o.accession}; patient={patient.id} ({patient.name}); contract={contract_id}; paid={o.paid_amount}')
 
-            audit('RECEPTION_DESK_REGISTER', 'order', order.id, f'{order.accession}; patient={patient.id} ({patient.name}); paid={paid_amount}')
             db.session.commit()
 
+            success_msg = f'تم تسجيل {len(created_orders)} فحص بنجاح للمريض: {patient.name} ({accessions_str})'
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
                 return jsonify({
                     'ok': True,
-                    'order_id': order.id,
-                    'accession': order.accession,
+                    'order_ids': [o.id for o in created_orders],
+                    'accessions': [o.accession for o in created_orders],
                     'patient_id': patient.patient_id,
                     'patient_name': patient.name,
                     'receipt_id': receipt.id if receipt else None,
-                    'message': f'تم تسجيل الحجز بنجاح للمريض: {patient.name} ({order.accession})'
+                    'message': success_msg
                 })
 
-            flash(f'تم تسجيل الحجز بنجاح للمريض: {patient.name} ({order.accession})', 'success')
-            return redirect(url_for('reception_desk', date=scheduled.strftime('%Y-%m-%d'), branch_id=branch.id, order_id=order.id, print_receipt=receipt.id if receipt else 0))
+            flash(success_msg, 'success')
+            return redirect(url_for('reception_desk', date=scheduled.strftime('%Y-%m-%d'), branch_id=branch.id, order_id=primary_order.id, print_receipt=receipt.id if receipt else 0))
 
         except Exception as exc:
             db.session.rollback()

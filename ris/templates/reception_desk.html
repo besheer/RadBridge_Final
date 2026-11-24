@@ -817,7 +817,7 @@ body.sidebar-mode-hidden .main {
 
             <div class="rd-col-1 rd-field">
               <label>{{ 'الغرفة / الجهاز *' if ui_lang=='ar' else 'Room / Device *' }}</label>
-              <select name="device_id" id="formDevice" required onchange="onFormDeviceChange()">
+              <select name="device_id" id="formDevice" onchange="onFormDeviceChange()">
                 {% for d in all_devices %}
                   <option value="{{ d.id }}" data-branch="{{ d.branch_id }}" data-modality="{{ d.modality }}" data-name="{{ d.name }}">
                     🚪 غرفة: {{ d.modality }} — {{ d.name }}
@@ -833,7 +833,7 @@ body.sidebar-mode-hidden .main {
               </div>
               <input type="text" id="procSearchInput" placeholder="{{ 'اكتب للبحث بكود الفحص أو اسمه أو القسم أو الغرفة (مثال: XR-CHEST، رنين مخ، غرفة 1، 101...)' if ui_lang=='ar' else 'Search by code, exam, dept or room...' }}" style="margin-bottom:6px; border-color:#38bdf8; background:#0f172a;" oninput="onProcSearchInput(this.value)" autocomplete="off">
               <div id="procSearchResults" class="rd-autocomplete" style="display:none; max-height:220px; z-index:80;"></div>
-              <select name="procedure_id" id="formProcedure" required onchange="onProcedureChange()">
+              <select name="procedure_id" id="formProcedure" onchange="onProcedureChange()">
                 <option value="">-- {{ 'اختر الفحص المطلـوب' if ui_lang=='ar' else 'Choose Examination' }} --</option>
                 {% for p in procedures %}
                   <option value="{{ p.id }}" data-modality="{{ p.modality }}" data-price="{{ p.base_price or 0 }}" data-name="{{ p.name }}" data-name-ar="{{ p.name_ar or '' }}" data-code="{{ p.code }}" data-id="{{ p.id }}">
@@ -841,6 +841,43 @@ body.sidebar-mode-hidden .main {
                   </option>
                 {% endfor %}
               </select>
+            </div>
+
+            <!-- Multi-Procedure Examinations Basket (سلة الفحوصات المتعددة للزيارة) -->
+            <div class="rd-col-2 rd-field" style="grid-column: 1 / -1; margin-top:4px; margin-bottom:8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-weight:700; color:#38bdf8; font-size:12.5px;">📋 الفحوصات المحددة لهذه الزيارة:</span>
+                  <span id="basketCountBadge" style="background:#0284c7; color:#fff; font-size:11px; padding:1px 8px; border-radius:12px; font-weight:bold;">0 فحص</span>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button type="button" id="btnAddMoreExam" onclick="addCurrentExamToBasket()" style="padding:4px 12px; font-size:11.5px; font-weight:600; background:#059669; color:#fff; border:1px solid #10b981; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                    ➕ <span>إضافة فحص آخر للزيارة</span>
+                  </button>
+                  <button type="button" onclick="clearExamBasket()" style="padding:4px 8px; font-size:11px; background:#334155; color:#94a3b8; border:1px solid #475569; border-radius:6px; cursor:pointer;">
+                    مسح
+                  </button>
+                </div>
+              </div>
+
+              <div style="background:#0b1329; border:1px solid #334155; border-radius:8px; overflow:hidden;">
+                <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:right;">
+                  <thead>
+                    <tr style="background:#1e293b; color:#94a3b8; border-bottom:1px solid #334155;">
+                      <th style="padding:5px 8px; width:28px;">#</th>
+                      <th style="padding:5px 8px; width:65px;">القسم</th>
+                      <th style="padding:5px 8px;">الغرفة / الجهاز</th>
+                      <th style="padding:5px 8px;">الفحص والكود</th>
+                      <th style="padding:5px 8px; width:110px;">السعر (ج.م)</th>
+                      <th style="padding:5px 8px; width:45px; text-align:center;">إجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody id="examBasketBody">
+                    <!-- Populated dynamically via renderExamBasket() -->
+                  </tbody>
+                </table>
+              </div>
+              <input type="hidden" name="procedures_json" id="proceduresJson" value="[]">
             </div>
 
             <div class="rd-col-1 rd-field" style="position:relative;">
@@ -895,19 +932,75 @@ body.sidebar-mode-hidden .main {
             <span>💵 {{ 'الحسابات والخزينة (Financials & Payment)' if ui_lang=='ar' else 'Financials & Safe' }}</span>
           </div>
 
+          <!-- Mode Selector: Cash vs Contract -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:#0f172a; padding:8px 12px; border-radius:8px; border:1px solid #334155;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-weight:700; color:#f8fafc; font-size:13px;">نوع الحالة:</span>
+              <button type="button" id="btnModeCash" onclick="setPaymentType('CASH')" style="padding:5px 16px; font-size:12.5px; font-weight:bold; border-radius:6px; cursor:pointer; background:#0284c7; color:#fff; border:1px solid #38bdf8;">
+                💵 نقدي (Cash)
+              </button>
+              <button type="button" id="btnModeContract" onclick="setPaymentType('CONTRACT')" style="padding:5px 16px; font-size:12.5px; font-weight:bold; border-radius:6px; cursor:pointer; background:#1e293b; color:#94a3b8; border:1px solid #475569;">
+                📑 تعاقد / تأمين (Contract)
+              </button>
+              <input type="hidden" name="payment_type" id="formPaymentType" value="CASH">
+            </div>
+            <div id="contractSummaryBadge" style="display:none; font-size:12px; color:#38bdf8; font-weight:600;">
+              🏥 نظام التعاقدات والشركات
+            </div>
+          </div>
+
+          <!-- Contract Entity & Policy Details -->
+          <div id="contractBox" style="display:none; background:#0b1329; border:1px solid #1d4ed8; border-radius:8px; padding:12px; margin-bottom:14px;">
+            <div class="rd-form-grid">
+              <div class="rd-col-1 rd-field">
+                <label style="color:#93c5fd; font-weight:bold;">جهة التعاقد *</label>
+                <select name="contract_id" id="formContract" onchange="onContractChange()">
+                  <option value="">-- اختر جهة التعاقد --</option>
+                  {% for c in contracts %}
+                    {% if c.code != 'CASH' %}
+                      <option value="{{ c.id }}" data-copay="{{ c.patient_share_percent or 0 }}" data-discount="{{ c.discount_percent or 0 }}" data-approval="{{ 1 if c.approval_required else 0 }}">
+                        🏢 {{ c.name }}
+                      </option>
+                    {% endif %}
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="rd-col-1 rd-field">
+                <label style="color:#93c5fd;">نسبة تحمل المريض (%)</label>
+                <input type="number" step="1" min="0" max="100" name="patient_share_percent" id="formCopayPercent" value="0" oninput="calculateFinances()">
+              </div>
+
+              <div class="rd-col-1 rd-field">
+                <label style="color:#93c5fd;">نسبة الخصم للجهة (%)</label>
+                <input type="number" step="0.5" min="0" max="100" name="discount_percent" id="formDiscountPercent" value="0" oninput="calculateFinances()">
+              </div>
+
+              <div class="rd-col-1 rd-field">
+                <label style="color:#93c5fd;" id="labelApprovalNo">رقم الموافقة / الخطاب</label>
+                <input type="text" name="approval_no" id="formApprovalNo" placeholder="رقم خطاب التأمين أو الكارنيه...">
+              </div>
+            </div>
+          </div>
+
           <div class="rd-form-grid">
             <div class="rd-col-1 rd-field">
               <label>{{ 'السعر الإجمالي (ج.م)' if ui_lang=='ar' else 'Gross Price (EGP)' }}</label>
-              <input type="number" step="0.5" name="gross_price" id="formGross" value="0" class="rd-money-highlight" oninput="calculateFinances()">
+              <input type="number" step="0.5" name="gross_price" id="formGross" value="0" readonly class="rd-money-highlight" style="background:#1e293b; color:#38bdf8; font-weight:bold;" oninput="calculateFinances()">
             </div>
 
-            <div class="rd-col-1 rd-field">
+            <div class="rd-col-1 rd-field" id="boxDiscountCash">
               <label>{{ 'الخصم (ج.م)' if ui_lang=='ar' else 'Discount (EGP)' }}</label>
               <input type="number" step="0.5" name="discount_amount" id="formDiscount" value="0" oninput="calculateFinances()">
             </div>
 
+            <div class="rd-col-1 rd-field" id="boxCompanyShare" style="display:none;">
+              <label style="color:#a78bfa;">{{ 'تحمل الشركة / التعاقد (ج.م)' if ui_lang=='ar' else 'Company Share (EGP)' }}</label>
+              <input type="number" step="0.5" id="formCompanyShare" value="0" readonly style="background:#1e1b4b; color:#c4b5fd; font-weight:bold;">
+            </div>
+
             <div class="rd-col-1 rd-field">
-              <label>{{ 'الصافي المطلوب (ج.م)' if ui_lang=='ar' else 'Net Amount (EGP)' }}</label>
+              <label id="labelNetPrice">{{ 'الصافي المطلوب (ج.م)' if ui_lang=='ar' else 'Net Amount (EGP)' }}</label>
               <input type="number" step="0.5" id="formNet" value="0" readonly style="background:#334155; font-weight:bold; color:#f8fafc;">
             </div>
 
@@ -1363,14 +1456,30 @@ function syncSelections({ branchChanged = false, modalityChanged = false, device
       procedureSelect.appendChild(opt);
     });
 
-    // 4. Update Gross Price and Finances
+    // 4. Synchronize Exam Basket (Single-item auto sync)
     const selectedOpt = procedureSelect.options[procedureSelect.selectedIndex];
-    if (selectedOpt && selectedOpt.dataset.price) {
-      document.getElementById('formGross').value = selectedOpt.dataset.price;
-    } else {
-      document.getElementById('formGross').value = 0;
+    const chosenDeviceOpt = deviceSelect.options[deviceSelect.selectedIndex];
+
+    if (selectedOpt && selectedOpt.value && chosenDeviceOpt && chosenDeviceOpt.value) {
+      const p = ALL_PROCEDURES.find(x => String(x.id) === String(selectedOpt.value));
+      const d = ALL_DEVICES.find(x => String(x.id) === String(chosenDeviceOpt.value));
+      if (p && d) {
+        if (examBasket.length <= 1) {
+          examBasket = [{
+            procedure_id: p.id,
+            procedure_name: p.nameAr || p.name,
+            procedure_code: p.code || '',
+            modality: p.modality,
+            device_id: d.id,
+            device_name: d.name,
+            price: parseFloat(selectedOpt.dataset.price) || parseFloat(p.price) || 0
+          }];
+          renderExamBasket();
+        }
+      }
+    } else if (examBasket.length === 0) {
+      renderExamBasket();
     }
-    calculateFinances();
 
   } finally {
     isSyncing = false;
@@ -1400,18 +1509,228 @@ function onProcedureChange(){
 }
 
 
-function calculateFinances(){
-  const gross = parseFloat(document.getElementById('formGross').value) || 0;
-  const discount = parseFloat(document.getElementById('formDiscount').value) || 0;
-  const net = Math.max(0, gross - discount);
+// ==========================================
+// Multi-Procedure Examinations Basket State
+// ==========================================
+let examBasket = [];
+let currentPaymentType = 'CASH';
+
+function renderExamBasket() {
+  const tbody = document.getElementById('examBasketBody');
+  const countBadge = document.getElementById('basketCountBadge');
+  const hiddenInput = document.getElementById('proceduresJson');
+  if (!tbody) return;
+
+  if (examBasket.length === 0) {
+    tbody.innerHTML = '<tr style="color:#94a3b8;"><td colspan="6" style="padding:10px; text-align:center;">لم يتم تحديد فحوصات بعد. اختر الفحص والغرفة من القائمة أعلاه.</td></tr>';
+    if (countBadge) countBadge.textContent = '0 فحص';
+    if (hiddenInput) hiddenInput.value = '[]';
+    calculateFinances();
+    return;
+  }
+
+  if (countBadge) countBadge.textContent = examBasket.length + ' فحص';
+  if (hiddenInput) hiddenInput.value = JSON.stringify(examBasket);
+
+  let htmlRows = '';
+  for (let idx = 0; idx < examBasket.length; idx++) {
+    const item = examBasket[idx];
+    const bg = idx % 2 === 0 ? 'transparent' : 'rgba(30, 41, 59, 0.4)';
+    htmlRows += '<tr style="border-bottom:1px solid #1e293b; background:' + bg + ';">' +
+      '<td style="padding:5px 8px; font-weight:bold; color:#94a3b8;">' + (idx + 1) + '</td>' +
+      '<td style="padding:5px 8px;"><span class="badge" style="background:#0284c7; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold;">' + item.modality + '</span></td>' +
+      '<td style="padding:5px 8px; color:#cbd5e1; font-weight:500;">🚪 ' + item.device_name + '</td>' +
+      '<td style="padding:5px 8px;"><b style="color:#38bdf8; font-family:monospace; margin-left:4px;">[' + item.procedure_code + ']</b> <span style="color:#f8fafc;">' + item.procedure_name + '</span></td>' +
+      '<td style="padding:5px 8px;"><input type="number" step="0.5" min="0" value="' + item.price + '" onchange="onBasketPriceChange(' + idx + ', this.value)" style="width:85px; padding:2px 6px; height:24px; font-size:11.5px; background:#1e293b; color:#10b981; font-weight:bold; border:1px solid #475569; border-radius:4px; text-align:center;"></td>' +
+      '<td style="padding:5px 8px; text-align:center;"><button type="button" onclick="removeBasketItem(' + idx + ')" title="حذف هذا الفحص" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:13px; padding:2px 6px; border-radius:4px;">🗑️</button></td>' +
+      '</tr>';
+  }
+  tbody.innerHTML = htmlRows;
+
+  calculateFinances();
+}
+
+function addCurrentExamToBasket() {
+  const pSel = document.getElementById('formProcedure');
+  const dSel = document.getElementById('formDevice');
+  if (!pSel || !pSel.value) {
+    alert('يرجى اختيار فحص من القائمة أولاً لإضافته إلى الزيارة.');
+    return;
+  }
+  if (!dSel || !dSel.value) {
+    alert('يرجى اختيار الغرفة أو الجهاز للفحص.');
+    return;
+  }
+
+  const p = ALL_PROCEDURES.find(x => String(x.id) === String(pSel.value));
+  const d = ALL_DEVICES.find(x => String(x.id) === String(dSel.value));
+  if (!p || !d) return;
+
+  const alreadyInBasket = examBasket.some(item => String(item.procedure_id) === String(p.id) && String(item.device_id) === String(d.id));
+  if (alreadyInBasket) {
+    alert('هذا الفحص مسجل بالفعل لنفس الجهاز في قائمة الفحوصات.');
+    return;
+  }
+
+  examBasket.push({
+    procedure_id: p.id,
+    procedure_name: p.nameAr || p.name,
+    procedure_code: p.code || '',
+    modality: p.modality,
+    device_id: d.id,
+    device_name: d.name,
+    price: parseFloat(p.price) || 0
+  });
+
+  renderExamBasket();
+}
+
+function removeBasketItem(idx) {
+  if (idx >= 0 && idx < examBasket.length) {
+    examBasket.splice(idx, 1);
+    renderExamBasket();
+  }
+}
+
+function clearExamBasket() {
+  if (examBasket.length > 0 && confirm('هل تريد مسح جميع الفحوصات المحددة لهذه الزيارة؟')) {
+    examBasket = [];
+    renderExamBasket();
+  }
+}
+
+function onBasketPriceChange(idx, val) {
+  const newPrice = parseFloat(val);
+  if (!isNaN(newPrice) && newPrice >= 0 && examBasket[idx]) {
+    examBasket[idx].price = newPrice;
+    document.getElementById('proceduresJson').value = JSON.stringify(examBasket);
+    calculateFinances();
+  }
+}
+
+// ==========================================
+// Cash vs Contract Mode & Policy Settings
+// ==========================================
+function setPaymentType(type) {
+  currentPaymentType = type;
+  document.getElementById('formPaymentType').value = type;
+
+  const btnCash = document.getElementById('btnModeCash');
+  const btnContract = document.getElementById('btnModeContract');
+  const contractBox = document.getElementById('contractBox');
+  const boxDiscountCash = document.getElementById('boxDiscountCash');
+  const boxCompanyShare = document.getElementById('boxCompanyShare');
+  const labelNet = document.getElementById('labelNetPrice');
+  const contractSummary = document.getElementById('contractSummaryBadge');
+
+  if (type === 'CONTRACT') {
+    btnContract.style.background = '#0284c7';
+    btnContract.style.color = '#fff';
+    btnContract.style.borderColor = '#38bdf8';
+    btnCash.style.background = '#1e293b';
+    btnCash.style.color = '#94a3b8';
+    btnCash.style.borderColor = '#475569';
+
+    contractBox.style.display = 'block';
+    boxDiscountCash.style.display = 'none';
+    boxCompanyShare.style.display = 'block';
+    labelNet.textContent = 'تحمل المريض المطلوب (ج.م)';
+    contractSummary.style.display = 'block';
+
+    document.getElementById('formContract').required = true;
+    onContractChange();
+  } else {
+    btnCash.style.background = '#0284c7';
+    btnCash.style.color = '#fff';
+    btnCash.style.borderColor = '#38bdf8';
+    btnContract.style.background = '#1e293b';
+    btnContract.style.color = '#94a3b8';
+    btnContract.style.borderColor = '#475569';
+
+    contractBox.style.display = 'none';
+    boxDiscountCash.style.display = 'block';
+    boxCompanyShare.style.display = 'none';
+    labelNet.textContent = 'الصافي المطلوب (ج.م)';
+    contractSummary.style.display = 'none';
+
+    document.getElementById('formContract').required = false;
+    calculateFinances();
+  }
+}
+
+function onContractChange() {
+  const sel = document.getElementById('formContract');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.value) {
+    const copay = parseFloat(opt.dataset.copay) || 0;
+    const disc = parseFloat(opt.dataset.discount) || 0;
+    const approvalReq = opt.dataset.approval === '1';
+
+    document.getElementById('formCopayPercent').value = copay;
+    document.getElementById('formDiscountPercent').value = disc;
+
+    const appInp = document.getElementById('formApprovalNo');
+    const appLabel = document.getElementById('labelApprovalNo');
+    if (approvalReq) {
+      appInp.required = true;
+      appLabel.textContent = 'رقم الموافقة / الخطاب * (إلزامي)';
+      appLabel.style.color = '#f87171';
+    } else {
+      appInp.required = false;
+      appLabel.textContent = 'رقم الموافقة / الخطاب';
+      appLabel.style.color = '#93c5fd';
+    }
+  }
+  calculateFinances();
+}
+
+function round2(num) {
+  return Math.round((num + Number.EPSILON) * 100) / 100;
+}
+
+function calculateFinances() {
+  let gross = 0;
+  if (examBasket.length > 0) {
+    gross = examBasket.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+  } else {
+    const pSel = document.getElementById('formProcedure');
+    const opt = pSel ? pSel.options[pSel.selectedIndex] : null;
+    gross = opt && opt.dataset.price ? parseFloat(opt.dataset.price) : 0;
+  }
+  document.getElementById('formGross').value = gross;
+
+  let net = gross;
+  let companyShare = 0;
+
+  if (currentPaymentType === 'CONTRACT') {
+    const discountPct = parseFloat(document.getElementById('formDiscountPercent').value) || 0;
+    const copayPct = parseFloat(document.getElementById('formCopayPercent').value) || 0;
+
+    const discountAmount = round2(gross * (discountPct / 100));
+    const contractNet = Math.max(0, gross - discountAmount);
+
+    if (copayPct > 0) {
+      net = round2(contractNet * (copayPct / 100));
+      companyShare = round2(contractNet - net);
+    } else {
+      net = 0;
+      companyShare = contractNet;
+    }
+    document.getElementById('formCompanyShare').value = companyShare;
+  } else {
+    // CASH
+    const discount = parseFloat(document.getElementById('formDiscount').value) || 0;
+    net = Math.max(0, gross - discount);
+  }
+
   document.getElementById('formNet').value = net;
-  
+
   let paidInp = document.getElementById('formPaid');
-  if(!paidInp.dataset.manualEdited){
+  if (!paidInp.dataset.manualEdited) {
     paidInp.value = net;
   }
   const paid = parseFloat(paidInp.value) || 0;
-  const remaining = Math.max(0, net - paid);
+  const remaining = Math.max(0, round2(net - paid));
   document.getElementById('formRemaining').value = remaining;
 }
 
@@ -1502,6 +1821,9 @@ function resetFormForNewPatient(){
   document.getElementById('patientPhone').value = '';
   document.getElementById('patientNationalId').value = '';
   document.getElementById('patientAddress').value = '';
+  examBasket = [];
+  renderExamBasket();
+  setPaymentType('CASH');
   document.getElementById('formGross').value = '0';
   document.getElementById('formDiscount').value = '0';
   document.getElementById('formNet').value = '0';
@@ -1906,6 +2228,50 @@ async function pushSelectedOrderToMwl(){
     btn.innerHTML = orig;
     btn.disabled = false;
   }
+}
+
+
+// Form Submit Validation for Basket and Contract
+const rdForm = document.getElementById('rdForm');
+if (rdForm) {
+  rdForm.addEventListener('submit', function(e) {
+    if (examBasket.length === 0) {
+      const pSel = document.getElementById('formProcedure');
+      const dSel = document.getElementById('formDevice');
+      if (pSel && pSel.value && dSel && dSel.value) {
+        addCurrentExamToBasket();
+      } else {
+        e.preventDefault();
+        alert('يرجى اختيار فحص وغرفة واحدة على الأقل قبل حفظ الحجز.');
+        return false;
+      }
+    }
+
+    if (currentPaymentType === 'CONTRACT') {
+      const cSel = document.getElementById('formContract');
+      if (!cSel || !cSel.value) {
+        e.preventDefault();
+        alert('يرجى تحديد جهة التعاقد لحالات التعاقد.');
+        if (cSel) cSel.focus();
+        return false;
+      }
+      const appInp = document.getElementById('formApprovalNo');
+      if (appInp && appInp.required && !appInp.value.trim()) {
+        e.preventDefault();
+        alert('رقم الموافقة / الخطاب مطلوب لهذه الجهة التعاقدية.');
+        appInp.focus();
+        return false;
+      }
+    }
+
+    // Keep primary procedure & device in sync with first basket item for backwards compatibility
+    if (examBasket.length > 0) {
+      const pSel = document.getElementById('formProcedure');
+      const dSel = document.getElementById('formDevice');
+      if (pSel) pSel.value = examBasket[0].procedure_id;
+      if (dSel) dSel.value = examBasket[0].device_id;
+    }
+  });
 }
 
 </script>
