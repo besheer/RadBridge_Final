@@ -843,12 +843,22 @@ body.sidebar-mode-hidden .main {
               </select>
             </div>
 
-            <div class="rd-col-1 rd-field">
-              <label>{{ 'الطبيب المحول' if ui_lang=='ar' else 'Referring Doctor' }}</label>
-              <select name="referring_doctor_id" id="formReferring">
+            <div class="rd-col-1 rd-field" style="position:relative;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                <label style="margin:0;">{{ 'الطبيب المحول' if ui_lang=='ar' else 'Referring Doctor' }}</label>
+                <span style="font-size:11px; color:#38bdf8;">🔍 {{ 'بحث بالعدسة' if ui_lang=='ar' else 'Live Search' }}</span>
+              </div>
+              <div style="position:relative; margin-bottom:4px;">
+                <span style="position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#38bdf8; pointer-events:none; font-size:12px;">🔍</span>
+                <input type="text" id="refSearchInput" placeholder="{{ 'ابحث بالاسم أو الكود (مثال: طنطاوي، يوسف...)' if ui_lang=='ar' else 'Search by name or code...' }}" 
+                       style="padding-right:26px; padding-left:8px; height:30px; font-size:11.5px; background:#0f172a; color:#f8fafc; border:1px solid #38bdf8; border-radius:6px; width:100%;"
+                       oninput="onReferringSearchInput(this.value)" autocomplete="off">
+                <div id="refSearchResults" class="rd-autocomplete" style="display:none; max-height:220px; z-index:90; position:absolute; width:100%; background:#1e293b; border:1px solid #0284c7; border-radius:6px; box-shadow:0 4px 14px rgba(0,0,0,0.6); overflow-y:auto;"></div>
+              </div>
+              <select name="referring_doctor_id" id="formReferring" onchange="onReferringSelectChange()">
                 <option value="">— {{ 'بدون طبيب محول' if ui_lang=='ar' else 'None' }} —</option>
                 {% for r in referring_doctors %}
-                  <option value="{{ r.id }}">{{ r.name }}</option>
+                  <option value="{{ r.id }}" data-code="{{ r.code }}" data-name="{{ r.name }}">{{ r.name }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -1045,6 +1055,17 @@ const ALL_DEVICES = [
     modality: "{{ d.modality }}",
     name: {{ d.name|tojson }},
     label: "🚪 غرفة: {{ d.modality }} — {{ d.name }}"
+  },
+  {% endfor %}
+];
+
+
+const ALL_REFERRERS = [
+  {% for r in referring_doctors %}
+  {
+    id: "{{ r.id }}",
+    code: "{{ r.code }}",
+    name: {{ r.name|tojson }}
   },
   {% endfor %}
 ];
@@ -1547,7 +1568,13 @@ function selectCaseCard(card){
     preferredProcedureId: d.procedureId
   });
   
-  if(d.referring) document.getElementById('formReferring').value = d.referring;
+  if(d.referring){
+    document.getElementById('formReferring').value = d.referring;
+    onReferringSelectChange();
+  } else {
+    document.getElementById('formReferring').value = '';
+    document.getElementById('refSearchInput').value = '';
+  }
   if(d.assigned) document.getElementById('formAssigned').value = d.assigned;
   if(d.scheduled) document.getElementById('formScheduled').value = d.scheduled;
 
@@ -1779,6 +1806,61 @@ function chooseSearchedRoom(deviceId, modality){
   document.getElementById('procSearchResults').style.display = 'none';
 }
 
+
+// Referring Doctor Live Search & Autocomplete
+function onReferringSearchInput(query){
+  query = (query || '').toLowerCase().trim();
+  const resultsBox = document.getElementById('refSearchResults');
+  if(!query || query.length < 1){
+    resultsBox.style.display = 'none';
+    return;
+  }
+
+  const matches = [];
+  for(const r of ALL_REFERRERS){
+    const name = (r.name || '').toLowerCase();
+    const code = (r.code || '').toLowerCase();
+    const strippedName = name.replace('د.', '').replace('د/', '').trim();
+    if(name.includes(query) || code.includes(query) || strippedName.includes(query)){
+      matches.push(r);
+      if(matches.length >= 35) break;
+    }
+  }
+
+  if(matches.length > 0){
+    resultsBox.innerHTML = matches.map(r => `
+      <div class="rd-autocomplete-item" onclick="chooseSearchedReferrer('${r.id}')" style="padding:6px 10px; cursor:pointer; border-bottom:1px solid #334155; font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+        <span style="color:#f8fafc; font-weight:600;">👨‍⚕️ ${r.name}</span>
+        <small style="color:#38bdf8; font-family:monospace; background:#0f172a; padding:1px 4px; border-radius:3px;">${r.code}</small>
+      </div>
+    `).join('');
+    resultsBox.style.display = 'block';
+  } else {
+    resultsBox.innerHTML = '<div style="padding:8px 10px; color:#94a3b8; font-size:11.5px;">لا يوجد طبيب محول مطابق للبحث</div>';
+    resultsBox.style.display = 'block';
+  }
+}
+
+function chooseSearchedReferrer(refId){
+  const sel = document.getElementById('formReferring');
+  sel.value = refId;
+  const r = ALL_REFERRERS.find(x => String(x.id) === String(refId));
+  if(r){
+    document.getElementById('refSearchInput').value = r.name;
+  }
+  document.getElementById('refSearchResults').style.display = 'none';
+}
+
+function onReferringSelectChange(){
+  const sel = document.getElementById('formReferring');
+  const r = ALL_REFERRERS.find(x => String(x.id) === String(sel.value));
+  if(r){
+    document.getElementById('refSearchInput').value = r.name;
+  } else {
+    document.getElementById('refSearchInput').value = '';
+  }
+}
+
 function chooseSearchedDept(modality){
   filterProceduresByModality(modality);
   document.getElementById('procSearchResults').style.display = 'none';
@@ -1789,6 +1871,12 @@ document.addEventListener('click', function(e){
   const searchInput = document.getElementById('procSearchInput');
   if(resultsBox && searchInput && !resultsBox.contains(e.target) && e.target !== searchInput){
     resultsBox.style.display = 'none';
+  }
+
+  const refBox = document.getElementById('refSearchResults');
+  const refInp = document.getElementById('refSearchInput');
+  if(refBox && refInp && !refBox.contains(e.target) && e.target !== refInp){
+    refBox.style.display = 'none';
   }
 });
 
