@@ -1,0 +1,1148 @@
+{% extends "base.html" %}
+{% block title %}{{ 'كاونتر الاستقبال السريع' if ui_lang=='ar' else 'Quick Reception Desk' }} - AirScan PACS{% endblock %}
+
+{% block content %}
+<style>
+/* System Sidebar Collapsed / Hidden Support (Like Doctor Studio & PACS) */
+body.sidebar-mode-hidden .sidebar {
+  display: none !important;
+}
+body.sidebar-mode-hidden .main {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+  padding: 8px 14px !important;
+}
+body.sidebar-mode-compact {
+  --sidebar-w: 64px !important;
+}
+body.sidebar-mode-compact .brand-copy,
+body.sidebar-mode-compact .workspace-card div:not(.workspace-dot),
+body.sidebar-mode-compact .nav-link span,
+body.sidebar-mode-compact .nav-caption,
+body.sidebar-mode-compact .sidebar-bottom small,
+body.sidebar-mode-compact .sidebar-logout span,
+body.sidebar-mode-compact .sidebar-menu-search,
+body.sidebar-mode-compact .quick-action-btn span:last-child {
+  display: none !important;
+}
+
+.rd-container {
+  display: flex;
+  gap: 16px;
+  min-height: calc(100vh - 110px);
+  margin-top: 4px;
+  transition: all 0.2s ease;
+}
+
+/* Sidebar: Today's Cases List */
+.rd-sidebar {
+  width: 370px;
+  min-width: 340px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+  transition: all 0.2s ease;
+}
+
+.rd-sidebar.collapsed {
+  display: none !important;
+}
+
+.rd-sidebar-header {
+  padding: 12px 14px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.rd-date-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.rd-date-bar .btn {
+  padding: 4px 10px;
+  font-size: 13px;
+  background: #0f172a;
+  border: 1px solid #475569;
+  color: #f8fafc;
+}
+
+.rd-filter-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rd-search-box {
+  width: 100%;
+  position: relative;
+}
+
+.rd-search-box input {
+  width: 100%;
+  padding: 7px 12px;
+  font-size: 13px;
+  background: #0f172a;
+  border: 1px solid #38bdf8;
+  color: #fff;
+  border-radius: 6px;
+}
+
+.rd-cases-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rd-case-card {
+  padding: 10px 12px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.rd-case-card:hover {
+  background: #334155;
+  border-color: #38bdf8;
+}
+
+.rd-case-card.active {
+  background: #0369a1;
+  border-color: #38bdf8;
+  color: #fff;
+  box-shadow: 0 0 0 2px #38bdf8;
+}
+
+.rd-case-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.rd-case-name {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.rd-case-time {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.rd-case-card.active .rd-case-time {
+  color: #e0f2fe;
+}
+
+.rd-case-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.rd-badge-modality {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #0284c7;
+  color: #fff;
+}
+
+.rd-badge-mr { background: #7c3aed; }
+.rd-badge-ct { background: #0284c7; }
+.rd-badge-dx { background: #0d9488; }
+.rd-badge-us { background: #d97706; }
+.rd-badge-eeg { background: #16a34a; }
+
+.rd-badge-status {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.rd-badge-paid { background: #065f46; color: #6ee7b7; }
+.rd-badge-partial { background: #7c2d12; color: #fdba74; }
+.rd-badge-unpaid { background: #475569; color: #e2e8f0; }
+
+/* Main Area: Reception Form */
+.rd-main {
+  flex: 1;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+}
+
+.rd-main-header {
+  padding: 10px 16px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rd-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rd-header-title h2 {
+  margin: 0;
+  font-size: 17px;
+  color: #38bdf8;
+}
+
+.rd-actions-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rd-main-body {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.rd-section {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.rd-section-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 6px;
+}
+
+.rd-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px 14px;
+}
+
+.rd-col-1 { grid-column: span 1; }
+.rd-col-2 { grid-column: span 2; }
+.rd-col-3 { grid-column: span 3; }
+.rd-col-4 { grid-column: span 4; }
+
+.rd-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin-bottom: 4px;
+}
+
+.rd-field input, .rd-field select, .rd-field textarea {
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 13px;
+  background: #0f172a;
+  border: 1px solid #475569;
+  color: #f8fafc;
+  border-radius: 6px;
+}
+
+.rd-field input:focus, .rd-field select:focus {
+  border-color: #38bdf8;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.rd-age-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.rd-age-group input {
+  text-align: center;
+}
+
+.rd-radio-group {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  height: 35px;
+}
+
+.rd-radio-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  margin: 0;
+  font-size: 13px;
+  color: #f1f5f9;
+}
+
+.rd-financial-box {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid #38bdf8;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.rd-money-highlight {
+  font-size: 16px;
+  font-weight: bold;
+  color: #38bdf8;
+}
+
+.rd-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid #334155;
+  margin-top: 10px;
+}
+
+/* Modality Quick Buttons */
+.rd-modality-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.rd-mod-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #cbd5e1;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.rd-mod-btn:hover, .rd-mod-btn.active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #fff;
+}
+
+/* Autocomplete list */
+.rd-autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #1e293b;
+  border: 1px solid #38bdf8;
+  border-radius: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 50;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+}
+
+.rd-autocomplete-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #334155;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.rd-autocomplete-item:hover {
+  background: #0284c7;
+  color: #fff;
+}
+</style>
+
+<div class="rd-container" dir="{{ 'rtl' if ui_lang=='ar' else 'ltr' }}">
+  <!-- Left Column: Today's Cases List -->
+  <aside class="rd-sidebar" id="rdSidebar">
+    <div class="rd-sidebar-header">
+      <div class="rd-date-bar">
+        <a class="btn" href="{{ url_for('reception_desk', date=(selected_date - timedelta(days=1)).isoformat(), branch_id=branch_id or '') }}">‹</a>
+        <a class="btn" href="{{ url_for('reception_desk', branch_id=branch_id or '') }}"><b>{{ 'اليوم' if ui_lang=='ar' else 'Today' }}</b></a>
+        <input type="date" id="rdDateInput" value="{{ selected_date.isoformat() }}" style="padding:4px 8px; font-size:12px; background:#0f172a; color:#fff; border:1px solid #475569; border-radius:6px;" onchange="window.location.href='{{ url_for('reception_desk') }}?date='+this.value+'&branch_id={{ branch_id or '' }}'">
+        <a class="btn" href="{{ url_for('reception_desk', date=(selected_date + timedelta(days=1)).isoformat(), branch_id=branch_id or '') }}">›</a>
+      </div>
+
+      <div class="rd-filter-row">
+        <select id="rdBranchFilter" style="padding:6px; font-size:12px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid #475569; width:100%;" onchange="window.location.href='{{ url_for('reception_desk') }}?date={{ selected_date.isoformat() }}&branch_id='+this.value">
+          {% if not allowed_branches %}<option value="" {% if not branch_id %}selected{% endif %}>🌐 {{ 'جميع الفروع' if ui_lang=='ar' else 'All Branches' }}</option>{% endif %}
+          {% for b in branches %}
+            <option value="{{ b.id }}" {% if branch_id == b.id %}selected{% endif %}>🏢 {{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="rd-search-box">
+        <input type="text" id="rdCaseSearch" placeholder="{{ '🔍 بحث سريع بالحالات (اسم أو هاتف)...' if ui_lang=='ar' else '🔍 Search cases (name, phone)...' }}">
+      </div>
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:12px; color:#94a3b8;">
+        <span>{{ 'الحالات:' if ui_lang=='ar' else 'Cases:' }} <b id="rdCasesCount" style="color:#38bdf8;">{{ today_orders|length }}</b></span>
+        <span>💵 الخزينة: <b style="color:#10b981;">{{ '%.2f'|format(safe_cash) }} ج.م</b></span>
+      </div>
+    </div>
+
+    <!-- Case Cards List -->
+    <div class="rd-cases-list" id="rdCasesList">
+      {% for o in today_orders %}
+      <div class="rd-case-card {% if selected_order and selected_order.id == o.id %}active{% endif %}" 
+           data-id="{{ o.id }}"
+           data-accession="{{ o.accession }}"
+           data-patient-name="{{ o.patient.name }}"
+           data-patient-id="{{ o.patient.patient_id }}"
+           data-worklist-name="{{ o.patient.worklist_name or '' }}"
+           data-dob="{{ o.patient.dob or '' }}"
+           data-sex="{{ o.patient.sex or 'M' }}"
+           data-phone="{{ o.patient.phone or '' }}"
+           data-national-id="{{ o.patient.national_id or '' }}"
+           data-address="{{ o.patient.address or '' }}"
+           data-branch-id="{{ o.branch_id }}"
+           data-modality="{{ o.modality }}"
+           data-device-id="{{ o.device_id or '' }}"
+           data-procedure-id="{{ o.procedure_id or '' }}"
+           data-gross="{{ o.gross_price or 0 }}"
+           data-discount="{{ (o.gross_price or 0) - (o.patient_share or 0) }}"
+           data-paid="{{ o.paid_amount or 0 }}"
+           data-remaining="{{ (o.patient_share or 0) - (o.paid_amount or 0) }}"
+           data-scheduled="{{ o.scheduled.strftime('%Y-%m-%dT%H:%M') if o.scheduled else '' }}"
+           data-referring="{{ o.referring_doctor_id or '' }}"
+           data-assigned="{{ o.assigned_doctor_id or '' }}"
+           data-receipt-id="{{ o.latest_receipt.id if o.latest_receipt else '' }}"
+           onclick="selectCaseCard(this)">
+        <div class="rd-case-top">
+          <span class="rd-case-name">{{ o.patient.name }}</span>
+          <span class="rd-case-time">{{ o.scheduled.strftime('%H:%M') if o.scheduled else '' }}</span>
+        </div>
+        <div class="rd-case-details">
+          <div>
+            <span class="rd-badge-modality rd-badge-{{ o.modality|lower }}">{{ o.modality }}</span>
+            <span style="margin-right:4px;">{{ o.procedure }}</span>
+          </div>
+          {% set remaining = (o.patient_share or 0) - (o.paid_amount or 0) %}
+          {% if remaining <= 0 and (o.paid_amount or 0) > 0 %}
+            <span class="rd-badge-status rd-badge-paid">{{ 'مسدد' if ui_lang=='ar' else 'Paid' }}</span>
+          {% elif remaining > 0 and (o.paid_amount or 0) > 0 %}
+            <span class="rd-badge-status rd-badge-partial">{{ 'باقي ' ~ ('%.0f'|format(remaining)) }}</span>
+          {% else %}
+            <span class="rd-badge-status rd-badge-unpaid">{{ 'غير مسدد' if ui_lang=='ar' else 'Unpaid' }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div style="text-align:center; padding:30px 10px; color:#64748b; font-size:13px;">
+        {{ 'لا توجد حالات مسجلة لهذا التاريخ' if ui_lang=='ar' else 'No registered cases for this date' }}
+      </div>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <!-- Right Area: Reception Desk Form -->
+  <main class="rd-main">
+    <!-- Header with Action Buttons & Sidebar Toggles -->
+    <div class="rd-main-header">
+      <div class="rd-header-title">
+        <!-- Toggle System Sidebar (Full Screen Mode) -->
+        <button type="button" class="btn small" id="btnToggleSysSidebar" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8;" onclick="toggleSystemSidebar()" title="{{ 'طي / إظهار القائمة الجانبية للنظام' if ui_lang=='ar' else 'Toggle System Sidebar' }}">
+          <span id="sysSidebarIcon">⛶</span> <span id="sysSidebarText">{{ 'القائمة الرئيسية' if ui_lang=='ar' else 'Menu' }}</span>
+        </button>
+
+        <!-- Toggle Reception Cases Sidebar -->
+        <button type="button" class="btn small" id="btnToggleCasesSidebar" style="background:#0f172a; color:#cbd5e1; border:1px solid #475569;" onclick="toggleCasesSidebar()" title="{{ 'طي / إظهار قائمة الحالات' if ui_lang=='ar' else 'Toggle Cases List' }}">
+          <span id="casesSidebarIcon">📋</span> <span id="casesSidebarText">{{ 'قائمة الحالات' if ui_lang=='ar' else 'Cases' }}</span>
+        </button>
+
+        <h2>🛎️ {{ 'كاونتر الاستقبال السريع' if ui_lang=='ar' else 'Reception Desk Workspace' }}</h2>
+        <span class="status-chip" style="background:#0284c7; color:#fff; font-size:11px; padding:3px 10px; border-radius:12px;">
+          🏢 {{ selected_order.branch.name if selected_order and selected_order.branch else ('الفرع الرئيسي' if ui_lang=='ar' else 'Main Branch') }}
+        </span>
+      </div>
+
+      <div class="rd-actions-bar">
+        <button type="button" class="btn" style="background:#10b981; color:#fff; border-color:#059669; font-weight:bold;" onclick="resetFormForNewPatient()">
+          ➕ {{ 'حالة جديدة' if ui_lang=='ar' else 'New Case' }}
+        </button>
+        <button type="button" class="btn" id="btnPrintReceipt" style="background:#0284c7; color:#fff; border-color:#0369a1;" onclick="printSelectedReceipt()" {% if not (selected_order and selected_order.latest_receipt) %}disabled{% endif %}>
+          🖨️ {{ 'طباعة إيصال' if ui_lang=='ar' else 'Print Receipt' }}
+        </button>
+        <button type="button" class="btn" id="btnPrintSticker" style="background:#475569; color:#fff; border-color:#334155;" onclick="printSelectedSticker()" {% if not selected_order %}disabled{% endif %}>
+          🏷️ {{ 'استيكر / باركود' if ui_lang=='ar' else 'Barcode' }}
+        </button>
+        <a class="btn" id="btnWorkOrder" href="{{ url_for('order_detail', order_id=selected_order.id) if selected_order else '#' }}" target="_blank" style="background:#334155; color:#cbd5e1; border-color:#475569;" {% if not selected_order %}disabled{% endif %}>
+          📄 {{ 'أمر الشغل' if ui_lang=='ar' else 'Work Order' }}
+        </a>
+      </div>
+    </div>
+
+    <!-- Main Registration Form -->
+    <div class="rd-main-body">
+      <form id="rdForm" method="post" action="{{ url_for('reception_desk') }}">
+        <input type="hidden" name="patient_mode" id="patientMode" value="new">
+        <input type="hidden" name="patient_id" id="selectedPatientId" value="">
+
+        <!-- Section 1: Patient Data -->
+        <div class="rd-section">
+          <div class="rd-section-title">
+            <span>👤 {{ 'بيانات المريض (Patient Information)' if ui_lang=='ar' else 'Patient Information' }}</span>
+            <div style="margin-right:auto; margin-left:0; display:flex; gap:8px;">
+              <button type="button" class="btn small" id="modeBtnNew" style="background:#0284c7; color:#fff;" onclick="setPatientMode('new')">
+                ➕ {{ 'مريض جديد' if ui_lang=='ar' else 'New Patient' }}
+              </button>
+              <button type="button" class="btn small" id="modeBtnExisting" style="background:#334155; color:#cbd5e1;" onclick="setPatientMode('existing')">
+                🔍 {{ 'مريض مسجل سابقاً' if ui_lang=='ar' else 'Existing Patient' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Existing Patient Search (Hidden by default) -->
+          <div id="existingPatientSearchWrap" style="display:none; margin-bottom:14px; position:relative;">
+            <label style="font-size:12px; font-weight:bold; color:#38bdf8;">{{ 'ابحث عن مريض سابق بالاسم أو رقم التليفون أو كود المريض:' if ui_lang=='ar' else 'Search existing patient by name, phone or ID:' }}</label>
+            <input type="text" id="existingPatientSearch" placeholder="{{ 'اكتب حرفين أو أكثر للبحث...' if ui_lang=='ar' else 'Type to search...' }}" autocomplete="off">
+            <div id="patientAutocomplete" class="rd-autocomplete" style="display:none;"></div>
+          </div>
+
+          <div class="rd-form-grid">
+            <div class="rd-col-2 rd-field">
+              <label>{{ 'الاسم رباعي بالعربي *' if ui_lang=='ar' else 'Patient Full Name *' }}</label>
+              <input type="text" name="name" id="patientName" required placeholder="{{ 'مثال: نورا رضا شحات' if ui_lang=='ar' else 'e.g. John Doe' }}" oninput="onPatientNameInput()">
+            </div>
+
+            <div class="rd-col-2 rd-field">
+              <label>{{ 'اسم المريض بالإنجليزية (لأجهزة الأشعة MWL)' if ui_lang=='ar' else 'English Worklist Name (DICOM MWL)' }}</label>
+              <input type="text" name="worklist_name" id="worklistName" placeholder="{{ 'توليد تلقائي بالحروف اللاتينية' if ui_lang=='ar' else 'Auto-transliterated' }}" dir="ltr">
+            </div>
+
+            <!-- Age & Date of Birth Calculator -->
+            <div class="rd-col-2 rd-field">
+              <label>{{ 'السن (سنة / شهر / يوم)' if ui_lang=='ar' else 'Age (Years / Months / Days)' }}</label>
+              <div class="rd-age-group">
+                <input type="number" name="age_years" id="ageYears" min="0" max="130" placeholder="{{ 'سنة' if ui_lang=='ar' else 'Yrs' }}" oninput="syncAgeToDob()">
+                <input type="number" name="age_months" id="ageMonths" min="0" max="11" placeholder="{{ 'شهر' if ui_lang=='ar' else 'Mos' }}" oninput="syncAgeToDob()">
+                <input type="number" name="age_days" id="ageDays" min="0" max="30" placeholder="{{ 'يوم' if ui_lang=='ar' else 'Days' }}" oninput="syncAgeToDob()">
+              </div>
+            </div>
+
+            <div class="rd-col-2 rd-field">
+              <label>{{ 'تاريخ الميلاد' if ui_lang=='ar' else 'Date of Birth' }}</label>
+              <input type="date" name="dob" id="patientDob" onchange="syncDobToAge()">
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'النوع' if ui_lang=='ar' else 'Gender' }}</label>
+              <div class="rd-radio-group">
+                <label><input type="radio" name="sex" value="M" checked> {{ 'ذكر' if ui_lang=='ar' else 'Male' }}</label>
+                <label><input type="radio" name="sex" value="F"> {{ 'أنثى' if ui_lang=='ar' else 'Female' }}</label>
+              </div>
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'رقم التليفون / الموبايل' if ui_lang=='ar' else 'Phone / Mobile' }}</label>
+              <input type="tel" name="phone" id="patientPhone" placeholder="01xxxxxxxxx" dir="ltr">
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'الرقم القومي (14 رقم)' if ui_lang=='ar' else 'National ID (14 digits)' }}</label>
+              <input type="text" name="national_id" id="patientNationalId" maxlength="14" dir="ltr" oninput="syncNationalIdToDob(this.value)">
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'العنوان / المدينة' if ui_lang=='ar' else 'Address / City' }}</label>
+              <input type="text" name="address" id="patientAddress" placeholder="{{ 'مثال: سنباط / الزقازيق' if ui_lang=='ar' else 'City / Address' }}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Examination & Visit Data -->
+        <div class="rd-section">
+          <div class="rd-section-title">
+            <span>🔬 {{ 'بيانات الفحص والزيارة (Examination & Clinical Details)' if ui_lang=='ar' else 'Examination & Visit Details' }}</span>
+          </div>
+
+          <!-- Modality Pills / Filter -->
+          <div class="rd-modality-tabs">
+            <button type="button" class="rd-mod-btn active" data-mod="" onclick="filterProceduresByModality('')">{{ 'جميع الأقسام' if ui_lang=='ar' else 'All' }}</button>
+            <button type="button" class="rd-mod-btn" data-mod="DX" onclick="filterProceduresByModality('DX')">📷 {{ 'الأشعة العادية DX' if ui_lang=='ar' else 'X-Ray DX' }}</button>
+            <button type="button" class="rd-mod-btn" data-mod="CT" onclick="filterProceduresByModality('CT')">🔄 {{ 'الأشعة المقطعية CT' if ui_lang=='ar' else 'CT Scan' }}</button>
+            <button type="button" class="rd-mod-btn" data-mod="MR" onclick="filterProceduresByModality('MR')">🧲 {{ 'الرنين المغناطيسي MR' if ui_lang=='ar' else 'MRI' }}</button>
+            <button type="button" class="rd-mod-btn" data-mod="US" onclick="filterProceduresByModality('US')">📡 {{ 'السونار والدوبلر US' if ui_lang=='ar' else 'Ultrasound' }}</button>
+            <button type="button" class="rd-mod-btn" data-mod="EEG" onclick="filterProceduresByModality('EEG')">⚡ {{ 'رسم المخ EEG' if ui_lang=='ar' else 'EEG / EMG' }}</button>
+          </div>
+
+          <div class="rd-form-grid">
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'الفرع *' if ui_lang=='ar' else 'Branch *' }}</label>
+              <select name="branch_id" id="formBranch" required onchange="onFormBranchChange()">
+                {% for b in branches %}
+                  <option value="{{ b.id }}" {% if (branch_id==b.id) or (not branch_id and user_default_branch==b.id) %}selected{% endif %}>🏢 {{ b.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'الجهاز *' if ui_lang=='ar' else 'Device *' }}</label>
+              <select name="device_id" id="formDevice" required onchange="onFormDeviceChange()">
+                {% for d in all_devices %}
+                  <option value="{{ d.id }}" data-branch="{{ d.branch_id }}" data-modality="{{ d.modality }}">{{ d.modality }} — {{ d.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="rd-col-2 rd-field">
+              <label>{{ 'اسم الفحص / الخدمة *' if ui_lang=='ar' else 'Procedure / Examination *' }}</label>
+              <select name="procedure_id" id="formProcedure" required onchange="onProcedureChange()">
+                <option value="">-- {{ 'اختر الفحص المطلـوب' if ui_lang=='ar' else 'Choose Examination' }} --</option>
+                {% for p in procedures %}
+                  <option value="{{ p.id }}" data-modality="{{ p.modality }}" data-price="{{ p.base_price or 0 }}" data-name="{{ p.name }}">
+                    [{{ p.modality }}] {{ p.name_ar if (ui_lang=='ar' and p.name_ar) else p.name }} ({{ '%.0f'|format(p.base_price or 0) }} ج.م)
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'الطبيب المحول' if ui_lang=='ar' else 'Referring Doctor' }}</label>
+              <select name="referring_doctor_id" id="formReferring">
+                <option value="">— {{ 'بدون طبيب محول' if ui_lang=='ar' else 'None' }} —</option>
+                {% for r in referring_doctors %}
+                  <option value="{{ r.id }}">{{ r.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'الطبيب المعالج / القارئ' if ui_lang=='ar' else 'Assigned Radiologist' }}</label>
+              <select name="assigned_doctor_id" id="formAssigned">
+                <option value="">— {{ 'توزيع تلقائي' if ui_lang=='ar' else 'Auto Assign' }} —</option>
+                {% for doc in assigned_doctors %}
+                  <option value="{{ doc.id }}">👨‍⚕️ {{ doc.full_name or doc.username }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'تاريخ ووقت الحجز' if ui_lang=='ar' else 'Scheduled Time' }}</label>
+              <input type="datetime-local" name="scheduled" id="formScheduled" value="{{ datetime_now.strftime('%Y-%m-%dT%H:%M') if datetime_now else '' }}">
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'الأولوية' if ui_lang=='ar' else 'Priority' }}</label>
+              <select name="priority" id="formPriority">
+                <option value="ROUTINE">{{ 'عادي (Routine)' if ui_lang=='ar' else 'ROUTINE' }}</option>
+                <option value="URGENT">{{ 'عاجل (Urgent)' if ui_lang=='ar' else 'URGENT' }}</option>
+                <option value="STAT">{{ 'طوارئ (STAT)' if ui_lang=='ar' else 'STAT' }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Financials & Safe -->
+        <div class="rd-section rd-financial-box">
+          <div class="rd-section-title" style="color:#10b981; border-color:#059669;">
+            <span>💵 {{ 'الحسابات والخزينة (Financials & Payment)' if ui_lang=='ar' else 'Financials & Safe' }}</span>
+          </div>
+
+          <div class="rd-form-grid">
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'السعر الإجمالي (ج.م)' if ui_lang=='ar' else 'Gross Price (EGP)' }}</label>
+              <input type="number" step="0.5" name="gross_price" id="formGross" value="0" class="rd-money-highlight" oninput="calculateFinances()">
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'الخصم (ج.م)' if ui_lang=='ar' else 'Discount (EGP)' }}</label>
+              <input type="number" step="0.5" name="discount_amount" id="formDiscount" value="0" oninput="calculateFinances()">
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'الصافي المطلوب (ج.م)' if ui_lang=='ar' else 'Net Amount (EGP)' }}</label>
+              <input type="number" step="0.5" id="formNet" value="0" readonly style="background:#334155; font-weight:bold; color:#f8fafc;">
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'المدفوع الآن (ج.م) *' if ui_lang=='ar' else 'Paid Amount *' }}</label>
+              <input type="number" step="0.5" name="paid_amount" id="formPaid" value="0" style="border-color:#10b981; font-weight:bold; color:#10b981;" oninput="calculateFinances()">
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'المتبقي (ج.م)' if ui_lang=='ar' else 'Remaining (EGP)' }}</label>
+              <input type="number" step="0.5" id="formRemaining" value="0" readonly style="background:#334155; font-weight:bold; color:#f59e0b;">
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'طريقة الدفع (الخزينة) *' if ui_lang=='ar' else 'Payment Method *' }}</label>
+              <select name="payment_method" id="formPayMethod">
+                <option value="CASH">💵 {{ 'نقدي CASH (خزينة الفرع)' if ui_lang=='ar' else 'CASH (Branch Drawer)' }}</option>
+                <option value="VISA">💳 {{ 'بطاقة فيزا / ماستركارد' if ui_lang=='ar' else 'CARD / VISA' }}</option>
+                <option value="WALLET">📱 {{ 'محفظة إلكترونية (فودافون كاش)' if ui_lang=='ar' else 'WALLET' }}</option>
+                <option value="BANK_TRANSFER">🏦 {{ 'تحويل بنكي' if ui_lang=='ar' else 'BANK' }}</option>
+              </select>
+            </div>
+
+            <div class="rd-col-2 rd-field">
+              <label>{{ 'رقم المرجع / الإيصال السابق' if ui_lang=='ar' else 'Reference / Receipt Note' }}</label>
+              <input type="text" name="payment_reference" id="formPayRef" placeholder="{{ 'رقم العملية أو ملاحظات الإيصال...' if ui_lang=='ar' else 'Reference / Notes' }}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Actions & Direct Print Options -->
+        <div class="rd-footer-actions">
+          <div style="display:flex; gap:16px; align-items:center;">
+            <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:#f8fafc; font-size:13px; font-weight:600;">
+              <input type="checkbox" id="autoPrintReceipt" checked style="width:16px; height:16px;">
+              🖨️ {{ 'فتح إيصال السداد للطباعة فورياً بعد الحفظ' if ui_lang=='ar' else 'Auto print receipt on save' }}
+            </label>
+            <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:#f8fafc; font-size:13px; font-weight:600;">
+              <input type="checkbox" id="autoPrintSticker" style="width:16px; height:16px;">
+              🏷️ {{ 'فتح باركود الفحص للطباعة فورياً' if ui_lang=='ar' else 'Auto print sticker on save' }}
+            </label>
+          </div>
+
+          <button type="submit" id="btnSubmitForm" class="btn primary" style="padding:10px 24px; font-size:15px; font-weight:bold; background:#0284c7; border-color:#0284c7;">
+            💾 {{ 'حفظ وتسجيل الفحص وإرساله لأجهزة الأشعة (Save & Push MWL)' if ui_lang=='ar' else 'Save & Push to MWL' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+
+<script>
+// Transliteration Map
+const worklistMap = {{ worklist_name_map|tojson }};
+let currentSelectedReceiptId = {{ (selected_order.latest_receipt.id if (selected_order and selected_order.latest_receipt) else 0) }};
+let currentSelectedOrderId = {{ (selected_order.id if selected_order else 0) }};
+
+// 1. System Sidebar Toggle (Global Fullscreen Mode)
+let sysSidebarState = localStorage.getItem('radbridge_reception_sys_sidebar') || 'expanded';
+
+function applySysSidebarState(state){
+  sysSidebarState = state;
+  localStorage.setItem('radbridge_reception_sys_sidebar', state);
+  document.body.classList.remove('sidebar-mode-hidden', 'sidebar-mode-compact');
+  
+  const icon = document.getElementById('sysSidebarIcon');
+  const text = document.getElementById('sysSidebarText');
+  if(state === 'hidden'){
+    document.body.classList.add('sidebar-mode-hidden');
+    if(icon) icon.textContent = '⛶';
+    if(text) text.textContent = 'إظهار القائمة';
+  } else {
+    if(icon) icon.textContent = '☰';
+    if(text) text.textContent = 'القائمة الرئيسية';
+  }
+}
+
+function toggleSystemSidebar(){
+  if(sysSidebarState === 'hidden'){
+    applySysSidebarState('expanded');
+  } else {
+    applySysSidebarState('hidden');
+  }
+}
+
+// 2. Cases Sidebar Toggle (Inside Reception Desk)
+let casesSidebarHidden = localStorage.getItem('radbridge_reception_cases_sidebar') === 'hidden';
+
+function applyCasesSidebarState(hidden){
+  casesSidebarHidden = hidden;
+  localStorage.setItem('radbridge_reception_cases_sidebar', hidden ? 'hidden' : 'visible');
+  const sidebar = document.getElementById('rdSidebar');
+  const text = document.getElementById('casesSidebarText');
+  if(sidebar){
+    sidebar.classList.toggle('collapsed', hidden);
+  }
+  if(text){
+    text.textContent = hidden ? 'إظهار الحالات' : 'طي الحالات';
+  }
+}
+
+function toggleCasesSidebar(){
+  applyCasesSidebarState(!casesSidebarHidden);
+}
+
+function latinSuggestion(val){
+  return Array.from(val).map(ch => worklistMap[ch] ?? (ch.codePointAt(0)<128 || /\s/.test(ch) ? ch : '')).join('').replace(/[^A-Za-z0-9 '\-]+/g,' ').replace(/\s+/g,' ').trim().toUpperCase();
+}
+
+function onPatientNameInput(){
+  const name = document.getElementById('patientName').value;
+  const wl = document.getElementById('worklistName');
+  if(!wl.dataset.manualEdited){
+    wl.value = latinSuggestion(name);
+  }
+}
+
+document.getElementById('worklistName').addEventListener('input', function(){
+  this.dataset.manualEdited = '1';
+});
+
+// Age <-> DOB sync
+function syncAgeToDob(){
+  const y = parseInt(document.getElementById('ageYears').value) || 0;
+  const m = parseInt(document.getElementById('ageMonths').value) || 0;
+  const d = parseInt(document.getElementById('ageDays').value) || 0;
+  if(y === 0 && m === 0 && d === 0) return;
+  const now = new Date();
+  const birthYear = now.getFullYear() - y;
+  const birthMonth = now.getMonth() - m;
+  const birthDay = now.getDate() - d;
+  const birthDate = new Date(birthYear, birthMonth, birthDay);
+  document.getElementById('patientDob').value = birthDate.toISOString().split('T')[0];
+}
+
+function syncDobToAge(){
+  const dobVal = document.getElementById('patientDob').value;
+  if(!dobVal) return;
+  const birth = new Date(dobVal);
+  const now = new Date();
+  let years = now.getFullYear() - birth.getFullYear();
+  let months = now.getMonth() - birth.getMonth();
+  let days = now.getDate() - birth.getDate();
+  if(days < 0){
+    months -= 1;
+    days += 30;
+  }
+  if(months < 0){
+    years -= 1;
+    months += 12;
+  }
+  document.getElementById('ageYears').value = Math.max(0, years);
+  document.getElementById('ageMonths').value = Math.max(0, months);
+  document.getElementById('ageDays').value = Math.max(0, days);
+}
+
+// Egyptian National ID to DOB & Gender sync
+function syncNationalIdToDob(nid){
+  nid = (nid || '').trim();
+  if(nid.length === 14 && /^\d+$/.test(nid)){
+    const century = nid[0] === '2' ? '19' : (nid[0] === '3' ? '20' : null);
+    if(century){
+      const year = century + nid.substring(1, 3);
+      const month = nid.substring(3, 5);
+      const day = nid.substring(5, 7);
+      document.getElementById('patientDob').value = year + '-' + month + '-' + day;
+      syncDobToAge();
+      const genderDigit = parseInt(nid[12]);
+      const sexRadios = document.getElementsByName('sex');
+      for(const r of sexRadios){
+        r.checked = (genderDigit % 2 === 1 && r.value === 'M') || (genderDigit % 2 === 0 && r.value === 'F');
+      }
+    }
+  }
+}
+
+// Branch <-> Device filter
+function onFormBranchChange(){
+  const branchId = document.getElementById('formBranch').value;
+  const devSelect = document.getElementById('formDevice');
+  let firstVisible = null;
+  for(const opt of devSelect.options){
+    const match = (opt.dataset.branch === branchId);
+    opt.hidden = !match;
+    opt.disabled = !match;
+    if(match && !firstVisible) firstVisible = opt;
+  }
+  if(firstVisible){
+    devSelect.value = firstVisible.value;
+    onFormDeviceChange();
+  }
+}
+
+function onFormDeviceChange(){
+  const devSelect = document.getElementById('formDevice');
+  const selectedOpt = devSelect.options[devSelect.selectedIndex];
+  if(selectedOpt){
+    const modality = selectedOpt.dataset.modality;
+    filterProceduresByModality(modality);
+  }
+}
+
+function filterProceduresByModality(mod){
+  document.querySelectorAll('.rd-mod-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mod === mod);
+  });
+  const procSelect = document.getElementById('formProcedure');
+  let firstMatch = null;
+  for(const opt of procSelect.options){
+    if(!opt.value){ opt.hidden = false; continue; }
+    const match = (!mod || opt.dataset.modality === mod);
+    opt.hidden = !match;
+    opt.disabled = !match;
+    if(match && !firstMatch) firstMatch = opt;
+  }
+  if(firstMatch && !procSelect.value){
+    procSelect.value = firstMatch.value;
+    onProcedureChange();
+  }
+}
+
+function onProcedureChange(){
+  const procSelect = document.getElementById('formProcedure');
+  const opt = procSelect.options[procSelect.selectedIndex];
+  if(opt && opt.dataset.price){
+    document.getElementById('formGross').value = opt.dataset.price;
+    calculateFinances();
+  }
+}
+
+function calculateFinances(){
+  const gross = parseFloat(document.getElementById('formGross').value) || 0;
+  const discount = parseFloat(document.getElementById('formDiscount').value) || 0;
+  const net = Math.max(0, gross - discount);
+  document.getElementById('formNet').value = net;
+  
+  let paidInp = document.getElementById('formPaid');
+  if(!paidInp.dataset.manualEdited){
+    paidInp.value = net;
+  }
+  const paid = parseFloat(paidInp.value) || 0;
+  const remaining = Math.max(0, net - paid);
+  document.getElementById('formRemaining').value = remaining;
+}
+
+document.getElementById('formPaid').addEventListener('input', function(){
+  this.dataset.manualEdited = '1';
+  calculateFinances();
+});
+
+// Patient Mode Switch
+function setPatientMode(mode){
+  document.getElementById('patientMode').value = mode;
+  document.getElementById('modeBtnNew').style.background = (mode === 'new' ? '#0284c7' : '#334155');
+  document.getElementById('modeBtnNew').style.color = (mode === 'new' ? '#fff' : '#cbd5e1');
+  document.getElementById('modeBtnExisting').style.background = (mode === 'existing' ? '#0284c7' : '#334155');
+  document.getElementById('modeBtnExisting').style.color = (mode === 'existing' ? '#fff' : '#cbd5e1');
+  document.getElementById('existingPatientSearchWrap').style.display = (mode === 'existing' ? 'block' : 'none');
+  if(mode === 'existing'){
+    document.getElementById('existingPatientSearch').focus();
+  }
+}
+
+// Live Autocomplete for Existing Patients
+const searchInp = document.getElementById('existingPatientSearch');
+const autoBox = document.getElementById('patientAutocomplete');
+let searchDebounce = null;
+
+searchInp.addEventListener('input', function(){
+  clearTimeout(searchDebounce);
+  const q = this.value.trim();
+  if(q.length < 2){
+    autoBox.style.display = 'none';
+    return;
+  }
+  searchDebounce = setTimeout(async () => {
+    try {
+      const res = await fetch(`{{ url_for('api_reception_search_patients') }}?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if(data.ok && data.patients.length > 0){
+        autoBox.innerHTML = data.patients.map(p => `
+          <div class="rd-autocomplete-item" onclick="chooseExistingPatient(${JSON.stringify(p).replace(/"/g, '&quot;')})">
+            <b>${p.name}</b> <small style="color:#94a3b8;">(${p.patient_id}) - ${p.phone || 'بدون هاتف'}</small>
+          </div>
+        `).join('');
+        autoBox.style.display = 'block';
+      } else {
+        autoBox.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:12px;">لا توجد نتائج مطابقة</div>';
+        autoBox.style.display = 'block';
+      }
+    } catch(e){}
+  }, 250);
+});
+
+function chooseExistingPatient(p){
+  document.getElementById('selectedPatientId').value = p.id;
+  document.getElementById('patientName').value = p.name;
+  document.getElementById('worklistName').value = p.worklist_name || latinSuggestion(p.name);
+  let cleanDob = (p.dob || '').replace(/-/g, '');
+  if(cleanDob.length === 8){
+    document.getElementById('patientDob').value = cleanDob.slice(0,4) + '-' + cleanDob.slice(4,6) + '-' + cleanDob.slice(6,8);
+  } else {
+    document.getElementById('patientDob').value = p.dob || '';
+  }
+  syncDobToAge();
+  document.getElementById('patientPhone').value = p.phone || '';
+  document.getElementById('patientNationalId').value = p.national_id || '';
+  document.getElementById('patientAddress').value = p.address || '';
+  if(p.sex){
+    const r = document.querySelector(`input[name="sex"][value="${p.sex}"]`);
+    if(r) r.checked = true;
+  }
+  autoBox.style.display = 'none';
+  searchInp.value = `${p.name} (${p.patient_id})`;
+}
+
+// Reset for New Patient
+function resetFormForNewPatient(){
+  document.querySelectorAll('.rd-case-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('patientMode').value = 'new';
+  setPatientMode('new');
+  document.getElementById('selectedPatientId').value = '';
+  document.getElementById('patientName').value = '';
+  document.getElementById('worklistName').value = '';
+  document.getElementById('worklistName').dataset.manualEdited = '';
+  document.getElementById('ageYears').value = '';
+  document.getElementById('ageMonths').value = '';
+  document.getElementById('ageDays').value = '';
+  document.getElementById('patientDob').value = '';
+  document.getElementById('patientPhone').value = '';
+  document.getElementById('patientNationalId').value = '';
+  document.getElementById('patientAddress').value = '';
+  document.getElementById('formGross').value = '0';
+  document.getElementById('formDiscount').value = '0';
+  document.getElementById('formNet').value = '0';
+  document.getElementById('formPaid').value = '0';
+  document.getElementById('formPaid').dataset.manualEdited = '';
+  document.getElementById('formRemaining').value = '0';
+  document.getElementById('formPayRef').value = '';
+  
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('formScheduled').value = now.toISOString().slice(0,16);
+
+  document.getElementById('btnPrintReceipt').disabled = true;
+  document.getElementById('btnPrintSticker').disabled = true;
+  document.getElementById('btnWorkOrder').setAttribute('disabled', 'disabled');
+  document.getElementById('btnWorkOrder').href = '#';
+  currentSelectedReceiptId = 0;
+  currentSelectedOrderId = 0;
+  
+  document.getElementById('patientName').focus();
+}
+
+// Select a Case Card from Left List
+function selectCaseCard(card){
+  document.querySelectorAll('.rd-case-card').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+
+  const d = card.dataset;
+  currentSelectedOrderId = d.id;
+  currentSelectedReceiptId = d.receiptId ? parseInt(d.receiptId) : 0;
+
+  setPatientMode('existing');
+  document.getElementById('selectedPatientId').value = d.patientId;
+  document.getElementById('patientName').value = d.patientName;
+  document.getElementById('worklistName').value = d.worklistName || latinSuggestion(d.patientName);
+  
+  let cleanDob = (d.dob || '').replace(/-/g, '');
+  if(cleanDob.length === 8){
+    document.getElementById('patientDob').value = cleanDob.slice(0,4) + '-' + cleanDob.slice(4,6) + '-' + cleanDob.slice(6,8);
+  } else {
+    document.getElementById('patientDob').value = d.dob || '';
+  }
+  syncDobToAge();
+  
+  document.getElementById('patientPhone').value = d.phone || '';
+  document.getElementById('patientNationalId').value = d.nationalId || '';
+  document.getElementById('patientAddress').value = d.address || '';
+  if(d.sex){
+    const r = document.querySelector(`input[name="sex"][value="${d.sex}"]`);
+    if(r) r.checked = true;
+  }
+
+  if(d.branchId) document.getElementById('formBranch').value = d.branchId;
+  onFormBranchChange();
+
+  if(d.deviceId) document.getElementById('formDevice').value = d.deviceId;
+  if(d.modality) filterProceduresByModality(d.modality);
+  if(d.procedureId) document.getElementById('formProcedure').value = d.procedureId;
+  
+  if(d.referring) document.getElementById('formReferring').value = d.referring;
+  if(d.assigned) document.getElementById('formAssigned').value = d.assigned;
+  if(d.scheduled) document.getElementById('formScheduled').value = d.scheduled;
+
+  document.getElementById('formGross').value = d.gross;
+  document.getElementById('formDiscount').value = d.discount;
+  document.getElementById('formNet').value = (parseFloat(d.gross) - parseFloat(d.discount)) || 0;
+  document.getElementById('formPaid').value = d.paid;
+  document.getElementById('formPaid').dataset.manualEdited = '1';
+  document.getElementById('formRemaining').value = d.remaining;
+
+  document.getElementById('btnPrintReceipt').disabled = !currentSelectedReceiptId;
+  document.getElementById('btnPrintSticker').disabled = false;
+  document.getElementById('btnWorkOrder').removeAttribute('disabled');
+  document.getElementById('btnWorkOrder').href = `/orders/${d.id}`;
+}
+
+// Print Actions
+function printSelectedReceipt(){
+  if(currentSelectedReceiptId){
+    window.open(`/receipts/${currentSelectedReceiptId}`, '_blank', 'width=850,height=700');
+  } else {
+    alert('لا يوجد إيصال سداد مسجل لهذه الحالة.');
+  }
+}
+
+function printSelectedSticker(){
+  if(currentSelectedOrderId){
+    window.open(`/orders/${currentSelectedOrderId}/sticker`, '_blank', 'width=650,height=500');
+  }
+}
+
+// Client-side quick filter in case list
+document.getElementById('rdCaseSearch').addEventListener('input', function(){
+  const q = this.value.toLowerCase().trim();
+  let count = 0;
+  document.querySelectorAll('.rd-case-card').forEach(card => {
+    const text = (card.dataset.patientName + ' ' + card.dataset.phone + ' ' + card.dataset.accession).toLowerCase();
+    const match = !q || text.includes(q);
+    card.style.display = match ? 'block' : 'none';
+    if(match) count++;
+  });
+  document.getElementById('rdCasesCount').textContent = count;
+});
+
+// Auto-print receipt if requested via URL param
+{% if print_receipt_id %}
+window.addEventListener('DOMContentLoaded', () => {
+  window.open('/receipts/{{ print_receipt_id }}', '_blank', 'width=850,height=700');
+});
+{% endif %}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  applySysSidebarState(sysSidebarState);
+  applyCasesSidebarState(casesSidebarHidden);
+  onFormBranchChange();
+  calculateFinances();
+  {% if not selected_order %}
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('formScheduled').value = now.toISOString().slice(0,16);
+  {% endif %}
+});
+</script>
+{% endblock %}

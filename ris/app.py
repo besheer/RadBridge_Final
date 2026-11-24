@@ -14538,6 +14538,358 @@ def schedule_maintenance():
     return redirect(url_for('schedule_calendar',date=start_at.date().isoformat(),device_id=device.id))
 
 
+
+# ============================================================
+# Quick Reception Desk (كاونتر الاستقبال السريع)
+# ============================================================
+
+@app.route('/reception/desk', methods=['GET', 'POST'])
+@login_required
+def reception_desk():
+    if not (has_perm('*') or has_perm('appointments.manage') or has_perm('orders.create') or has_perm('patients.view') or has_perm('cashier.workstation')):
+        abort(403)
+        
+    from registration_policy import allowed_registration_branches, require_registration_branch
+    allowed_branches = allowed_registration_branches()
+    branches_q = Branch.query.filter_by(active=True)
+    if allowed_branches is not None:
+        branches_q = branches_q.filter(Branch.id.in_(allowed_branches))
+    visible_branches = branches_q.order_by(Branch.name).all()
+
+    u = current_user()
+    user_default_branch = None
+    if u and getattr(u, 'branch_id', None):
+        if allowed_branches is None or u.branch_id in allowed_branches:
+            user_default_branch = u.branch_id
+    if not user_default_branch and u:
+        defaults = registration_defaults_for(u)
+        if defaults and defaults.default_branch_id:
+            if allowed_branches is None or defaults.default_branch_id in allowed_branches:
+                user_default_branch = defaults.default_branch_id
+    if not user_default_branch and visible_branches:
+        user_default_branch = visible_branches[0].id
+
+    if request.method == 'POST':
+        action = (request.form.get('action') or 'REGISTER').upper()
+        if action == 'REGISTER' and not (has_perm('*') or has_perm('orders.create') or has_perm('appointments.manage')):
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                return jsonify({'ok': False, 'error': 'Permission denied.'}), 403
+            flash('Permission denied to register orders.', 'danger')
+            return redirect(url_for('reception_desk'))
+
+        try:
+            # 1. Branch, Device, Procedure resolution
+            branch_id = request.form.get('branch_id', type=int) or user_default_branch
+            require_registration_branch(branch_id)
+            branch = Branch.query.get_or_404(branch_id)
+            
+            device_id = request.form.get('device_id', type=int)
+            procedure_id = request.form.get('procedure_id', type=int)
+            if not device_id or not procedure_id:
+                raise ValueError('Branch, device, and examination are required.')
+            
+            device = Device.query.get_or_404(device_id)
+            proc = Procedure.query.get_or_404(procedure_id)
+            
+            if device.branch_id != branch.id:
+                raise ValueError('Selected device does not belong to the selected branch.')
+            if (proc.modality or '').upper() != (device.modality or '').upper():
+                raise ValueError(f'{proc.name} is not compatible with {device.name}.')
+            if not procedure_available_in_branch(proc.id, branch.id):
+                raise ValueError(f'{proc.name} is not available in {branch.name}.')
+
+            # 2. Patient Resolution
+            patient_mode = (request.form.get('patient_mode') or 'new').strip().lower()
+            if patient_mode == 'existing':
+                patient_id = request.form.get('patient_id', type=int)
+                if not patient_id:
+                    raise ValueError('Choose an existing patient.')
+                patient = Patient.query.get_or_404(patient_id)
+                
+                new_phone = (request.form.get('phone') or '').strip()
+                if new_phone and new_phone != (patient.phone or ''):
+                    patient.phone = new_phone
+                new_nat = (request.form.get('national_id') or '').strip()
+                if new_nat and new_nat != (patient.national_id or ''):
+                    patient.national_id = new_nat
+                new_addr = (request.form.get('address') or '').strip()
+                if new_addr and new_addr != (patient.address or ''):
+                    patient.address = new_addr
+            else:
+                name = (request.form.get('name') or '').strip()
+                if not name:
+                    raise ValueError('Patient name is required / اسم المريض مطلوب.')
+                
+                dob_raw = (request.form.get('dob') or '').strip()
+                age_years = request.form.get('age_years', type=int)
+                age_months = request.form.get('age_months', type=int) or 0
+                age_days = request.form.get('age_days', type=int) or 0
+                dob_estimated = False
+                
+                if dob_raw:
+                    try:
+                        dob_dt = datetime.strptime(dob_raw.replace('/', '-'), '%Y-%m-%d')
+                        dob = dob_dt.strftime('%Y%m%d')
+                    except Exception:
+                        dob = dob_raw.replace('-', '').replace('/', '')[:8]
+                elif age_years is not None and age_years >= 0:
+                    dob_estimated = True
+                    calc_dt = datetime.now().date() - timedelta(days=int(age_years * 365.25 + age_months * 30.4 + age_days))
+                    dob = calc_dt.strftime('%Y%m%d')
+                else:
+                    dob = ''
+                
+                sex = (request.form.get('sex') or 'M').strip().upper()
+                phone = (request.form.get('phone') or '').strip()
+                national_id = (request.form.get('national_id') or '').strip()
+                address = (request.form.get('address') or '').strip()
+                worklist_name = normalized_worklist_name(name, request.form.get('worklist_name', ''))
+                
+                duplicates = find_duplicate_patients(name, dob, phone, national_id)
+                if duplicates and request.form.get('confirm_duplicate') != '1':
+                    d = duplicates[0]
+                    if phone and not d.phone: d.phone = phone
+                    if national_id and not d.national_id: d.national_id = national_id
+                    if address and not d.address: d.address = address
+                    patient = d
+                else:
+                    patient = Patient(
+                        patient_id='TMP' + secrets.token_hex(8),
+                        name=name,
+                        dob=dob,
+                        dob_estimated=dob_estimated,
+                        sex=sex,
+                        phone=phone,
+                        national_id=national_id,
+                        address=address,
+                        worklist_name=worklist_name
+                    )
+                    db.session.add(patient)
+                    db.session.flush()
+                    patient.patient_id = generate_patient_id(patient)
+
+            # 3. Schedule Time
+            sched_raw = (request.form.get('scheduled') or '').strip()
+            try:
+                scheduled = datetime.fromisoformat(sched_raw) if sched_raw else datetime.now()
+            except Exception:
+                scheduled = datetime.now()
+
+            # 4. Pricing & Financials
+            gross_price = float(request.form.get('gross_price') or proc.base_price or 0)
+            discount_amount = float(request.form.get('discount_amount') or 0)
+            net_price = max(0.0, gross_price - discount_amount)
+            paid_amount = float(request.form.get('paid_amount') or 0)
+            payment_method = (request.form.get('payment_method') or 'CASH').strip().upper()
+            payment_ref = (request.form.get('payment_reference') or '').strip()
+
+            referring_doctor_id = request.form.get('referring_doctor_id', type=int) or None
+            assigned_doctor_id = request.form.get('assigned_doctor_id', type=int) or None
+            priority = (request.form.get('priority') or 'ROUTINE').upper()
+
+            # 5. Create Order
+            order = Order(
+                accession=new_accession(),
+                patient=patient,
+                modality=proc.modality,
+                procedure=proc.name,
+                procedure_id=proc.id,
+                branch_id=branch.id,
+                device_id=device.id,
+                station_ae=device.ae_title,
+                scheduled=scheduled,
+                referring_doctor_id=referring_doctor_id,
+                assigned_doctor_id=assigned_doctor_id,
+                priority=priority,
+                status='REGISTERED',
+                gross_price=gross_price,
+                contract_price=net_price,
+                patient_share=net_price,
+                paid_amount=paid_amount,
+                created_by=current_user().id
+            )
+            db.session.add(order)
+            db.session.flush()
+
+            # 6. Payment & Receipt
+            receipt = None
+            if paid_amount > 0:
+                receipt = Receipt(
+                    receipt_no=next_receipt_no(),
+                    order_id=order.id,
+                    amount=paid_amount,
+                    payment_method=payment_method,
+                    reference_no=payment_ref,
+                    created_by=current_user().id
+                )
+                db.session.add(receipt)
+
+                if payment_method == 'CASH':
+                    fe = FinancialEntry(
+                        entry_type='INCOME',
+                        category='RECEPTION_CASH',
+                        amount=paid_amount,
+                        branch_id=branch.id,
+                        device_id=device.id,
+                        payment_method='CASH',
+                        reference_no=order.accession,
+                        description=f'إيراد حجز استقبال: {patient.name} - {proc.name}',
+                        created_by=current_user().id,
+                        status='ACTIVE'
+                    )
+                    db.session.add(fe)
+
+            # 7. DICOM MWL Push
+            try:
+                send_mwl(order)
+            except Exception as e:
+                app.logger.warning(f"MWL push warning for accession {order.accession}: {e}")
+
+            audit('RECEPTION_DESK_REGISTER', 'order', order.id, f'{order.accession}; patient={patient.id} ({patient.name}); paid={paid_amount}')
+            db.session.commit()
+
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                return jsonify({
+                    'ok': True,
+                    'order_id': order.id,
+                    'accession': order.accession,
+                    'patient_id': patient.patient_id,
+                    'patient_name': patient.name,
+                    'receipt_id': receipt.id if receipt else None,
+                    'message': f'تم تسجيل الحجز بنجاح للمريض: {patient.name} ({order.accession})'
+                })
+
+            flash(f'تم تسجيل الحجز بنجاح للمريض: {patient.name} ({order.accession})', 'success')
+            return redirect(url_for('reception_desk', date=scheduled.strftime('%Y-%m-%d'), branch_id=branch.id, order_id=order.id, print_receipt=receipt.id if receipt else 0))
+
+        except Exception as exc:
+            db.session.rollback()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                return jsonify({'ok': False, 'error': str(exc)}), 400
+            flash(f'خطأ في التسجيل: {str(exc)}', 'danger')
+            return redirect(url_for('reception_desk'))
+
+    # GET Request:
+    day_raw = request.args.get('date', '').strip()
+    try:
+        selected_date = datetime.strptime(day_raw, '%Y-%m-%d').date() if day_raw else datetime.now().date()
+    except Exception:
+        selected_date = datetime.now().date()
+
+    branch_id_param = request.args.get('branch_id')
+    if branch_id_param is not None and branch_id_param != '':
+        try:
+            branch_id = int(branch_id_param)
+            require_registration_branch(branch_id)
+        except Exception:
+            branch_id = user_default_branch
+    else:
+        branch_id = user_default_branch
+
+    # Query today's orders for the sidebar
+    orders_q = Order.query.filter(
+        db.func.date(Order.scheduled) == selected_date
+    )
+    if branch_id:
+        orders_q = orders_q.filter(Order.branch_id == branch_id)
+    elif allowed_branches is not None:
+        orders_q = orders_q.filter(Order.branch_id.in_(allowed_branches))
+    today_orders = orders_q.order_by(Order.scheduled.desc(), Order.id.desc()).all()
+    for o in today_orders:
+        o.latest_receipt = Receipt.query.filter_by(order_id=o.id).order_by(Receipt.id.desc()).first()
+
+    # Pre-select order if requested
+    selected_order_id = request.args.get('order_id', type=int)
+    selected_order = None
+    if selected_order_id:
+        selected_order = Order.query.get(selected_order_id)
+    elif today_orders:
+        selected_order = today_orders[0]
+    if selected_order and not hasattr(selected_order, 'latest_receipt'):
+        selected_order.latest_receipt = Receipt.query.filter_by(order_id=selected_order.id).order_by(Receipt.id.desc()).first()
+
+    # Calculate Cash Drawer balance today for active branch
+    today_start = datetime.combine(selected_date, datetime.min.time())
+    today_end = datetime.combine(selected_date, datetime.max.time())
+    safe_cash = 0.0
+    safe_q_branch = branch_id or user_default_branch
+    if safe_q_branch:
+        c_in = db.session.query(db.func.coalesce(db.func.sum(Receipt.amount), 0.0))\
+            .join(Order, Receipt.order_id == Order.id)\
+            .filter(Order.branch_id == safe_q_branch, Receipt.payment_method == 'CASH', Receipt.created_at >= today_start, Receipt.created_at <= today_end).scalar() or 0.0
+        c_exp = db.session.query(db.func.coalesce(db.func.sum(FinancialEntry.amount), 0.0))\
+            .filter(FinancialEntry.branch_id == safe_q_branch, FinancialEntry.entry_type == 'EXPENSE', FinancialEntry.payment_method == 'CASH', FinancialEntry.status == 'ACTIVE', FinancialEntry.entry_date == selected_date).scalar() or 0.0
+        safe_cash = round(float(c_in) - float(c_exp), 2)
+
+    all_devices = Device.query.filter_by(active=True)\
+        .filter(Device.branch_id.in_([b.id for b in visible_branches]))\
+        .order_by(Device.priority.asc(), Device.name.asc()).all()
+
+    procedures = Procedure.query.filter_by(active=True)\
+        .order_by(Procedure.modality.asc(), Procedure.name.asc()).all()
+
+    referring_doctors = ReferringDoctor.query.filter_by(active=True)\
+        .order_by(ReferringDoctor.name.asc()).all()
+
+    assigned_doctors = assignable_doctors()
+    contracts = Contract.query.filter_by(active=True).order_by(Contract.name.asc()).all()
+    print_receipt_id = request.args.get('print_receipt', type=int)
+
+    return render_template(
+        'reception_desk.html',
+        selected_date=selected_date,
+        branch_id=branch_id,
+        branches=visible_branches,
+        user_default_branch=user_default_branch,
+        allowed_branches=allowed_branches,
+        all_devices=all_devices,
+        procedures=procedures,
+        referring_doctors=referring_doctors,
+        assigned_doctors=assigned_doctors,
+        contracts=contracts,
+        today_orders=today_orders,
+        selected_order=selected_order,
+        safe_cash=safe_cash,
+        print_receipt_id=print_receipt_id,
+        timedelta=timedelta,
+        datetime_now=datetime.now(),
+    )
+
+
+@app.route('/api/reception/search-patients')
+@login_required
+def api_reception_search_patients():
+    q = (request.args.get('q') or '').strip()
+    if not q or len(q) < 2:
+        return jsonify({'ok': True, 'patients': []})
+    
+    q_like = f"%{q}%"
+    patients = Patient.query.filter(
+        db.or_(
+            Patient.name.ilike(q_like),
+            Patient.phone.ilike(q_like),
+            Patient.patient_id.ilike(q_like),
+            Patient.national_id.ilike(q_like)
+        )
+    ).limit(20).all()
+    
+    out = []
+    for p in patients:
+        out.append({
+            'id': p.id,
+            'patient_id': p.patient_id,
+            'name': p.name,
+            'worklist_name': p.worklist_name or '',
+            'phone': p.phone or '',
+            'dob': p.dob or '',
+            'sex': p.sex or 'M',
+            'national_id': p.national_id or '',
+            'address': p.address or '',
+        })
+    return jsonify({'ok': True, 'patients': out})
+
+
+
 @app.route('/schedule/v2')
 @require_perm('appointments.view')
 def schedule_v2():
