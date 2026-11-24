@@ -720,10 +720,26 @@ body.sidebar-mode-hidden .main {
           </div>
 
           <!-- Existing Patient Search (Hidden by default) -->
-          <div id="existingPatientSearchWrap" style="display:none; margin-bottom:12px; position:relative;">
-            <label style="font-size:11.5px; font-weight:bold; color:#38bdf8;">{{ 'ابحث عن مريض سابق بالاسم أو رقم التليفون أو كود المريض:' if ui_lang=='ar' else 'Search existing patient by name, phone or ID:' }}</label>
-            <input type="text" id="existingPatientSearch" placeholder="{{ 'اكتب حرفين أو أكثر للبحث...' if ui_lang=='ar' else 'Type to search...' }}" autocomplete="off">
-            <div id="patientAutocomplete" class="rd-autocomplete" style="display:none;"></div>
+          <div id="existingPatientSearchWrap" style="display:none; margin-bottom:14px; position:relative; background:#0b1329; border:1px solid #1e3a8a; border-radius:8px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <label style="font-size:12px; font-weight:bold; color:#60a5fa; margin:0;">
+                🔍 {{ 'بحث شامل في سجلات المرضى (بالاسم، أو رقم التليفون، أو كود المريض):' if ui_lang=='ar' else 'Search by Name, Phone, or Patient ID:' }}
+              </label>
+              <span style="font-size:11px; color:#94a3b8;">{{ 'يدعم البحث بالأرقام أو مقاطع الأسماء المتباعدة' if ui_lang=='ar' else 'Supports partial phone, code, or split names' }}</span>
+            </div>
+            <div style="position:relative;">
+              <input type="text" id="existingPatientSearch" 
+                     placeholder="{{ 'اكتب اسم المريض أو رقم الهاتف أو كود المريض (مثال: نورا، 010123...، DA-005...)' if ui_lang=='ar' else 'Type name, phone or patient ID...' }}" 
+                     autocomplete="off"
+                     style="padding-right:12px; height:36px; font-size:12.5px; background:#0f172a; color:#f8fafc; border:1px solid #38bdf8; border-radius:6px; width:100%; box-shadow:0 0 10px rgba(56, 189, 248, 0.15);">
+              <div id="patientAutocomplete" class="rd-autocomplete" 
+                   style="display:none; max-height:280px; z-index:95; position:absolute; width:100%; top:40px; background:#0f172a; border:1px solid #0284c7; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.7); overflow-y:auto;">
+              </div>
+            </div>
+            <div id="selectedPatientBadge" style="display:none; margin-top:8px; padding:6px 12px; background:#064e3b; border:1px solid #059669; border-radius:6px; color:#6ee7b7; font-size:12px; justify-content:space-between; align-items:center;">
+              <span id="selectedPatientBadgeText"></span>
+              <button type="button" onclick="resetFormForNewPatient()" style="background:#047857; color:#fff; border:none; padding:2px 8px; border-radius:4px; font-size:11px; cursor:pointer;">إلغاء والتسجيل كجديد</button>
+            </div>
           </div>
 
           <div class="rd-form-grid">
@@ -1752,16 +1768,20 @@ function setPatientMode(mode){
   }
 }
 
-// Live Autocomplete for Existing Patients
+// Live Autocomplete for Existing Patients with Flexible Multi-Attribute Search
 const searchInp = document.getElementById('existingPatientSearch');
 const autoBox = document.getElementById('patientAutocomplete');
 let searchDebounce = null;
+let currentHighlightedIndex = -1;
+let currentPatientsList = [];
 
 searchInp.addEventListener('input', function(){
   clearTimeout(searchDebounce);
   const q = this.value.trim();
   if(q.length < 2){
     autoBox.style.display = 'none';
+    currentPatientsList = [];
+    currentHighlightedIndex = -1;
     return;
   }
   searchDebounce = setTimeout(async () => {
@@ -1769,19 +1789,71 @@ searchInp.addEventListener('input', function(){
       const res = await fetch(`{{ url_for('api_reception_search_patients') }}?q=${encodeURIComponent(q)}`);
       const data = await res.json();
       if(data.ok && data.patients.length > 0){
-        autoBox.innerHTML = data.patients.map(p => `
-          <div class="rd-autocomplete-item" onclick="chooseExistingPatient(${JSON.stringify(p).replace(/"/g, '&quot;')})">
-            <b>${p.name}</b> <small style="color:#94a3b8;">(${p.patient_id}) - ${p.phone || 'بدون هاتف'}</small>
+        currentPatientsList = data.patients;
+        currentHighlightedIndex = -1;
+        autoBox.innerHTML = data.patients.map((p, idx) => `
+          <div class="rd-autocomplete-item patient-search-item" id="pSearchItem_${idx}" onclick="chooseExistingPatient(${JSON.stringify(p).replace(/"/g, '&quot;')})" 
+               style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center; transition:background 0.12s;">
+            <div style="display:flex; flex-direction:column; gap:2px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="color:#f8fafc; font-weight:700; font-size:12.5px;">👤 ${p.name}</span>
+                <span style="background:#0284c7; color:#fff; font-family:monospace; font-size:11px; padding:1px 6px; border-radius:4px; font-weight:bold;">${p.patient_id}</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; font-size:11px; color:#94a3b8;">
+                <span>📱 <b style="color:#34d399;">${p.phone || 'بدون هاتف'}</b></span>
+                ${p.age_str ? `<span>🎂 ${p.age_str}</span>` : ''}
+                ${p.national_id ? `<span>🆔 ${p.national_id}</span>` : ''}
+                ${p.address ? `<span>📍 ${p.address}</span>` : ''}
+              </div>
+            </div>
+            <div>
+              <span style="font-size:11px; padding:2px 8px; background:#1e293b; color:#38bdf8; border:1px solid #0284c7; border-radius:4px;">اختيار ↵</span>
+            </div>
           </div>
         `).join('');
         autoBox.style.display = 'block';
       } else {
-        autoBox.innerHTML = '<div style="padding:10px; color:#94a3b8; font-size:12px;">لا توجد نتائج مطابقة</div>';
+        autoBox.innerHTML = '<div style="padding:10px 12px; color:#94a3b8; font-size:12px;">لا يوجد مريض مسجل مطابق لرقم التليفون أو الاسم أو الكود المدخل</div>';
         autoBox.style.display = 'block';
+        currentPatientsList = [];
       }
     } catch(e){}
-  }, 250);
+  }, 200);
 });
+
+// Keyboard navigation (ArrowDown, ArrowUp, Enter, Escape)
+searchInp.addEventListener('keydown', function(e){
+  if(autoBox.style.display === 'none' || currentPatientsList.length === 0) return;
+  const items = autoBox.querySelectorAll('.patient-search-item');
+
+  if(e.key === 'ArrowDown'){
+    e.preventDefault();
+    currentHighlightedIndex = (currentHighlightedIndex + 1) % items.length;
+    highlightPatientItem(items);
+  } else if(e.key === 'ArrowUp'){
+    e.preventDefault();
+    currentHighlightedIndex = (currentHighlightedIndex - 1 + items.length) % items.length;
+    highlightPatientItem(items);
+  } else if(e.key === 'Enter'){
+    if(currentHighlightedIndex >= 0 && currentHighlightedIndex < currentPatientsList.length){
+      e.preventDefault();
+      chooseExistingPatient(currentPatientsList[currentHighlightedIndex]);
+    }
+  } else if(e.key === 'Escape'){
+    autoBox.style.display = 'none';
+  }
+});
+
+function highlightPatientItem(items){
+  items.forEach((it, i) => {
+    if(i === currentHighlightedIndex){
+      it.style.background = '#1e3a8a';
+      it.scrollIntoView({ block: 'nearest' });
+    } else {
+      it.style.background = '';
+    }
+  });
+}
 
 function chooseExistingPatient(p){
   document.getElementById('selectedPatientId').value = p.id;
@@ -1802,7 +1874,14 @@ function chooseExistingPatient(p){
     if(r) r.checked = true;
   }
   autoBox.style.display = 'none';
-  searchInp.value = `${p.name} (${p.patient_id})`;
+  searchInp.value = `${p.name} [${p.patient_id}]`;
+
+  const badge = document.getElementById('selectedPatientBadge');
+  const badgeText = document.getElementById('selectedPatientBadgeText');
+  if(badge && badgeText){
+    badgeText.innerHTML = `✅ <b>تم اختيار المريض:</b> ${p.name} <code style="color:#fff; background:#065f46; padding:1px 6px; border-radius:3px;">${p.patient_id}</code> - هاتف: ${p.phone || 'بدون'}`;
+    badge.style.display = 'flex';
+  }
 }
 
 // Reset for New Patient
@@ -1824,6 +1903,9 @@ function resetFormForNewPatient(){
   examBasket = [];
   renderExamBasket();
   setPaymentType('CASH');
+  const badge = document.getElementById('selectedPatientBadge');
+  if(badge) badge.style.display = 'none';
+  if(searchInp) searchInp.value = '';
   document.getElementById('formGross').value = '0';
   document.getElementById('formDiscount').value = '0';
   document.getElementById('formNet').value = '0';
@@ -2193,6 +2275,9 @@ document.addEventListener('click', function(e){
   const searchInput = document.getElementById('procSearchInput');
   if(resultsBox && searchInput && !resultsBox.contains(e.target) && e.target !== searchInput){
     resultsBox.style.display = 'none';
+  }
+  if(autoBox && searchInp && !autoBox.contains(e.target) && e.target !== searchInp){
+    autoBox.style.display = 'none';
   }
 
   const refBox = document.getElementById('refSearchResults');

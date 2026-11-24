@@ -14970,19 +14970,70 @@ def api_reception_search_patients():
     q = (request.args.get('q') or '').strip()
     if not q or len(q) < 2:
         return jsonify({'ok': True, 'patients': []})
-    
-    q_like = f"%{q}%"
-    patients = Patient.query.filter(
-        db.or_(
-            Patient.name.ilike(q_like),
-            Patient.phone.ilike(q_like),
-            Patient.patient_id.ilike(q_like),
-            Patient.national_id.ilike(q_like)
-        )
-    ).limit(20).all()
-    
+
+    import re
+    digits = re.sub(r'\D', '', q)
+    words = [w for w in q.split() if len(w) > 0]
+
+    or_clauses = []
+
+    # 1. Phone search (مرونة البحث برقم التليفون مع وبدون الصفر)
+    if len(digits) >= 3:
+        or_clauses.append(Patient.phone.ilike(f'%{digits}%'))
+        if digits.startswith(('10', '11', '12', '15')):
+            or_clauses.append(Patient.phone.ilike(f'%0{digits}%'))
+        elif digits.startswith('0') and len(digits) >= 4:
+            or_clauses.append(Patient.phone.ilike(f'%{digits[1:]}%'))
+
+    # 2. Patient ID / Code search (مرونة كود المريض القديم DA والحديث P والرقم المجرد)
+    or_clauses.append(Patient.patient_id.ilike(f'%{q}%'))
+    if len(digits) >= 1:
+        or_clauses.append(Patient.patient_id.ilike(f'%{digits}%'))
+        if len(digits) <= 6:
+            or_clauses.append(Patient.patient_id.ilike(f'DA-%{digits}%'))
+            or_clauses.append(Patient.patient_id == f'DA-{digits.zfill(6)}')
+        if len(digits) <= 8:
+            or_clauses.append(Patient.patient_id.ilike(f'P%{digits}%'))
+            or_clauses.append(Patient.patient_id == f'P{digits.zfill(8)}')
+
+    # 3. National ID
+    if len(digits) >= 4:
+        or_clauses.append(Patient.national_id.ilike(f'%{digits}%'))
+
+    # 4. Multi-word Name search (مرونة البحث بالاسم وكلمات غير متتالية وتوحيد الحروف)
+    if len(words) >= 2:
+        word_ands = [Patient.name.ilike(f'%{w}%') for w in words]
+        or_clauses.append(db.and_(*word_ands))
+    else:
+        or_clauses.append(Patient.name.ilike(f'%{q}%'))
+        q_norm = q.replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا').replace('ة', 'ه').replace('ى', 'ي')
+        if q_norm != q:
+            or_clauses.append(Patient.name.ilike(f'%{q_norm}%'))
+
+    case_order = db.case(
+        (Patient.patient_id == q, 1),
+        (Patient.phone == q, 2),
+        (Patient.name.ilike(f'{q}%'), 3),
+        else_=4
+    )
+
+    patients = Patient.query.filter(db.or_(*or_clauses))        .order_by(case_order, Patient.name.asc())        .limit(35).all()
+
     out = []
     for p in patients:
+        dob_str = p.dob or ''
+        age_str = ''
+        if dob_str:
+            clean_dob = dob_str.replace('-', '')
+            if len(clean_dob) == 8:
+                try:
+                    bdate = datetime.strptime(clean_dob, '%Y%m%d').date()
+                    today = datetime.now().date()
+                    years = today.year - bdate.year - ((today.month, today.day) < (bdate.month, bdate.day))
+                    age_str = f"{years} سنة"
+                except Exception:
+                    pass
+
         out.append({
             'id': p.id,
             'patient_id': p.patient_id,
@@ -14990,6 +15041,7 @@ def api_reception_search_patients():
             'worklist_name': p.worklist_name or '',
             'phone': p.phone or '',
             'dob': p.dob or '',
+            'age_str': age_str,
             'sex': p.sex or 'M',
             'national_id': p.national_id or '',
             'address': p.address or '',
