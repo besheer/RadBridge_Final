@@ -64,6 +64,10 @@ services:
       - ./report-files:/app/report-files
       - ./attachments:/app/attachments
       - ./app.py:/app/app.py
+      - ./templates:/app/templates
+      - ./static:/app/static
+      - ./registration_policy.py:/app/registration_policy.py
+      - ./word_direct_routes.py:/app/word_direct_routes.py
 
     networks:
       - ris-network

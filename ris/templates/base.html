@@ -279,9 +279,9 @@
 </form>
 
 <div class="user-menu">
-<button class="user-trigger" id="userTrigger"><span class="avatar">{{(me.full_name or me.username)[:1]|upper}}</span><span class="user-meta"><strong>{{me.full_name or me.username}}</strong><small>{{ui_role(me.role)}}</small></span><span>⌄</span></button>
+<button class="user-trigger" id="userTrigger"><span class="avatar">{{(me.full_name or me.username)[:1]|upper}}</span><span class="user-meta"><strong>{{me.full_name or me.username}}</strong><small>{{ui_role(me.role)}}{% if me.branch %} · <span style="color:#38bdf8;">🏢 {{me.branch.name}}</span>{% else %} · <span style="color:#94a3b8;">🌐 {{'جميع الفروع' if ui_lang=='ar' else 'All Branches'}}</span>{% endif %}</small></span><span>⌄</span></button>
 <div class="user-dropdown" id="userDropdown">
-<div class="dropdown-user"><span class="avatar">{{(me.full_name or me.username)[:1]|upper}}</span><div><strong>{{me.full_name or me.username}}</strong><small>{{ui_role(me.role)}}</small></div></div>
+<div class="dropdown-user"><span class="avatar">{{(me.full_name or me.username)[:1]|upper}}</span><div><strong>{{me.full_name or me.username}}</strong><small>{{ui_role(me.role)}}</small><div style="margin-top:2px;">{% if me.branch %}<span class="status-chip" style="background:#0284c7; color:#fff; font-size:11px; padding:1px 6px; border-radius:10px;">🏢 {{me.branch.name}}</span>{% else %}<span class="status-chip" style="background:#475569; color:#e2e8f0; font-size:11px; padding:1px 6px; border-radius:10px;">🌐 {{'جميع الفروع' if ui_lang=='ar' else 'All Branches'}}</span>{% endif %}</div></div></div>
 <div class="dropdown-divider"></div>
 <a href="{{url_for('my_profile')}}">👤 {{t("nav.profile","My Profile")}}</a>
 <a href="{{url_for('my_ribbon')}}">⭐ {{t("nav.ribbon","My Ribbon")}}</a>

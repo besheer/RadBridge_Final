@@ -13617,11 +13617,41 @@ def schedule_calendar():
     if allowed_branches is not None:
         branches_q=branches_q.filter(Branch.id.in_(allowed_branches))
     visible_branches=branches_q.order_by(Branch.name).all()
-    branch_id=request.args.get('branch_id',type=int)
-    if branch_id:require_registration_branch(branch_id)
-    if not branch_id and allowed_branches is not None:
-        if not visible_branches:abort(403)
-        branch_id=visible_branches[0].id
+
+    u = current_user()
+    user_default_branch = None
+    if u and getattr(u, 'branch_id', None):
+        if allowed_branches is None or u.branch_id in allowed_branches:
+            user_default_branch = u.branch_id
+    if not user_default_branch and u:
+        defaults = registration_defaults_for(u)
+        if defaults and defaults.default_branch_id:
+            if allowed_branches is None or defaults.default_branch_id in allowed_branches:
+                user_default_branch = defaults.default_branch_id
+    if not user_default_branch and visible_branches:
+        user_default_branch = visible_branches[0].id
+
+    if allowed_branches is not None:
+        if not visible_branches:
+            abort(403)
+        if not user_default_branch or user_default_branch not in allowed_branches:
+            user_default_branch = visible_branches[0].id
+
+    branch_id_param = request.args.get('branch_id')
+    if branch_id_param is not None and branch_id_param != '':
+        try:
+            branch_id = int(branch_id_param)
+            require_registration_branch(branch_id)
+        except (ValueError, TypeError):
+            branch_id = user_default_branch
+    elif branch_id_param == '':
+        if allowed_branches is not None:
+            branch_id = user_default_branch
+        else:
+            branch_id = None
+    else:
+        branch_id = user_default_branch
+
     selected_device_id=request.args.get('device_id',type=int)
 
     devices_q=Device.query.filter_by(active=True)
@@ -13678,6 +13708,8 @@ def schedule_calendar():
         registration_doctors=assignable_doctors(),
         can_take_payment=has_perm('payments.create'),
         branch_id=branch_id,
+        user_default_branch=user_default_branch,
+        allowed_branches=allowed_branches,
         selected_device_id=selected_device_id,
     )
 
@@ -20473,7 +20505,12 @@ def admin_users():
                role_id=int(request.form['role_id']),branch_id=(int(request.form['branch_id']) if request.form.get('branch_id') else None),
                active=True,must_change_password=True)
         db.session.add(u); db.session.flush(); save_contacts(u,data,request.form); save_clinical_scope(_reporting_support_sys.modules[__name__],u,scope); audit('USER_CONTACTS_SAVE','user',u.id,'Contact fields updated'); audit('USER_CREATE','user','',u.username); db.session.commit(); flash('User created. Temporary password must be changed at first login.','success')
-    return render_template('admin_users.html',users=User.query.order_by(User.username).all(),roles=Role.query.order_by(Role.name).all(),branches=Branch.query.order_by(Branch.name).all(),contact_fields=CONTACT_FIELDS,user_contacts=contacts,user_profiles={x.user_id:x for x in UserProfile.query.all()})
+    import json
+    user_settings = {}
+    for prof in UserProfile.query.all():
+        try: user_settings[prof.user_id] = json.loads(prof.settings_json or '{}')
+        except Exception: user_settings[prof.user_id] = {}
+    return render_template('admin_users.html',users=User.query.order_by(User.username).all(),roles=Role.query.order_by(Role.name).all(),branches=Branch.query.order_by(Branch.name).all(),contact_fields=CONTACT_FIELDS,user_contacts=contacts,user_profiles={x.user_id:x for x in UserProfile.query.all()},user_settings=user_settings)
 
 @app.post('/admin/users/<int:user_id>/toggle')
 @require_perm('users.manage')
@@ -20505,12 +20542,41 @@ def admin_user_edit(user_id):
     u.branch_id=int(request.form['branch_id']) if request.form.get('branch_id') else None
     u.active=request.form.get('active')=='1'
     save_contacts(u,data,request.form)
+    p=UserProfile.query.filter_by(user_id=u.id).first()
+    if not p:
+        p=UserProfile(user_id=u.id)
+        db.session.add(p)
+    import json
+    settings=json.loads(p.settings_json or '{}')
+    settings['restrict_to_branch']=(request.form.get('restrict_to_branch')=='1')
+    p.settings_json=json.dumps(settings)
     from clinical_scope import CLINICAL_ROLES,save as save_clinical_scope
     if role.code.upper() not in CLINICAL_ROLES:save_clinical_scope(_reporting_support_sys.modules[__name__],u,None)
     audit('USER_CONTACTS_SAVE','user',u.id,'Contact fields updated')
     audit('USER_EDIT','user',u.id,f'role {old_role}->{Role.query.get(u.role_id).code if u.role_id else ""}; active={u.active}')
     db.session.commit(); flash('User updated.','success')
     return redirect(url_for('admin_users'))
+
+@app.post('/admin/users/<int:user_id>/set-branch')
+@require_perm('users.manage')
+def admin_user_set_branch(user_id):
+    u=User.query.get_or_404(user_id)
+    branch_val=request.form.get('branch_id','').strip()
+    u.branch_id=int(branch_val) if branch_val else None
+    restrict_val=request.form.get('restrict_to_branch')
+    if restrict_val is not None:
+        p=UserProfile.query.filter_by(user_id=u.id).first()
+        if not p:
+            p=UserProfile(user_id=u.id)
+            db.session.add(p)
+        import json
+        settings=json.loads(p.settings_json or '{}')
+        settings['restrict_to_branch']=(restrict_val=='1')
+        p.settings_json=json.dumps(settings)
+    db.session.commit()
+    branch_name=u.branch.name if u.branch else ('جميع الفروع' if request.cookies.get('ui_lang')=='ar' else 'All Branches')
+    audit('USER_BRANCH_SET','user',u.id,f'branch={branch_name}')
+    return jsonify(ok=True,branch_id=u.branch_id,branch_name=branch_name)
 
 @app.post('/admin/users/<int:user_id>/reset-password')
 @require_perm('users.manage')

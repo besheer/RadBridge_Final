@@ -518,9 +518,12 @@
  </div>
  <form method="get" class="rb-tools">
   <input type="hidden" name="date" value="{{selected.isoformat()}}">
-  <select name="branch_id"><option value="">{{ ui_phrase('All Branches') }}</option>{% for b in branches %}<option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select>
-  <select name="device_id"><option value="">{{ ui_phrase('All Devices') }}</option>{% for d in (devices if branch_id else all_devices) %}<option value="{{d.id}}" {% if selected_device_id==d.id %}selected{% endif %}>{{d.modality}} — {{d.name}}</option>{% endfor %}</select>
-  <button class="btn">{{ ui_phrase('Apply') }}</button>
+  <select name="branch_id" onchange="this.form.submit()">
+    {% if not allowed_branches %}<option value="" {% if not branch_id %}selected{% endif %}>{{ ui_phrase('All Branches') }}</option>{% endif %}
+    {% for b in branches %}<option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>{{b.name}}</option>{% endfor %}
+  </select>
+  <select name="device_id" onchange="this.form.submit()"><option value="">{{ ui_phrase('All Devices') }}</option>{% for d in (devices if branch_id else all_devices) %}<option value="{{d.id}}" {% if selected_device_id==d.id %}selected{% endif %}>{{d.modality}} — {{d.name}}</option>{% endfor %}</select>
+  <noscript><button class="btn">{{ ui_phrase('Apply') }}</button></noscript>
  </form>
 </div>
 
@@ -609,7 +612,7 @@
 </section>
 
 <section class="rb-pane">
-<h3>{{ ui_phrase('Visit & Examinations') }}</h3><div class="rb-grid2"><div><label for="fBranch">{{ ui_phrase('الفرع / Branch *') }}</label><select name="branch_id" id="fBranch" required>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select></div><div><label for="registrationDevice">{{ ui_phrase('الجهاز / Device *') }}</label><select id="registrationDevice">{% for d in all_devices %}<option value="{{d.id}}" data-branch="{{d.branch_id}}" data-modality="{{d.modality}}" data-name="{{d.name}}">{{d.modality}} — {{d.name}}</option>{% endfor %}</select></div></div>
+<h3>{{ ui_phrase('Visit & Examinations') }}</h3><div class="rb-grid2"><div><label for="fBranch">{{ ui_phrase('الفرع / Branch *') }}</label><select name="branch_id" id="fBranch" required>{% for b in branches %}<option value="{{b.id}}" {% if (branch_id==b.id) or (not branch_id and user_default_branch==b.id) %}selected{% endif %}>{{b.name}}</option>{% endfor %}</select></div><div><label for="registrationDevice">{{ ui_phrase('الجهاز / Device *') }}</label><select id="registrationDevice">{% for d in all_devices %}<option value="{{d.id}}" data-branch="{{d.branch_id}}" data-modality="{{d.modality}}" data-name="{{d.name}}">{{d.modality}} — {{d.name}}</option>{% endfor %}</select></div></div>
 {% include '_registration_assignment_controls.html' %}
 <div class="rb-grid3"><div><label>{{ ui_phrase('Priority') }}</label><select name="priority"><option value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option><option value="URGENT">{{ ui_phrase('URGENT') }}</option><option value="STAT">{{ ui_phrase('STAT') }}</option></select></div><div><label>{{ ui_phrase('Referring Doctor') }}</label><select name="referring_doctor_id"><option value="">—</option>{% for r in referrers %}<option value="{{r.id}}">{{r.name}}</option>{% endfor %}</select></div><div><label>{{ ui_phrase('Booking Type') }}</label><select name="waiting_list"><option value="0">{{ ui_phrase('Scheduled') }}</option><option value="1">{{ ui_phrase('Waiting List') }}</option></select></div></div>
 <div id="examRows" style="margin-top:7px"></div><button class="btn" type="button" id="addExam">{{ ui_phrase('+ Add Examination') }}</button>
@@ -924,6 +927,15 @@ function refreshRegistrationBranch(resetExams){
  modality=(matching?.dataset.modality||'').toUpperCase();
  document.getElementById('metaDevice').textContent=matching?matching.dataset.name+' · '+modality:'No active device';
  document.getElementById('sDevice').textContent=matching?.dataset.name||'—';
+ if(matching && matching.value){
+   const freeCell = findFirstFreeCell(matching.value);
+   if(freeCell && freeCell.dataset.dt){
+     const dt = freeCell.dataset.dt;
+     document.getElementById('fScheduled').value = dt;
+     document.getElementById('metaDt').textContent = dt.replace('T', ' ');
+     document.getElementById('sStart').textContent = dt.replace('T', ' ');
+   }
+ }
  if(resetExams){examRows.innerHTML='';addExam();registrationVisit.value='';loadRegistrationVisits();rbRegistrationValidation();}
 }
 document.getElementById('fBranch').addEventListener('change',()=>refreshRegistrationBranch(true));
