@@ -1949,9 +1949,8 @@ function addCurrentExamToBasket() {
   const dSel = document.getElementById('formDevice');
   const searchInp = document.getElementById('procSearchInput');
 
-  // If no new procedure is chosen yet, or the currently selected procedure is ALREADY in the basket:
-  if (!pSel || !pSel.value || examBasket.some(item => String(item.procedure_id) === String(pSel.value))) {
-    if (pSel) pSel.value = '';
+  // If no procedure is chosen yet:
+  if (!pSel || !pSel.value) {
     if (searchInp) {
       searchInp.value = '';
       searchInp.placeholder = '👇 اكتب اسم أو كود الفحص الإضافي هنا للبحث، أو اختره من القائمة بالأسفل...';
@@ -1962,6 +1961,34 @@ function addCurrentExamToBasket() {
     }
     showBasketNotice('يرجى اختيار أو كتابة الفحص الإضافي المطلوب للزيارة من القائمة أو بالبحث أعلاه.', 'info');
     return;
+  }
+
+  const p = ALL_PROCEDURES.find(x => String(x.id) === String(pSel.value));
+  if (!p) return;
+
+  // If procedure is ALREADY in the basket, allow adding as duplicate (e.g. bilateral / extra view)
+  const isDuplicate = examBasket.some(item => String(item.procedure_id) === String(p.id));
+  let isAddAsDuplicate = false;
+  if (isDuplicate) {
+    const wantDup = confirm(
+      'الفحص [' + (p.code || '') + '] (' + (p.nameAr || p.name) + ') مضاف بالفعل في قائمة هذه الزيارة.
+
+' +
+      '• هل ترغب في إضافته مرة أخرى (لتصوير جهة أخرى، أو زاوية إضافية)؟
+
+' +
+      'اضغط (موافق OK) لإضافته كفحص إضافي، أو (إلغاء Cancel) لاختيار فحص جديد.'
+    );
+    if (!wantDup) {
+      pSel.value = '';
+      if (searchInp) {
+        searchInp.value = '';
+        searchInp.placeholder = 'اكتب للبحث بكود أو اسم الفحص التالي...';
+        searchInp.focus();
+      }
+      return;
+    }
+    isAddAsDuplicate = true;
   }
 
   const p = ALL_PROCEDURES.find(x => String(x.id) === String(pSel.value));
@@ -1986,7 +2013,7 @@ function addCurrentExamToBasket() {
 
   examBasket.push({
     procedure_id: p.id,
-    procedure_name: p.nameAr || p.name,
+    procedure_name: isAddAsDuplicate ? (p.nameAr || p.name) + ' (جهة أخرى / إضافي)' : (p.nameAr || p.name),
     procedure_code: p.code || '',
     modality: p.modality,
     device_id: d.id,
