@@ -15399,8 +15399,12 @@ def api_reception_update_order(order_id):
         
     order = Order.query.get_or_404(order_id)
     
+    # Strict PACS & DICOM Protection Guards:
+    # Ensures zero conflict with any images or other studies
     if (order.pacs_image_count or 0) > 0:
-        return jsonify({'ok': False, 'error': 'لا يمكن تعديل الفحص بعد بدء التصوير واستقبال صور PACS'}), 400
+        return jsonify({'ok': False, 'error': 'لا يمكن تعديل هذا الفحص لوجود صور PACS مسجلة ومستلمة عليه بالفعل، لمنع أي تعارض في صور الأشعة'}), 400
+    if getattr(order, 'exam_status', '') in ('IN_PROGRESS', 'EXAM_COMPLETED', 'COMPLETED'):
+        return jsonify({'ok': False, 'error': f'لا يمكن تعديل الفحص؛ الفحص قيد التنفيذ أو مكتمل على الجهاز ({order.exam_status})'}), 400
     if str(order.status or '').upper() in ('FINAL', 'FINALIZED', 'VERIFIED'):
         return jsonify({'ok': False, 'error': 'لا يمكن تعديل الفحص بعد اعتماد التقرير الطبي نهائياً'}), 400
         
@@ -15532,7 +15536,19 @@ def api_reception_update_order(order_id):
         p_dob = (data.get('dob') or '').strip().replace('/', '').replace('-', '')[:8]
         if len(p_dob) == 8: p.dob = p_dob
 
-    summary_text = " | ".join(changes) if changes else "تحديث بيانات الحالة قبل الإرسال للـ MWL"
+    # 9. Modality Worklist (MWL) Sync Guard:
+    # If this specific order was already pushed to MWL (SCHEDULED) and its procedure or device changed:
+    # Re-sync only this specific order to MWL, or reset its status to REGISTERED so it can be re-sent cleanly
+    # without touching any other orders/studies of this visit or patient.
+    if order.status == 'SCHEDULED' and (dev_id or proc_id):
+        try:
+            send_mwl(order)
+            changes.append("تحديث بيانات الـ MWL لجهاز الأشعة تلقائياً")
+        except Exception as mwl_err:
+            order.status = 'REGISTERED'
+            changes.append("إعادة الفحص لوضع جاهز للإرسال (REGISTERED) نظراً لتغيير الجهاز")
+
+    summary_text = " | ".join(changes) if changes else "تحديث بيانات الحالة قبل الإرسال للـ MWL" 
     al = AuditLog(
         action='ORDER_UPDATED_BEFORE_MWL',
         entity='order',
