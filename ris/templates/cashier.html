@@ -1,20 +1,65 @@
 {% extends "base.html" %}
 {% block page_title %}{{t("cashier.title","Cashier Workstation")}}{% endblock %}
-{% block subtitle %}Collection, receipts and permission-controlled refunds.{% endblock %}
+{% block subtitle %}{{'التحصيل، الخزينة اليومية، والإيصالات والمردودات' if ui_lang=='ar' else 'Collection, branch safe balances, receipts and refunds.'}}{% endblock %}
 {% block content %}
-<form method="get" class="panel global-screen-filter"><div class="filter-grid">
-<input name="q" value="{{request.args.get('q','')}}" placeholder="{{'بحث...' if ui_lang=='ar' else 'Search...'}}">
-<input type="date" name="date_from" value="{{request.args.get('date_from','')}}">
-<input type="date" name="date_to" value="{{request.args.get('date_to','')}}">
-<select name="priority"><option value="">{{ ui_phrase('Priority') }}</option><option value="ROUTINE">{{ ui_phrase('ROUTINE') }}</option><option value="URGENT">{{ ui_phrase('URGENT') }}</option><option value="STAT">{{ ui_phrase('STAT') }}</option></select>
-</div><div class="actions"><button class="btn small primary">{{ ui_phrase('Filter') }}</button><a class="btn small" href="{{request.path}}">{{ ui_phrase('Clear') }}</a></div></form>
-<div class="panel">
-<form method="get" class="cashier-search"><input name="q" value="{{q}}" placeholder="Accession, patient ID, name or mobile"><button class="btn primary">{{t("common.search","Search")}}</button></form>
+
+<!-- Branch Safe & Daily Cashbox Card -->
+<div class="panel safe-summary-panel" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1px solid #38bdf8; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 8px;">
+    <h3 style="margin: 0; color: #38bdf8; font-size: 16px;">
+      🏦 {{ 'خزينة ودرج الفرع لليوم:' if ui_lang=='ar' else 'Daily Branch Treasury & Safe:' }} <span style="color: #fff; font-weight:bold;">{{ safe_summary.branch_name }}</span>
+    </h3>
+    <span style="font-size: 12px; color: #94a3b8;">📅 {{ today_date.strftime('%Y-%m-%d') }}</span>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;">
+    <div style="background: #1e1b4b; border: 1px solid #6366f1; border-radius: 8px; padding: 10px; text-align: center;">
+      <small style="color: #a5b4fc; font-size: 11px; display: block;">💵 {{ 'النقدية بالدرج (كاش الخزينة)' if ui_lang=='ar' else 'Cash in Drawer' }}</small>
+      <strong style="color: #38bdf8; font-size: 18px;">{{ "%.2f"|format(safe_summary.net_cash_drawer) }} <span style="font-size: 12px;">ج.م</span></strong>
+    </div>
+    <div style="background: #064e3b; border: 1px solid #10b981; border-radius: 8px; padding: 10px; text-align: center;">
+      <small style="color: #6ee7b7; font-size: 11px; display: block;">💳 {{ 'مدفوعات فيزا وكروت' if ui_lang=='ar' else 'Visa / Card' }}</small>
+      <strong style="color: #34d399; font-size: 18px;">{{ "%.2f"|format(safe_summary.card_in) }} <span style="font-size: 12px;">ج.م</span></strong>
+    </div>
+    <div style="background: #14532d; border: 1px solid #22c55e; border-radius: 8px; padding: 10px; text-align: center;">
+      <small style="color: #86efac; font-size: 11px; display: block;">📱 {{ 'محافظ إلكترونية وتحويلات' if ui_lang=='ar' else 'Wallets & Bank' }}</small>
+      <strong style="color: #4ade80; font-size: 18px;">{{ "%.2f"|format(safe_summary.wallet_in + safe_summary.bank_in) }} <span style="font-size: 12px;">ج.م</span></strong>
+    </div>
+    <div style="background: #450a0a; border: 1px solid #ef4444; border-radius: 8px; padding: 10px; text-align: center;">
+      <small style="color: #fca5a5; font-size: 11px; display: block;">🔴 {{ 'مصروفات ومردودات نقدية' if ui_lang=='ar' else 'Expenses & Refunds' }}</small>
+      <strong style="color: #f87171; font-size: 18px;">{{ "%.2f"|format(safe_summary.expenses_today + safe_summary.refunds_today) }} <span style="font-size: 12px;">ج.م</span></strong>
+    </div>
+    <div style="background: #0f766e; border: 1px solid #14b8a6; border-radius: 8px; padding: 10px; text-align: center;">
+      <small style="color: #5eead4; font-size: 11px; display: block;">🟢 {{ 'إجمالي تحصيل الفرع اليوم' if ui_lang=='ar' else 'Total Today Collected' }}</small>
+      <strong style="color: #2dd4bf; font-size: 18px;">{{ "%.2f"|format(safe_summary.total_collected) }} <span style="font-size: 12px;">ج.م</span></strong>
+    </div>
+  </div>
 </div>
+
+<form method="get" class="panel global-screen-filter">
+<div class="filter-grid" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+<input name="q" value="{{q}}" placeholder="{{'بحث برقم الزيارة، المريض، أو الهاتف...' if ui_lang=='ar' else 'Search accession, patient, phone...'}}" style="flex:2; min-width:200px;">
+<select name="branch_id" onchange="this.form.submit()" style="flex:1; min-width:160px;">
+  {% if not allowed_branches %}<option value="" {% if not branch_id %}selected{% endif %}>{{ '🏛️ جميع الفروع' if ui_lang=='ar' else 'All Branches' }}</option>{% endif %}
+  {% for b in branches %}
+    <option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>🏢 {{b.name}}</option>
+  {% endfor %}
+</select>
+<input type="date" name="date_from" value="{{date_from}}" title="{{'من تاريخ' if ui_lang=='ar' else 'From date'}}">
+<input type="date" name="date_to" value="{{date_to}}" title="{{'إلى تاريخ' if ui_lang=='ar' else 'To date'}}">
+<button class="btn small primary">{{ ui_phrase('Filter') }}</button>
+<a class="btn small" href="{{url_for('cashier_workstation')}}">{{ ui_phrase('Clear') }}</a>
+</div></form>
+
 {% for o in orders %}
 <div class="panel cashier-order">
   <div class="cashier-order-head">
-    <div><b>{{o.accession}} — {{o.patient.name}}</b><small>{{o.patient.patient_id}} · {{o.procedure}} · {{o.scheduled}}</small></div>
+    <div>
+      <b>{{o.accession}} — {{o.patient.name}}</b>
+      <div style="margin-top:2px;">
+        <span class="status-chip" style="background:#0284c7; color:#fff; font-size:11px; padding:2px 7px; border-radius:8px;">🏢 {{o.branch.name if o.branch else '—'}}</span>
+        <small style="margin-right:6px;">{{o.patient.patient_id}} · {{o.proc.name if o.proc else o.procedure}} · {{o.scheduled.strftime('%Y-%m-%d %H:%M') if o.scheduled else ''}}</small>
+      </div>
+    </div>
     <div><b>Net Due: {{discount_ctx[o.id].due|round(2)}} EGP</b><small>Discount: {{discount_ctx[o.id].discount|round(2)}} · Paid: {{(o.paid_amount or 0)|round(2)}} EGP</small></div>
   </div>
 

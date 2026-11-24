@@ -1,12 +1,100 @@
 {% extends "base.html" %}
-{% block page_title %}{{'التقارير المحاسبية' if ui_lang=='ar' else 'Accounting Reports'}}{% endblock %}
-{% block subtitle %}Collections, balances, payer shares, payment methods and delivery status.{% endblock %}
+{% block page_title %}{{'التقارير المحاسبية وخزائن الفروع' if ui_lang=='ar' else 'Accounting & Branch Reports'}}{% endblock %}
+{% block subtitle %}{{'متابعة الإيرادات والتحصيلات ورصيد الخزينة لكل فرع وحالة تسليم التقارير' if ui_lang=='ar' else 'Collections, branch safe balances, payer shares and delivery status.'}}{% endblock %}
 {% block content %}
-<form class="panel filterbar" method="get"><input type="date" name="start"><input type="date" name="end"><select name="branch_id"><option value="">{{ ui_phrase('All branches') }}</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select><button class="btn primary">{{ ui_phrase('Apply') }}</button></form>
+<form class="panel filterbar" method="get" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+  <input type="date" name="start" value="{{start}}" title="{{'من تاريخ' if ui_lang=='ar' else 'From date'}}">
+  <input type="date" name="end" value="{{end}}" title="{{'إلى تاريخ' if ui_lang=='ar' else 'To date'}}">
+  <select name="branch_id" onchange="this.form.submit()">
+    <option value="">{{ '🏛️ جميع الفروع / All branches' if ui_lang=='ar' else 'All branches' }}</option>
+    {% for b in branches %}
+      <option value="{{b.id}}" {% if branch_id==b.id %}selected{% endif %}>🏢 {{b.name}}</option>
+    {% endfor %}
+  </select>
+  <button class="btn primary">{{ ui_phrase('Apply') }}</button>
+  <a class="btn" href="{{url_for('accounting_reports_csv')}}">📥 {{ 'تصدير CSV' if ui_lang=='ar' else 'Export CSV' }}</a>
+</form>
+
 <div class="cards">
-<div class="metric"><small>{{ ui_phrase('Revenue') }}</small><b>{{'%.2f'|format(gross)}}</b></div><div class="metric"><small>{{ ui_phrase('Collected') }}</small><b>{{'%.2f'|format(collected)}}</b></div><div class="metric"><small>{{ ui_phrase('Outstanding') }}</small><b>{{'%.2f'|format(balance)}}</b></div><div class="metric"><small>{{ ui_phrase('Patient Share') }}</small><b>{{'%.2f'|format(patient_share)}}</b></div><div class="metric"><small>{{ ui_phrase('Company Share') }}</small><b>{{'%.2f'|format(company_share)}}</b></div>
+<div class="metric"><small>{{ ui_phrase('Revenue') }}</small><b>{{'%.2f'|format(gross)}} ج.م</b></div>
+<div class="metric"><small>{{ ui_phrase('Collected') }}</small><b style="color:#22c55e;">{{'%.2f'|format(collected)}} ج.م</b></div>
+<div class="metric"><small>{{ ui_phrase('Outstanding') }}</small><b style="color:#f87171;">{{'%.2f'|format(balance)}} ج.م</b></div>
+<div class="metric"><small>{{ ui_phrase('Patient Share') }}</small><b>{{'%.2f'|format(patient_share)}} ج.م</b></div>
+<div class="metric"><small>{{ ui_phrase('Company Share') }}</small><b>{{'%.2f'|format(company_share)}} ج.م</b></div>
 </div>
-<div class="grid2"><div class="panel"><h3>Payment Methods</h3><table><tr><td>{{ ui_phrase('Cash') }}</td><td>{{cash}}</td></tr><tr><td>Visa/Card</td><td>{{visa}}</td></tr><tr><td>{{ ui_phrase('Wallet') }}</td><td>{{wallet}}</td></tr><tr><td>Bank/Other</td><td>{{bank}}</td></tr></table></div>
-<div class="panel"><h3>Delivery Status</h3><table><tr><td>Report only</td><td>{{report_only}}</td></tr><tr><td>Images only</td><td>{{images_only}}</td></tr><tr><td>Both</td><td>{{both}}</td></tr><tr><td>Nothing delivered</td><td>{{none}}</td></tr></table></div></div>
-<div class="panel"><div class="table-wrap"><table><thead><tr><th>{{ ui_phrase('Accession') }}</th><th>{{ ui_phrase('Patient') }}</th><th>{{ ui_phrase('Procedure') }}</th><th>{{ ui_phrase('Paid') }}</th><th>{{ ui_phrase('Balance') }}</th><th>{{ ui_phrase('Report') }}</th><th>{{ ui_phrase('Images') }}</th><th>{{ ui_phrase('Status') }}</th></tr></thead><tbody>{% for o in rows %}<tr><td>{{o.accession}}</td><td>{{o.patient.name}}</td><td>{{o.proc.name if o.proc else o.procedure}}</td><td>{{o.paid_amount or 0}}</td><td>{{((o.patient_share or o.contract_price or o.gross_price or 0)|float)-((o.paid_amount or 0)|float)}}</td><td>{{ui_phrase('Delivered') if o.report_delivered else ui_phrase('Pending')}}</td><td>{{ui_phrase('Delivered') if o.images_delivered else ui_phrase('Pending')}}</td><td>{{o.status}}</td></tr>{% endfor %}</tbody></table></div></div>
+
+<div class="panel" style="margin-top:14px;">
+  <h3 style="color:#38bdf8;">🏛️ {{ 'مقارنة ماليات وخزائن الفروع الثلاثة' if ui_lang=='ar' else 'Branch Financial & Treasury Breakdown' }}</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ 'الفرع' if ui_lang=='ar' else 'Branch' }}</th>
+          <th>{{ 'الحالات' if ui_lang=='ar' else 'Cases' }}</th>
+          <th>{{ 'إجمالي الإيراد' if ui_lang=='ar' else 'Gross Revenue' }}</th>
+          <th>{{ 'إجمالي المحصل' if ui_lang=='ar' else 'Total Collected' }}</th>
+          <th>💵 {{ 'نقدية الخزينة (كاش)' if ui_lang=='ar' else 'Cash Safe' }}</th>
+          <th>💳 {{ 'فيزا وبطاقات' if ui_lang=='ar' else 'Cards/Visa' }}</th>
+          <th>{{ 'المتبقي طرف المرضى' if ui_lang=='ar' else 'Outstanding' }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bs in branch_stats %}
+        <tr>
+          <td><b>🏢 {{bs.branch.name}}</b></td>
+          <td><b>{{bs.cases}}</b></td>
+          <td>{{'%.2f'|format(bs.gross)}} ج.م</td>
+          <td style="color:#22c55e; font-weight:bold;">{{'%.2f'|format(bs.collected)}} ج.م</td>
+          <td style="color:#38bdf8; font-weight:bold;">{{'%.2f'|format(bs.cash)}} ج.م</td>
+          <td style="color:#a855f7;">{{'%.2f'|format(bs.card)}} ج.م</td>
+          <td style="color:#f87171;">{{'%.2f'|format(bs.balance)}} ج.م</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid2">
+<div class="panel"><h3>{{ 'طرق الدفع والتحصيل' if ui_lang=='ar' else 'Payment Methods' }}</h3>
+<table>
+<tr><td>💵 {{ ui_phrase('Cash') }} (الخزينة النقدية)</td><td><b>{{'%.2f'|format(cash)}} ج.م</b></td></tr>
+<tr><td>💳 Visa / Cards</td><td><b>{{'%.2f'|format(visa)}} ج.م</b></td></tr>
+<tr><td>📱 {{ ui_phrase('Wallet') }}</td><td><b>{{'%.2f'|format(wallet)}} ج.م</b></td></tr>
+<tr><td>🏦 Bank / Other</td><td><b>{{'%.2f'|format(bank)}} ج.م</b></td></tr>
+</table></div>
+
+<div class="panel"><h3>{{ 'حالة تسليم التقارير والصور' if ui_lang=='ar' else 'Delivery Status' }}</h3>
+<table>
+<tr><td>Report only</td><td>{{report_only}}</td></tr>
+<tr><td>Images only</td><td>{{images_only}}</td></tr>
+<tr><td>Both</td><td>{{both}}</td></tr>
+<tr><td>Nothing delivered</td><td>{{none}}</td></tr>
+</table></div></div>
+
+<div class="panel"><div class="table-wrap"><table><thead><tr>
+<th>{{ 'الفرع' if ui_lang=='ar' else 'Branch' }}</th>
+<th>{{ ui_phrase('Accession') }}</th>
+<th>{{ ui_phrase('Patient') }}</th>
+<th>{{ ui_phrase('Procedure') }}</th>
+<th>{{ ui_phrase('Paid') }}</th>
+<th>{{ ui_phrase('Balance') }}</th>
+<th>{{ ui_phrase('Report') }}</th>
+<th>{{ ui_phrase('Images') }}</th>
+<th>{{ ui_phrase('Status') }}</th>
+</tr></thead><tbody>
+{% for o in rows %}
+<tr>
+<td><span class="status-chip" style="background:#0284c7; color:#fff; font-size:11px; padding:2px 6px; border-radius:8px;">{{o.branch.name if o.branch else '—'}}</span></td>
+<td>{{o.accession}}</td>
+<td><b>{{o.patient.name}}</b></td>
+<td>{{o.proc.name if o.proc else o.procedure}}</td>
+<td style="color:#22c55e;">{{o.paid_amount or 0}} ج.م</td>
+<td style="color:#f87171;">{{((o.patient_share or o.contract_price or o.gross_price or 0)|float)-((o.paid_amount or 0)|float)}} ج.م</td>
+<td>{{ui_phrase('Delivered') if o.report_delivered else ui_phrase('Pending')}}</td>
+<td>{{ui_phrase('Delivered') if o.images_delivered else ui_phrase('Pending')}}</td>
+<td>{{o.status}}</td>
+</tr>
+{% endfor %}
+</tbody></table></div></div>
 {% endblock %}

@@ -1,18 +1,49 @@
 {% extends "base.html" %}
-{% block page_title %}{{ ui_phrase('Finance Entries') }}{% endblock %}
-{% block subtitle %}Expenses, maintenance, payroll, doctor fees, assets, liabilities and inventory purchases{% endblock %}
+{% block page_title %}{{ 'قيود المصروفات وخزائن الفروع' if ui_lang=='ar' else 'Finance & Branch Safe Entries' }}{% endblock %}
+{% block subtitle %}{{'تسجيل المصروفات والصيانة والرواتب وأتعاب الأطباء وخزينة كل فرع' if ui_lang=='ar' else 'Expenses, maintenance, payroll, doctor fees, assets, liabilities and branch safe records'}}{% endblock %}
 {% block content %}
-<div class="grid2"><form method="post" class="panel"><h3>New Entry</h3><div class="form-grid">
-<div><label>{{ ui_phrase('Date') }}</label><input type="date" name="entry_date"></div><div><label>{{ ui_phrase('Type') }}</label><select name="entry_type">{% for t in types %}<option>{{t}}</option>{% endfor %}</select></div>
-<div><label>{{ ui_phrase('Category') }}</label><input name="category"></div><div><label>{{ ui_phrase('Amount') }}</label><input type="number" min="0" step=".01" name="amount" required></div>
-<div><label>{{ ui_phrase('Branch') }}</label><select name="branch_id"><option value="">-</option>{% for b in branches %}<option value="{{b.id}}">{{b.name}}</option>{% endfor %}</select></div>
+<div class="grid2"><form method="post" class="panel"><h3>{{ 'تسجيل قيد مالي جديد' if ui_lang=='ar' else 'New Financial Entry' }}</h3><div class="form-grid">
+<div><label>{{ ui_phrase('Date') }}</label><input type="date" name="entry_date"></div>
+<div><label>{{ ui_phrase('Type') }}</label><select name="entry_type">{% for t in types %}<option>{{t}}</option>{% endfor %}</select></div>
+<div><label>{{ ui_phrase('Category') }}</label><input name="category" placeholder="بوفيه / نثرية / صيانة / سلفة / ..."></div>
+<div><label>{{ ui_phrase('Amount') }}</label><input type="number" min="0" step=".01" name="amount" required placeholder="0.00 ج.م"></div>
+<div><label>{{ 'الفرع / الخزينة' if ui_lang=='ar' else 'Branch / Safe' }}</label><select name="branch_id">
+  <option value="">{{ 'عام / غير محدد' if ui_lang=='ar' else 'General / None' }}</option>
+  {% for b in branches %}
+    <option value="{{b.id}}" {% if user_default_branch==b.id or branch_filter==b.id %}selected{% endif %}>🏢 {{b.name}}</option>
+  {% endfor %}
+</select></div>
 <div><label>{{ ui_phrase('Device') }}</label><select name="device_id"><option value="">-</option>{% for d in devices %}<option value="{{d.id}}">{{d.modality}} — {{d.name}}</option>{% endfor %}</select></div>
-<div><label>Doctor / Employee</label><select name="user_id"><option value="">-</option>{% for u in users %}<option value="{{u.id}}">{{u.full_name}}</option>{% endfor %}</select></div>
+<div><label>{{ 'الطبيب / الموظف' if ui_lang=='ar' else 'Doctor / Employee' }}</label><select name="user_id"><option value="">-</option>{% for u in users %}<option value="{{u.id}}">{{u.full_name}}</option>{% endfor %}</select></div>
 <div><label>{{ ui_phrase('Consumable') }}</label><select name="consumable_id"><option value="">-</option>{% for c in consumables %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}</select></div>
-<div><label>{{ ui_phrase('Qty') }}</label><input type="number" min="0" step=".01" name="quantity"></div><div><label>{{ ui_phrase('Payment') }}</label><select name="payment_method"><option value="CASH">{{ ui_phrase('CASH') }}</option><option>CARD</option><option>BANK</option><option value="WALLET">{{ ui_phrase('WALLET') }}</option><option>CREDIT</option></select></div>
-<div><label>{{ ui_phrase('Reference') }}</label><input name="reference_no" placeholder="Invoice / Accession / PO"></div><div class="wide"><label>{{ ui_phrase('Description') }}</label><input name="description"></div><div class="wide"><label>{{ ui_phrase('Notes') }}</label><textarea name="notes"></textarea></div>
-</div><button class="btn primary">Save Entry</button></form>
-<div class="panel"><h3>Usage</h3><p>Use DOCTOR_FEE with the case Accession in Reference for per-exam costing.</p><p>MAINTENANCE can be linked to a Device.</p><p>ASSET / LIABILITY / EQUITY feed the management balance sheet.</p></div></div>
-<div class="panel"><table><tr><th>{{ ui_phrase('Date') }}</th><th>{{ ui_phrase('Type') }}</th><th>{{ ui_phrase('Category') }}</th><th>{{ ui_phrase('Description') }}</th><th>{{ ui_phrase('Branch') }}</th><th>{{ ui_phrase('Device') }}</th><th>{{ ui_phrase('Amount') }}</th><th>{{ ui_phrase('Status') }}</th><th></th></tr>
-{% for e in rows %}<tr><td>{{e.entry_date}}</td><td>{{e.entry_type}}</td><td>{{e.category}}</td><td>{{e.description}}</td><td>{{e.branch.name if e.branch else ''}}</td><td>{{e.device.name if e.device else ''}}</td><td>{{e.amount}}</td><td>{{e.status}}</td><td>{% if e.status!='VOID' %}<form method="post" action="{{url_for('financial_entry_void',entry_id=e.id)}}"><input name="reason" required minlength="5" placeholder="Void reason"><button class="btn">Void</button></form>{% endif %}</td></tr>{% endfor %}
-</table></div>{% endblock %}
+<div><label>{{ ui_phrase('Qty') }}</label><input type="number" min="0" step=".01" name="quantity"></div>
+<div><label>{{ 'طريقة الدفع (الخزينة)' if ui_lang=='ar' else 'Payment / Safe' }}</label><select name="payment_method"><option value="CASH">💵 CASH (الخزينة النقدية)</option><option>💳 CARD</option><option>🏦 BANK</option><option value="WALLET">📱 WALLET</option><option>CREDIT</option></select></div>
+<div><label>{{ ui_phrase('Reference') }}</label><input name="reference_no" placeholder="رقم الفاتورة / إذن الصرف / الشغل"></div>
+<div class="wide"><label>{{ ui_phrase('Description') }}</label><input name="description" placeholder="البيان / سبب الصرف"></div>
+<div class="wide"><label>{{ ui_phrase('Notes') }}</label><textarea name="notes"></textarea></div>
+</div><button class="btn primary">{{ 'حفظ القيد بالخزينة' if ui_lang=='ar' else 'Save Entry' }}</button></form>
+
+<div class="panel"><h3>{{ 'دليل الاستخدام المحاسبي' if ui_lang=='ar' else 'Usage Guide' }}</h3>
+<p><b>💵 الخزينة النقدية (CASH):</b> القيود النقدية تخصم فورياً من رصيد درج الخزينة للفرع المحدد.</p>
+<p><b>👨‍⚕️ أتعاب الأطباء (DOCTOR_FEE):</b> استخدم رقم الزيارة (Accession) في خانة المرجع لحساب التكلفة المباشرة للفحص.</p>
+<p><b>🛠️ صيانة الأجهزة (MAINTENANCE):</b> يمكنك ربط القيد مباشرة بالجهاز لتحديد تكلفة صيانة كل جهاز.</p>
+<p><b>🏛️ تقارير أرباح الفروع:</b> تغذي هذه القيود تقرير <code>Branch Profitability</code> في المركز المالي.</p>
+</div></div>
+
+<div class="panel">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+  <h3 style="margin:0;">{{ 'سجل القيود المالية والخزينة' if ui_lang=='ar' else 'Financial Entries & Safe Log' }}</h3>
+  <form method="get" style="margin:0;">
+    <select name="branch_id" onchange="this.form.submit()" style="padding:4px 10px; font-size:12px; border-radius:6px; background:#1e293b; color:#f1f5f9; border:1px solid #475569;">
+      <option value="">{{ '🏛️ تصفية حسب الفرع: جميع الفروع' if ui_lang=='ar' else 'Filter by: All Branches' }}</option>
+      {% for b in branches %}
+        <option value="{{b.id}}" {% if branch_filter==b.id %}selected{% endif %}>🏢 {{b.name}}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+<div class="table-wrap">
+<table><tr><th>{{ ui_phrase('Date') }}</th><th>{{ ui_phrase('Type') }}</th><th>{{ ui_phrase('Category') }}</th><th>{{ ui_phrase('Description') }}</th><th>{{ 'الفرع' if ui_lang=='ar' else 'Branch' }}</th><th>{{ ui_phrase('Device') }}</th><th>{{ ui_phrase('Amount') }}</th><th>{{ ui_phrase('Status') }}</th><th></th></tr>
+{% for e in rows %}<tr><td>{{e.entry_date}}</td><td><b>{{e.entry_type}}</b></td><td>{{e.category}}</td><td>{{e.description}}</td><td>{% if e.branch %}<span class="status-chip" style="background:#0284c7; color:#fff; font-size:11px; padding:2px 6px; border-radius:8px;">🏢 {{e.branch.name}}</span>{% else %}-{% endif %}</td><td>{{e.device.name if e.device else ''}}</td><td style="font-weight:bold;">{{'%.2f'|format(e.amount|float)}} ج.م</td><td>{{e.status}}</td><td>{% if e.status!='VOID' %}<form method="post" action="{{url_for('financial_entry_void',entry_id=e.id)}}" style="margin:0;"><input name="reason" required minlength="5" placeholder="{{'سبب الإلغاء' if ui_lang=='ar' else 'Void reason'}}" style="padding:2px 6px; font-size:11px;"><button class="btn small danger">Void</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="9" style="text-align:center;">{{ 'لا توجد قيود مسجلة' if ui_lang=='ar' else 'No entries found.' }}</td></tr>{% endfor %}
+</table></div></div>
+{% endblock %}

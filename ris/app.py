@@ -3485,6 +3485,9 @@ def _financial_dataset(key,f):
         rows=[[c.code,c.name,c.unit,_money(c.stock_qty),_money(c.reorder_level),_money(usage.get(c.id,[0,0])[0]),_money(usage.get(c.id,[0,0])[1]),_money(c.stock_qty)*_money(c.unit_cost),'LOW' if _money(c.stock_qty)<=_money(c.reorder_level) else 'OK'] for c in Consumable.query.order_by(Consumable.name).all()]
     elif key in ('device_profitability','branch_profitability'):
         a={}
+        if key == 'branch_profitability':
+            for b_obj in Branch.query.filter_by(active=True).order_by(Branch.name).all():
+                a.setdefault(b_obj.name, [0, 0, 0, 0])
         for o in orders:
             name=(o.device.name if o.device else 'Unassigned') if key=='device_profitability' else (o.branch.name if o.branch else 'Unassigned')
             v=a.setdefault(name,[0,0,0,0]);v[0]+=1;v[1]+=_order_revenue(o);v[2]+=_order_direct_consumable_cost(o)
@@ -18885,6 +18888,7 @@ def financial_center_export(fmt):
 @app.route('/accounting/entries',methods=['GET','POST'])
 @require_perm('financial.view')
 def financial_entries():
+    branch_filter=request.args.get('branch_id',type=int)
     if request.method=='POST':
         typ=(request.form.get('entry_type') or '').upper().strip()
         if typ not in FINANCE_ENTRY_TYPES:flash('Invalid entry type.','danger');return redirect(url_for('financial_entries'))
@@ -18903,10 +18907,20 @@ def financial_entries():
           consumable_id=request.form.get('consumable_id',type=int),quantity=float(request.form.get('quantity') or 0),
           reference_no=(request.form.get('reference_no') or '').strip(),notes=(request.form.get('notes') or '').strip(),created_by=current_user().id)
         db.session.add(row);audit('FINANCIAL_ENTRY_CREATE','financial_entry','',f'{typ} {amount}');db.session.commit();flash('Financial entry saved.','success')
-        return redirect(url_for('financial_entries'))
-    return render_template('financial_entries.html',rows=FinancialEntry.query.order_by(FinancialEntry.entry_date.desc(),FinancialEntry.id.desc()).limit(1000).all(),
-      types=FINANCE_ENTRY_TYPES,branches=Branch.query.order_by(Branch.name).all(),devices=Device.query.order_by(Device.modality,Device.name).all(),
-      users=User.query.filter_by(active=True).order_by(User.full_name).all(),consumables=Consumable.query.filter_by(active=True).order_by(Consumable.name).all())
+        return redirect(url_for('financial_entries',branch_id=row.branch_id or ''))
+
+    q=FinancialEntry.query
+    if branch_filter:
+        q=q.filter(FinancialEntry.branch_id==branch_filter)
+    rows=q.order_by(FinancialEntry.entry_date.desc(),FinancialEntry.id.desc()).limit(1000).all()
+
+    return render_template('financial_entries.html',rows=rows,
+      types=FINANCE_ENTRY_TYPES,branches=Branch.query.order_by(Branch.name).all(),
+      branch_filter=branch_filter,
+      user_default_branch=current_user().branch_id if current_user() else None,
+      devices=Device.query.order_by(Device.modality,Device.name).all(),
+      users=User.query.filter_by(active=True).order_by(User.full_name).all(),
+      consumables=Consumable.query.filter_by(active=True).order_by(Consumable.name).all())
 
 @app.post('/accounting/entries/<int:entry_id>/void')
 @require_perm('financial.view')
@@ -19038,12 +19052,43 @@ def mark_delivery(order_id,item_type):
 @app.route('/cashier')
 @require_perm('cashier.workstation')
 def cashier_workstation():
-    q=(request.args.get('q') or '').strip()
-    query=Order.query.join(Patient)
+    from registration_policy import allowed_registration_branches,require_registration_branch
+    allowed_branches=allowed_registration_branches()
+    visible_branches_q=Branch.query.filter_by(active=True)
+    if allowed_branches is not None:
+        visible_branches_q=visible_branches_q.filter(Branch.id.in_(allowed_branches))
+    visible_branches=visible_branches_q.order_by(Branch.name).all()
+
     user=current_user()
-    if user.role and user.role.code in ('RECEPTION','CASHIER'):
-        if not user.branch_id:abort(403)
-        query=query.filter(Order.branch_id==user.branch_id)
+    branch_id_param=request.args.get('branch_id')
+    if branch_id_param is not None and branch_id_param != '':
+        try:
+            branch_id=int(branch_id_param)
+            require_registration_branch(branch_id)
+        except Exception:
+            branch_id=user.branch_id if user and user.branch_id else (visible_branches[0].id if visible_branches else None)
+    elif branch_id_param == '':
+        branch_id=None if allowed_branches is None else (visible_branches[0].id if visible_branches else None)
+    else:
+        branch_id=user.branch_id if user and user.branch_id else (visible_branches[0].id if visible_branches else None)
+
+    q=(request.args.get('q') or '').strip()
+    date_from=request.args.get('date_from','').strip()
+    date_to=request.args.get('date_to','').strip()
+
+    query=Order.query.join(Patient)
+    if branch_id:
+        query=query.filter(Order.branch_id==branch_id)
+    elif allowed_branches is not None:
+        query=query.filter(Order.branch_id.in_(allowed_branches))
+
+    if date_from:
+        try: query=query.filter(Order.scheduled>=datetime.fromisoformat(date_from))
+        except Exception: pass
+    if date_to:
+        try: query=query.filter(Order.scheduled<datetime.fromisoformat(date_to)+timedelta(days=1))
+        except Exception: pass
+
     if q:
         query=query.filter(or_(
             Order.accession.ilike(f'%{q}%'),
@@ -19051,13 +19096,77 @@ def cashier_workstation():
             Patient.name.ilike(f'%{q}%'),
             Patient.phone.ilike(f'%{q}%')
         ))
+
     rows=query.order_by(Order.id.desc()).limit(300).all()
     payments={o.id:Payment.query.filter_by(order_id=o.id).order_by(Payment.created_at.desc()).all() for o in rows}
     refunds={}
     for o in rows:
         refunds[o.id]=PaymentRefund.query.filter_by(order_id=o.id).order_by(PaymentRefund.created_at.desc()).all()
     discount_ctx={o.id:{'due':effective_patient_due(o),'discount':total_order_discount(o),'policy':discount_policy_for(o)} for o in rows}
-    return render_template('cashier.html',orders=rows,payments=payments,refunds=refunds,q=q,discount_ctx=discount_ctx)
+
+    today_start=datetime.combine(date.today(),datetime.min.time())
+    today_end=today_start+timedelta(days=1)
+
+    receipt_q=Receipt.query.join(Order).filter(Receipt.created_at>=today_start,Receipt.created_at<today_end)
+    if branch_id:receipt_q=receipt_q.filter(Order.branch_id==branch_id)
+    elif allowed_branches is not None:receipt_q=receipt_q.filter(Order.branch_id.in_(allowed_branches))
+    today_receipts=receipt_q.all()
+
+    cash_in=0.0; card_in=0.0; wallet_in=0.0; bank_in=0.0
+    for r in today_receipts:
+        amt=float(r.amount or 0)
+        pm=(r.payment_method or 'CASH').upper()
+        if pm=='CASH': cash_in+=amt
+        elif pm in ('VISA','MASTERCARD','CARD'): card_in+=amt
+        elif pm=='WALLET': wallet_in+=amt
+        else: bank_in+=amt
+
+    refund_q=PaymentRefund.query.join(Order).filter(PaymentRefund.created_at>=today_start,PaymentRefund.created_at<today_end)
+    if branch_id:refund_q=refund_q.filter(Order.branch_id==branch_id)
+    elif allowed_branches is not None:refund_q=refund_q.filter(Order.branch_id.in_(allowed_branches))
+    refunds_today=sum(float(x.amount or 0) for x in refund_q.all())
+
+    expense_q=FinancialEntry.query.filter(
+        FinancialEntry.entry_date==date.today(),
+        FinancialEntry.status!='VOID',
+        FinancialEntry.payment_method=='CASH',
+        FinancialEntry.entry_type.in_(['EXPENSE','MAINTENANCE','DOCTOR_FEE','PAYROLL'])
+    )
+    if branch_id:expense_q=expense_q.filter(FinancialEntry.branch_id==branch_id)
+    elif allowed_branches is not None:expense_q=expense_q.filter(FinancialEntry.branch_id.in_(allowed_branches))
+    expenses_today=sum(float(e.amount or 0) for e in expense_q.all())
+
+    net_cash_drawer=round(cash_in-refunds_today-expenses_today,2)
+    total_collections_today=round(cash_in+card_in+wallet_in+bank_in,2)
+
+    cur_b=Branch.query.get(branch_id) if branch_id else None
+    safe_summary={
+        'cash_in':cash_in,
+        'card_in':card_in,
+        'wallet_in':wallet_in,
+        'bank_in':bank_in,
+        'total_collected':total_collections_today,
+        'refunds_today':refunds_today,
+        'expenses_today':expenses_today,
+        'net_cash_drawer':net_cash_drawer,
+        'branch_name':cur_b.name if cur_b else ('جميع الفروع' if request.cookies.get('ui_lang')=='ar' else 'All Branches')
+    }
+
+    return render_template(
+        'cashier.html',
+        orders=rows,
+        payments=payments,
+        refunds=refunds,
+        q=q,
+        date_from=date_from,
+        date_to=date_to,
+        branch_id=branch_id,
+        branches=visible_branches,
+        allowed_branches=allowed_branches,
+        discount_ctx=discount_ctx,
+        safe_summary=safe_summary,
+        today_date=date.today()
+    )
 
 @app.post('/payments/<int:payment_id>/refund')
 @require_perm('payments.refund')
@@ -19105,8 +19214,12 @@ def accounting_reports():
     end=request.args.get('end','').strip()
     branch_id=request.args.get('branch_id',type=int)
     q=Order.query
-    if start: q=q.filter(Order.scheduled>=datetime.fromisoformat(start))
-    if end: q=q.filter(Order.scheduled<datetime.fromisoformat(end)+timedelta(days=1))
+    if start:
+        try: q=q.filter(Order.scheduled>=datetime.fromisoformat(start))
+        except Exception: pass
+    if end:
+        try: q=q.filter(Order.scheduled<datetime.fromisoformat(end)+timedelta(days=1))
+        except Exception: pass
     if branch_id: q=q.filter(Order.branch_id==branch_id)
     rows=q.order_by(Order.scheduled.desc()).all()
     gross=sum(float(o.contract_price or o.gross_price or 0) for o in rows)
@@ -19130,10 +19243,35 @@ def accounting_reports():
     images_only=sum(1 for o in rows if o.images_delivered and not o.report_delivered)
     both=sum(1 for o in rows if o.report_delivered and o.images_delivered)
     none=sum(1 for o in rows if not o.report_delivered and not o.images_delivered)
-    return render_template('accounting_reports.html',rows=rows,gross=gross,patient_share=patient_share,
+
+    all_branches=Branch.query.filter_by(active=True).order_by(Branch.name).all()
+    branch_stats=[]
+    for b in all_branches:
+        b_orders=[o for o in rows if o.branch_id==b.id]
+        b_gross=sum(float(o.contract_price or o.gross_price or 0) for o in b_orders)
+        b_collected=sum(float(o.paid_amount or 0) for o in b_orders)
+        b_balance=sum(max(order_balance(o),0) for o in b_orders)
+        b_ids=[o.id for o in b_orders]
+        b_recs=[r for r in receipts if r.order_id in b_ids]
+        b_cash=sum(float(r.amount or 0) for r in b_recs if (r.payment_method or '').upper()=='CASH')
+        b_card=sum(float(r.amount or 0) for r in b_recs if (r.payment_method or '').upper() in ('VISA','MASTERCARD','CARD'))
+        branch_stats.append({
+            'branch':b,
+            'cases':len(b_orders),
+            'gross':b_gross,
+            'collected':b_collected,
+            'balance':b_balance,
+            'cash':b_cash,
+            'card':b_card
+        })
+
+    return render_template(
+        'accounting_reports.html',
+        rows=rows,gross=gross,patient_share=patient_share,
         company_share=company_share,collected=collected,balance=balance,cash=cash,visa=visa,wallet=wallet,bank=bank,
         report_only=report_only,images_only=images_only,both=both,none=none,
-        branches=Branch.query.order_by(Branch.name).all())
+        branches=all_branches,branch_id=branch_id,start=start,end=end,branch_stats=branch_stats
+    )
 
 @app.route('/accounting/reports.csv')
 @require_perm('export.view')
