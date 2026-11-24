@@ -831,13 +831,13 @@ body.sidebar-mode-hidden .main {
                 <label style="margin:0;">{{ 'اسم الفحص / الخدمة *' if ui_lang=='ar' else 'Procedure / Examination *' }}</label>
                 <span style="font-size:11px; color:#38bdf8;">🔍 {{ 'بحث شامل في الفحوصات والأقسام والغرف' if ui_lang=='ar' else 'Search Exams, Depts, Rooms' }}</span>
               </div>
-              <input type="text" id="procSearchInput" placeholder="{{ 'اكتب للبحث في الفحوصات أو الأقسام أو الغرف (مثال: رنين، سونار، صدر، غرفة 1، مخ...)' if ui_lang=='ar' else 'Search by procedure, department or room...' }}" style="margin-bottom:6px; border-color:#38bdf8; background:#0f172a;" oninput="onProcSearchInput(this.value)" autocomplete="off">
+              <input type="text" id="procSearchInput" placeholder="{{ 'اكتب للبحث بكود الفحص أو اسمه أو القسم أو الغرفة (مثال: XR-CHEST، رنين مخ، غرفة 1، 101...)' if ui_lang=='ar' else 'Search by code, exam, dept or room...' }}" style="margin-bottom:6px; border-color:#38bdf8; background:#0f172a;" oninput="onProcSearchInput(this.value)" autocomplete="off">
               <div id="procSearchResults" class="rd-autocomplete" style="display:none; max-height:220px; z-index:80;"></div>
               <select name="procedure_id" id="formProcedure" required onchange="onProcedureChange()">
                 <option value="">-- {{ 'اختر الفحص المطلـوب' if ui_lang=='ar' else 'Choose Examination' }} --</option>
                 {% for p in procedures %}
-                  <option value="{{ p.id }}" data-modality="{{ p.modality }}" data-price="{{ p.base_price or 0 }}" data-name="{{ p.name }}" data-name-ar="{{ p.name_ar or '' }}">
-                    [{{ p.modality }}] {{ p.name_ar if (ui_lang=='ar' and p.name_ar) else p.name }} ({{ '%.0f'|format(p.base_price or 0) }} ج.م)
+                  <option value="{{ p.id }}" data-modality="{{ p.modality }}" data-price="{{ p.base_price or 0 }}" data-name="{{ p.name }}" data-name-ar="{{ p.name_ar or '' }}" data-code="{{ p.code }}" data-id="{{ p.id }}">
+                    [{{ p.code }}] {{ p.name_ar if (ui_lang=='ar' and p.name_ar) else p.name }}
                   </option>
                 {% endfor %}
               </select>
@@ -1164,19 +1164,29 @@ function syncNationalIdToDob(nid){
   }
 }
 
-// Branch <-> Device filter
+// Strict Synchronization between Branch, Room/Device, Department/Modality, and Procedure
 function onFormBranchChange(){
   const branchId = document.getElementById('formBranch').value;
   const devSelect = document.getElementById('formDevice');
   let firstVisible = null;
+  let currentMod = document.getElementById('formModality').value;
+  let matchingModDev = null;
+
   for(const opt of devSelect.options){
     const match = (opt.dataset.branch === branchId);
     opt.hidden = !match;
     opt.disabled = !match;
-    if(match && !firstVisible) firstVisible = opt;
+    if(match){
+      if(!firstVisible) firstVisible = opt;
+      if(currentMod && opt.dataset.modality === currentMod && !matchingModDev){
+        matchingModDev = opt;
+      }
+    }
   }
-  if(firstVisible){
-    devSelect.value = firstVisible.value;
+
+  const chosenDev = matchingModDev || firstVisible;
+  if(chosenDev){
+    devSelect.value = chosenDev.value;
     onFormDeviceChange();
   }
 }
@@ -1184,33 +1194,69 @@ function onFormBranchChange(){
 function onFormDeviceChange(){
   const devSelect = document.getElementById('formDevice');
   const selectedOpt = devSelect.options[devSelect.selectedIndex];
-  if(selectedOpt){
+  if(selectedOpt && selectedOpt.dataset.modality){
     const modality = selectedOpt.dataset.modality;
-    filterProceduresByModality(modality);
+    const mSel = document.getElementById('formModality');
+    if(mSel) mSel.value = modality;
+    document.querySelectorAll('.rd-mod-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mod === modality);
+    });
+    filterProceduresStrict(modality);
   }
 }
 
 function filterProceduresByModality(mod){
-  const mSel = document.getElementById('formModality'); if(mSel) mSel.value = mod;
+  const mSel = document.getElementById('formModality');
+  if(mSel) mSel.value = mod;
   document.querySelectorAll('.rd-mod-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.mod === mod);
   });
+
+  if(mod){
+    const branchId = document.getElementById('formBranch').value;
+    const devSelect = document.getElementById('formDevice');
+    let foundDev = null;
+    for(const opt of devSelect.options){
+      if(opt.dataset.branch === branchId && opt.dataset.modality === mod){
+        foundDev = opt;
+        break;
+      }
+    }
+    if(foundDev){
+      devSelect.value = foundDev.value;
+    }
+  }
+
+  filterProceduresStrict(mod);
+}
+
+function filterProceduresStrict(mod){
   const procSelect = document.getElementById('formProcedure');
   let firstMatch = null;
+  let currentOptValid = false;
+
   for(const opt of procSelect.options){
-    if(!opt.value){ opt.hidden = false; continue; }
+    if(!opt.value){
+      opt.hidden = false;
+      opt.disabled = false;
+      continue;
+    }
     const match = (!mod || opt.dataset.modality === mod);
     opt.hidden = !match;
     opt.disabled = !match;
-    if(match && !firstMatch) firstMatch = opt;
+    if(match){
+      if(!firstMatch) firstMatch = opt;
+      if(opt.value === procSelect.value) currentOptValid = true;
+    }
   }
-  if(firstMatch && !procSelect.value){
-    procSelect.value = firstMatch.value;
+
+  if(!currentOptValid){
+    procSelect.value = firstMatch ? firstMatch.value : '';
     onProcedureChange();
   }
 }
 
-function onProcedureChange(){
+function onProcedureChange()function onProcedureChange(){
   const procSelect = document.getElementById('formProcedure');
   const opt = procSelect.options[procSelect.selectedIndex];
   if(opt && opt.dataset.price){
@@ -1500,7 +1546,7 @@ function onModalitySelectChange(mod){
   filterProceduresByModality(mod);
 }
 
-// Omni Search across Procedures, Departments, and Rooms
+// Omni Search across Procedures (Code + Name), Departments, and Rooms
 function onProcSearchInput(query){
   query = (query || '').toLowerCase().trim();
   const select = document.getElementById('formProcedure');
@@ -1513,31 +1559,36 @@ function onProcSearchInput(query){
 
   const matches = [];
 
-  // 1. Search in Departments (الأقسام)
-  const departments = [
-    { code: 'MR', name: 'الرنين المغناطيسي (MR)', keywords: 'رنين مغناطيس مغناطيسي mr mri' },
-    { code: 'CT', name: 'الأشعة المقطعية (CT)', keywords: 'مقطعية مقطعي اشعة مقطعية ct scan' },
-    { code: 'DX', name: 'الأشعة العادية الرقمية (DX)', keywords: 'عادية اشعة عادية x-ray xray dx cr' },
-    { code: 'US', name: 'السونار والدوبلر (US)', keywords: 'سونار دوبلر سونار بطن تلفزيونية us ultrasound' },
-    { code: 'EEG', name: 'رسم المخ والأعصاب (EEG)', keywords: 'رسم مخ اعصاب عضلات eeg emg' }
-  ];
-
-  departments.forEach(dept => {
-    if(dept.name.toLowerCase().includes(query) || dept.keywords.includes(query)){
+  // 1. Search by Code or Name in Procedures
+  for(let i = 0; i < select.options.length; i++){
+    const opt = select.options[i];
+    if(!opt.value) continue;
+    const code = (opt.dataset.code || '').toLowerCase();
+    const id = (opt.dataset.id || '').toLowerCase();
+    const name = (opt.dataset.name || '').toLowerCase();
+    const nameAr = (opt.dataset.nameAr || '').toLowerCase();
+    const mod = (opt.dataset.modality || '').toLowerCase();
+    const textLabel = (opt.dataset.nameAr || opt.dataset.name || opt.textContent).trim();
+    
+    // Check if query matches code, id, name, or arabic name
+    if(code.includes(query) || id === query || ('#' + id) === query || name.includes(query) || nameAr.includes(query) || (code + ' ' + nameAr).includes(query)){
       matches.push({
-        type: 'dept',
-        modality: dept.code,
-        text: `القسم: ${dept.name}`,
-        badge: 'قسم'
+        type: 'proc',
+        value: opt.value,
+        code: opt.dataset.code,
+        text: textLabel,
+        modality: opt.dataset.modality,
+        price: opt.dataset.price
       });
     }
-  });
+  }
 
-  // 2. Search in Rooms / Devices (الغرف / الأجهزة)
+  // 2. Search in Rooms / Devices (الغرف / الأجهزة) for current branch
+  const branchId = document.getElementById('formBranch').value;
   const devSelect = document.getElementById('formDevice');
   for(let i = 0; i < devSelect.options.length; i++){
     const opt = devSelect.options[i];
-    if(opt.disabled || !opt.value) continue;
+    if(opt.dataset.branch !== branchId || !opt.value) continue;
     const name = (opt.dataset.name || opt.textContent || '').toLowerCase();
     const mod = (opt.dataset.modality || '').toLowerCase();
     if(name.includes(query) || mod.includes(query) || ('غرفة ' + name).includes(query)){
@@ -1545,35 +1596,32 @@ function onProcSearchInput(query){
         type: 'room',
         deviceId: opt.value,
         modality: opt.dataset.modality,
-        text: `الغرفة: ${opt.textContent.replace('🚪', '').trim()}`,
-        badge: 'غرفة'
+        text: `الغرفة: ${opt.textContent.replace('🚪', '').trim()}`
       });
     }
   }
 
-  // 3. Search in Procedures (الفحوصات)
-  for(let i = 0; i < select.options.length; i++){
-    const opt = select.options[i];
-    if(!opt.value) continue;
-    const name = (opt.dataset.name || '').toLowerCase();
-    const nameAr = (opt.dataset.nameAr || '').toLowerCase();
-    const mod = (opt.dataset.modality || '').toLowerCase();
-    const text = (opt.textContent || '').toLowerCase();
-    
-    if(name.includes(query) || nameAr.includes(query) || mod.includes(query) || text.includes(query)){
+  // 3. Search in Departments (الأقسام)
+  const departments = [
+    { code: 'MR', name: 'قسم الرنين المغناطيسي (MR)', keywords: 'رنين مغناطيس مغناطيسي mr mri' },
+    { code: 'CT', name: 'قسم الأشعة المقطعية (CT)', keywords: 'مقطعية مقطعي اشعة مقطعية ct scan' },
+    { code: 'DX', name: 'قسم الأشعة العادية الرقمية (DX)', keywords: 'عادية اشعة عادية x-ray xray dx cr' },
+    { code: 'US', name: 'قسم السونار والدوبلر (US)', keywords: 'سونار دوبلر سونار بطن تلفزيونية us ultrasound' },
+    { code: 'EEG', name: 'قسم رسم المخ والأعصاب (EEG)', keywords: 'رسم مخ اعصاب عضلات eeg emg' }
+  ];
+
+  departments.forEach(dept => {
+    if(dept.name.toLowerCase().includes(query) || dept.keywords.includes(query)){
       matches.push({
-        type: 'proc',
-        value: opt.value,
-        text: opt.textContent.trim(),
-        modality: opt.dataset.modality,
-        price: opt.dataset.price,
-        badge: opt.dataset.modality
+        type: 'dept',
+        modality: dept.code,
+        text: dept.name
       });
     }
-  }
+  });
 
   if(matches.length > 0){
-    resultsBox.innerHTML = matches.slice(0, 12).map(m => {
+    resultsBox.innerHTML = matches.slice(0, 14).map(m => {
       if(m.type === 'dept'){
         return `
           <div class="rd-autocomplete-item" onclick="chooseSearchedDept('${m.modality}')" style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; border-bottom:1px solid #334155;">
@@ -1591,7 +1639,7 @@ function onProcSearchInput(query){
       } else {
         return `
           <div class="rd-autocomplete-item" onclick="chooseSearchedProcedure('${m.value}')" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>${m.text}</span>
+            <span><b style="color:#38bdf8;">[${m.code}]</b> ${m.text}</span>
             <span class="rd-badge-modality rd-badge-${m.modality.toLowerCase()}">${m.modality}</span>
           </div>
         `;
@@ -1599,44 +1647,24 @@ function onProcSearchInput(query){
     }).join('');
     resultsBox.style.display = 'block';
   } else {
-    resultsBox.innerHTML = '<div style="padding:8px 12px; color:#94a3b8; font-size:12px;">لا توجد نتائج مطابقة للفحص أو القسم أو الغرفة</div>';
+    resultsBox.innerHTML = '<div style="padding:8px 12px; color:#94a3b8; font-size:12px;">لا توجد نتائج مطابقة للكود أو الفحص أو الغرفة</div>';
     resultsBox.style.display = 'block';
   }
 }
 
-function chooseSearchedDept(mod){
-  filterProceduresByModality(mod);
-  document.getElementById('formModality').value = mod;
-  document.getElementById('procSearchInput').value = '';
-  document.getElementById('procSearchResults').style.display = 'none';
-}
-
-function chooseSearchedRoom(devId, mod){
-  filterProceduresByModality(mod);
-  document.getElementById('formModality').value = mod;
-  document.getElementById('formDevice').value = devId;
-  onFormDeviceChange();
-  document.getElementById('procSearchInput').value = '';
-  document.getElementById('procSearchResults').style.display = 'none';
-}
-
 function chooseSearchedProcedure(procId){
   const select = document.getElementById('formProcedure');
-  select.value = procId;
-  const opt = select.options[select.selectedIndex];
-  if(opt){
-    const mod = opt.dataset.modality;
-    filterProceduresByModality(mod);
-    select.value = procId;
-    const devSelect = document.getElementById('formDevice');
-    for(const dOpt of devSelect.options){
-      if(dOpt.dataset.modality === mod && !dOpt.disabled){
-        devSelect.value = dOpt.value;
-        break;
-      }
+  for(const opt of select.options){
+    if(opt.value === procId){
+      const mod = opt.dataset.modality;
+      filterProceduresByModality(mod);
+      select.value = procId;
+      onProcedureChange();
+      const code = opt.dataset.code || '';
+      const name = opt.dataset.nameAr || opt.dataset.name || '';
+      document.getElementById('procSearchInput').value = code ? `[${code}] ${name}` : name;
+      break;
     }
-    onProcedureChange();
-    document.getElementById('procSearchInput').value = opt.dataset.nameAr || opt.dataset.name;
   }
   document.getElementById('procSearchResults').style.display = 'none';
 }
