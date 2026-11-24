@@ -15140,6 +15140,8 @@ def api_reception_search_patients():
         if len(digits) <= 6:
             or_clauses.append(Patient.patient_id.ilike(f'DA-%{digits}%'))
             or_clauses.append(Patient.patient_id == f'DA-{digits.zfill(6)}')
+            or_clauses.append(Patient.patient_id.ilike(f'DA2-%{digits}%'))
+            or_clauses.append(Patient.patient_id == f'DA2-{digits.zfill(6)}')
         if len(digits) <= 8:
             or_clauses.append(Patient.patient_id.ilike(f'P%{digits}%'))
             or_clauses.append(Patient.patient_id == f'P{digits.zfill(8)}')
