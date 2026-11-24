@@ -14889,6 +14889,33 @@ def api_reception_search_patients():
     return jsonify({'ok': True, 'patients': out})
 
 
+@app.route('/api/reception/order/<int:order_id>/push-mwl', methods=['POST'])
+@login_required
+def api_reception_push_mwl(order_id):
+    order = Order.query.get_or_404(order_id)
+    try:
+        if not order.device_id and order.branch_id:
+            dev = route_device(order.branch_id, order.modality)
+            if dev:
+                order.device_id = dev.id
+                order.station_ae = dev.ae_title
+        send_mwl(order)
+        order.status = 'SCHEDULED'
+        audit('RECEPTION_PUSH_MWL', 'order', order.id, f'Accession {order.accession}; AE: {order.station_ae}')
+        db.session.commit()
+        return jsonify({
+            'ok': True,
+            'message': f'تم إرسال الفحص بنجاح إلى جهاز الأشعة ({order.station_ae or order.modality}) عبر Worklist!'
+        })
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({
+            'ok': False,
+            'error': str(exc)
+        }), 400
+
+
+
 
 @app.route('/schedule/v2')
 @require_perm('appointments.view')

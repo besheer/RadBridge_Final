@@ -477,9 +477,185 @@ body.sidebar-mode-hidden .main {
 .rd-badge-paid { background: #065f46; color: #6ee7b7; }
 .rd-badge-partial { background: #7c2d12; color: #fdba74; }
 .rd-badge-unpaid { background: #475569; color: #e2e8f0; }
+
+
+/* Mobile Segment Control Tabs */
+.rd-mobile-tabs {
+  display: none;
+  background: #1e293b;
+  padding: 4px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  gap: 6px;
+  border: 1px solid #334155;
+  width: 100%;
+}
+
+.rd-m-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-weight: bold;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.rd-m-tab.active {
+  background: #0284c7;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+
+@media (max-width: 900px) {
+  .rd-mobile-tabs {
+    display: flex !important;
+  }
+
+  .rd-container {
+    flex-direction: column !important;
+    gap: 8px !important;
+    min-height: auto !important;
+  }
+
+  /* In mobile: toggle between form and cases views */
+  .rd-container.view-form .rd-sidebar {
+    display: none !important;
+  }
+  .rd-container.view-form .rd-main {
+    display: flex !important;
+    width: 100% !important;
+  }
+
+  .rd-container.view-cases .rd-main {
+    display: none !important;
+  }
+  .rd-container.view-cases .rd-sidebar {
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  #btnToggleSysSidebar, #btnToggleCasesSidebar {
+    display: none !important;
+  }
+
+  .rd-main-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 8px 10px !important;
+  }
+
+  .rd-header-title {
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+
+  .rd-actions-bar {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .rd-actions-bar .btn {
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 8px 6px !important;
+    font-size: 12px !important;
+  }
+
+  .rd-form-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px 10px !important;
+  }
+
+  .rd-col-1, .rd-col-2, .rd-col-3, .rd-col-4 {
+    grid-column: span 2 !important;
+  }
+
+  .rd-modality-tabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 6px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .rd-mod-btn {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+
+  .rd-footer-actions {
+    flex-direction: column !important;
+    gap: 12px !important;
+    align-items: stretch !important;
+  }
+
+  .rd-footer-actions > div {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  #btnSubmitForm {
+    width: 100% !important;
+    padding: 12px !important;
+    font-size: 14.5px !important;
+    text-align: center !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .rd-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .rd-col-1, .rd-col-2, .rd-col-3, .rd-col-4 {
+    grid-column: span 1 !important;
+  }
+
+  .rd-main-body {
+    padding: 8px 6px !important;
+  }
+
+  .rd-section {
+    padding: 10px 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .main {
+    padding: 2px 4px 10px !important;
+  }
+
+  .rd-age-group input {
+    font-size: 12px !important;
+    padding: 6px 4px !important;
+  }
+}
+
 </style>
 
-<div class="rd-container" dir="{{ 'rtl' if ui_lang=='ar' else 'ltr' }}">
+<!-- Mobile Segment Control Tabs -->
+<div class="rd-mobile-tabs">
+  <button type="button" class="rd-m-tab active" id="tabMobileForm" onclick="switchMobileView('form')">
+    📝 {{ 'استمارة التسجيل' if ui_lang=='ar' else 'Registration Form' }}
+  </button>
+  <button type="button" class="rd-m-tab" id="tabMobileCases" onclick="switchMobileView('cases')">
+    📋 {{ 'قائمة الحالات' if ui_lang=='ar' else 'Cases List' }} (<span id="rdCasesCountMobile">{{ today_orders|length }}</span>)
+  </button>
+</div>
+
+<div class="rd-container view-form" id="rdContainer" dir="{{ 'rtl' if ui_lang=='ar' else 'ltr' }}">
   <!-- MAIN REGISTRATION AREA (First child in RTL displays on RIGHT) -->
   <main class="rd-main">
     <!-- Header with Action Buttons & Sidebar Toggles -->
@@ -510,6 +686,9 @@ body.sidebar-mode-hidden .main {
         </button>
         <button type="button" class="btn small" id="btnPrintSticker" style="background:#475569; color:#fff; border-color:#334155;" onclick="printSelectedSticker()" {% if not selected_order %}disabled{% endif %}>
           🏷️ {{ 'استيكر / باركود' if ui_lang=='ar' else 'Barcode' }}
+        </button>
+        <button type="button" class="btn small" id="btnPushMwl" style="background:#7c3aed; color:#fff; border-color:#6d28d9; font-weight:bold;" onclick="pushSelectedOrderToMwl()" {% if not selected_order %}disabled{% endif %}>
+          ⚡ {{ 'إرسال للـ MWL' if ui_lang=='ar' else 'Push to MWL' }}
         </button>
         <a class="btn small" id="btnWorkOrder" href="{{ url_for('order_detail', order_id=selected_order.id) if selected_order else '#' }}" target="_blank" style="background:#334155; color:#cbd5e1; border-color:#475569;" {% if not selected_order %}disabled{% endif %}>
           📄 {{ 'أمر الشغل' if ui_lang=='ar' else 'Work Order' }}
@@ -630,12 +809,17 @@ body.sidebar-mode-hidden .main {
               </select>
             </div>
 
-            <div class="rd-col-2 rd-field">
-              <label>{{ 'اسم الفحص / الخدمة *' if ui_lang=='ar' else 'Procedure / Examination *' }}</label>
+            <div class="rd-col-2 rd-field" style="position:relative;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                <label style="margin:0;">{{ 'اسم الفحص / الخدمة *' if ui_lang=='ar' else 'Procedure / Examination *' }}</label>
+                <span style="font-size:11px; color:#38bdf8;">🔍 {{ 'بحث سريع في الفحوصات' if ui_lang=='ar' else 'Quick Search' }}</span>
+              </div>
+              <input type="text" id="procSearchInput" placeholder="{{ 'اكتب للبحث: مخ، صدر، ركبة، فقرات، brain، chest...' if ui_lang=='ar' else 'Type to search exams...' }}" style="margin-bottom:6px; border-color:#38bdf8; background:#0f172a;" oninput="onProcSearchInput(this.value)" autocomplete="off">
+              <div id="procSearchResults" class="rd-autocomplete" style="display:none; max-height:220px; z-index:80;"></div>
               <select name="procedure_id" id="formProcedure" required onchange="onProcedureChange()">
                 <option value="">-- {{ 'اختر الفحص المطلـوب' if ui_lang=='ar' else 'Choose Examination' }} --</option>
                 {% for p in procedures %}
-                  <option value="{{ p.id }}" data-modality="{{ p.modality }}" data-price="{{ p.base_price or 0 }}" data-name="{{ p.name }}">
+                  <option value="{{ p.id }}" data-modality="{{ p.modality }}" data-price="{{ p.base_price or 0 }}" data-name="{{ p.name }}" data-name-ar="{{ p.name_ar or '' }}">
                     [{{ p.modality }}] {{ p.name_ar if (ui_lang=='ar' and p.name_ar) else p.name }} ({{ '%.0f'|format(p.base_price or 0) }} ج.م)
                   </option>
                 {% endfor %}
@@ -1133,6 +1317,8 @@ function resetFormForNewPatient(){
 
   document.getElementById('btnPrintReceipt').disabled = true;
   document.getElementById('btnPrintSticker').disabled = true;
+  const pushBtn = document.getElementById('btnPushMwl'); if(pushBtn) pushBtn.disabled = true;
+  const psInp = document.getElementById('procSearchInput'); if(psInp) psInp.value = '';
   document.getElementById('btnWorkOrder').setAttribute('disabled', 'disabled');
   document.getElementById('btnWorkOrder').href = '#';
   currentSelectedReceiptId = 0;
@@ -1143,6 +1329,7 @@ function resetFormForNewPatient(){
 
 // Select a Case Card from Cases List
 function selectCaseCard(card){
+  if(window.innerWidth <= 900) switchMobileView('form');
   document.querySelectorAll('.rd-case-card').forEach(c => c.classList.remove('active'));
   card.classList.add('active');
 
@@ -1191,6 +1378,7 @@ function selectCaseCard(card){
 
   document.getElementById('btnPrintReceipt').disabled = !currentSelectedReceiptId;
   document.getElementById('btnPrintSticker').disabled = false;
+  const pushBtn = document.getElementById('btnPushMwl'); if(pushBtn) pushBtn.disabled = false;
   document.getElementById('btnWorkOrder').removeAttribute('disabled');
   document.getElementById('btnWorkOrder').href = `/orders/${d.id}`;
 }
@@ -1221,6 +1409,7 @@ document.getElementById('rdCaseSearch').addEventListener('input', function(){
     if(match) count++;
   });
   document.getElementById('rdCasesCount').textContent = count;
+  const mCount = document.getElementById('rdCasesCountMobile'); if(mCount) mCount.textContent = count;
 });
 
 // Auto-print receipt if requested via URL param
@@ -1242,5 +1431,109 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('formScheduled').value = now.toISOString().slice(0,16);
   {% endif %}
 });
+
+
+// Instant Search in Procedures
+function onProcSearchInput(query){
+  query = (query || '').toLowerCase().trim();
+  const select = document.getElementById('formProcedure');
+  const resultsBox = document.getElementById('procSearchResults');
+  
+  if(!query){
+    resultsBox.style.display = 'none';
+    return;
+  }
+
+  const matches = [];
+  for(let i = 0; i < select.options.length; i++){
+    const opt = select.options[i];
+    if(!opt.value) continue;
+    const name = (opt.dataset.name || '').toLowerCase();
+    const nameAr = (opt.dataset.nameAr || '').toLowerCase();
+    const mod = (opt.dataset.modality || '').toLowerCase();
+    const text = (opt.textContent || '').toLowerCase();
+    
+    if(name.includes(query) || nameAr.includes(query) || mod.includes(query) || text.includes(query)){
+      matches.push({
+        value: opt.value,
+        text: opt.textContent.trim(),
+        modality: opt.dataset.modality,
+        price: opt.dataset.price
+      });
+    }
+  }
+
+  if(matches.length > 0){
+    resultsBox.innerHTML = matches.slice(0, 10).map(m => `
+      <div class="rd-autocomplete-item" onclick="chooseSearchedProcedure('${m.value}')" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>${m.text}</span>
+        <span class="rd-badge-modality rd-badge-${m.modality.toLowerCase()}">${m.modality}</span>
+      </div>
+    `).join('');
+    resultsBox.style.display = 'block';
+  } else {
+    resultsBox.innerHTML = '<div style="padding:8px 12px; color:#94a3b8; font-size:12px;">لا توجد فحوصات مطابقة</div>';
+    resultsBox.style.display = 'block';
+  }
+}
+
+function chooseSearchedProcedure(procId){
+  const select = document.getElementById('formProcedure');
+  select.value = procId;
+  const opt = select.options[select.selectedIndex];
+  if(opt){
+    const mod = opt.dataset.modality;
+    filterProceduresByModality(mod);
+    select.value = procId;
+    const devSelect = document.getElementById('formDevice');
+    for(const dOpt of devSelect.options){
+      if(dOpt.dataset.modality === mod && !dOpt.disabled){
+        devSelect.value = dOpt.value;
+        break;
+      }
+    }
+    onProcedureChange();
+    document.getElementById('procSearchInput').value = opt.dataset.nameAr || opt.dataset.name;
+  }
+  document.getElementById('procSearchResults').style.display = 'none';
+}
+
+document.addEventListener('click', function(e){
+  const resultsBox = document.getElementById('procSearchResults');
+  const searchInput = document.getElementById('procSearchInput');
+  if(resultsBox && searchInput && !resultsBox.contains(e.target) && e.target !== searchInput){
+    resultsBox.style.display = 'none';
+  }
+});
+
+async function pushSelectedOrderToMwl(){
+  if(!currentSelectedOrderId){
+    alert('يرجى اختيار حالة من قائمة الحالات أولاً.');
+    return;
+  }
+  const btn = document.getElementById('btnPushMwl');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '⏳ جارٍ الإرسال...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/reception/order/${currentSelectedOrderId}/push-mwl`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'}
+    });
+    const data = await res.json();
+    if(data.ok){
+      alert('✅ ' + data.message);
+    } else {
+      alert('⚠️ تعذر الإرسال إلى MWL:
+' + (data.error || 'حدث خطأ'));
+    }
+  } catch(e){
+    alert('حدث خطأ في الاتصال: ' + e);
+  } finally {
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
+
 </script>
 {% endblock %}
