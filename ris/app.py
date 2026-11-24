@@ -58,7 +58,7 @@ from workflow_engine import (
 )
 from patient_demographics import resolve_patient_dob
 import uuid
-from flask import Flask, request, redirect, url_for, render_template, flash, send_file, jsonify, session, abort, Response
+from flask import Flask, request, redirect, url_for, render_template, flash, send_file, jsonify, session, abort, Response, make_response
 from flask_sqlalchemy import SQLAlchemy
 from procedure_catalog import PROCEDURE_CATALOG
 from sqlalchemy import or_, text, inspect, and_, func
@@ -14633,13 +14633,21 @@ def reception_desk():
                 if not pr_id or not dev_id:
                     continue
                 p_obj = Procedure.query.get_or_404(pr_id)
-                d_obj = Device.query.get_or_404(dev_id)
-                if d_obj.branch_id != branch.id:
-                    raise ValueError(f'الجهاز ({d_obj.name}) لا يتبع الفرع المحدد ({branch.name}).')
-                if (p_obj.modality or '').upper() != (d_obj.modality or '').upper():
-                    raise ValueError(f'الفحص ({p_obj.name}) غير متوافق مع الجهاز ({d_obj.name}).')
-                if not procedure_available_in_branch(p_obj.id, branch.id):
-                    raise ValueError(f'الفحص ({p_obj.name}) غير متاح في ({branch.name}).')
+                d_obj = Device.query.get(dev_id) if dev_id else None
+                p_mod = (p_obj.modality or '').strip().upper()
+                d_mod = (d_obj.modality or '').strip().upper() if d_obj else ''
+
+                # Auto-resolve device if missing, wrong branch, or modality mismatch
+                if not d_obj or d_obj.branch_id != branch.id or d_mod != p_mod:
+                    compat_dev = Device.query.filter_by(branch_id=branch.id, active=True)\
+                        .filter(db.func.upper(Device.modality) == p_mod).first()
+                    if compat_dev:
+                        d_obj = compat_dev
+                    elif not d_obj or d_obj.branch_id != branch.id:
+                        d_obj = Device.query.filter_by(branch_id=branch.id, active=True).first()
+
+                if not d_obj:
+                    raise ValueError(f'لا يوجد جهاز أو غرفة متاحة في فرع ({branch.name}) لقسم ({p_obj.modality or "غير محدد"}).')
 
                 item_price = float(item.get('price') if item.get('price') is not None else (p_obj.base_price or 0.0))
                 total_gross += item_price
@@ -15078,7 +15086,7 @@ def reception_desk():
         .order_by(Consumable.category.asc(), Consumable.name.asc()).all()
     print_receipt_id = request.args.get('print_receipt', type=int)
 
-    return render_template(
+    resp = make_response(render_template(
         'reception_desk.html',
         selected_date=selected_date,
         branch_id=branch_id,
@@ -15097,7 +15105,11 @@ def reception_desk():
         print_receipt_id=print_receipt_id,
         timedelta=timedelta,
         datetime_now=datetime.now(),
-    )
+    ))
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    return resp
 
 
 @app.route('/api/reception/search-patients')

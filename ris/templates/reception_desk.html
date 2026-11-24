@@ -3,6 +3,9 @@
 {% block page_title %}{{ 'كاونتر الاستقبال السريع' if ui_lang=='ar' else 'Quick Reception Desk' }}{% endblock %}
 
 {% block content %}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <style>
 /* Elevate workspace directly to the top & hide unnecessary top ribbons */
 .app-header {
@@ -887,7 +890,7 @@ body.sidebar-mode-hidden .main {
                       <th style="padding:5px 8px;">الغرفة / الجهاز</th>
                       <th style="padding:5px 8px;">الفحص والكود</th>
                       <th style="padding:5px 8px; width:110px;">السعر (ج.م)</th>
-                      <th style="padding:5px 8px; width:45px; text-align:center;">إجراء</th>
+                      <th style="padding:5px 8px; width:75px; text-align:center;">إجراءات</th>
                     </tr>
                   </thead>
                   <tbody id="examBasketBody">
@@ -1833,6 +1836,58 @@ function ensureConsumable(code, defaultQty = 1) {
   return false;
 }
 
+function showBasketNotice(msg, type) {
+  type = type || 'info';
+  let notice = document.getElementById('basketNoticeBox');
+  if (!notice) {
+    notice = document.createElement('div');
+    notice.id = 'basketNoticeBox';
+    notice.style.position = 'fixed';
+    notice.style.bottom = '24px';
+    notice.style.left = '50%';
+    notice.style.transform = 'translateX(-50%)';
+    notice.style.zIndex = '9999';
+    notice.style.padding = '10px 20px';
+    notice.style.borderRadius = '8px';
+    notice.style.fontSize = '13px';
+    notice.style.fontWeight = '600';
+    notice.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+    notice.style.transition = 'all 0.3s ease';
+    document.body.appendChild(notice);
+  }
+  notice.style.background = type === 'success' ? '#065f46' : (type === 'warn' ? '#78350f' : '#0369a1');
+  notice.style.color = '#fff';
+  notice.style.border = '1px solid ' + (type === 'success' ? '#10b981' : (type === 'warn' ? '#f59e0b' : '#38bdf8'));
+  notice.textContent = msg;
+  notice.style.display = 'block';
+  notice.style.opacity = '1';
+  clearTimeout(notice._timer);
+  notice._timer = setTimeout(() => {
+    notice.style.opacity = '0';
+    setTimeout(() => { if (notice) notice.style.display = 'none'; }, 300);
+  }, 3500);
+}
+
+function duplicateBasketItem(idx) {
+  if (idx >= 0 && idx < examBasket.length) {
+    const item = examBasket[idx];
+    const newName = item.procedure_name.includes('(إضافي') 
+      ? item.procedure_name 
+      : item.procedure_name + ' (جهة أخرى / إضافي)';
+    examBasket.push({
+      procedure_id: item.procedure_id,
+      procedure_name: newName,
+      procedure_code: item.procedure_code,
+      modality: item.modality,
+      device_id: item.device_id,
+      device_name: item.device_name,
+      price: item.price
+    });
+    renderExamBasket();
+    showBasketNotice('تم تكرار الفحص لجهة أخرى أو زاوية ثانية بنجاح.', 'success');
+  }
+}
+
 function renderExamBasket() {
   const tbody = document.getElementById('examBasketBody');
   const countBadge = document.getElementById('basketCountBadge');
@@ -1861,16 +1916,29 @@ function renderExamBasket() {
       '<td style="padding:5px 8px; color:#cbd5e1; font-weight:500;">🚪 ' + item.device_name + '</td>' +
       '<td style="padding:5px 8px;"><b style="color:#38bdf8; font-family:monospace; margin-left:4px;">[' + item.procedure_code + ']</b> <span style="color:#f8fafc;">' + item.procedure_name + '</span></td>' +
       '<td style="padding:5px 8px;"><input type="number" step="0.5" min="0" value="' + item.price + '" onchange="onBasketPriceChange(' + idx + ', this.value)" style="width:85px; padding:2px 6px; height:24px; font-size:11.5px; background:#1e293b; color:#10b981; font-weight:bold; border:1px solid #475569; border-radius:4px; text-align:center;"></td>' +
-      '<td style="padding:5px 8px; text-align:center;"><button type="button" onclick="removeBasketItem(' + idx + ')" title="حذف هذا الفحص" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:13px; padding:2px 6px; border-radius:4px;">🗑️</button></td>' +
+      '<td style="padding:5px 8px; text-align:center; white-space:nowrap;">' +
+        '<button type="button" onclick="duplicateBasketItem(' + idx + ')" title="تكرار الفحص لجهة أخرى أو زاوية ثانية (Bilateral / 2 Views)" style="background:none; border:none; color:#38bdf8; cursor:pointer; font-size:13px; padding:2px 4px;">🔁</button>' +
+        '<button type="button" onclick="removeBasketItem(' + idx + ')" title="حذف هذا الفحص" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:13px; padding:2px 4px; margin-right:4px;">🗑️</button>' +
+      '</td>' +
       '</tr>';
   }
   tbody.innerHTML = htmlRows;
 
   const btnAdd = document.getElementById('btnAddMoreExam');
   if (btnAdd) {
-    btnAdd.innerHTML = '➕ <span>إضافة فحص آخر للزيارة</span>';
-    btnAdd.style.background = '#059669';
-    btnAdd.style.borderColor = '#10b981';
+    const pSel = document.getElementById('formProcedure');
+    const isNew = pSel && pSel.value && !examBasket.some(i => String(i.procedure_id) === String(pSel.value));
+    if (isNew) {
+      const p = ALL_PROCEDURES.find(x => String(x.id) === String(pSel.value));
+      const lbl = p ? (p.code || p.nameAr || p.name) : 'المحدد';
+      btnAdd.innerHTML = '➕ <span>إضافة (' + lbl + ') للزيارة</span>';
+      btnAdd.style.background = '#0284c7';
+      btnAdd.style.borderColor = '#38bdf8';
+    } else {
+      btnAdd.innerHTML = '➕ <span>إضافة فحص آخر للزيارة</span>';
+      btnAdd.style.background = '#059669';
+      btnAdd.style.borderColor = '#10b981';
+    }
   }
 
   calculateFinances();
@@ -1879,45 +1947,35 @@ function renderExamBasket() {
 function addCurrentExamToBasket() {
   const pSel = document.getElementById('formProcedure');
   const dSel = document.getElementById('formDevice');
-  if (!pSel || !pSel.value) {
-    const searchInp = document.getElementById('procSearchInput');
+  const searchInp = document.getElementById('procSearchInput');
+
+  // If no new procedure is chosen yet, or the currently selected procedure is ALREADY in the basket:
+  if (!pSel || !pSel.value || examBasket.some(item => String(item.procedure_id) === String(pSel.value))) {
+    if (pSel) pSel.value = '';
     if (searchInp) {
+      searchInp.value = '';
+      searchInp.placeholder = '👇 اكتب اسم أو كود الفحص الإضافي هنا للبحث، أو اختره من القائمة بالأسفل...';
       searchInp.focus();
-      searchInp.placeholder = 'اختر الفحص التالي من القائمة هنا لإضافته للزيارة...';
+      searchInp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      searchInp.style.outline = '2px solid #38bdf8';
+      setTimeout(() => { if (searchInp) searchInp.style.outline = ''; }, 2000);
     }
-    alert('يرجى اختيار الفحص المطلوب من القائمة أو بالبحث أعلاه لإضافته إلى الزيارة.');
-    return;
-  }
-  if (!dSel || !dSel.value) {
-    alert('يرجى اختيار الغرفة أو الجهاز للفحص.');
-    if (dSel) dSel.focus();
+    showBasketNotice('يرجى اختيار أو كتابة الفحص الإضافي المطلوب للزيارة من القائمة أو بالبحث أعلاه.', 'info');
     return;
   }
 
   const p = ALL_PROCEDURES.find(x => String(x.id) === String(pSel.value));
-  const d = ALL_DEVICES.find(x => String(x.id) === String(dSel.value));
-  if (!p || !d) return;
+  if (!p) return;
 
-  const alreadyInBasket = examBasket.some(item => String(item.procedure_id) === String(p.id) && String(item.device_id) === String(d.id));
-  if (alreadyInBasket) {
-    const wantDuplicate = confirm(
-      `الفحص [${p.code || ''}] (${p.nameAr || p.name}) مسجل بالفعل لهذه الزيارة.
-
-` +
-      `• هل ترغب في تكرار إضافته مرة أخرى لنفس الزيارة (لتصوير جهتين أو زاويتين)؟
-` +
-      `اضغط (موافق OK) لإضافته مرة ثانية، أو (إلغاء Cancel) لاختيار فحص جديد مختلف.`
-    );
-    if (!wantDuplicate) {
-      pSel.value = '';
-      const searchInp = document.getElementById('procSearchInput');
-      if (searchInp) {
-        searchInp.value = '';
-        searchInp.placeholder = 'اختر الفحص التالي لإضافته للزيارة...';
-        searchInp.focus();
-      }
-      return;
-    }
+  const branchId = document.getElementById('formBranch').value;
+  const branchDevices = ALL_DEVICES.filter(d => String(d.branchId) === String(branchId));
+  let d = branchDevices.find(x => String(x.id) === String(dSel ? dSel.value : ''));
+  if (!d || d.modality !== p.modality) {
+    d = branchDevices.find(x => x.modality === p.modality) || branchDevices[0];
+  }
+  if (!d) {
+    alert('لا يوجد جهاز متاح لقسم (' + (p.modality || '') + ') في هذا الفرع.');
+    return;
   }
 
   let itemPrice = parseFloat(p.price) || 0;
@@ -1928,7 +1986,7 @@ function addCurrentExamToBasket() {
 
   examBasket.push({
     procedure_id: p.id,
-    procedure_name: (alreadyInBasket ? (p.nameAr || p.name) + ' (إضافي)' : (p.nameAr || p.name)),
+    procedure_name: p.nameAr || p.name,
     procedure_code: p.code || '',
     modality: p.modality,
     device_id: d.id,
@@ -1938,13 +1996,13 @@ function addCurrentExamToBasket() {
 
   renderExamBasket();
 
-  // Reset dropdown and search input so next exam can be chosen immediately
+  // Reset dropdown and search input immediately so the user can easily select the next exam
   pSel.value = '';
-  const searchInp = document.getElementById('procSearchInput');
   if (searchInp) {
     searchInp.value = '';
     searchInp.placeholder = 'اكتب للبحث بكود أو اسم الفحص التالي...';
   }
+  showBasketNotice(`تمت إضافة الفحص [${p.code || ''}] ${p.nameAr || p.name} للزيارة بنجاح.`, 'success');
 }
 
 function removeBasketItem(idx) {
@@ -2621,28 +2679,24 @@ function chooseSearchedProcedure(procId){
     syncSelections({ procedureChanged: true, preferredProcedureId: p.id });
     const code = p.code || '';
     const name = p.nameAr || p.name || '';
-    document.getElementById('procSearchInput').value = code ? `[${code}] ${name}` : name;
+    const searchInp = document.getElementById('procSearchInput');
+    if (searchInp) searchInp.value = code ? `[${code}] ${name}` : name;
 
-    if (examBasket.length > 0) {
-      const isAlreadyIn = examBasket.some(item => String(item.procedure_id) === String(p.id));
-      const btn = document.getElementById('btnAddMoreExam');
-      if (btn && !isAlreadyIn) {
-        btn.innerHTML = '➕ <span>إضافة (' + (code || name) + ') للزيارة</span>';
-        btn.style.background = '#0284c7';
-        btn.style.borderColor = '#38bdf8';
-      }
+    const btn = document.getElementById('btnAddMoreExam');
+    if (btn) {
+      btn.innerHTML = '➕ <span>إضافة (' + (code || name) + ') للزيارة</span>';
+      btn.style.background = '#0284c7';
+      btn.style.borderColor = '#38bdf8';
     }
   }
-  document.getElementById('procSearchResults').style.display = 'none';
+  const searchResults = document.getElementById('procSearchResults');
+  if (searchResults) searchResults.style.display = 'none';
 }
 
 function quickAddSearchedProcedure(procId) {
   const p = ALL_PROCEDURES.find(x => String(x.id) === String(procId));
   if (!p) return;
 
-  const mSel = document.getElementById('formModality');
-  if (mSel) mSel.value = p.modality;
-  
   const branchId = document.getElementById('formBranch').value;
   const branchDevices = ALL_DEVICES.filter(d => String(d.branchId) === String(branchId));
   let dev = branchDevices.find(d => d.modality === p.modality);
@@ -2652,15 +2706,12 @@ function quickAddSearchedProcedure(procId) {
     return;
   }
 
-  const alreadyIn = examBasket.some(item => String(item.procedure_id) === String(p.id) && String(item.device_id) === String(dev.id));
-  if (alreadyIn) {
-    const wantDup = confirm('الفحص [' + (p.code || '') + '] (' + (p.nameAr || p.name) + ') مسجل بالفعل لهذه الزيارة.\n\nهل ترغب في تكرار إضافته مرة أخرى لنفس الزيارة؟');
-    if (!wantDup) return;
-  }
+  const alreadyIn = examBasket.some(item => String(item.procedure_id) === String(p.id));
+  const newName = alreadyIn ? (p.nameAr || p.name) + ' (إضافي)' : (p.nameAr || p.name);
 
   examBasket.push({
     procedure_id: p.id,
-    procedure_name: (alreadyIn ? (p.nameAr || p.name) + ' (إضافي)' : (p.nameAr || p.name)),
+    procedure_name: newName,
     procedure_code: p.code || '',
     modality: p.modality,
     device_id: dev.id,
@@ -2669,9 +2720,14 @@ function quickAddSearchedProcedure(procId) {
   });
 
   renderExamBasket();
-  document.getElementById('procSearchResults').style.display = 'none';
+  const searchResults = document.getElementById('procSearchResults');
+  if (searchResults) searchResults.style.display = 'none';
   const searchInp = document.getElementById('procSearchInput');
-  if (searchInp) searchInp.value = '';
+  if (searchInp) {
+    searchInp.value = '';
+    searchInp.placeholder = 'اكتب للبحث بكود أو اسم الفحص التالي...';
+  }
+  showBasketNotice(`تمت إضافة الفحص [${p.code || ''}] ${p.nameAr || p.name} للزيارة بنجاح.`, 'success');
 }
 
 function chooseSearchedRoom(deviceId, modality){
@@ -2888,12 +2944,64 @@ if (rdForm) {
       }
     }
 
+    // Auto-capture any selected procedure in dropdown that wasn't explicitly added to basket
+    const pSel = document.getElementById('formProcedure');
+    const dSel = document.getElementById('formDevice');
+    if (pSel && pSel.value) {
+      const pId = String(pSel.value);
+      const alreadyIn = examBasket.some(item => String(item.procedure_id) === pId);
+      if (!alreadyIn) {
+        const p = ALL_PROCEDURES.find(x => String(x.id) === pId);
+        if (p) {
+          const branchId = document.getElementById('formBranch').value;
+          const branchDevices = ALL_DEVICES.filter(d => String(d.branchId) === String(branchId));
+          let dev = branchDevices.find(d => String(d.id) === String(dSel ? dSel.value : '') && d.modality === p.modality);
+          if (!dev) dev = branchDevices.find(d => d.modality === p.modality) || branchDevices[0];
+          if (dev) {
+            let itemPrice = parseFloat(p.price) || 0;
+            const selectedOpt = pSel.options[pSel.selectedIndex];
+            if (selectedOpt && selectedOpt.dataset.price) {
+              itemPrice = parseFloat(selectedOpt.dataset.price) || itemPrice;
+            }
+            examBasket.push({
+              procedure_id: p.id,
+              procedure_name: p.nameAr || p.name,
+              procedure_code: p.code || '',
+              modality: p.modality,
+              device_id: dev.id,
+              device_name: dev.name,
+              price: itemPrice
+            });
+          }
+        }
+      }
+    }
+
+    const hiddenProcs = document.getElementById('proceduresJson');
+    if (hiddenProcs) hiddenProcs.value = JSON.stringify(examBasket);
+
     // Keep primary procedure & device in sync with first basket item for backwards compatibility
     if (examBasket.length > 0) {
-      const pSel = document.getElementById('formProcedure');
-      const dSel = document.getElementById('formDevice');
-      if (pSel) pSel.value = examBasket[0].procedure_id;
-      if (dSel) dSel.value = examBasket[0].device_id;
+      if (pSel) {
+        let opt = Array.from(pSel.options).find(o => String(o.value) === String(examBasket[0].procedure_id));
+        if (!opt) {
+          opt = document.createElement('option');
+          opt.value = examBasket[0].procedure_id;
+          opt.textContent = examBasket[0].procedure_name;
+          pSel.appendChild(opt);
+        }
+        pSel.value = examBasket[0].procedure_id;
+      }
+      if (dSel) {
+        let opt = Array.from(dSel.options).find(o => String(o.value) === String(examBasket[0].device_id));
+        if (!opt) {
+          opt = document.createElement('option');
+          opt.value = examBasket[0].device_id;
+          opt.textContent = examBasket[0].device_name;
+          dSel.appendChild(opt);
+        }
+        dSel.value = examBasket[0].device_id;
+      }
     }
   });
 }
