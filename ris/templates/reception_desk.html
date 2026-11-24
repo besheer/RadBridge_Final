@@ -353,6 +353,37 @@ body.sidebar-mode-hidden .main {
   display: none !important;
 }
 
+/* Floating Dock Tab when Cases Sidebar is folded */
+.rd-cases-dock-tab {
+  position: fixed;
+  top: 140px;
+  z-index: 99;
+  background: #0f172a;
+  color: #38bdf8;
+  border: 1.5px solid #0284c7;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+body.rtl .rd-cases-dock-tab {
+  left: 12px;
+}
+body.ltr .rd-cases-dock-tab {
+  right: 12px;
+}
+.rd-cases-dock-tab:hover {
+  background: #0284c7;
+  color: #fff;
+  transform: scale(1.04);
+}
+
 .rd-sidebar-header {
   padding: 10px 12px;
   background: #1e293b;
@@ -514,7 +545,7 @@ body.sidebar-mode-hidden .main {
   box-shadow: 0 2px 4px rgba(0,0,0,0.25);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 980px) {
   .rd-mobile-tabs {
     display: flex !important;
   }
@@ -661,6 +692,13 @@ body.sidebar-mode-hidden .main {
   </button>
 </div>
 
+<!-- Floating Cases Dock Tab (Visible when Cases Sidebar is folded on Desktop) -->
+<div id="rdCasesDockTab" class="rd-cases-dock-tab" onclick="toggleCasesSidebar()" title="{{ 'إظهار قائمة الحالات' if ui_lang=='ar' else 'Show Cases' }}">
+  <span>📋 {{ 'قائمة الحالات' if ui_lang=='ar' else 'Cases' }}</span>
+  <span class="badge" style="background:#0284c7; color:#fff; font-size:11px; padding:2px 7px; border-radius:10px;">{{ today_orders|length }}</span>
+  <span>◀</span>
+</div>
+
 <div class="rd-container view-form" id="rdContainer" dir="{{ 'rtl' if ui_lang=='ar' else 'ltr' }}">
   <!-- MAIN REGISTRATION AREA (First child in RTL displays on RIGHT) -->
   <main class="rd-main">
@@ -668,7 +706,7 @@ body.sidebar-mode-hidden .main {
     <div class="rd-main-header">
       <div class="rd-header-title">
         <!-- System Sidebar 3-State Toggle (Expanded / Compact / Hidden) -->
-        <button type="button" class="btn small" id="btnToggleSysSidebar" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; font-weight:bold;" onclick="handleSidebarToggle()" title="{{ 'تغيير وضع القائمة الرئيسية: عادية / مصغرة / مخفية' if ui_lang=='ar' else 'Cycle Sidebar: Expanded / Compact / Hidden' }}">
+        <button type="button" class="btn small" id="btnToggleSysSidebar" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; font-weight:bold;" onclick="handleSidebarToggle()" title="{{ 'طي / إظهار القائمة الرئيسية للنظام' if ui_lang=='ar' else 'Toggle Main Sidebar' }}">
           <span id="sysSidebarIcon">◀</span> <span id="sysSidebarText">{{ 'القائمة: عادية' if ui_lang=='ar' else 'Sidebar: Normal' }}</span>
         </button>
 
@@ -1205,6 +1243,16 @@ body.sidebar-mode-hidden .main {
   <!-- CASES LIST SIDEBAR (Second child in RTL displays on LEFT) -->
   <aside class="rd-sidebar" id="rdCasesSidebar">
     <div class="rd-sidebar-header">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #334155;">
+        <span style="font-weight:bold; font-size:12.5px; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+          📋 {{ 'قائمة حالات اليوم' if ui_lang=='ar' else 'Today Cases' }}
+          <span class="badge" style="background:#0284c7; color:#fff; font-size:11px; padding:1px 6px; border-radius:10px;">{{ today_orders|length }}</span>
+        </span>
+        <button type="button" class="btn small" onclick="toggleCasesSidebar()" style="background:#1e293b; color:#cbd5e1; border:1px solid #475569; padding:2px 8px; font-size:11px; border-radius:5px; cursor:pointer;" title="{{ 'طي قائمة الحالات لتوسيع الشاشة' if ui_lang=='ar' else 'Fold Cases' }}">
+          ✖ {{ 'طي القائمة' if ui_lang=='ar' else 'Fold' }}
+        </button>
+      </div>
+
       <div class="rd-date-bar">
         <a class="btn" href="{{ url_for('reception_desk', date=(selected_date - timedelta(days=1)).isoformat(), branch_id=branch_id or '') }}">‹</a>
         <a class="btn" href="{{ url_for('reception_desk', branch_id=branch_id or '') }}"><b>{{ 'اليوم' if ui_lang=='ar' else 'Today' }}</b></a>
@@ -1356,41 +1404,50 @@ const ALL_PROCEDURES = [
 let currentSelectedReceiptId = {{ (selected_order.latest_receipt.id if (selected_order and selected_order.latest_receipt) else 0) }};
 let currentSelectedOrderId = {{ (selected_order.id if selected_order else 0) }};
 
-// 1. System Sidebar 3-State Cycle (Expanded -> Compact -> Hidden -> Expanded)
+// 1. System Sidebar Toggle (Expanded <-> Hidden)
 let sysSidebarState = localStorage.getItem('radbridge_sys_sidebar_mode') || 'expanded';
 
 function applySysSidebarState(state){
+  if(state !== 'hidden') state = 'expanded';
   sysSidebarState = state;
   localStorage.setItem('radbridge_sys_sidebar_mode', state);
   document.body.classList.remove('sidebar-mode-hidden', 'sidebar-mode-compact');
   
   const icon = document.getElementById('sysSidebarIcon');
   const text = document.getElementById('sysSidebarText');
+  const btn = document.getElementById('btnToggleSysSidebar');
+  
   if(state === 'hidden'){
     document.body.classList.add('sidebar-mode-hidden');
     if(icon) icon.textContent = '▶';
-    if(text) text.textContent = 'القائمة: مخفية';
-  } else if(state === 'compact'){
-    document.body.classList.add('sidebar-mode-compact');
-    if(icon) icon.textContent = '✖';
-    if(text) text.textContent = 'القائمة: مصغرة';
+    if(text) text.textContent = 'إظهار القائمة الرئيسية';
+    if(btn){
+      btn.style.background = '#1e293b';
+      btn.style.color = '#38bdf8';
+      btn.style.borderColor = '#0284c7';
+      btn.title = 'إظهار القائمة الجانبية الرئيسية للنظام';
+    }
   } else {
     if(icon) icon.textContent = '◀';
-    if(text) text.textContent = 'القائمة: عادية';
+    if(text) text.textContent = 'طي القائمة الرئيسية';
+    if(btn){
+      btn.style.background = '#0f172a';
+      btn.style.color = '#38bdf8';
+      btn.style.borderColor = '#38bdf8';
+      btn.title = 'طي القائمة الجانبية الرئيسية للنظام لتوسيع مساحة العمل';
+    }
   }
 }
 
 function cycleSystemSidebar(){
-  if(sysSidebarState === 'expanded'){
-    applySysSidebarState('compact');
-  } else if(sysSidebarState === 'compact'){
-    applySysSidebarState('hidden');
-  } else {
+  if(sysSidebarState === 'hidden'){
     applySysSidebarState('expanded');
+  } else {
+    applySysSidebarState('hidden');
   }
 }
 
-// 2. Cases Sidebar Toggle (Inside Reception Desk)
+// 2. Cases Sidebar Toggle & Folding (Inside Reception Desk)
 let casesSidebarHidden = localStorage.getItem('radbridge_reception_cases_sidebar') === 'hidden';
 
 function applyCasesSidebarState(hidden){
@@ -1398,16 +1455,62 @@ function applyCasesSidebarState(hidden){
   localStorage.setItem('radbridge_reception_cases_sidebar', hidden ? 'hidden' : 'visible');
   const sidebar = document.getElementById('rdCasesSidebar');
   const text = document.getElementById('casesSidebarText');
+  const btn = document.getElementById('btnToggleCasesSidebar');
+  const dock = document.getElementById('rdCasesDockTab');
+  const count = '{{ today_orders|length }}';
+  
   if(sidebar){
     sidebar.classList.toggle('collapsed', hidden);
   }
   if(text){
-    text.textContent = hidden ? 'إظهار الحالات' : 'طي الحالات';
+    text.textContent = hidden ? ('إظهار قائمة الحالات (' + count + ')') : 'طي قائمة الحالات';
+  }
+  if(btn){
+    if(hidden){
+      btn.style.background = '#0284c7';
+      btn.style.color = '#ffffff';
+      btn.style.borderColor = '#38bdf8';
+    } else {
+      btn.style.background = '#0f172a';
+      btn.style.color = '#cbd5e1';
+      btn.style.borderColor = '#475569';
+    }
+  }
+  if(dock){
+    dock.style.display = (hidden && window.innerWidth > 980) ? 'flex' : 'none';
   }
 }
 
 function toggleCasesSidebar(){
-  applyCasesSidebarState(!casesSidebarHidden);
+  if(window.innerWidth <= 980){
+    const container = document.getElementById('rdContainer');
+    if(container && container.classList.contains('view-cases')){
+      switchMobileView('form');
+    } else {
+      switchMobileView('cases');
+    }
+  } else {
+    applyCasesSidebarState(!casesSidebarHidden);
+  }
+}
+
+// Responsive Mobile View Switcher
+function switchMobileView(view){
+  const container = document.getElementById('rdContainer');
+  const tabForm = document.getElementById('tabMobileForm');
+  const tabCases = document.getElementById('tabMobileCases');
+  if(!container) return;
+  if(view === 'cases'){
+    container.classList.remove('view-form');
+    container.classList.add('view-cases');
+    if(tabForm) tabForm.classList.remove('active');
+    if(tabCases) tabCases.classList.add('active');
+  } else {
+    container.classList.remove('view-cases');
+    container.classList.add('view-form');
+    if(tabCases) tabCases.classList.remove('active');
+    if(tabForm) tabForm.classList.add('active');
+  }
 }
 
 function latinSuggestion(val){
@@ -2230,6 +2333,7 @@ let searchDebounce = null;
 let currentHighlightedIndex = -1;
 let currentPatientsList = [];
 
+if(searchInp && autoBox){
 searchInp.addEventListener('input', function(){
   clearTimeout(searchDebounce);
   const q = this.value.trim();
@@ -2404,7 +2508,7 @@ function resetFormForNewPatient(){
 
 // Select a Case Card from Cases List
 function selectCaseCard(card){
-  if(window.innerWidth <= 900) switchMobileView('form');
+  if(window.innerWidth <= 980) switchMobileView('form');
   document.querySelectorAll('.rd-case-card').forEach(c => c.classList.remove('active'));
   card.classList.add('active');
 
@@ -2739,18 +2843,22 @@ function printSelectedSticker(){
 }
 
 // Client-side quick filter in case list
-document.getElementById('rdCaseSearch').addEventListener('input', function(){
-  const q = this.value.toLowerCase().trim();
-  let count = 0;
-  document.querySelectorAll('.rd-case-card').forEach(card => {
-    const text = (card.dataset.patientName + ' ' + card.dataset.phone + ' ' + card.dataset.accession).toLowerCase();
-    const match = !q || text.includes(q);
-    card.style.display = match ? 'block' : 'none';
-    if(match) count++;
+const rdCaseSearchInput = document.getElementById('rdCaseSearch');
+if(rdCaseSearchInput){
+  rdCaseSearchInput.addEventListener('input', function(){
+    const q = this.value.toLowerCase().trim();
+    let count = 0;
+    document.querySelectorAll('.rd-case-card').forEach(card => {
+      const text = (card.dataset.patientName + ' ' + card.dataset.phone + ' ' + card.dataset.accession).toLowerCase();
+      const match = !q || text.includes(q);
+      card.style.display = match ? 'block' : 'none';
+      if(match) count++;
+    });
+    const cEl = document.getElementById('rdCasesCount'); if(cEl) cEl.textContent = count;
+    const mCount = document.getElementById('rdCasesCountMobile'); if(mCount) mCount.textContent = count;
+    const dBadge = document.querySelector('#rdCasesDockTab .badge'); if(dBadge) dBadge.textContent = count;
   });
-  document.getElementById('rdCasesCount').textContent = count;
-  const mCount = document.getElementById('rdCasesCountMobile'); if(mCount) mCount.textContent = count;
-});
+}
 
 // Auto-print receipt if requested via URL param
 {% if print_receipt_id %}
@@ -2790,12 +2898,19 @@ function toggleMobileSidebar(){
 }
 
 function handleSidebarToggle(){
-  if(window.innerWidth <= 900){
+  if(window.innerWidth <= 980){
     toggleMobileSidebar();
   } else {
     cycleSystemSidebar();
   }
 }
+
+window.addEventListener('resize', () => {
+  const dock = document.getElementById('rdCasesDockTab');
+  if(dock){
+    dock.style.display = (casesSidebarHidden && window.innerWidth > 980) ? 'flex' : 'none';
+  }
+});
 
 // Ensure mobile header hamburger buttons also work
 document.addEventListener('DOMContentLoaded', () => {
