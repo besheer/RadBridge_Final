@@ -541,7 +541,7 @@ body.sidebar-mode-hidden .main {
     max-width: 100% !important;
   }
 
-  #btnToggleSysSidebar, #btnToggleCasesSidebar {
+  #btnToggleCasesSidebar {
     display: none !important;
   }
 
@@ -647,11 +647,14 @@ body.sidebar-mode-hidden .main {
 
 <!-- Mobile Segment Control Tabs -->
 <div class="rd-mobile-tabs">
+  <button type="button" class="btn small" onclick="handleSidebarToggle()" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; font-weight:bold; padding:6px 12px; border-radius:6px; flex-shrink:0;">
+    ☰ {{ 'القائمة' if ui_lang=='ar' else 'Menu' }}
+  </button>
   <button type="button" class="rd-m-tab active" id="tabMobileForm" onclick="switchMobileView('form')">
-    📝 {{ 'استمارة التسجيل' if ui_lang=='ar' else 'Registration Form' }}
+    📝 {{ 'استمارة التسجيل' if ui_lang=='ar' else 'Form' }}
   </button>
   <button type="button" class="rd-m-tab" id="tabMobileCases" onclick="switchMobileView('cases')">
-    📋 {{ 'قائمة الحالات' if ui_lang=='ar' else 'Cases List' }} (<span id="rdCasesCountMobile">{{ today_orders|length }}</span>)
+    📋 {{ 'قائمة الحالات' if ui_lang=='ar' else 'Cases' }} (<span id="rdCasesCountMobile">{{ today_orders|length }}</span>)
   </button>
 </div>
 
@@ -662,7 +665,7 @@ body.sidebar-mode-hidden .main {
     <div class="rd-main-header">
       <div class="rd-header-title">
         <!-- System Sidebar 3-State Toggle (Expanded / Compact / Hidden) -->
-        <button type="button" class="btn small" id="btnToggleSysSidebar" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; font-weight:bold;" onclick="cycleSystemSidebar()" title="{{ 'تغيير وضع القائمة الرئيسية: عادية / مصغرة / مخفية' if ui_lang=='ar' else 'Cycle Sidebar: Expanded / Compact / Hidden' }}">
+        <button type="button" class="btn small" id="btnToggleSysSidebar" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; font-weight:bold;" onclick="handleSidebarToggle()" title="{{ 'تغيير وضع القائمة الرئيسية: عادية / مصغرة / مخفية' if ui_lang=='ar' else 'Cycle Sidebar: Expanded / Compact / Hidden' }}">
           <span id="sysSidebarIcon">◀</span> <span id="sysSidebarText">{{ 'القائمة: عادية' if ui_lang=='ar' else 'Sidebar: Normal' }}</span>
         </button>
 
@@ -801,10 +804,24 @@ body.sidebar-mode-hidden .main {
             </div>
 
             <div class="rd-col-1 rd-field">
-              <label>{{ 'الجهاز *' if ui_lang=='ar' else 'Device *' }}</label>
+              <label>{{ 'القسم الطبي (الموداليتي) *' if ui_lang=='ar' else 'Department (Modality) *' }}</label>
+              <select id="formModality" onchange="onModalitySelectChange(this.value)">
+                <option value="">-- {{ 'جميع الأقسام' if ui_lang=='ar' else 'All Departments' }} --</option>
+                <option value="MR">🧲 {{ 'رنين مغناطيسي (MR)' if ui_lang=='ar' else 'MRI (MR)' }}</option>
+                <option value="CT">🔄 {{ 'أشعة مقطعية (CT)' if ui_lang=='ar' else 'CT Scan (CT)' }}</option>
+                <option value="DX">📷 {{ 'أشعة عادية رقمية (DX)' if ui_lang=='ar' else 'X-Ray (DX)' }}</option>
+                <option value="US">📡 {{ 'سونار ودوبلر (US)' if ui_lang=='ar' else 'Ultrasound (US)' }}</option>
+                <option value="EEG">⚡ {{ 'رسم مخ وأعصاب (EEG)' if ui_lang=='ar' else 'EEG / EMG' }}</option>
+              </select>
+            </div>
+
+            <div class="rd-col-1 rd-field">
+              <label>{{ 'الغرفة / الجهاز *' if ui_lang=='ar' else 'Room / Device *' }}</label>
               <select name="device_id" id="formDevice" required onchange="onFormDeviceChange()">
                 {% for d in all_devices %}
-                  <option value="{{ d.id }}" data-branch="{{ d.branch_id }}" data-modality="{{ d.modality }}">{{ d.modality }} — {{ d.name }}</option>
+                  <option value="{{ d.id }}" data-branch="{{ d.branch_id }}" data-modality="{{ d.modality }}" data-name="{{ d.name }}">
+                    🚪 غرفة: {{ d.modality }} — {{ d.name }}
+                  </option>
                 {% endfor %}
               </select>
             </div>
@@ -812,9 +829,9 @@ body.sidebar-mode-hidden .main {
             <div class="rd-col-2 rd-field" style="position:relative;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
                 <label style="margin:0;">{{ 'اسم الفحص / الخدمة *' if ui_lang=='ar' else 'Procedure / Examination *' }}</label>
-                <span style="font-size:11px; color:#38bdf8;">🔍 {{ 'بحث سريع في الفحوصات' if ui_lang=='ar' else 'Quick Search' }}</span>
+                <span style="font-size:11px; color:#38bdf8;">🔍 {{ 'بحث شامل في الفحوصات والأقسام والغرف' if ui_lang=='ar' else 'Search Exams, Depts, Rooms' }}</span>
               </div>
-              <input type="text" id="procSearchInput" placeholder="{{ 'اكتب للبحث: مخ، صدر، ركبة، فقرات، brain، chest...' if ui_lang=='ar' else 'Type to search exams...' }}" style="margin-bottom:6px; border-color:#38bdf8; background:#0f172a;" oninput="onProcSearchInput(this.value)" autocomplete="off">
+              <input type="text" id="procSearchInput" placeholder="{{ 'اكتب للبحث في الفحوصات أو الأقسام أو الغرف (مثال: رنين، سونار، صدر، غرفة 1، مخ...)' if ui_lang=='ar' else 'Search by procedure, department or room...' }}" style="margin-bottom:6px; border-color:#38bdf8; background:#0f172a;" oninput="onProcSearchInput(this.value)" autocomplete="off">
               <div id="procSearchResults" class="rd-autocomplete" style="display:none; max-height:220px; z-index:80;"></div>
               <select name="procedure_id" id="formProcedure" required onchange="onProcedureChange()">
                 <option value="">-- {{ 'اختر الفحص المطلـوب' if ui_lang=='ar' else 'Choose Examination' }} --</option>
@@ -1174,6 +1191,7 @@ function onFormDeviceChange(){
 }
 
 function filterProceduresByModality(mod){
+  const mSel = document.getElementById('formModality'); if(mSel) mSel.value = mod;
   document.querySelectorAll('.rd-mod-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.mod === mod);
   });
@@ -1433,7 +1451,56 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// Instant Search in Procedures
+// Unified Sidebar Toggle for Desktop and Mobile
+function toggleMobileSidebar(){
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  if(sb){
+    const isOpen = sb.classList.contains('open');
+    if(isOpen){
+      sb.classList.remove('open');
+      if(ov) ov.classList.remove('open', 'show');
+    } else {
+      sb.classList.add('open');
+      if(ov) ov.classList.add('open', 'show');
+    }
+  }
+}
+
+function handleSidebarToggle(){
+  if(window.innerWidth <= 900){
+    toggleMobileSidebar();
+  } else {
+    cycleSystemSidebar();
+  }
+}
+
+// Ensure mobile header hamburger buttons also work
+document.addEventListener('DOMContentLoaded', () => {
+  const mOpen = document.getElementById('mobileMenuOpen');
+  const sOpen = document.getElementById('sidebarOpen');
+  if(mOpen) mOpen.onclick = toggleMobileSidebar;
+  if(sOpen) sOpen.onclick = toggleMobileSidebar;
+  const sClose = document.getElementById('sidebarClose');
+  const ov = document.getElementById('sidebarOverlay');
+  if(sClose) sClose.onclick = () => {
+    const sb = document.getElementById('sidebar');
+    if(sb) sb.classList.remove('open');
+    if(ov) ov.classList.remove('open', 'show');
+  };
+  if(ov) ov.onclick = () => {
+    const sb = document.getElementById('sidebar');
+    if(sb) sb.classList.remove('open');
+    ov.classList.remove('open', 'show');
+  };
+});
+
+// Modality Select Sync
+function onModalitySelectChange(mod){
+  filterProceduresByModality(mod);
+}
+
+// Omni Search across Procedures, Departments, and Rooms
 function onProcSearchInput(query){
   query = (query || '').toLowerCase().trim();
   const select = document.getElementById('formProcedure');
@@ -1445,6 +1512,46 @@ function onProcSearchInput(query){
   }
 
   const matches = [];
+
+  // 1. Search in Departments (الأقسام)
+  const departments = [
+    { code: 'MR', name: 'الرنين المغناطيسي (MR)', keywords: 'رنين مغناطيس مغناطيسي mr mri' },
+    { code: 'CT', name: 'الأشعة المقطعية (CT)', keywords: 'مقطعية مقطعي اشعة مقطعية ct scan' },
+    { code: 'DX', name: 'الأشعة العادية الرقمية (DX)', keywords: 'عادية اشعة عادية x-ray xray dx cr' },
+    { code: 'US', name: 'السونار والدوبلر (US)', keywords: 'سونار دوبلر سونار بطن تلفزيونية us ultrasound' },
+    { code: 'EEG', name: 'رسم المخ والأعصاب (EEG)', keywords: 'رسم مخ اعصاب عضلات eeg emg' }
+  ];
+
+  departments.forEach(dept => {
+    if(dept.name.toLowerCase().includes(query) || dept.keywords.includes(query)){
+      matches.push({
+        type: 'dept',
+        modality: dept.code,
+        text: `القسم: ${dept.name}`,
+        badge: 'قسم'
+      });
+    }
+  });
+
+  // 2. Search in Rooms / Devices (الغرف / الأجهزة)
+  const devSelect = document.getElementById('formDevice');
+  for(let i = 0; i < devSelect.options.length; i++){
+    const opt = devSelect.options[i];
+    if(opt.disabled || !opt.value) continue;
+    const name = (opt.dataset.name || opt.textContent || '').toLowerCase();
+    const mod = (opt.dataset.modality || '').toLowerCase();
+    if(name.includes(query) || mod.includes(query) || ('غرفة ' + name).includes(query)){
+      matches.push({
+        type: 'room',
+        deviceId: opt.value,
+        modality: opt.dataset.modality,
+        text: `الغرفة: ${opt.textContent.replace('🚪', '').trim()}`,
+        badge: 'غرفة'
+      });
+    }
+  }
+
+  // 3. Search in Procedures (الفحوصات)
   for(let i = 0; i < select.options.length; i++){
     const opt = select.options[i];
     if(!opt.value) continue;
@@ -1455,26 +1562,62 @@ function onProcSearchInput(query){
     
     if(name.includes(query) || nameAr.includes(query) || mod.includes(query) || text.includes(query)){
       matches.push({
+        type: 'proc',
         value: opt.value,
         text: opt.textContent.trim(),
         modality: opt.dataset.modality,
-        price: opt.dataset.price
+        price: opt.dataset.price,
+        badge: opt.dataset.modality
       });
     }
   }
 
   if(matches.length > 0){
-    resultsBox.innerHTML = matches.slice(0, 10).map(m => `
-      <div class="rd-autocomplete-item" onclick="chooseSearchedProcedure('${m.value}')" style="display:flex; justify-content:space-between; align-items:center;">
-        <span>${m.text}</span>
-        <span class="rd-badge-modality rd-badge-${m.modality.toLowerCase()}">${m.modality}</span>
-      </div>
-    `).join('');
+    resultsBox.innerHTML = matches.slice(0, 12).map(m => {
+      if(m.type === 'dept'){
+        return `
+          <div class="rd-autocomplete-item" onclick="chooseSearchedDept('${m.modality}')" style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; border-bottom:1px solid #334155;">
+            <span>🏢 <b>${m.text}</b></span>
+            <span class="rd-badge-modality rd-badge-${m.modality.toLowerCase()}">تصفية القسم</span>
+          </div>
+        `;
+      } else if(m.type === 'room'){
+        return `
+          <div class="rd-autocomplete-item" onclick="chooseSearchedRoom('${m.deviceId}', '${m.modality}')" style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; border-bottom:1px solid #334155;">
+            <span>🚪 <b>${m.text}</b></span>
+            <span class="rd-badge-modality rd-badge-${m.modality.toLowerCase()}">اختيار الغرفة</span>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="rd-autocomplete-item" onclick="chooseSearchedProcedure('${m.value}')" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>${m.text}</span>
+            <span class="rd-badge-modality rd-badge-${m.modality.toLowerCase()}">${m.modality}</span>
+          </div>
+        `;
+      }
+    }).join('');
     resultsBox.style.display = 'block';
   } else {
-    resultsBox.innerHTML = '<div style="padding:8px 12px; color:#94a3b8; font-size:12px;">لا توجد فحوصات مطابقة</div>';
+    resultsBox.innerHTML = '<div style="padding:8px 12px; color:#94a3b8; font-size:12px;">لا توجد نتائج مطابقة للفحص أو القسم أو الغرفة</div>';
     resultsBox.style.display = 'block';
   }
+}
+
+function chooseSearchedDept(mod){
+  filterProceduresByModality(mod);
+  document.getElementById('formModality').value = mod;
+  document.getElementById('procSearchInput').value = '';
+  document.getElementById('procSearchResults').style.display = 'none';
+}
+
+function chooseSearchedRoom(devId, mod){
+  filterProceduresByModality(mod);
+  document.getElementById('formModality').value = mod;
+  document.getElementById('formDevice').value = devId;
+  onFormDeviceChange();
+  document.getElementById('procSearchInput').value = '';
+  document.getElementById('procSearchResults').style.display = 'none';
 }
 
 function chooseSearchedProcedure(procId){
@@ -1524,8 +1667,7 @@ async function pushSelectedOrderToMwl(){
     if(data.ok){
       alert('✅ ' + data.message);
     } else {
-      alert('⚠️ تعذر الإرسال إلى MWL:
-' + (data.error || 'حدث خطأ'));
+      alert('⚠️ تعذر الإرسال إلى MWL: ' + (data.error || 'حدث خطأ'));
     }
   } catch(e){
     alert('حدث خطأ في الاتصال: ' + e);
