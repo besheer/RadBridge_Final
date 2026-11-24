@@ -15389,6 +15389,180 @@ def api_reception_cancel_order(order_id):
     })
 
 
+
+@app.route('/api/reception/order/<int:order_id>/update', methods=['POST'])
+@login_required
+def api_reception_update_order(order_id):
+    u = current_user()
+    if not (has_perm('*') or has_perm('orders.create') or has_perm('appointments.manage') or has_perm('reception') or getattr(u, 'role_id', None) in (1, 2, 3, 10, 14)):
+        abort(403)
+        
+    order = Order.query.get_or_404(order_id)
+    
+    if (order.pacs_image_count or 0) > 0:
+        return jsonify({'ok': False, 'error': 'لا يمكن تعديل الفحص بعد بدء التصوير واستقبال صور PACS'}), 400
+    if str(order.status or '').upper() in ('FINAL', 'FINALIZED', 'VERIFIED'):
+        return jsonify({'ok': False, 'error': 'لا يمكن تعديل الفحص بعد اعتماد التقرير الطبي نهائياً'}), 400
+        
+    data = request.get_json(silent=True) or request.form
+    changes = []
+    
+    # 1. Procedure & Modality update
+    proc_id = data.get('procedure_id')
+    try: proc_id = int(proc_id) if proc_id else None
+    except Exception: proc_id = None
+    
+    if proc_id and proc_id != order.procedure_id:
+        p_obj = Procedure.query.get(proc_id)
+        if p_obj:
+            old_proc = order.procedure
+            order.procedure_id = p_obj.id
+            order.procedure = getattr(p_obj, "name_ar", None) or p_obj.name
+            order.modality = (p_obj.modality or order.modality or '').upper()
+            changes.append(f"الفحص: {old_proc} -> {order.procedure}")
+            
+    # 2. Device & Room update
+    dev_id = data.get('device_id')
+    try: dev_id = int(dev_id) if dev_id else None
+    except Exception: dev_id = None
+    
+    if dev_id and dev_id != order.device_id:
+        d_obj = Device.query.get(dev_id)
+        if d_obj:
+            old_dev = order.device.name if order.device else str(order.device_id)
+            order.device_id = d_obj.id
+            order.station_ae = d_obj.ae_title or order.station_ae
+            changes.append(f"الجهاز: {old_dev} -> {d_obj.name}")
+            
+    # 3. Referring & Assigned Doctor
+    ref_id = data.get('referring_doctor_id')
+    try: ref_id = int(ref_id) if ref_id else None
+    except Exception: ref_id = None
+    if ref_id is not None and ref_id != order.referring_doctor_id:
+        order.referring_doctor_id = ref_id if ref_id > 0 else None
+        changes.append(f"الطبيب المحول: #{ref_id}")
+        
+    assigned_id = data.get('assigned_doctor_id')
+    try: assigned_id = int(assigned_id) if assigned_id else None
+    except Exception: assigned_id = None
+    if assigned_id is not None and assigned_id != order.assigned_doctor_id:
+        order.assigned_doctor_id = assigned_id if assigned_id > 0 else None
+        changes.append(f"طبيب التقرير: #{assigned_id}")
+        
+    # 4. Financials (Gross, Discount, Paid)
+    gross_price = data.get('gross_price')
+    try:
+        if gross_price is not None:
+            gross_val = float(gross_price)
+            if gross_val != (order.gross_price or 0.0):
+                order.gross_price = gross_val
+                changes.append(f"السعر: {gross_val}")
+    except Exception: pass
+
+    discount = data.get('discount')
+    try:
+        if discount is not None:
+            disc_val = float(discount)
+            order.patient_share = max(0.0, (order.gross_price or 0.0) - disc_val)
+    except Exception: pass
+
+    paid = data.get('paid_amount')
+    try:
+        if paid is not None:
+            paid_val = float(paid)
+            order.paid_amount = paid_val
+    except Exception: pass
+    
+    # 5. Scheduled time & Priority
+    priority = (data.get('priority') or '').strip().upper()
+    if priority in ('ROUTINE', 'URGENT', 'STAT'):
+        order.priority = priority
+        
+    # 6. Clinical Assessment (History & Indication)
+    c_hist = (data.get('clinical_history') or '').strip()
+    c_ind = (data.get('clinical_indication') or '').strip()
+    ca = ClinicalAssessment.query.filter_by(order_id=order.id).first()
+    if not ca and (c_hist or c_ind):
+        ca = ClinicalAssessment(order_id=order.id, complaint=c_hist[:250], history=c_hist, clinical_indication=c_ind, created_by=u.id)
+        db.session.add(ca)
+        changes.append("إضافة ملاحظات وتاريخ مرضي")
+    elif ca:
+        if c_hist != (ca.history or '') or c_ind != (ca.clinical_indication or ''):
+            ca.history = c_hist
+            ca.clinical_indication = c_ind
+            ca.complaint = c_hist[:250] if c_hist else ''
+            changes.append("تحديث الملاحظات والتاريخ المرضي")
+            
+    # 7. Consumables update
+    raw_cons = data.get('consumables_json')
+    if raw_cons:
+        try:
+            cons_list = json.loads(raw_cons) if isinstance(raw_cons, str) else raw_cons
+            OrderConsumable.query.filter_by(order_id=order.id).delete()
+            for ci in cons_list:
+                cid = int(ci.get('consumable_id') or 0)
+                cqty = float(ci.get('qty') or 1.0)
+                cpr = float(ci.get('price') or 0.0)
+                if cid:
+                    oc = OrderConsumable(order_id=order.id, consumable_id=cid, qty=cqty, price=cpr)
+                    db.session.add(oc)
+            changes.append(f"تحديث المستهلكات ({len(cons_list)} صنف)")
+        except Exception as e:
+            app.logger.warning(f"Error updating consumables: {e}")
+            
+    # 8. Patient Demographics update if provided
+    p = order.patient
+    if p:
+        p_name = (data.get('patient_name') or '').strip()
+        if p_name and p_name != p.name:
+            p.name = p_name
+            changes.append(f"اسم المريض: {p.name}")
+        p_wl = (data.get('worklist_name') or '').strip()
+        if p_wl and p_wl != (p.worklist_name or ''):
+            p.worklist_name = p_wl
+        p_phone = (data.get('phone') or '').strip()
+        if p_phone and p_phone != (p.phone or ''):
+            p.phone = p_phone
+        p_nat = (data.get('national_id') or '').strip()
+        if p_nat: p.national_id = p_nat
+        p_addr = (data.get('address') or '').strip()
+        if p_addr: p.address = p_addr
+        p_sex = (data.get('sex') or '').strip().upper()
+        if p_sex in ('M', 'F'): p.sex = p_sex
+        p_dob = (data.get('dob') or '').strip().replace('/', '').replace('-', '')[:8]
+        if len(p_dob) == 8: p.dob = p_dob
+
+    summary_text = " | ".join(changes) if changes else "تحديث بيانات الحالة قبل الإرسال للـ MWL"
+    al = AuditLog(
+        action='ORDER_UPDATED_BEFORE_MWL',
+        entity='order',
+        entity_id=order.id,
+        details=f"Updated by {u.username} [{order.accession}]: {summary_text}",
+        user_id=u.id,
+        username=u.username
+    )
+    db.session.add(al)
+    db.session.commit()
+    
+    return jsonify({
+        'ok': True,
+        'message': f"تم حفظ وتحديث الفحص والحالة [{order.accession}] بنجاح!",
+        'order': {
+            'id': order.id,
+            'accession': order.accession,
+            'procedure': order.procedure,
+            'procedure_id': order.procedure_id,
+            'modality': order.modality,
+            'device_id': order.device_id,
+            'device_name': order.device.name if order.device else '',
+            'gross_price': order.gross_price,
+            'paid_amount': order.paid_amount,
+            'patient_name': p.name if p else '',
+            'status': order.status
+        }
+    })
+
+
 @app.route('/schedule/v2')
 @require_perm('appointments.view')
 def schedule_v2():

@@ -702,6 +702,9 @@ body.sidebar-mode-hidden .main {
         <a class="btn small" id="btnWorkOrder" href="{{ url_for('order_detail', order_id=selected_order.id) if selected_order else '#' }}" target="_blank" style="background:#334155; color:#cbd5e1; border-color:#475569;" {% if not selected_order %}disabled{% endif %}>
           📄 {{ 'أمر الشغل' if ui_lang=='ar' else 'Work Order' }}
         </a>
+        <button type="button" class="btn small" id="btnUpdateSelectedCase" style="background:#0284c7; color:#fff; border-color:#38bdf8; font-weight:bold; display:none;" onclick="saveSelectedCaseEdits()">
+          ✏️ {{ 'حفظ تعديل الفحص والحالة' if ui_lang=='ar' else 'Save Case Edits' }}
+        </button>
         <button type="button" class="btn small" id="btnCancelOrder" style="background:#dc2626; color:#fff; border-color:#b91c1c; font-weight:bold; display:none;" onclick="cancelSelectedOrder()">
           ❌ {{ 'إلغاء الطلب المكرر' if ui_lang=='ar' else 'Cancel Order' }}
         </button>
@@ -1188,6 +1191,9 @@ body.sidebar-mode-hidden .main {
             </label>
           </div>
 
+          <button type="button" id="btnSaveCaseEdits" class="btn" style="padding:9px 22px; font-size:14px; font-weight:bold; background:#059669; border:1px solid #10b981; color:#fff; display:none; margin-left:8px;" onclick="saveSelectedCaseEdits()">
+            💾 {{ 'حفظ تعديل الفحص والحالة الحالية (قبل الإرسال للـ MWL)' if ui_lang=='ar' else 'Save Case Edits (Before MWL)' }}
+          </button>
           <button type="submit" id="btnSubmitForm" class="btn primary" style="padding:9px 22px; font-size:14px; font-weight:bold; background:#0284c7; border-color:#0284c7;">
             💾 {{ 'حفظ وتسجيل الفحص وإرساله لأجهزة الأشعة (Save & Push MWL)' if ui_lang=='ar' else 'Save & Push to MWL' }}
           </button>
@@ -2385,6 +2391,13 @@ function resetFormForNewPatient(){
   currentSelectedOrderId = 0;
   const sBtn = document.getElementById('btnQuickSavePatient'); if(sBtn) sBtn.style.display = 'none';
   const cBtn = document.getElementById('btnCancelOrder'); if(cBtn) cBtn.style.display = 'none';
+  const btnCaseTop = document.getElementById('btnUpdateSelectedCase'); if(btnCaseTop) btnCaseTop.style.display = 'none';
+  const btnCaseBot = document.getElementById('btnSaveCaseEdits'); if(btnCaseBot) btnCaseBot.style.display = 'none';
+  const btnSub = document.getElementById('btnSubmitForm');
+  if(btnSub){
+    btnSub.innerHTML = '💾 ' + ('حفظ وتسجيل الفحص وإرساله لأجهزة الأشعة (Save & Push MWL)');
+    btnSub.style.background = '#0284c7';
+  }
   
   document.getElementById('patientName').focus();
 }
@@ -2514,6 +2527,13 @@ function selectCaseCard(card){
   document.getElementById('btnWorkOrder').href = `/orders/${d.id}`;
   const sBtn = document.getElementById('btnQuickSavePatient'); if(sBtn) sBtn.style.display = 'inline-flex';
   const cBtn = document.getElementById('btnCancelOrder'); if(cBtn) cBtn.style.display = 'inline-flex';
+  const btnCaseTop = document.getElementById('btnUpdateSelectedCase'); if(btnCaseTop) btnCaseTop.style.display = 'inline-flex';
+  const btnCaseBot = document.getElementById('btnSaveCaseEdits'); if(btnCaseBot) btnCaseBot.style.display = 'inline-flex';
+  const btnSub = document.getElementById('btnSubmitForm');
+  if(btnSub){
+    btnSub.innerHTML = '➕ تسجيل فحص / زيارة جديدة لنفس المريض';
+    btnSub.style.background = '#334155';
+  }
 }
 
 // Print Actions
@@ -2612,6 +2632,95 @@ async function cancelSelectedOrder() {
     }
   } catch (err) {
     alert('حدث خطأ في الاتصال: ' + err);
+  }
+}
+
+
+async function saveSelectedCaseEdits() {
+  if (!currentSelectedOrderId) {
+    alert('يرجى اختيار حالة من قائمة الحالات على اليمين أولاً لتعديلها.');
+    return;
+  }
+  const pSel = document.getElementById('formProcedure');
+  const dSel = document.getElementById('formDevice');
+  const procId = pSel ? pSel.value : '';
+  const devId = dSel ? dSel.value : '';
+  
+  if (!procId) {
+    alert('يرجى تحديد الفحص المطلوب للحالة.');
+    return;
+  }
+  if (!devId) {
+    alert('يرجى تحديد الجهاز أو الغرفة للحالة.');
+    return;
+  }
+
+  const btn1 = document.getElementById('btnUpdateSelectedCase');
+  const btn2 = document.getElementById('btnSaveCaseEdits');
+  if (btn1) { btn1.innerHTML = '⏳ جارٍ الحفظ...'; btn1.disabled = true; }
+  if (btn2) { btn2.innerHTML = '⏳ جارٍ حفظ التعديلات...'; btn2.disabled = true; }
+
+  const payload = {
+    procedure_id: parseInt(procId),
+    device_id: parseInt(devId),
+    modality: document.getElementById('formModality').value,
+    referring_doctor_id: document.getElementById('formReferring').value,
+    assigned_doctor_id: document.getElementById('formAssigned').value,
+    gross_price: document.getElementById('formGross').value,
+    discount: document.getElementById('formDiscount').value,
+    paid_amount: document.getElementById('formPaid').value,
+    clinical_history: document.getElementById('formClinicalHistory').value.trim(),
+    clinical_indication: document.getElementById('formClinicalIndication').value.trim(),
+    consumables_json: JSON.stringify(selectedConsumables),
+    patient_name: document.getElementById('patientName').value.trim(),
+    worklist_name: document.getElementById('worklistName').value.trim(),
+    phone: document.getElementById('patientPhone').value.trim(),
+    dob: document.getElementById('patientDob').value.trim(),
+    national_id: document.getElementById('patientNationalId').value.trim(),
+    address: document.getElementById('patientAddress').value.trim(),
+    sex: document.querySelector('input[name="sex"]:checked') ? document.querySelector('input[name="sex"]:checked').value : 'M'
+  };
+
+  try {
+    const res = await fetch(`/api/reception/order/${currentSelectedOrderId}/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showBasketNotice('✅ ' + data.message, 'success');
+      const card = document.querySelector(`.rd-case-card[data-id="${currentSelectedOrderId}"]`);
+      if (card) {
+        card.dataset.procedureId = data.order.procedure_id;
+        card.dataset.deviceId = data.order.device_id;
+        card.dataset.modality = data.order.modality;
+        card.dataset.gross = data.order.gross_price;
+        card.dataset.paid = data.order.paid_amount;
+        card.dataset.patientName = data.order.patient_name;
+        
+        const nameEl = card.querySelector('.rd-case-name');
+        if (nameEl && data.order.patient_name) {
+          nameEl.childNodes[0].nodeValue = data.order.patient_name + ' ';
+        }
+        const modBadge = card.querySelector('.rd-badge-modality');
+        if (modBadge) {
+          modBadge.textContent = data.order.modality;
+          modBadge.className = `rd-badge-modality rd-badge-${data.order.modality.toLowerCase()}`;
+        }
+        const procSpan = card.querySelector('.rd-case-details span:nth-child(2)');
+        if (procSpan) procSpan.textContent = data.order.procedure;
+      }
+      const mwlBtn = document.getElementById('btnPushMwl');
+      if (mwlBtn) mwlBtn.disabled = false;
+    } else {
+      alert('⚠️ تعذر تعديل الحالة: ' + (data.error || 'خطأ غير معروف'));
+    }
+  } catch (err) {
+    alert('حدث خطأ في الاتصال بالسيرفر: ' + err);
+  } finally {
+    if (btn1) { btn1.innerHTML = '✏️ حفظ تعديل الفحص والحالة'; btn1.disabled = false; }
+    if (btn2) { btn2.innerHTML = '💾 حفظ تعديل الفحص والحالة الحالية (قبل الإرسال للـ MWL)'; btn2.disabled = false; }
   }
 }
 
