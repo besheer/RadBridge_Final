@@ -685,16 +685,16 @@ body.ltr .rd-cases-dock-tab {
   <button type="button" class="btn small" onclick="handleSidebarToggle()" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; font-weight:bold; padding:6px 12px; border-radius:6px; flex-shrink:0;">
     ☰ {{ 'القائمة' if ui_lang=='ar' else 'Menu' }}
   </button>
-  <button type="button" class="rd-m-tab active" id="tabMobileForm" onclick="switchMobileView('form')">
+  <button type="button" class="rd-m-tab active" id="tabMobileForm">
     📝 {{ 'استمارة التسجيل' if ui_lang=='ar' else 'Form' }}
   </button>
-  <button type="button" class="rd-m-tab" id="tabMobileCases" onclick="switchMobileView('cases')">
+  <button type="button" class="rd-m-tab" id="tabMobileCases">
     📋 {{ 'قائمة الحالات' if ui_lang=='ar' else 'Cases' }} (<span id="rdCasesCountMobile">{{ today_orders|length }}</span>)
   </button>
 </div>
 
 <!-- Floating Cases Dock Tab (Visible when Cases Sidebar is folded on Desktop) -->
-<div id="rdCasesDockTab" class="rd-cases-dock-tab" onclick="toggleCasesSidebar()" title="{{ 'إظهار قائمة الحالات' if ui_lang=='ar' else 'Show Cases' }}">
+<div id="rdCasesDockTab" class="rd-cases-dock-tab" title="{{ 'إظهار قائمة الحالات' if ui_lang=='ar' else 'Show Cases' }}">
   <span>📋 {{ 'قائمة الحالات' if ui_lang=='ar' else 'Cases' }}</span>
   <span class="badge" style="background:#0284c7; color:#fff; font-size:11px; padding:2px 7px; border-radius:10px;">{{ today_orders|length }}</span>
   <span>◀</span>
@@ -707,12 +707,12 @@ body.ltr .rd-cases-dock-tab {
     <div class="rd-main-header">
       <div class="rd-header-title">
         <!-- System Sidebar 3-State Toggle (Expanded / Compact / Hidden) -->
-        <button type="button" class="btn small" id="btnToggleSysSidebar" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; font-weight:bold;" onclick="handleSidebarToggle()" title="{{ 'طي / إظهار القائمة الرئيسية للنظام' if ui_lang=='ar' else 'Toggle Main Sidebar' }}">
+        <button type="button" class="btn small" id="btnToggleSysSidebar" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; font-weight:bold;" title="{{ 'طي / إظهار القائمة الرئيسية للنظام' if ui_lang=='ar' else 'Toggle Main Sidebar' }}">
           <span id="sysSidebarIcon">◀</span> <span id="sysSidebarText">{{ 'القائمة: عادية' if ui_lang=='ar' else 'Sidebar: Normal' }}</span>
         </button>
 
         <!-- Toggle Reception Cases Sidebar -->
-        <button type="button" class="btn small" id="btnToggleCasesSidebar" style="background:#0f172a; color:#cbd5e1; border:1px solid #475569;" onclick="toggleCasesSidebar()" title="{{ 'طي / إظهار قائمة أسماء الحالات' if ui_lang=='ar' else 'Toggle Cases List' }}">
+        <button type="button" class="btn small" id="btnToggleCasesSidebar" style="background:#0f172a; color:#cbd5e1; border:1px solid #475569;" title="{{ 'طي / إظهار قائمة أسماء الحالات' if ui_lang=='ar' else 'Toggle Cases List' }}">
           📋 <span id="casesSidebarText">{{ 'طي قائمة الحالات' if ui_lang=='ar' else 'Hide Cases' }}</span>
         </button>
 
@@ -1492,7 +1492,11 @@ function applyCasesSidebarState(hidden){
   }
 }
 
+let _lastCasesToggleTime = 0;
 function toggleCasesSidebar(){
+  const now = Date.now();
+  if (now - _lastCasesToggleTime < 250) return;
+  _lastCasesToggleTime = now;
   const container = document.getElementById('rdContainer');
   const isSmallScreen = window.innerWidth <= 900;
 
@@ -2131,13 +2135,9 @@ function addCurrentExamToBasket() {
   let isAddAsDuplicate = false;
   if (isDuplicate) {
     const wantDup = confirm(
-      'الفحص [' + (p.code || '') + '] (' + (p.nameAr || p.name) + ') مضاف بالفعل في قائمة هذه الزيارة.
-
-' +
-      '• هل ترغب في إضافته مرة أخرى (لتصوير جهة أخرى، أو زاوية إضافية)؟
-
-' +
-      'اضغط (موافق OK) لإضافته كفحص إضافي، أو (إلغاء Cancel) لاختيار فحص جديد.'
+      "الفحص [" + (p.code || "") + "] (" + (p.nameAr || p.name) + ") مضاف بالفعل في قائمة هذه الزيارة.\n\n" +
+      "• هل ترغب في إضافته مرة أخرى (لتصوير جهة أخرى، أو زاوية إضافية)؟\n\n" +
+      "اضغط (موافق OK) لإضافته كفحص إضافي، أو (إلغاء Cancel) لاختيار فحص جديد."
     );
     if (!wantDup) {
       pSel.value = '';
@@ -2150,9 +2150,6 @@ function addCurrentExamToBasket() {
     }
     isAddAsDuplicate = true;
   }
-
-  const p = ALL_PROCEDURES.find(x => String(x.id) === String(pSel.value));
-  if (!p) return;
 
   const branchId = document.getElementById('formBranch').value;
   const branchDevices = ALL_DEVICES.filter(d => String(d.branchId) === String(branchId));
@@ -2441,6 +2438,7 @@ searchInp.addEventListener('keydown', function(e){
     autoBox.style.display = 'none';
   }
 });
+}
 
 function highlightPatientItem(items){
   items.forEach((it, i) => {
@@ -2936,7 +2934,11 @@ function toggleMobileSidebar(){
   }
 }
 
+let _lastSysToggleTime = 0;
 function handleSidebarToggle(){
+  const now = Date.now();
+  if (now - _lastSysToggleTime < 250) return;
+  _lastSysToggleTime = now;
   if(window.innerWidth <= 900){
     toggleMobileSidebar();
   } else {
