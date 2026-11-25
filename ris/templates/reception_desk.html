@@ -905,20 +905,42 @@ body.ltr .rd-cases-dock-tab {
             </div>
 
             <div class="rd-col-2 rd-field" style="position:relative;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                <label style="margin:0;">{{ 'اسم الفحص / الخدمة *' if ui_lang=='ar' else 'Procedure / Examination *' }}</label>
-                <span style="font-size:11px; color:#38bdf8;">🔍 {{ 'بحث شامل في الفحوصات والأقسام والغرف' if ui_lang=='ar' else 'Search Exams, Depts, Rooms' }}</span>
+              <div style="display:grid; grid-template-columns: 140px 1fr; gap:10px; align-items:start;">
+                
+                <!-- Dedicated Exam Code Input (كود الفحص السريع) -->
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                    <label style="margin:0; font-weight:700; color:#38bdf8;">🏷️ {{ 'كود الفحص *' if ui_lang=='ar' else 'Exam Code *' }}</label>
+                  </div>
+                  <div style="position:relative;">
+                    <input type="text" id="procCodeInput" placeholder="{{ 'مثال: CT-004' if ui_lang=='ar' else 'e.g. CT-004' }}" 
+                           style="width:100%; font-family:monospace; font-weight:bold; font-size:13px; text-transform:uppercase; background:#0b1329; border:2px solid #0284c7; color:#38bdf8; border-radius:6px; padding:7px 10px;" 
+                           oninput="onProcCodeInput(this.value)" onkeydown="onProcCodeKeydown(event)" autocomplete="off">
+                    <span id="procCodeBadge" style="position:absolute; left:6px; top:50%; transform:translateY(-50%); font-size:12px; color:#10b981; display:none;">✔</span>
+                  </div>
+                  <small style="color:#64748b; font-size:10px; display:block; margin-top:2px;">{{ 'اكتب الكود واضغط Enter' if ui_lang=='ar' else 'Type code & press Enter' }}</small>
+                </div>
+
+                <!-- Procedure Name & Search -->
+                <div style="position:relative;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                    <label style="margin:0; font-weight:700;">{{ 'اسم الفحص / الخدمة المطلوبة *' if ui_lang=='ar' else 'Procedure / Examination *' }}</label>
+                    <span style="font-size:11px; color:#94a3b8;">🔍 {{ 'أو ابحث بالاسم والقسم' if ui_lang=='ar' else 'or search by name' }}</span>
+                  </div>
+                  <input type="text" id="procSearchInput" placeholder="{{ 'اكتب للبحث بكود أو اسم الفحص أو القسم (مثال: مخ، صدر، ركبة، CT-004...)' if ui_lang=='ar' else 'Search by code or name...' }}" style="margin-bottom:6px; border-color:#38bdf8; background:#0f172a;" oninput="onProcSearchInput(this.value)" onkeydown="onProcSearchKeydown(event)" autocomplete="off">
+                  <div id="procSearchResults" class="rd-autocomplete" style="display:none; max-height:220px; z-index:80;"></div>
+                  <select name="procedure_id" id="formProcedure" onchange="onProcedureChange()">
+                    <option value="">-- {{ 'اختر الفحص المطلـوب' if ui_lang=='ar' else 'Choose Examination' }} --</option>
+                    {% for p in procedures %}
+                      <option value="{{ p.id }}" data-modality="{{ p.modality }}" data-price="{{ p.base_price or 0 }}" data-name="{{ p.name }}" data-name-ar="{{ p.name_ar or '' }}" data-code="{{ p.code }}" data-id="{{ p.id }}">
+                        [{{ p.code }}] {{ p.name_ar if (ui_lang=='ar' and p.name_ar) else p.name }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
+
               </div>
-              <input type="text" id="procSearchInput" placeholder="{{ 'اكتب للبحث بكود الفحص أو اسمه أو القسم أو الغرفة (مثال: XR-CHEST، رنين مخ، غرفة 1، 101...)' if ui_lang=='ar' else 'Search by code, exam, dept or room...' }}" style="margin-bottom:6px; border-color:#38bdf8; background:#0f172a;" oninput="onProcSearchInput(this.value)" autocomplete="off">
-              <div id="procSearchResults" class="rd-autocomplete" style="display:none; max-height:220px; z-index:80;"></div>
-              <select name="procedure_id" id="formProcedure" onchange="onProcedureChange()">
-                <option value="">-- {{ 'اختر الفحص المطلـوب' if ui_lang=='ar' else 'Choose Examination' }} --</option>
-                {% for p in procedures %}
-                  <option value="{{ p.id }}" data-modality="{{ p.modality }}" data-price="{{ p.base_price or 0 }}" data-name="{{ p.name }}" data-name-ar="{{ p.name_ar or '' }}" data-code="{{ p.code }}" data-id="{{ p.id }}">
-                    [{{ p.code }}] {{ p.name_ar if (ui_lang=='ar' and p.name_ar) else p.name }}
-                  </option>
-                {% endfor %}
-              </select>
+              <div id="procCodeNotice" style="display:none; margin-top:5px; padding:4px 10px; border-radius:5px; font-size:11.5px; font-weight:600;"></div>
             </div>
 
             <!-- Multi-Procedure Examinations Basket (سلة الفحوصات المتعددة للزيارة) -->
@@ -2517,7 +2539,10 @@ function resetFormForNewPatient(){
   if(exWrap) exWrap.style.display = 'none';
   const badge = document.getElementById('selectedPatientBadge');
   if(badge) badge.style.display = 'none';
-  if(searchInp) searchInp.value = '';
+  const psInp = document.getElementById('procSearchInput'); if(psInp) psInp.value = '';
+  const codeInp = document.getElementById('procCodeInput'); if(codeInp) codeInp.value = '';
+  const codeNotice = document.getElementById('procCodeNotice'); if(codeNotice) { codeNotice.style.display = 'none'; codeNotice.innerHTML = ''; }
+  const codeBadge = document.getElementById('procCodeBadge'); if(codeBadge) codeBadge.style.display = 'none';
   document.getElementById('formGross').value = '0';
   document.getElementById('formDiscount').value = '0';
   document.getElementById('formNet').value = '0';
@@ -2538,7 +2563,6 @@ function resetFormForNewPatient(){
     pushBtn.innerHTML = '⚡ إرسال للـ MWL';
     pushBtn.title = 'يرجى اختيار حالة من قائمة الحالات أولاً لإرسالها للـ Worklist';
   }
-  const psInp = document.getElementById('procSearchInput'); if(psInp) psInp.value = '';
   document.getElementById('btnWorkOrder').setAttribute('disabled', 'disabled');
   document.getElementById('btnWorkOrder').href = '#';
   currentSelectedReceiptId = 0;
@@ -2673,6 +2697,14 @@ function selectCaseCard(card){
   } catch(e) {
     if (exWrap) exWrap.style.display = 'none';
   }
+
+  const cardProc = ALL_PROCEDURES.find(p => String(p.id) === String(d.procedureId));
+  const codeInp = document.getElementById('procCodeInput');
+  if(codeInp) codeInp.value = (cardProc && cardProc.code) ? cardProc.code : '';
+  const codeBadge = document.getElementById('procCodeBadge');
+  if(codeBadge) codeBadge.style.display = cardProc ? 'inline' : 'none';
+  const notice = document.getElementById('procCodeNotice');
+  if(notice) { notice.style.display = 'none'; notice.innerHTML = ''; }
 
   document.getElementById('btnPrintReceipt').disabled = !currentSelectedReceiptId;
   document.getElementById('btnPrintSticker').disabled = false;
@@ -3132,6 +3164,117 @@ function onProcSearchInput(query){
   }
 }
 
+function onProcCodeInput(val) {
+  const query = (val || '').trim().toUpperCase();
+  const badge = document.getElementById('procCodeBadge');
+  const notice = document.getElementById('procCodeNotice');
+
+  if (!query) {
+    if (badge) badge.style.display = 'none';
+    if (notice) { notice.style.display = 'none'; notice.innerHTML = ''; }
+    return;
+  }
+
+  // 1. Exact match (e.g. "CT-004")
+  let match = ALL_PROCEDURES.find(p => (p.code || '').toUpperCase() === query);
+
+  // 2. Stripped match (e.g. "CT004" -> "CT-004")
+  if (!match) {
+    const qClean = query.replace(/[^A-Z0-9]/g, '');
+    match = ALL_PROCEDURES.find(p => (p.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '') === qClean);
+  }
+
+  // 3. Number only search (e.g. user typed "4" or "004")
+  if (!match && /^\d+$/.test(query)) {
+    const num = parseInt(query, 10);
+    const curMod = document.getElementById('formModality').value;
+    if (curMod) {
+      match = ALL_PROCEDURES.find(p => p.modality === curMod && ((p.code || '').includes(query) || (p.code || '').endsWith(String(num))));
+    }
+    if (!match) {
+      match = ALL_PROCEDURES.find(p => (p.code || '').includes(query) || (p.code || '').endsWith(String(num)));
+    }
+  }
+
+  // 4. Starts with match
+  if (!match && query.length >= 2) {
+    match = ALL_PROCEDURES.find(p => (p.code || '').toUpperCase().startsWith(query));
+  }
+
+  if (match) {
+    const mSel = document.getElementById('formModality');
+    if (mSel && match.modality) mSel.value = match.modality;
+
+    syncSelections({ procedureChanged: true, preferredProcedureId: match.id });
+
+    const searchInp = document.getElementById('procSearchInput');
+    if (searchInp) searchInp.value = `[${match.code}] ${match.nameAr || match.name}`;
+
+    const grossInp = document.getElementById('formGross');
+    if (grossInp) grossInp.value = match.price || 0;
+
+    if (badge) badge.style.display = 'inline';
+    if (notice) {
+      notice.style.display = 'block';
+      notice.style.background = 'rgba(16,185,129,0.18)';
+      notice.style.border = '1px solid #10b981';
+      notice.style.color = '#34d399';
+      notice.innerHTML = `✅ تم تحديد الفحص: <b>[${match.code}]</b> ${match.nameAr || match.name} (${match.price} ج.م) — <span style="color:#f8fafc; text-decoration:underline; cursor:pointer;" onclick="addCurrentExamToBasket()">اضغط Enter لإضافته للزيارة</span>`;
+    }
+  } else {
+    if (badge) badge.style.display = 'none';
+    if (notice) {
+      notice.style.display = 'block';
+      notice.style.background = 'rgba(239,68,68,0.15)';
+      notice.style.border = '1px solid #ef4444';
+      notice.style.color = '#f87171';
+      notice.innerHTML = `⚠️ لا يوجد فحص مسجل بالكود [${query}] — تحقق من الكود أو اختر من قائمة الفحوصات`;
+    }
+  }
+}
+
+function onProcCodeKeydown(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const pSel = document.getElementById('formProcedure');
+    if (pSel && pSel.value) {
+      addCurrentExamToBasket();
+      const codeInp = document.getElementById('procCodeInput');
+      if (codeInp) {
+        codeInp.value = '';
+        codeInp.focus();
+      }
+      const notice = document.getElementById('procCodeNotice');
+      if (notice) {
+        notice.style.display = 'block';
+        notice.style.background = 'rgba(2,132,199,0.18)';
+        notice.style.border = '1px solid #0284c7';
+        notice.style.color = '#38bdf8';
+        notice.innerHTML = '✨ تمت إضافة الفحص للسلة بنجاح! اكتب كود الفحص التالي أو انتقل لبيانات الدفع.';
+      }
+    } else {
+      alert('يرجى كتابة كود فحص صحيح أولاً.');
+    }
+  }
+}
+
+function onProcSearchKeydown(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const resultsBox = document.getElementById('procSearchResults');
+    if (resultsBox && resultsBox.style.display !== 'none') {
+      const firstItem = resultsBox.querySelector('.rd-autocomplete-item');
+      if (firstItem) {
+        firstItem.click();
+        resultsBox.style.display = 'none';
+      }
+    }
+  } else if (e.key === 'Escape') {
+    const resultsBox = document.getElementById('procSearchResults');
+    if (resultsBox) resultsBox.style.display = 'none';
+  }
+}
+
 function chooseSearchedProcedure(procId){
   const p = ALL_PROCEDURES.find(x => String(x.id) === String(procId));
   if(p){
@@ -3142,6 +3285,18 @@ function chooseSearchedProcedure(procId){
     const name = p.nameAr || p.name || '';
     const searchInp = document.getElementById('procSearchInput');
     if (searchInp) searchInp.value = code ? `[${code}] ${name}` : name;
+    const codeInp = document.getElementById('procCodeInput');
+    if (codeInp) codeInp.value = code;
+    const codeBadge = document.getElementById('procCodeBadge');
+    if (codeBadge) codeBadge.style.display = 'inline';
+    const notice = document.getElementById('procCodeNotice');
+    if (notice) {
+      notice.style.display = 'block';
+      notice.style.background = 'rgba(16,185,129,0.18)';
+      notice.style.border = '1px solid #10b981';
+      notice.style.color = '#34d399';
+      notice.innerHTML = `✅ تم تحديد الفحص: <b>[${code}]</b> ${name} (${p.price} ج.م) — <span style="color:#f8fafc; text-decoration:underline; cursor:pointer;" onclick="addCurrentExamToBasket()">اضغط Enter لإضافته للزيارة</span>`;
+    }
 
     const btn = document.getElementById('btnAddMoreExam');
     if (btn) {
