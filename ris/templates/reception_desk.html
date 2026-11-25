@@ -726,6 +726,9 @@ body.ltr .rd-cases-dock-tab {
         <button type="button" class="btn small" style="background:#10b981; color:#fff; border-color:#059669; font-weight:bold;" onclick="resetFormForNewPatient()">
           ➕ {{ 'حالة جديدة' if ui_lang=='ar' else 'New Case' }}
         </button>
+        <button type="button" class="btn small" id="btnExportCases" onclick="openExportModal()" style="background:#059669; color:#fff; border-color:#10b981; font-weight:bold;" title="{{ 'تصدير شيت إكسل أو CSV للمحاسب أو المراجع أو التعاقدات' if ui_lang=='ar' else 'Export Cases Sheet' }}">
+          📊 {{ 'تصدير شيت' if ui_lang=='ar' else 'Export Sheet' }}
+        </button>
         <a class="btn small" href="{{ url_for('branch_manager_audit') }}" target="_blank" style="background:#0f766e; color:#fff; border-color:#14b8a6; font-weight:bold; text-decoration:none;">
           🛡️ {{ 'رقابة التعديلات' if ui_lang=='ar' else 'Audit Edits' }}
         </a>
@@ -1249,9 +1252,14 @@ body.ltr .rd-cases-dock-tab {
           📋 {{ 'قائمة حالات اليوم' if ui_lang=='ar' else 'Today Cases' }}
           <span class="badge" style="background:#0284c7; color:#fff; font-size:11px; padding:1px 6px; border-radius:10px;">{{ today_orders|length }}</span>
         </span>
-        <button type="button" class="btn small" onclick="toggleCasesSidebar()" style="background:#1e293b; color:#cbd5e1; border:1px solid #475569; padding:2px 8px; font-size:11px; border-radius:5px; cursor:pointer;" title="{{ 'طي قائمة الحالات لتوسيع الشاشة' if ui_lang=='ar' else 'Fold Cases' }}">
-          ✖ {{ 'طي القائمة' if ui_lang=='ar' else 'Fold' }}
-        </button>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <button type="button" class="btn small" onclick="openExportModal()" style="background:#065f46; color:#6ee7b7; border:1px solid #059669; padding:2px 7px; font-size:11px; border-radius:5px; cursor:pointer;" title="{{ 'تصدير كشف حالات اليوم شيت إكسل للمحاسب أو التعاقدات' if ui_lang=='ar' else 'Export Today Cases' }}">
+            📥 {{ 'شيت اليوم' if ui_lang=='ar' else 'Export' }}
+          </button>
+          <button type="button" class="btn small" onclick="toggleCasesSidebar()" style="background:#1e293b; color:#cbd5e1; border:1px solid #475569; padding:2px 8px; font-size:11px; border-radius:5px; cursor:pointer;" title="{{ 'طي قائمة الحالات لتوسيع الشاشة' if ui_lang=='ar' else 'Fold Cases' }}">
+            ✖ {{ 'طي القائمة' if ui_lang=='ar' else 'Fold' }}
+          </button>
+        </div>
       </div>
 
       <div class="rd-date-bar">
@@ -3459,5 +3467,233 @@ if (rdForm) {
   });
 }
 
+</script>
+
+<!-- ======================================================== -->
+<!-- MODAL: EXPORT CASES SHEET (تصدير كشف الفحوصات والتعاقدات) -->
+<!-- ======================================================== -->
+<div id="exportModal" class="rd-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:99999; align-items:center; justify-content:center; backdrop-filter:blur(3px);">
+  <div class="rd-modal-content" style="background:#0f172a; border:1px solid #334155; border-radius:12px; width:95%; max-width:560px; padding:22px; box-shadow:0 24px 48px rgba(0,0,0,0.75); color:#f8fafc; font-family:inherit;">
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:24px; background:rgba(16,185,129,0.15); border:1px solid #10b981; padding:4px 8px; border-radius:8px;">📊</span>
+        <div>
+          <h3 style="margin:0; font-size:15.5px; color:#38bdf8; font-weight:700;">{{ 'تصدير كشف الفحوصات والحسابات والتعاقدات' if ui_lang=='ar' else 'Export Cases & Financial Sheet' }}</h3>
+          <small style="color:#94a3b8; font-size:11px;">{{ 'شيت تفصيلي مخصص للمحاسب المالي، المراجع، ومطالبات شركات التعاقد والتأمين' if ui_lang=='ar' else 'Detailed sheet for accountants, auditors, and contract claims' }}</small>
+        </div>
+      </div>
+      <button type="button" onclick="closeExportModal()" style="background:#1e293b; border:1px solid #475569; color:#94a3b8; font-size:16px; border-radius:6px; width:28px; height:28px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <!-- Filter Form Controls -->
+    <div style="display:flex; flex-direction:column; gap:13px; font-size:12.5px;">
+      
+      <!-- Date Presets -->
+      <div>
+        <label style="display:block; margin-bottom:5px; color:#cbd5e1; font-weight:600;">📅 {{ 'الفترة الزمنية:' if ui_lang=='ar' else 'Date Range:' }}</label>
+        <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+          <button type="button" class="btn small" onclick="setExportDatePreset('today')" style="background:#1e293b; color:#38bdf8; border:1px solid #475569; padding:3px 10px; font-size:11px; border-radius:6px; cursor:pointer;">{{ 'اليوم' if ui_lang=='ar' else 'Today' }}</button>
+          <button type="button" class="btn small" onclick="setExportDatePreset('yesterday')" style="background:#1e293b; color:#94a3b8; border:1px solid #475569; padding:3px 10px; font-size:11px; border-radius:6px; cursor:pointer;">{{ 'أمس' if ui_lang=='ar' else 'Yesterday' }}</button>
+          <button type="button" class="btn small" onclick="setExportDatePreset('last7')" style="background:#1e293b; color:#94a3b8; border:1px solid #475569; padding:3px 10px; font-size:11px; border-radius:6px; cursor:pointer;">{{ 'آخر 7 أيام' if ui_lang=='ar' else 'Last 7 Days' }}</button>
+          <button type="button" class="btn small" onclick="setExportDatePreset('this_month')" style="background:#1e293b; color:#94a3b8; border:1px solid #475569; padding:3px 10px; font-size:11px; border-radius:6px; cursor:pointer;">{{ 'هذا الشهر' if ui_lang=='ar' else 'This Month' }}</button>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+          <div>
+            <span style="font-size:11px; color:#94a3b8;">{{ 'من تاريخ:' if ui_lang=='ar' else 'From:' }}</span>
+            <input type="date" id="expDateFrom" value="{{ selected_date.isoformat() }}" style="width:100%; background:#1e293b; border:1px solid #475569; color:#fff; border-radius:6px; padding:6px 8px; font-size:12px; margin-top:2px;">
+          </div>
+          <div>
+            <span style="font-size:11px; color:#94a3b8;">{{ 'إلى تاريخ:' if ui_lang=='ar' else 'To:' }}</span>
+            <input type="date" id="expDateTo" value="{{ selected_date.isoformat() }}" style="width:100%; background:#1e293b; border:1px solid #475569; color:#fff; border-radius:6px; padding:6px 8px; font-size:12px; margin-top:2px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Branch Selection -->
+      <div>
+        <label style="display:block; margin-bottom:4px; color:#cbd5e1; font-weight:600;">🏢 {{ 'الفرع:' if ui_lang=='ar' else 'Branch:' }}</label>
+        <select id="expBranchId" style="width:100%; background:#1e293b; border:1px solid #475569; color:#fff; border-radius:6px; padding:6px 8px; font-size:12px;">
+          {% if not allowed_branches %}<option value="">🌐 {{ 'جميع الفروع' if ui_lang=='ar' else 'All Branches' }}</option>{% endif %}
+          {% for b in branches %}
+            <option value="{{ b.id }}" {% if branch_id == b.id %}selected{% endif %}>🏢 {{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Payer & Contracts Selection -->
+      <div>
+        <label style="display:block; margin-bottom:4px; color:#cbd5e1; font-weight:600;">💳 {{ 'نوع السداد والتعاقدات:' if ui_lang=='ar' else 'Payer & Contracts:' }}</label>
+        <select id="expContractSelect" style="width:100%; background:#1e293b; border:1px solid #475569; color:#fff; border-radius:6px; padding:6px 8px; font-size:12px;">
+          <option value="ALL">🌐 {{ 'الكل (نقدي + كافة التعاقدات والشركات)' if ui_lang=='ar' else 'All (Cash + All Contracts)' }}</option>
+          <option value="CASH">💵 {{ 'نقدي / خاص فقط (Cash Only)' if ui_lang=='ar' else 'Cash Only' }}</option>
+          <option value="CONTRACT">🏢 {{ 'كافة جهات التعاقد والتأمين مجتمعة' if ui_lang=='ar' else 'All Corporate & Insurance' }}</option>
+          {% if contracts %}
+            <optgroup label="{{ 'شركات وجهات تعاقد محددة' if ui_lang=='ar' else 'Specific Contracts' }}">
+              {% for c in contracts %}
+                {% if c.id != 1 and (c.code or '').upper() != 'CASH' %}
+                  <option value="ID_{{ c.id }}">📄 {{ c.name }} ({{ c.code }})</option>
+                {% endif %}
+              {% endfor %}
+            </optgroup>
+          {% endif %}
+        </select>
+      </div>
+
+      <!-- Modality & Report Status in 2 columns -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#cbd5e1; font-weight:600;">🎯 {{ 'القسم / الجهاز:' if ui_lang=='ar' else 'Modality:' }}</label>
+          <select id="expModality" style="width:100%; background:#1e293b; border:1px solid #475569; color:#fff; border-radius:6px; padding:6px 8px; font-size:12px;">
+            <option value="ALL">{{ 'جميع الأقسام' if ui_lang=='ar' else 'All Modalities' }}</option>
+            <option value="MR">MR - الرنين المغناطيسي</option>
+            <option value="CT">CT - الأشعة المقطعية</option>
+            <option value="US">US - السونار والدوبلر</option>
+            <option value="DX">DX - الأشعة العادية</option>
+            <option value="EEG">EEG - رسم المخ</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:4px; color:#cbd5e1; font-weight:600;">📝 {{ 'حالة التقرير:' if ui_lang=='ar' else 'Report Status:' }}</label>
+          <select id="expReportStatus" style="width:100%; background:#1e293b; border:1px solid #475569; color:#fff; border-radius:6px; padding:6px 8px; font-size:12px;">
+            <option value="ALL">{{ 'الكل' if ui_lang=='ar' else 'All' }}</option>
+            <option value="FINAL">{{ 'معتمد نهائي فقط' if ui_lang=='ar' else 'Final Only' }}</option>
+            <option value="DRAFT">{{ 'مسودة' if ui_lang=='ar' else 'Draft' }}</option>
+            <option value="UNREPORTED">{{ 'بانتظار الكتابة' if ui_lang=='ar' else 'Unreported' }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- File Format Selection -->
+      <div style="background:#1e293b; padding:10px 14px; border-radius:8px; border:1px solid #334155; margin-top:2px;">
+        <label style="display:block; margin-bottom:6px; color:#38bdf8; font-weight:700;">💾 {{ 'صيغة الملف المطلوب:' if ui_lang=='ar' else 'Export Format:' }}</label>
+        <div style="display:flex; gap:20px; align-items:center;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="radio" name="expFormat" value="xlsx" checked>
+            <span style="font-weight:700; color:#10b981;">📊 Excel (.xlsx)</span>
+            <small style="color:#94a3b8;">{{ '(ملون ومنسق - موصى به)' if ui_lang=='ar' else '(Formatted)' }}</small>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="radio" name="expFormat" value="csv">
+            <span style="font-weight:700; color:#38bdf8;">📄 CSV (.csv)</span>
+            <small style="color:#94a3b8;">{{ '(نصوص UTF-8 مع BOM)' if ui_lang=='ar' else '(Plain)' }}</small>
+          </label>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:18px; border-top:1px solid #334155; padding-top:14px;">
+      <button type="button" onclick="closeExportModal()" style="background:#334155; color:#cbd5e1; border:1px solid #475569; padding:7px 16px; font-size:12.5px; border-radius:6px; cursor:pointer;">
+        {{ 'إلغاء' if ui_lang=='ar' else 'Cancel' }}
+      </button>
+      <button type="button" id="btnRunExport" onclick="executeCasesExport()" style="background:#059669; color:#fff; border:1px solid #10b981; padding:7px 22px; font-size:13px; font-weight:bold; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+        <span>📥 {{ 'تنزيل الشيت فوراً' if ui_lang=='ar' else 'Download Sheet' }}</span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function openExportModal(){
+  const modal = document.getElementById('exportModal');
+  if(modal){
+    modal.style.display = 'flex';
+    const bSel = document.getElementById('rdBranchFilter');
+    const expB = document.getElementById('expBranchId');
+    if(bSel && expB && bSel.value) expB.value = bSel.value;
+    const dInp = document.getElementById('rdDateInput');
+    if(dInp && dInp.value){
+      const df = document.getElementById('expDateFrom');
+      const dt = document.getElementById('expDateTo');
+      if(df && !df.value) df.value = dInp.value;
+      if(dt && !dt.value) dt.value = dInp.value;
+    }
+  }
+}
+
+function closeExportModal(){
+  const modal = document.getElementById('exportModal');
+  if(modal) modal.style.display = 'none';
+}
+
+function setExportDatePreset(preset){
+  const now = new Date();
+  const formatYMD = d => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  
+  let fromStr = formatYMD(now);
+  let toStr = formatYMD(now);
+
+  if(preset === 'today'){
+    fromStr = formatYMD(now);
+    toStr = formatYMD(now);
+  } else if(preset === 'yesterday'){
+    const yest = new Date(now);
+    yest.setDate(now.getDate() - 1);
+    fromStr = formatYMD(yest);
+    toStr = formatYMD(yest);
+  } else if(preset === 'last7'){
+    const d7 = new Date(now);
+    d7.setDate(now.getDate() - 6);
+    fromStr = formatYMD(d7);
+    toStr = formatYMD(now);
+  } else if(preset === 'this_month'){
+    const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    fromStr = formatYMD(mStart);
+    toStr = formatYMD(now);
+  }
+
+  const df = document.getElementById('expDateFrom');
+  const dt = document.getElementById('expDateTo');
+  if(df) df.value = fromStr;
+  if(dt) dt.value = toStr;
+}
+
+function executeCasesExport(){
+  const df = document.getElementById('expDateFrom').value;
+  const dt = document.getElementById('expDateTo').value;
+  const branch = document.getElementById('expBranchId').value;
+  const contractVal = document.getElementById('expContractSelect').value;
+  const modality = document.getElementById('expModality').value;
+  const repStatus = document.getElementById('expReportStatus').value;
+  
+  let format = 'xlsx';
+  const fmtRadios = document.getElementsByName('expFormat');
+  for(const r of fmtRadios){
+    if(r.checked){ format = r.value; break; }
+  }
+
+  let payerType = 'ALL';
+  let contractId = '';
+  if(contractVal === 'CASH'){
+    payerType = 'CASH';
+  } else if(contractVal === 'CONTRACT'){
+    payerType = 'CONTRACT';
+  } else if(contractVal.startsWith('ID_')){
+    contractId = contractVal.replace('ID_', '');
+  }
+
+  const params = new URLSearchParams({
+    date_from: df,
+    date_to: dt,
+    branch_id: branch,
+    payer_type: payerType,
+    contract_id: contractId,
+    modality: modality,
+    report_status: repStatus,
+    format: format
+  });
+
+  const exportUrl = `/reception/export-cases?${params.toString()}`;
+  window.open(exportUrl, '_blank');
+  closeExportModal();
+}
 </script>
 {% endblock %}

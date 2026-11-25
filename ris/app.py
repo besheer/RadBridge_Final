@@ -15577,6 +15577,105 @@ def api_reception_update_order(order_id):
     })
 
 
+@app.route('/reception/export-cases')
+@app.route('/orders/export-cases')
+@login_required
+def export_cases_sheet():
+    u = current_user()
+    if not (has_perm('*') or has_perm('export.view') or has_perm('financial.view') or has_perm('orders.view') or has_perm('cashier.workstation') or has_perm('appointments.manage') or has_perm('orders.create') or getattr(u, 'role_id', None) in (1, 2, 3, 4, 10, 14)):
+        abort(403)
+
+    from case_export_service import build_cases_query, extract_case_row, export_cases_to_xlsx, export_cases_to_csv
+    from registration_policy import allowed_registration_branches
+
+    allowed_branches = allowed_registration_branches()
+
+    today_str = date.today().isoformat()
+    start_date_str = request.args.get('date_from') or request.args.get('start_date') or request.args.get('date') or today_str
+    end_date_str = request.args.get('date_to') or request.args.get('end_date') or request.args.get('date') or today_str
+
+    branch_id_param = request.args.get('branch_id')
+    branch_id = int(branch_id_param) if branch_id_param and branch_id_param.isdigit() else None
+    
+    payer_type = (request.args.get('payer_type') or 'ALL').upper().strip()
+    contract_id_param = request.args.get('contract_id')
+    contract_id = int(contract_id_param) if contract_id_param and contract_id_param.isdigit() else None
+    
+    modality = (request.args.get('modality') or 'ALL').upper().strip()
+    report_status = (request.args.get('report_status') or 'ALL').upper().strip()
+    search_q = (request.args.get('q') or '').strip()
+    fmt = (request.args.get('format') or 'xlsx').lower().strip()
+
+    filters = {
+        'start_date': start_date_str,
+        'end_date': end_date_str,
+        'branch_id': branch_id,
+        'payer_type': payer_type,
+        'contract_id': contract_id,
+        'modality': modality,
+        'report_status': report_status,
+        'search': search_q
+    }
+
+    q = build_cases_query(db, Order, Patient, filters, allowed_branches=allowed_branches)
+    orders = q.all()
+
+    rows = []
+    for idx, o in enumerate(orders, 1):
+        rows.append(extract_case_row(o, idx, Receipt, User))
+
+    branch_name = 'جميع الفروع'
+    if branch_id:
+        b_obj = Branch.query.get(branch_id)
+        if b_obj:
+            branch_name = b_obj.name
+
+    payer_name = 'الكل'
+    if contract_id:
+        c_obj = Contract.query.get(contract_id)
+        if c_obj:
+            payer_name = f"تعاقد ({c_obj.name})"
+    elif payer_type == 'CASH':
+        payer_name = 'نقدي / خاص فقط'
+    elif payer_type == 'CONTRACT':
+        payer_name = 'جميع التعاقدات والشركات'
+
+    user_name = getattr(u, 'full_name', None) or getattr(u, 'username', 'System')
+    company = get_company_profile()
+    company_name = getattr(company, 'name_ar', None) or getattr(company, 'name_en', 'AirScan RIS/PACS')
+
+    meta_info = {
+        'company_name': company_name,
+        'start_date': start_date_str,
+        'end_date': end_date_str,
+        'branch_name': branch_name,
+        'payer_name': payer_name,
+        'modality': modality if modality != 'ALL' else 'جميع الأقسام',
+        'user_name': user_name
+    }
+
+    filename_safe = f"AirScan_Cases_{start_date_str}_to_{end_date_str}".replace('-', '')
+    if branch_id:
+        filename_safe += f"_Branch{branch_id}"
+
+    if fmt == 'csv':
+        bio = export_cases_to_csv(rows, meta_info)
+        return send_file(
+            bio,
+            as_attachment=True,
+            download_name=f"{filename_safe}.csv",
+            mimetype='text/csv; charset=utf-8'
+        )
+    else:
+        bio = export_cases_to_xlsx(rows, meta_info)
+        return send_file(
+            bio,
+            as_attachment=True,
+            download_name=f"{filename_safe}.xlsx",
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+
 @app.route('/schedule/v2')
 @require_perm('appointments.view')
 def schedule_v2():

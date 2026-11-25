@@ -1,0 +1,71 @@
+{
+  "timestamp": "2026-11-24T00:23:12.284780",
+  "period": "Morning (صباحاً)",
+  "containers": {
+    "ris-web": {
+      "status": "Up 4 seconds",
+      "is_up": true
+    },
+    "radbridge-orthanc": {
+      "status": "Up 22 minutes",
+      "is_up": true
+    },
+    "radbridge-postgres": {
+      "status": "Up 2 days (healthy)",
+      "is_up": true
+    },
+    "radbridge-nginx": {
+      "status": "Up 2 days",
+      "is_up": true
+    },
+    "radbridge-mirth": {
+      "status": "Up 2 days",
+      "is_up": true
+    },
+    "radbridge-ohif": {
+      "status": "Up 5 hours",
+      "is_up": true
+    },
+    "radbridge-ohif-app": {
+      "status": "Up 5 hours",
+      "is_up": true
+    }
+  },
+  "services": {
+    "ris_web": {
+      "code": 200,
+      "status": "UP"
+    },
+    "orthanc_pacs": {
+      "status": "UP",
+      "version": "1.12.10",
+      "compression": true,
+      "ingest_transcoding": "1.2.840.10008.1.2.4.90"
+    },
+    "postgres": {
+      "status": "UP",
+      "msg": "/run/postgresql:5432 - accepting connections"
+    }
+  },
+  "disk_memory": {
+    "disk_used_percent": "28%",
+    "disk_available": "68G",
+    "memory_total_mb": "7279",
+    "memory_available_mb": "5237"
+  },
+  "errors_detected": [
+    "Container radbridge-nginx logged 6 errors/warnings"
+  ],
+  "actions_taken": [],
+  "status": "WARNING",
+  "log_anomalies": {
+    "radbridge-nginx": [
+      "81.10.65.205 - - [23/Nov/2026:22:20:38 +0000] \"GET /api/staff/communications/queue HTTP/1.1\" 502 157 \"https://airscan.dynu.net/doctor/pro\" \"Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0\" \"-\"",
+      "2026/11/23 22:20:38 [error] 292#292: *96919 recv() failed (104: Connection reset by peer) while reading response header from upstream, client: 81.10.65.205, server: airscan.dynu.net, request: \"GET /api/staff/communications/queue HTTP/1.1\", upstream: \"http://172.19.0.4:8000/api/staff/communications/queue\", host: \"airscan.dynu.net\", referrer: \"https://airscan.dynu.net/doctor/pro\"",
+      "81.10.65.205 - - [23/Nov/2026:22:23:07 +0000] \"GET /api/assignment/offers/pending HTTP/1.1\" 502 157 \"https://airscan.dynu.net/doctor/pro\" \"Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0\" \"-\"",
+      "2026/11/23 22:23:07 [error] 292#292: *96919 connect() failed (111: Connection refused) while connecting to upstream, client: 81.10.65.205, server: airscan.dynu.net, request: \"GET /api/assignment/offers/pending HTTP/1.1\", upstream: \"http://172.19.0.4:8000/api/assignment/offers/pending\", host: \"airscan.dynu.net\", referrer: \"https://airscan.dynu.net/doctor/pro\"",
+      "81.10.65.205 - - [23/Nov/2026:22:23:08 +0000] \"GET /api/staff/communications/queue HTTP/1.1\" 502 157 \"https://airscan.dynu.net/doctor/pro\" \"Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0\" \"-\"",
+      "2026/11/23 22:23:08 [error] 292#292: *96919 connect() failed (111: Connection refused) while connecting to upstream, client: 81.10.65.205, server: airscan.dynu.net, request: \"GET /api/staff/communications/queue HTTP/1.1\", upstream: \"http://172.19.0.4:8000/api/staff/communications/queue\", host: \"airscan.dynu.net\", referrer: \"https://airscan.dynu.net/doctor/pro\""
+    ]
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "timestamp": "2026-11-24T00:15:09.994535",
+  "period": "Morning (صباحاً)",
+  "containers": {
+    "ris-web": {
+      "status": "Up About a minute",
+      "is_up": true
+    },
+    "radbridge-orthanc": {
+      "status": "Up 14 minutes",
+      "is_up": true
+    },
+    "radbridge-postgres": {
+      "status": "Up 2 days (healthy)",
+      "is_up": true
+    },
+    "radbridge-nginx": {
+      "status": "Up 2 days",
+      "is_up": true
+    },
+    "radbridge-mirth": {
+      "status": "Up 2 days",
+      "is_up": true
+    },
+    "radbridge-ohif": {
+      "status": "Up 5 hours",
+      "is_up": true
+    },
+    "radbridge-ohif-app": {
+      "status": "Up 5 hours",
+      "is_up": true
+    }
+  },
+  "services": {
+    "ris_web": {
+      "error": "<urlopen error [Errno 111] Connection refused>",
+      "status": "DOWN"
+    },
+    "orthanc_pacs": {
+      "status": "UP",
+      "version": "1.12.10",
+      "compression": true,
+      "ingest_transcoding": "1.2.840.10008.1.2.4.90"
+    },
+    "postgres": {
+      "status": "UP",
+      "msg": "/run/postgresql:5432 - accepting connections"
+    }
+  },
+  "disk_memory": {
+    "disk_used_percent": "28%",
+    "disk_available": "68G",
+    "memory_total_mb": "7279",
+    "memory_available_mb": "5258"
+  },
+  "errors_detected": [
+    "RIS Web HTTP failure: <urlopen error [Errno 111] Connection refused>"
+  ],
+  "actions_taken": [],
+  "status": "CRITICAL",
+  "log_anomalies": {}
+}

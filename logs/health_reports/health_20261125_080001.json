@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-11-25T08:00:01.817195",
+  "period": "Morning (صباحاً)",
+  "containers": {
+    "ris-web": {
+      "status": "Up 7 hours",
+      "is_up": true
+    },
+    "radbridge-orthanc": {
+      "status": "Up 32 hours",
+      "is_up": true
+    },
+    "radbridge-postgres": {
+      "status": "Up 3 days (healthy)",
+      "is_up": true
+    },
+    "radbridge-nginx": {
+      "status": "Up 3 days",
+      "is_up": true
+    },
+    "radbridge-mirth": {
+      "status": "Up 3 days",
+      "is_up": true
+    },
+    "radbridge-ohif": {
+      "status": "Up 36 hours",
+      "is_up": true
+    },
+    "radbridge-ohif-app": {
+      "status": "Up 36 hours",
+      "is_up": true
+    }
+  },
+  "services": {
+    "ris_web": {
+      "code": 200,
+      "status": "UP"
+    },
+    "orthanc_pacs": {
+      "status": "UP",
+      "version": "1.12.10",
+      "compression": true,
+      "ingest_transcoding": "1.2.840.10008.1.2.4.90"
+    },
+    "postgres": {
+      "status": "UP",
+      "msg": "/run/postgresql:5432 - accepting connections"
+    }
+  },
+  "disk_memory": {
+    "disk_used_percent": "28%",
+    "disk_available": "68G",
+    "memory_total_mb": "7279",
+    "memory_available_mb": "5129"
+  },
+  "errors_detected": [],
+  "actions_taken": [],
+  "status": "PERFECT_HEALTH",
+  "log_anomalies": {}
+}
