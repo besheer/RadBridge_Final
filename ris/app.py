@@ -15065,13 +15065,11 @@ def reception_desk():
         o.attachments = Attachment.query.filter_by(order_id=o.id).all()
         o.consumables = OrderConsumable.query.filter_by(order_id=o.id).all()
 
-    # Pre-select order if requested
+    # Pre-select order ONLY if requested explicitly via URL param
     selected_order_id = request.args.get('order_id', type=int)
     selected_order = None
     if selected_order_id:
         selected_order = Order.query.get(selected_order_id)
-    elif today_orders:
-        selected_order = today_orders[0]
     if selected_order:
         if not hasattr(selected_order, 'latest_receipt'):
             selected_order.latest_receipt = Receipt.query.filter_by(order_id=selected_order.id).order_by(Receipt.id.desc()).first()

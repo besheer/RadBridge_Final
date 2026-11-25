@@ -2524,7 +2524,12 @@ function resetFormForNewPatient(){
 
   document.getElementById('btnPrintReceipt').disabled = true;
   document.getElementById('btnPrintSticker').disabled = true;
-  const pushBtn = document.getElementById('btnPushMwl'); if(pushBtn) pushBtn.disabled = true;
+  const pushBtn = document.getElementById('btnPushMwl');
+  if(pushBtn) {
+    pushBtn.disabled = true;
+    pushBtn.innerHTML = '⚡ إرسال للـ MWL';
+    pushBtn.title = 'يرجى اختيار حالة من قائمة الحالات أولاً لإرسالها للـ Worklist';
+  }
   const psInp = document.getElementById('procSearchInput'); if(psInp) psInp.value = '';
   document.getElementById('btnWorkOrder').setAttribute('disabled', 'disabled');
   document.getElementById('btnWorkOrder').href = '#';
@@ -2663,7 +2668,13 @@ function selectCaseCard(card){
 
   document.getElementById('btnPrintReceipt').disabled = !currentSelectedReceiptId;
   document.getElementById('btnPrintSticker').disabled = false;
-  const pushBtn = document.getElementById('btnPushMwl'); if(pushBtn) pushBtn.disabled = false;
+  const pushBtn = document.getElementById('btnPushMwl');
+  if(pushBtn) {
+    pushBtn.disabled = false;
+    const shortName = (d.patientName || '').trim().split(' ')[0];
+    pushBtn.innerHTML = shortName ? ('⚡ إرسال لـ MWL (' + shortName + ')') : '⚡ إرسال للـ MWL';
+    pushBtn.title = 'إرسال فحص المريض [' + (d.patientName || '') + '] إلى جهاز الأشعة عبر Worklist';
+  }
   document.getElementById('btnWorkOrder').removeAttribute('disabled');
   document.getElementById('btnWorkOrder').href = `/orders/${d.id}`;
   const sBtn = document.getElementById('btnQuickSavePatient'); if(sBtn) sBtn.style.display = 'inline-flex';
@@ -2910,10 +2921,11 @@ document.addEventListener('DOMContentLoaded', () => {
   applyCasesSidebarState(casesSidebarHidden);
   syncSelections({ branchChanged: true });
   calculateFinances();
-  {% if not selected_order %}
-  const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-  document.getElementById('formScheduled').value = now.toISOString().slice(0,16);
+  {% if selected_order %}
+  const initCard = document.querySelector('.rd-case-card.active');
+  if (initCard) selectCaseCard(initCard);
+  {% else %}
+  resetFormForNewPatient();
   {% endif %}
 });
 
